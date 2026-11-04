@@ -24,7 +24,14 @@ public abstract class PlayerSneakEdgeMixin {
     @Inject(method = "isStayingOnGroundSurface", at = @At("HEAD"), cancellable = true)
     private void barotrauma$noSneakEdgeGuardInWater(CallbackInfoReturnable<Boolean> cir) {
         Player self = (Player) (Object) this;
-        if (OceanEnvironment.isSubmerged(self.level(), self.position().add(0.0D, 0.4D, 0.0D))) {
+        net.minecraft.world.phys.Vec3 sample = self.position().add(0.0D, 0.4D, 0.0D);
+        // 服务端也会走 Entity#move → maybeBackOffFromEdge，而服务端的 isSubmerged 读不到
+        // 方块船的舱内水面（那要查船核心），干舱会被当成水下。这里按 UnderwaterSurvival
+        // 的同一套判定先把方块船干舱排除掉，避免服务端和客户端对潜行防掉边不一致。
+        if (OceanEnvironment.isInsideBlockShipDryZone(self.level(), sample)) {
+            return;
+        }
+        if (OceanEnvironment.isSubmerged(self.level(), sample)) {
             cir.setReturnValue(false);
         }
     }

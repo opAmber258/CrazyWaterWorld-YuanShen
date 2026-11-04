@@ -16,10 +16,11 @@ import java.util.function.Supplier;
  *
  * <p>{@code breaches} 每 8 个 float 一个破口：格中心 x/y/z（装配坐标）、
  * 破口自己那一列水柱在 {@code boxes} 里的**绝对 float 偏移**（不是盒子序号，别再乘 7；
- * 取该列水面用）、朝舱内（空腔质心）的水平方向 dx/dz、
- * 所在空腔的 minY/maxY（判断顶部破口/灌满）。客户端据此在洞口画水花/气泡。
- * 开着的门也追加同样的 8 float，第四位是"接水侧"水体的第一个盒子偏移。
- * 只包含真正连到外海的洞。</p>
+ * 取该列水面用）、朝舱内的方向 dx/dz、所在空腔的 minY/maxY（判断顶部破口/灌满）。
+ * 方向对舱壁破口是轴对齐水平法线（±1/0），对舱顶/舱底破口是 (0,0)——客户端据此决定
+ * 洞口补面画竖直面还是水平面（舱顶/舱底再按格子的 y 与空腔 minY/maxY 区分）。
+ * 客户端据此在洞口画水花/气泡。开着的门也追加同样的 8 float，第四位是"接水侧"水体的
+ * 第一个盒子偏移，方向保持"洞口→来水侧质心"的斜方向。只包含真正连到外海的洞。</p>
  */
 public record ShipWaterStatePacket(long shipId, boolean physical,
                                    float anchorX, float anchorY, float anchorZ,

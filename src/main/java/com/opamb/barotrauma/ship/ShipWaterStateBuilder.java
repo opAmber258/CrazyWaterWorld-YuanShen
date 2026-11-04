@@ -58,31 +58,43 @@ public final class ShipWaterStateBuilder {
             bodyBox[i] = boxes.size();
             appendCompartment(boxes, compartments.get(i), state.simulation().waterUnits(i), null);
         }
+        // 每个空腔在 boxes 里的下标范围 [start, end)：破口找自己那一列时只许在这个范围里找。
+        // 干燥密闭舱室会先写一个整块 bbox 占位；全表扫描会让它的包围盒抢走别的空腔的破口格。
+        int[] pocketBoxStart = new int[pockets.size()];
+        int[] pocketBoxEnd = new int[pockets.size()];
         for (int i = 0; i < pockets.size(); i++) {
             bodyBox[compartments.size() + i] = boxes.size();
+            pocketBoxStart[i] = boxes.size();
             pocketBoxIndex[i] = appendCompartment(boxes, pockets.get(i),
                     state.simulation().pocketWater(i), pocketSources.get(i));
+            pocketBoxEnd[i] = boxes.size();
         }
 
-        // 破口 8 个 float：格中心 x/y/z + boxes 里的**绝对 float 偏移** + 朝舱内的水平方向
+        // 破口 8 个 float：格中心 x/y/z + boxes 里的**绝对 float 偏移** + 朝舱内的方向
         // + 所在空腔的 minY/maxY（客户端据此判断"顶部破口"和"是否灌满"）。
         // 偏移必须指向破口自己那一列（连海空腔逐列水位），不能指向空腔第一个有水块：
         // 第一块可能只是某个低处的 Y 段，水面远低于洞口，客户端就会只画半截。
         List<float[]> breachRows = new ArrayList<>();
+        Set<BlockPos> breachCells = new HashSet<>();
+        for (ShipState.Breach breach : state.breaches()) {
+            breachCells.add(breach.pos());
+        }
         for (ShipState.Breach breach : state.breaches()) {
             int pocket = pocketIndex(pockets, breach.pos());
             if (pocket < 0) {
                 continue;
             }
-            int ownBox = boxAtCell(boxes, breach.pos());
+            int ownBox = boxAtCell(boxes, pocketBoxStart[pocket], pocketBoxEnd[pocket], breach.pos());
             if (ownBox < 0) {
                 // appendCompartment 返回的是盒子下标，协议要的是绝对 float 偏移。
                 ownBox = pocketBoxIndex[pocket] * 7;
             }
             float[] range = yRange(pockets.get(pocket));
+            float[] normal = breachNormal(pockets.get(pocket), breachCells, breach.pos(),
+                    breach.dirX(), breach.dirZ());
             breachRows.add(new float[]{
                     breach.pos().getX() + 0.5F, breach.pos().getY() + 0.5F, breach.pos().getZ() + 0.5F,
-                    ownBox, breach.dirX(), breach.dirZ(), range[0], range[1]});
+                    ownBox, normal[0], normal[1], range[0], range[1]});
         }
         // 开着的门：两侧有水位差时，把水花/气泡画在门格上，方向朝"接水"的那一侧。
         for (ShipGeometry.DoorLink link : state.geometry().doorLinks()) {
@@ -145,10 +157,11 @@ public final class ShipWaterStateBuilder {
     /**
      * 覆盖这一格的盒子在 {@code boxes} 里的绝对 float 偏移（{@code index * 7}）；没有返回 -1。
      *
-     * <p>连海空腔逐列发盒子，所以破口格一定能找到自己那一列；Y 有断档时取包含该格的那一段。</p>
+     * <p>只在 {@code [start, end)} 这段（破口所属空腔自己的盒子）里找：密闭舱室的干燥
+     * 占位 bbox 可能把别的空腔的破口格一起盖住，全表扫描会先命中它，破口就取到错误水位。</p>
      */
-    private static int boxAtCell(List<float[]> boxes, BlockPos pos) {
-        for (int i = 0; i < boxes.size(); i++) {
+    private static int boxAtCell(List<float[]> boxes, int start, int end, BlockPos pos) {
+        for (int i = Math.max(0, start); i < Math.min(end, boxes.size()); i++) {
             float[] box = boxes.get(i);
             if (pos.getX() >= box[0] && pos.getX() <= box[3]
                     && pos.getY() >= box[1] && pos.getY() <= box[4]
@@ -157,6 +170,48 @@ public final class ShipWaterStateBuilder {
             }
         }
         return -1;
+    }
+
+    /**
+     * 破口朝舱内的方向，舱壁破口发轴对齐的水平法线（±1/0），舱顶/舱底破口发 (0,0)。
+     *
+     * <p>客户端要用它决定洞口补面画成竖直还是水平。以前发的是"洞口→空腔质心"的斜方向，
+     * 客户端只能靠水柱端点猜开口在哪一面：连续两格墙洞那一列正好只有两格高，就会被猜成
+     * "上格是舱顶、下格是舱底"，补出两张水平面，竖排墙洞从舱内看不到水色。</p>
+     *
+     * <p>判定看隔壁是不是**舱内格**（空腔里、且不是另一个破口格——连续多格破口彼此
+     * 相邻不构成舱内）：水平隔壁在 → 舱壁；否则上/下隔壁在 → 舱顶/舱底。</p>
+     */
+    private static float[] breachNormal(ShipGeometry.Compartment pocket, Set<BlockPos> breachCells,
+                                        BlockPos pos, float dirX, float dirZ) {
+        Set<BlockPos> cells = pocket.cells();
+        int bestX = 0;
+        int bestZ = 0;
+        float bestScore = Float.NEGATIVE_INFINITY;
+        int[][] sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int[] side : sides) {
+            BlockPos neighbor = pos.offset(side[0], 0, side[1]);
+            if (!cells.contains(neighbor) || breachCells.contains(neighbor)) {
+                continue;
+            }
+            float score = dirX * side[0] + dirZ * side[1];
+            if (score > bestScore) {
+                bestScore = score;
+                bestX = side[0];
+                bestZ = side[1];
+            }
+        }
+        if (bestX != 0 || bestZ != 0) {
+            return new float[]{bestX, bestZ};
+        }
+        boolean above = cells.contains(pos.above()) && !breachCells.contains(pos.above());
+        boolean below = cells.contains(pos.below()) && !breachCells.contains(pos.below());
+        if (above != below) {
+            // 客户端按 y 与空腔 minY/maxY 的关系区分舱顶/舱底。
+            return new float[]{0.0F, 0.0F};
+        }
+        // 厚船壳等兜底：保留质心方向，客户端仍按舱壁画。
+        return new float[]{dirX, dirZ};
     }
 
     /** 舱室的 minY/maxY。 */

@@ -117,6 +117,89 @@ class BreachColumnWaterTest {
     }
 
     @Test
+    @DisplayName("东墙连续两格破口仍按舱壁发轴对齐法线：不能被水柱端点判成舱顶+舱底")
+    void verticalWallHolesKeepWallNormals() {
+        List<BlockPos> breaches = holes();
+        ShipState state = state(pocketCells(), breaches);
+        fill(state, 1.0D);
+
+        ShipWaterStatePacket packet = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        float[] rows = packet.breaches();
+        int checked = 0;
+        for (int i = 0; i + 7 < rows.length; i += 8) {
+            // 东墙 x=4，舱内在 x<=3：朝内法线必须是 -X，且不能带 Z 分量。
+            assertEquals(-1.0F, rows[i + 4], 1.0E-3F,
+                    "墙洞（哪怕竖排只有两格高）必须发朝舱内的轴对齐法线");
+            assertEquals(0.0F, rows[i + 5], 1.0E-3F,
+                    "墙洞的朝向不能是斜的质心方向");
+            checked++;
+        }
+        assertEquals(6, checked, "6 个墙洞都要检查到");
+    }
+
+    @Test
+    @DisplayName("舱顶/舱底破口发 (0,0)，客户端按洞口 y 与空腔上下界区分水平补面")
+    void verticalHolesSendZeroDirection() {
+        Set<BlockPos> cells = new HashSet<>();
+        for (int x = 0; x <= 2; x++) {
+            for (int y = -71; y <= -69; y++) {
+                for (int z = 0; z <= 2; z++) {
+                    cells.add(new BlockPos(x, y, z));
+                }
+            }
+        }
+        BlockPos ceilingHole = new BlockPos(1, -68, 1);
+        BlockPos floorHole = new BlockPos(1, -72, 1);
+        cells.add(ceilingHole);
+        cells.add(floorHole);
+
+        ShipState state = state(cells, List.of(ceilingHole, floorHole));
+        fill(state, 1.0D);
+        ShipWaterStatePacket packet = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        float[] rows = packet.breaches();
+        assertEquals(16, rows.length, "两个竖直破口各一行");
+
+        for (int i = 0; i + 7 < rows.length; i += 8) {
+            assertEquals(0.0F, rows[i + 4], 1.0E-3F, "舱顶/舱底破口不能发水平法线");
+            assertEquals(0.0F, rows[i + 5], 1.0E-3F);
+            float cellBottom = rows[i + 1] - 0.5F;
+            boolean ceiling = cellBottom >= rows[i + 7] - 0.01F;
+            if (ceilingHole.getY() == (int) Math.floor(rows[i + 1])) {
+                assertTrue(ceiling, "舱顶洞必须落在空腔顶格，客户端才会画朝下的水面");
+            } else {
+                assertTrue(!ceiling, "舱底洞不能落在顶格，客户端才会画朝上的水面");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("干燥密闭舱的占位 bbox 盖住破口格时，破口仍取自己那一列的水面")
+    void dryCompartmentBoundingBoxDoesNotStealBreachColumn() {
+        BlockPos hole = new BlockPos(4, -71, 24);
+        Set<BlockPos> pocketCells = pocketCells();
+        ShipGeometry.Compartment pocket = new ShipGeometry.Compartment(pocketCells, 0);
+        // 干燥密闭舱的整块 bbox 正好盖住破口格，而且它排在空腔前面。
+        ShipGeometry.Compartment dryRoom = new ShipGeometry.Compartment(Set.of(hole), 0);
+        ShipGeometry.Result geometry = new ShipGeometry.Result(
+                List.of(dryRoom), List.of(pocket), 0, pocketCells.size(),
+                new ShipGeometry.Bounds(-3, -71, 17, 4, -69, 29),
+                Set.of(), List.of());
+        ShipState state = new ShipState(geometry, MachineCount.EMPTY);
+        state.addBreaches(List.of(hole));
+        fill(state, 1.0D);
+
+        ShipWaterStatePacket packet = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        float[] boxes = packet.boxes();
+        float[] rows = packet.breaches();
+        assertEquals(8, rows.length);
+        int offset = Math.round(rows[3]);
+        assertTrue(offset >= 7, "偏移不能指向排在前面的干燥密闭舱占位 bbox");
+        float surface = boxes[offset + 6];
+        assertTrue(surface > boxes[offset + 4] + 1.0F + 0.01F,
+                "满水时破口列整段在水下，不能被干燥 bbox 的低水位顶替");
+    }
+
+    @Test
     @DisplayName("近满时破口列和舱内列水位一致：分布不是根因")
     void nearFull_holeColumnMatchesInterior() {
         List<BlockPos> breaches = holes();
