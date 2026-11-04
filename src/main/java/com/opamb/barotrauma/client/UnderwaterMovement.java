@@ -41,8 +41,7 @@ public final class UnderwaterMovement {
         //  - 用脚底：干燥舱室的水面就是舱底 y，脚正好等于它，会被判成"在水里"，
         //    于是干舱里也有粘滞的游泳感（用户实测"船内还没开就有漏水游泳的感觉"）。
         Vec3 sample = player.position().add(0.0D, 0.4D, 0.0D);
-        boolean submergedFeet = OceanEnvironment.isSubmerged(mc.level, sample);
-        if (!submergedFeet) {
+        if (!OceanEnvironment.isSubmerged(mc.level, sample)) {
             return;
         }
         Vec3 motion = player.getDeltaMovement();

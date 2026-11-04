@@ -38,7 +38,8 @@ public final class ShipWaterStateBuilder {
         List<ShipGeometry.Compartment> compartments = state.compartments();
         List<ShipGeometry.Compartment> pockets = state.geometry().openPockets();
         List<float[]> boxes = new ArrayList<>();
-        // 每个连海空腔第一个"有水"棱柱在 boxes 里的下标：破口用它取水面（同舱所有棱柱水面相同）。
+        // 每个连海空腔第一个"有水"棱柱的**盒子下标**：只在找不到破口自己那一列的盒子时兜底。
+        // 连海空腔按列分水位后，不同列的水面并不相同，破口必须用自己那一列的水面。
         int[] pocketBoxIndex = new int[pockets.size()];
         // 破口是水的入口：连海空腔的水面/含水格子按它算，隔墙顶部的孔不会提前串水。
         List<List<BlockPos>> pocketSources = new ArrayList<>(pockets.size());
@@ -63,18 +64,25 @@ public final class ShipWaterStateBuilder {
                     state.simulation().pocketWater(i), pocketSources.get(i));
         }
 
-        // 破口 8 个 float：格中心 x/y/z + boxes 里的舱室下标 + 朝舱内的水平方向
+        // 破口 8 个 float：格中心 x/y/z + boxes 里的**绝对 float 偏移** + 朝舱内的水平方向
         // + 所在空腔的 minY/maxY（客户端据此判断"顶部破口"和"是否灌满"）。
+        // 偏移必须指向破口自己那一列（连海空腔逐列水位），不能指向空腔第一个有水块：
+        // 第一块可能只是某个低处的 Y 段，水面远低于洞口，客户端就会只画半截。
         List<float[]> breachRows = new ArrayList<>();
         for (ShipState.Breach breach : state.breaches()) {
             int pocket = pocketIndex(pockets, breach.pos());
             if (pocket < 0) {
                 continue;
             }
+            int ownBox = boxAtCell(boxes, breach.pos());
+            if (ownBox < 0) {
+                // appendCompartment 返回的是盒子下标，协议要的是绝对 float 偏移。
+                ownBox = pocketBoxIndex[pocket] * 7;
+            }
             float[] range = yRange(pockets.get(pocket));
             breachRows.add(new float[]{
                     breach.pos().getX() + 0.5F, breach.pos().getY() + 0.5F, breach.pos().getZ() + 0.5F,
-                    pocketBoxIndex[pocket], breach.dirX(), breach.dirZ(), range[0], range[1]});
+                    ownBox, breach.dirX(), breach.dirZ(), range[0], range[1]});
         }
         // 开着的门：两侧有水位差时，把水花/气泡画在门格上，方向朝"接水"的那一侧。
         for (ShipGeometry.DoorLink link : state.geometry().doorLinks()) {
@@ -106,7 +114,8 @@ public final class ShipWaterStateBuilder {
             float dirZ = length > 1.0E-4D ? (float) (dz / length) : 0.0F;
             breachRows.add(new float[]{
                     link.cell().getX() + 0.5F, link.cell().getY() + 0.5F, link.cell().getZ() + 0.5F,
-                    bodyBox[dry], dirX, dirZ, range[0], range[1]});
+                    // 门格本身属于来水侧；水面要取"接水侧"的第一个盒子，乘 7 转成绝对 float 偏移。
+                    bodyBox[dry] * 7, dirX, dirZ, range[0], range[1]});
         }
         float[] breaches = new float[breachRows.size() * 8];
         int breachOffset = 0;
@@ -128,6 +137,23 @@ public final class ShipWaterStateBuilder {
         for (int i = 0; i < pockets.size(); i++) {
             if (pockets.get(i).cells().contains(pos)) {
                 return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * 覆盖这一格的盒子在 {@code boxes} 里的绝对 float 偏移（{@code index * 7}）；没有返回 -1。
+     *
+     * <p>连海空腔逐列发盒子，所以破口格一定能找到自己那一列；Y 有断档时取包含该格的那一段。</p>
+     */
+    private static int boxAtCell(List<float[]> boxes, BlockPos pos) {
+        for (int i = 0; i < boxes.size(); i++) {
+            float[] box = boxes.get(i);
+            if (pos.getX() >= box[0] && pos.getX() <= box[3]
+                    && pos.getY() >= box[1] && pos.getY() <= box[4]
+                    && pos.getZ() >= box[2] && pos.getZ() <= box[5]) {
+                return i * 7;
             }
         }
         return -1;
@@ -233,8 +259,12 @@ public final class ShipWaterStateBuilder {
     }
 
     /**
-     * 连海空腔按列发：每列一个盒子（Y 有断档时拆成多段），水面 = 该列水位
-     * 但不超过这一段的顶格。
+     * 连海空腔按列发：每列一个盒子（Y 有断档时拆成多段），盒子带这一列的**真实水位**。
+     *
+     * <p>水位可以高于这一段的顶格（这一段被更高的水淹没）：渲染端据此把顶面当水体内部面
+     * 跳过，只画侧面/底面，并且侧面的顶边压到这一段顶格。若这里把水位 clamp 到顶格，
+     * 渲染端就分不清"刚好满到顶格"和"整段在水下"，破口那种只有一个格子的列会在洞口
+     * 画出一层假水面，看起来比舱内低一整格。</p>
      */
     private static int appendByColumn(List<float[]> boxes, Set<BlockPos> cells,
                                       ShipPocketWater.Shape shape) {
@@ -261,7 +291,7 @@ public final class ShipWaterStateBuilder {
                 }
                 float waterLevel = runStart;
                 if (!Float.isNaN(level) && level > runStart + 0.001F) {
-                    waterLevel = quantize(Math.min(level, runEnd + 1.0F));
+                    waterLevel = quantize(level);
                 }
                 int boxIndex = boxes.size();
                 boxes.add(new float[]{x, runStart, z, x, runEnd, z, waterLevel});

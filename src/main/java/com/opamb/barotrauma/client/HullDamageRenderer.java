@@ -238,8 +238,11 @@ public final class HullDamageRenderer {
                 x1, y0, z0, x1, y0, z1, x1, y1, z1, x1, y1, z0);
         crackFace(vertices, matrix, toWorld, cameraPos, sprite,
                 x0, y0, z0, x0, y0, z1, x1, y0, z1, x1, y0, z0);
+        // 朝上一面：crackFace 内部会倒序发顶点，所以这里按"从上看顺时针"传，倒过来才是
+        // 逆时针(+Y)。原来传成 z1→z1→z0→z0 的顺序，发出去法线是 -Y：方块上方（舱内）
+        // 被背面剔除，只有从船底外面往上看才见——就是"底部舱壁裂痕舱内看不见"。
         crackFace(vertices, matrix, toWorld, cameraPos, sprite,
-                x0, y1, z1, x1, y1, z1, x1, y1, z0, x0, y1, z0);
+                x0, y1, z0, x1, y1, z0, x1, y1, z1, x0, y1, z1);
     }
 
     private static void crackFace(VertexConsumer vertices, Matrix4f matrix, Matrix4d toWorld,

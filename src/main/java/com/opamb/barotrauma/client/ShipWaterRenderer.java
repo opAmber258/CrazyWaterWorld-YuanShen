@@ -147,7 +147,6 @@ public final class ShipWaterRenderer {
     private static volatile float lastDeltaY;
     private static volatile float lastDeltaZ;
     private static volatile boolean lastShipFound;
-    private static long packetCount;
     // 不要用 Long.MIN_VALUE 做初值：gameTime - Long.MIN_VALUE 会 long 溢出成负数，
     // 限频条件永远不成立。用 -100 让第一帧就输出一次。
     private static long lastDebugTick = -100L;
@@ -165,8 +164,6 @@ public final class ShipWaterRenderer {
     private static boolean fullBubbleToggle;
     /** 破口很多时轮转起点：每次从下一个洞开始发粒子，避免总是前几个洞喷。 */
     private static int breachRoundRobin;
-    /** 已经打过水盒快照日志的船 id（一次性诊断）。 */
-    private static long dumpedShipId = Long.MIN_VALUE;
 
     private ShipWaterRenderer() {
     }
@@ -184,36 +181,6 @@ public final class ShipWaterRenderer {
 
     public static void accept(ShipWaterStatePacket packet) {
         state = packet;
-        if (++packetCount % 40L == 0L) {
-            BarotraumaMod.LOGGER.info("[water] 收到水面包：physical={} ship={} boxes={} breaches={} anchor=({},{},{})",
-                    packet.physical(), packet.shipId(), packet.boxes().length / 7,
-                    packet.breaches().length / 8,
-                    packet.anchorX(), packet.anchorY(), packet.anchorZ());
-        }
-        // 一次性诊断：新船的第一包水盒结构。渲染再出问题时直接对照真实数据。
-        if (packet.shipId() != dumpedShipId && packet.boxes().length >= 7) {
-            dumpedShipId = packet.shipId();
-            float[] boxes = packet.boxes();
-            int count = boxes.length / 7;
-            java.util.TreeSet<Float> surfaces = new java.util.TreeSet<>();
-            for (int i = 0; i + 6 < boxes.length; i += 7) {
-                surfaces.add(boxes[i + 6]);
-            }
-            StringBuilder sb = new StringBuilder(1024);
-            sb.append("[water] 水盒快照 ship=").append(packet.shipId())
-                    .append(" boxes=").append(count)
-                    .append(" 不同水面值=").append(surfaces.size());
-            int shown = Math.min(12, count);
-            for (int b = 0; b < shown; b++) {
-                int o = b * 7;
-                sb.append("\n[water]  box[").append(b).append("] (")
-                        .append(boxes[o]).append(',').append(boxes[o + 1]).append(',')
-                        .append(boxes[o + 2]).append(")-(")
-                        .append(boxes[o + 3]).append(',').append(boxes[o + 4]).append(',')
-                        .append(boxes[o + 5]).append(") surface=").append(boxes[o + 6]);
-            }
-            BarotraumaMod.LOGGER.info(sb.toString());
-        }
     }
 
     /**
@@ -641,10 +608,16 @@ public final class ShipWaterRenderer {
                 continue;
             }
             // 一个舱室可能拆成多个棱柱。只有"水面落在自己这一层"的棱柱才画顶面；
-            // 完全没在水下的棱柱（surface > maxY）顶面是水体内部，不画，否则会双倍混色。
-            // 但 surface 异常超过 maxY（数据毛刺）时也必须画，否则顶上是一块干洞。
+            // surface > maxY 说明这一段被更高的水淹没（连海空腔逐列水位会这样发），
+            // 顶面是水体内部面，不画，否则破口那种只有一个格子的列会在洞口画出一层
+            // 比舱内低一整格的假水面。侧面/底面照画，侧面的顶边压到这一段顶格。
+            boolean submerged = surface > maxY + 0.01F;
             float waterTop = Math.min(surface, maxY);
-            boolean reachesSurface = surface <= maxY + 0.01F || waterTop >= maxY - 0.01F;
+            // 判"顶面是不是内部面"要看上面到底有没有水柱，不能只看水位数值：
+            // 舱顶被打穿时整舱水位被抬到舱顶以上，每列都满足 surface > maxY，
+            // 若据此全部跳过顶面，舱顶从下往上就是一整片干燥（用户实测）。
+            boolean coveredAbove = hasWaterAbove(boxes, i);
+            boolean reachesSurface = !submerged || !coveredAbove;
             // 满舱时 waterTop 贴着天花板，和方块面共面会 z-fight——画之前往舱内缩 1cm。
             float drawTop = waterTop;
             if (drawTop >= maxY - 0.01F) {
@@ -679,6 +652,15 @@ public final class ShipWaterRenderer {
                         float yb = cb[0] + wave(seconds, xa, zb) * cb[1];
                         float yc = cc[0] + wave(seconds, xb, zb) * cc[1];
                         float yd = cd[0] + wave(seconds, xb, za) * cd[1];
+                        // 这一段贴着天花板时，角点不许被邻格平均抬高到天花板里：
+                        // 破口列水位高一格，四格平均会把它周围推高 0.25 格，顶面钻出
+                        // 天花板被深度测试整片剔掉，舱顶就出现 3×4 那种不规则"干区"。
+                        if (waterTop >= maxY - 0.01F) {
+                            ya = Math.min(ya, drawTop);
+                            yb = Math.min(yb, drawTop);
+                            yc = Math.min(yc, drawTop);
+                            yd = Math.min(yd, drawTop);
+                        }
                         // 明暗用连续的空间/时间函数：相邻 quad 亮度差 <1%，不会出现分界线。
                         float xc = xa + stepX * 0.5F;
                         float zc = za + stepZ * 0.5F;
@@ -705,32 +687,26 @@ public final class ShipWaterRenderer {
             // ---- 四个侧面：只画"贴舱壁/临空"的那一侧（沿法线缩 1cm，沿墙方向占满整格）。
             // 相邻水柱之间不再画竖直台阶面——台阶面正是一格一条"分界线"的来源；
             // 水位差现在由顶面的角点平均平滑过渡，水面是一张连续曲面。
-            int nIdx = neighborAcross(boxes, i, Face.NORTH);
-            if (nIdx < 0) {
-                quads += wallStrip(vc, m, toCamera, r, g, b, a * 0.8F,
-                        true, minX, maxX, minZ + WATER_INSET, minZ, minY,
-                        nx, seconds, cellTop, cellScale, drawTop, waveScale);
-            }
-            nIdx = neighborAcross(boxes, i, Face.SOUTH);
-            if (nIdx < 0) {
-                quads += wallStrip(vc, m, toCamera, r, g, b, a * 0.8F,
-                        true, minX, maxX, maxZ - WATER_INSET, maxZ, minY,
-                        nx, seconds, cellTop, cellScale, drawTop, waveScale);
-            }
-            nIdx = neighborAcross(boxes, i, Face.WEST);
-            if (nIdx < 0) {
-                quads += wallStrip(vc, m, toCamera, r, g, b, a * 0.8F,
-                        false, minZ, maxZ, minX + WATER_INSET, minX, minY,
-                        nz, seconds, cellTop, cellScale, drawTop, waveScale);
-            }
-            nIdx = neighborAcross(boxes, i, Face.EAST);
-            if (nIdx < 0) {
-                quads += wallStrip(vc, m, toCamera, r, g, b, a * 0.8F,
-                        false, minZ, maxZ, maxX - WATER_INSET, maxX, minY,
-                        nz, seconds, cellTop, cellScale, drawTop, waveScale);
-            }
+            // 邻居可能只盖住我这一段的一部分（破口那一列伸进地板/天花板时就是这种）。
+            // 只扣掉真正被盖住的竖直区间，剩下没盖住的才画——整面剔会留"干洞"，
+            // 整面画又会在水与水之间叠一层半透明，出现一条竖直的"水缝"。
+            quads += faceGaps(vc, m, toCamera, boxes, i, Face.NORTH,
+                    r, g, b, a * 0.8F, true, minX, maxX, minZ + WATER_INSET, minZ,
+                    minY, drawTop, nx, seconds, submerged, cellTop, cellScale, waveScale);
+            quads += faceGaps(vc, m, toCamera, boxes, i, Face.SOUTH,
+                    r, g, b, a * 0.8F, true, minX, maxX, maxZ - WATER_INSET, maxZ,
+                    minY, drawTop, nx, seconds, submerged, cellTop, cellScale, waveScale);
+            quads += faceGaps(vc, m, toCamera, boxes, i, Face.WEST,
+                    r, g, b, a * 0.8F, false, minZ, maxZ, minX + WATER_INSET, minX,
+                    minY, drawTop, nz, seconds, submerged, cellTop, cellScale, waveScale);
+            quads += faceGaps(vc, m, toCamera, boxes, i, Face.EAST,
+                    r, g, b, a * 0.8F, false, minZ, maxZ, maxX - WATER_INSET, maxX,
+                    minY, drawTop, nz, seconds, submerged, cellTop, cellScale, waveScale);
             boxesDrawn++;
         }
+        // 破口处的水面：破口格属于船壳，不在任何水体内，所以洞口原本一点水色都没有。
+        // 这里按破口数据在朝内那一面补一张水面；水面没涨到洞口时自然不画。
+        quads += breachSheets(vc, m, toCamera, boxes, data.breaches(), r, g, b);
         // 破口视觉：空气侧只在涨水时喷水花；水下气泡在灌满后仍然持续冒出。
         if (data.breaches().length >= 8) {
             float carryX = 0.0F;
@@ -803,6 +779,177 @@ public final class ShipWaterRenderer {
     // ------------------------------------------------------------------ 破口进水视觉
 
     /**
+     * 破口那一格的“水色”：洞口格在连海空腔里也有自己的水柱，但它朝舱内的那一面
+     * 因为相邻水柱被剔掉了，从舱内看洞口容易是空的。这里在每个破口朝舱内的一面补一张
+     * 竖直水面，高度取**破口自己那一列**的水位（服务端发的是该格所在水柱的绝对 float
+     * 偏移），并压到洞口这一格的上下界。水位高于洞口时画满整格；水位落在洞口中间时
+     * 按真实水位画半截；水位还没到洞口时不画。
+     *
+     * <p>连海空腔是逐列水位的，不能再用“空腔第一个有水块”的水面：那一块可能只是
+     * 低处的某个 Y 段，会把洞口画低一整格。</p>
+     */
+    private static int breachSheets(VertexConsumer vc, Matrix4f m, Matrix4d toCamera,
+                                    float[] boxes, float[] breaches,
+                                    float r, float g, float b) {
+        int drawn = 0;
+        float alpha = 0.55F;
+        for (int i = 0; i + 7 < breaches.length; i += 8) {
+            float cx = breaches[i];
+            float cy = breaches[i + 1];
+            float cz = breaches[i + 2];
+            int bx = (int) Math.floor(cx);
+            int by = (int) Math.floor(cy);
+            int bz = (int) Math.floor(cz);
+            // Packet value is the absolute float offset into boxes, not a box ordinal.
+            int box = Math.round(breaches[i + 3]);
+            if (box < 0 || box + 6 >= boxes.length) {
+                continue;
+            }
+            float dirX = breaches[i + 4];
+            float dirZ = breaches[i + 5];
+            float length = (float) Math.sqrt(dirX * dirX + dirZ * dirZ);
+            if (length < 1.0E-4F) {
+                continue;
+            }
+            // 服务端的 dir 是"洞口→空腔质心"，不一定垂直于洞口平面；破口行（盒子覆盖
+            // 破口格自己）改用相邻水柱的轴对齐方向，补一张真正贴在洞口内侧面上的板，
+            // 避免斜着只盖住半个洞。门行（盒子是接水侧水体的第一个盒子，不覆盖门格）
+            // 保持原来的 dir，否则会把门上的水板翻到错误的一面。
+            float[] normal = boxContainsCell(boxes, box, bx, by, bz)
+                    ? inwardNormal(boxes, box, bx, by, bz, dirX / length, dirZ / length)
+                    : new float[]{dirX / length, dirZ / length};
+            float nx = normal[0];
+            float nz = normal[1];
+            float cellMinY = cy - 0.5F;
+            float cellMaxY = cy + 0.5F;
+            float rawSurface = boxes[box + 6];
+            float surface = Math.min(rawSurface, cellMaxY);
+            float y0 = cellMinY + WATER_INSET;
+            float y1 = surface - WATER_INSET;
+            boolean draw = surface > cellMinY + 0.02F && y1 > y0;
+            if (draw) {
+                if (openKind(boxes, box, by) == 0) {
+                    // 舱壁破口：开口是竖直面。法线是朝内方向，横向取它的垂直方向，宽 1 格。
+                    float px = -nz * 0.5F;
+                    float pz = nx * 0.5F;
+                    // 沿朝内方向多挪 1cm：正好落在方块表面上会和方块共面被盖住，
+                    // 从舱内看洞口就是"没蓝色"。
+                    float ox = nx * (0.5F + WATER_INSET);
+                    float oz = nz * (0.5F + WATER_INSET);
+                    float x0 = cx + ox - px;
+                    float z0 = cz + oz - pz;
+                    float x1 = cx + ox + px;
+                    float z1 = cz + oz + pz;
+                    quadXf(vc, m, toCamera, r, g, b, alpha,
+                            x0, y0, z0, x0, y1, z0, x1, y1, z1, x1, y0, z1);
+                    drawn++;
+                } else {
+                    // 天花板/地板破口：横向没有水柱，开口是水平面。原来一律画竖直面，
+                    // 方向根本不对（而且和方块共面），所以顶/底被打穿的那一格看不到水色。
+                    float qx0 = cx - 0.5F + WATER_INSET;
+                    float qx1 = cx + 0.5F - WATER_INSET;
+                    float qz0 = cz - 0.5F + WATER_INSET;
+                    float qz1 = cz + 0.5F - WATER_INSET;
+                    // 方向很关键：破口方块是 0% 耐久——无碰撞但**仍然渲染**。补面必须放在
+                    // 舱内一侧（洞外 1cm）；放进洞里 1cm 会被方块自己的模型挡住，看不见。
+                    if (openKind(boxes, box, by) == 1) {
+                        // 舱顶的洞：从舱内往上看，画一张朝下的水面（贴在舱顶下方）。
+                        float y = cellMinY - WATER_INSET;
+                        quadXf(vc, m, toCamera, r, g, b, alpha,
+                                qx0, y, qz0, qx1, y, qz0, qx1, y, qz1, qx0, y, qz1);
+                    } else {
+                        // 舱底的洞：从舱内往下看，画一张朝上的水面（贴在舱底上方）。
+                        float y = cellMaxY + WATER_INSET;
+                        quadXf(vc, m, toCamera, r, g, b, alpha,
+                                qx0, y, qz1, qx1, y, qz1, qx1, y, qz0, qx0, y, qz0);
+                    }
+                    drawn++;
+                }
+            }
+        }
+        return drawn;
+    }
+
+    /**
+     * 破口开口的方向：0 = 舱壁（竖直面），1 = 舱顶，2 = 舱底。
+     *
+     * <p>不能看"同高度有没有别的水柱"——天花板连续打穿好几格时，这些洞彼此水平相邻，
+     * 每一格都会以为自己是舱壁洞。改看这一格在**自己那一列水柱**里的位置：
+     * 水柱只往上延伸 = 舱底洞；只往下延伸 = 舱顶洞；上下都没有（单格列）= 舱壁洞。</p>
+     */
+    private static int openKind(float[] boxes, int box, int by) {
+        if (box < 0 || box + 6 >= boxes.length) {
+            return 0;
+        }
+        int boxMin = Math.round(boxes[box + 1]);
+        int boxMax = Math.round(boxes[box + 4]);
+        boolean waterBelow = boxMin < by;
+        boolean waterAbove = boxMax > by;
+        if (waterBelow && !waterAbove) {
+            return 1;
+        }
+        if (waterAbove && !waterBelow) {
+            return 2;
+        }
+        return 0;
+    }
+
+    private static boolean boxContainsCell(float[] boxes, int box, int bx, int by, int bz) {
+        if (box < 0 || box + 6 >= boxes.length) {
+            return false;
+        }
+        return bx >= boxes[box] && bx <= boxes[box + 3]
+                && by >= boxes[box + 1] && by <= boxes[box + 4]
+                && bz >= boxes[box + 2] && bz <= boxes[box + 5];
+    }
+
+    /** 覆盖这一格的盒子在 boxes 里的绝对 float 偏移；没有返回 -1。 */
+    private static int boxAtCell(float[] boxes, int bx, int by, int bz) {
+        for (int i = 0; i + 6 < boxes.length; i += 7) {
+            if (bx >= boxes[i] && bx <= boxes[i + 3]
+                    && by >= boxes[i + 1] && by <= boxes[i + 4]
+                    && bz >= boxes[i + 2] && bz <= boxes[i + 5]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * 破口格朝舱内的轴对齐法线。
+     *
+     * <p>在四个水平邻居里找真的覆盖了水柱的格子（有水优先），再在候选里选与服务端
+     * dir（洞口→空腔质心）最同向的一个。都没有就退回服务端 dir。</p>
+     */
+    private static float[] inwardNormal(float[] boxes, int ownBox, int bx, int by, int bz,
+                                        float dirX, float dirZ) {
+        int best = -1;
+        float bestScore = Float.NEGATIVE_INFINITY;
+        float bestSurface = Float.NEGATIVE_INFINITY;
+        int[] dxs = {1, -1, 0, 0};
+        int[] dzs = {0, 0, 1, -1};
+        for (int k = 0; k < 4; k++) {
+            int nb = boxAtCell(boxes, bx + dxs[k], by, bz + dzs[k]);
+            if (nb < 0 || nb == ownBox) {
+                // 同一个大棱柱同时盖住破口格和邻居格时不算"隔壁有水柱"。
+                continue;
+            }
+            float surface = boxes[nb + 6];
+            boolean wet = surface > boxes[nb + 1] + 0.01F;
+            float score = (wet ? 2.0F : 0.0F) + dirX * dxs[k] + dirZ * dzs[k];
+            if (score > bestScore || (score == bestScore && surface > bestSurface)) {
+                bestScore = score;
+                bestSurface = surface;
+                best = k;
+            }
+        }
+        if (best < 0) {
+            return new float[]{dirX, dirZ};
+        }
+        return new float[]{dxs[best], dzs[best]};
+    }
+
+    /**
      * 破口进水视觉，按破口与水面的关系分两种：
      *
      * <ul>
@@ -838,8 +985,8 @@ public final class ShipWaterRenderer {
             float bx = breaches[i];
             float by = breaches[i + 1];
             float bz = breaches[i + 2];
-            // 服务端直接告诉我们这个破口属于 boxes 里的哪一个空腔，避免 bbox 重叠时认错。
-            int box = Math.round(breaches[i + 3]) * 7;
+            // 服务端发的是水柱的**绝对 float 偏移**（不是下标，别再乘 7）。
+            int box = Math.round(breaches[i + 3]);
             if (box < 0 || box + 6 >= boxes.length || box + 6 >= target.length) {
                 continue;
             }
@@ -1354,19 +1501,21 @@ public final class ShipWaterRenderer {
     }
 
     /**
-     * 跨过侧面这条边、真的有水、且水面最高的相邻棱柱下标；没有相邻水体返回 -1。
+     * 这一面邻居水柱实际覆盖的竖直区间（升序、已合并）。
      *
-     * <p>返回 -1 表示这一侧贴着舱壁或临空（调用方沿法线缩 1cm 防 z-fight）；
-     * 有邻居时调用方只画高出邻居水面的部分，台阶每条边只画一次。</p>
+     * <p>以前这里只回答"有没有邻居"，有就整面剔掉。破口那一列可能比邻居高一格
+     * （伸进地板/天花板），这时整面剔会在没被盖住的位置留下"干洞"；整面画又会在
+     * 水与水之间叠一层半透明，出现竖直的"水缝"。所以改成按区间算。</p>
      */
-    private static int neighborAcross(float[] boxes, int index, Face face) {
+    private static java.util.List<float[]> coveredSpans(float[] boxes, int index, Face face) {
         float iMinX = boxes[index];
+        float iMinY = boxes[index + 1];
         float iMinZ = boxes[index + 2];
         float iMaxX = boxes[index + 3] + 1.0F;
         float iMaxY = boxes[index + 4] + 1.0F;
         float iMaxZ = boxes[index + 5] + 1.0F;
-        int best = -1;
-        float bestTop = Float.NEGATIVE_INFINITY;
+        float iTop = Math.min(boxes[index + 6], iMaxY);
+        java.util.List<float[]> spans = new java.util.ArrayList<>(4);
         for (int j = 0; j + 6 < boxes.length; j += 7) {
             if (j == index) {
                 continue;
@@ -1379,38 +1528,151 @@ public final class ShipWaterRenderer {
             if (boxes[j + 1] >= iMaxY) {
                 continue;
             }
-            boolean adjacent = false;
-            switch (face) {
+            boolean adjacent = switch (face) {
                 // 北侧：邻居的 maxZ 贴着我的 minZ。原来这里误写成 boxes[j+3]（maxX），
                 // 拿 X 去和 Z 比，条件几乎永远不成立 → 每根水柱的北面都被当成临空，
                 // 多画一条竖面，就是"一格一条线"的来源。
-                case NORTH -> adjacent = Math.abs((boxes[j + 5] + 1.0F) - iMinZ) < 1.0E-3F
+                case NORTH -> Math.abs((boxes[j + 5] + 1.0F) - iMinZ) < 1.0E-3F
                         && overlap(iMinX, iMaxX, boxes[j], boxes[j + 3] + 1.0F);
-                case SOUTH -> adjacent = Math.abs(boxes[j + 2] - iMaxZ) < 1.0E-3F
+                case SOUTH -> Math.abs(boxes[j + 2] - iMaxZ) < 1.0E-3F
                         && overlap(iMinX, iMaxX, boxes[j], boxes[j + 3] + 1.0F);
-                case WEST -> adjacent = Math.abs((boxes[j + 3] + 1.0F) - iMinX) < 1.0E-3F
+                case WEST -> Math.abs((boxes[j + 3] + 1.0F) - iMinX) < 1.0E-3F
                         && overlap(iMinZ, iMaxZ, boxes[j + 2], boxes[j + 5] + 1.0F);
-                case EAST -> adjacent = Math.abs(boxes[j] - iMaxX) < 1.0E-3F
+                case EAST -> Math.abs(boxes[j] - iMaxX) < 1.0E-3F
                         && overlap(iMinZ, iMaxZ, boxes[j + 2], boxes[j + 5] + 1.0F);
-                default -> {
-                }
-            }
+                default -> false;
+            };
             if (!adjacent) {
                 continue;
             }
-            float jTop = Math.min(boxes[j + 6], boxes[j + 4] + 1.0F);
-            if (jTop > bestTop) {
-                bestTop = jTop;
-                best = j;
+            float bottom = Math.max(boxes[j + 1], iMinY);
+            float top = Math.min(Math.min(boxes[j + 6], boxes[j + 4] + 1.0F), iTop);
+            if (top <= bottom + 1.0E-3F) {
+                continue;
             }
+            spans.add(new float[]{bottom, top});
         }
-        return best;
+        spans.sort((p, q) -> Float.compare(p[0], q[0]));
+        java.util.List<float[]> merged = new java.util.ArrayList<>(spans.size());
+        for (float[] span : spans) {
+            if (!merged.isEmpty()) {
+                float[] last = merged.get(merged.size() - 1);
+                if (span[0] <= last[1] + 1.0E-3F) {
+                    last[1] = Math.max(last[1], span[1]);
+                    continue;
+                }
+            }
+            merged.add(new float[]{span[0], span[1]});
+        }
+        return merged;
     }
 
-    /** 这个盒子的水面画在哪（满舱时压到天花板内侧 1cm）。 */
+    /**
+     * 画这一面没被邻居盖住的竖直部分。
+     *
+     * <p>完整被盖住就不画（最常见，避免水面内部叠层）；完全没邻居时仍走
+     * {@link #wallStrip} 保留波浪和角点平滑；只盖住一部分时用平直四边形补缺口。</p>
+     */
+    private static int faceGaps(VertexConsumer vc, Matrix4f m, Matrix4d toCamera,
+                                float[] boxes, int index, Face face,
+                                float red, float green, float blue, float alpha,
+                                boolean alongX, float a0, float a1,
+                                float drawPlane, float evalPlane,
+                                float minY, float drawTop, int normalSign, float seconds,
+                                boolean submerged,
+                                java.util.HashMap<Long, Float> cellTop,
+                                java.util.HashMap<Long, Float> cellScale,
+                                float waveScale) {
+        java.util.List<float[]> covered = coveredSpans(boxes, index, face);
+        if (covered.isEmpty()) {
+            return wallStrip(vc, m, toCamera, red, green, blue, alpha,
+                    alongX, a0, a1, drawPlane, evalPlane, minY,
+                    normalSign, seconds, submerged ? null : cellTop, submerged ? null : cellScale,
+                    drawTop, waveScale);
+        }
+        int drawn = 0;
+        float cursor = minY;
+        for (float[] span : covered) {
+            if (span[1] <= cursor + 1.0E-3F) {
+                continue;
+            }
+            if (span[0] >= drawTop - 1.0E-3F) {
+                break;
+            }
+            if (span[0] > cursor + 1.0E-3F) {
+                drawn += wallSpan(vc, m, toCamera, red, green, blue, alpha,
+                        alongX, a0, a1, drawPlane, cursor, Math.min(span[0], drawTop));
+            }
+            cursor = Math.max(cursor, span[1]);
+            if (cursor >= drawTop - 1.0E-3F) {
+                break;
+            }
+        }
+        if (cursor < drawTop - 1.0E-3F) {
+            drawn += wallSpan(vc, m, toCamera, red, green, blue, alpha,
+                    alongX, a0, a1, drawPlane, cursor, drawTop);
+        }
+        return drawn;
+    }
+
+    /**
+     * 这个棱柱正上方是否真的接了一段水柱（同一 (x,z)、底沿正好贴着我的顶）。
+     *
+     * <p>只有这种情况我的顶面才算水体内部面；否则哪怕水位算出来高过我的顶，
+     * 我这里也是自由液面（或贴着天花板的那一层），必须画出去。</p>
+     */
+    private static boolean hasWaterAbove(float[] boxes, int index) {
+        float x = boxes[index];
+        float z = boxes[index + 2];
+        float top = boxes[index + 4] + 1.0F;
+        for (int j = 0; j + 6 < boxes.length; j += 7) {
+            if (j == index) {
+                continue;
+            }
+            if (boxes[j] != x || boxes[j + 2] != z) {
+                continue;
+            }
+            if (Math.abs(boxes[j + 1] - top) > 1.0E-3F) {
+                continue;
+            }
+            if (boxes[j + 6] <= boxes[j + 1] + 0.01F) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** 平直的竖直四边形（不做波浪/角点平滑）：补画被邻居部分遮挡时的缺口。 */
+    private static int wallSpan(VertexConsumer vc, Matrix4f m, Matrix4d toCamera,
+                                float red, float green, float blue, float alpha,
+                                boolean alongX, float a0, float a1,
+                                float drawPlane, float bottom, float top) {
+        float y0 = bottom + WATER_INSET;
+        float y1 = top;
+        if (y1 <= y0 + 1.0E-3F) {
+            return 0;
+        }
+        if (alongX) {
+            quadXf(vc, m, toCamera, red, green, blue, alpha,
+                    a0, y0, drawPlane, a0, y1, drawPlane, a1, y1, drawPlane, a1, y0, drawPlane);
+        } else {
+            quadXf(vc, m, toCamera, red, green, blue, alpha,
+                    drawPlane, y0, a0, drawPlane, y1, a0, drawPlane, y1, a1, drawPlane, y0, a1);
+        }
+        return 1;
+    }
+
+    /** 这个盒子的水面画在哪（满舱时压到天花板内侧 1cm；整段在水下时返回真实水位用于平滑）。 */
     private static float boxDrawTop(float[] boxes, int index) {
         float maxY = boxes[index + 4] + 1.0F;
-        float drawTop = Math.min(boxes[index + 6], maxY);
+        float surface = boxes[index + 6];
+        if (surface > maxY + 0.01F) {
+            // 这一段被更高的水淹没：顶面不画，但相邻列的顶面要用真实水位来平滑，
+            // 否则会在洞口/台阶边缘被这一格的"顶格高度"拉出一个下凹。
+            return surface;
+        }
+        float drawTop = Math.min(surface, maxY);
         if (drawTop >= maxY - 0.01F) {
             drawTop -= WATER_INSET;
         }
@@ -1484,6 +1746,11 @@ public final class ShipWaterRenderer {
     private static float[] cornerAt(java.util.HashMap<Long, Float> cellTop,
                                     java.util.HashMap<Long, Float> cellScale,
                                     float cx, float cz, float fallbackTop, float fallbackScale) {
+        // 整段被淹没的棱柱传 null：侧面顶边直接压在这一段顶格，不能跟着相邻列的高水位
+        // 爬到洞口上方的墙里/船外。
+        if (cellTop == null || cellScale == null) {
+            return new float[]{fallbackTop, fallbackScale};
+        }
         int fx = (int) Math.floor(cx);
         int fz = (int) Math.floor(cz);
         float top = 0.0F;

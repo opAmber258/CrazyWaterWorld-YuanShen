@@ -15,8 +15,10 @@ import java.util.function.Supplier;
  * 水面高度相同。客户端用"当前渲染位置 − 装配锚点"做整体平移（姿态锁死，不需要旋转）。</p>
  *
  * <p>{@code breaches} 每 8 个 float 一个破口：格中心 x/y/z（装配坐标）、
- * 在 {@code boxes} 里的舱室下标（取水面用）、朝舱内的水平方向 dx/dz、
+ * 破口自己那一列水柱在 {@code boxes} 里的**绝对 float 偏移**（不是盒子序号，别再乘 7；
+ * 取该列水面用）、朝舱内（空腔质心）的水平方向 dx/dz、
  * 所在空腔的 minY/maxY（判断顶部破口/灌满）。客户端据此在洞口画水花/气泡。
+ * 开着的门也追加同样的 8 float，第四位是"接水侧"水体的第一个盒子偏移。
  * 只包含真正连到外海的洞。</p>
  */
 public record ShipWaterStatePacket(long shipId, boolean physical,
