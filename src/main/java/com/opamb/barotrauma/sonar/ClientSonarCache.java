@@ -57,6 +57,27 @@ public final class ClientSonarCache {
         return core;
     }
 
+    /**
+     * 遥测包：只刷新界面数字（朝向/功率/深度/速度/自动驾驶/目标），不动扫描点云。
+     *
+     * <p>舵台打开时服务端每 2 tick 发一包，箭头和数字 10 Hz 跟手；扫描仍是 1 秒一次。</p>
+     */
+    public static void acceptTelemetry(com.opamb.barotrauma.network.SonarTelemetryPacket packet) {
+        headingX = packet.bowX();
+        headingY = packet.bowY();
+        headingZ = packet.bowZ();
+        power = packet.power();
+        depth = packet.depth();
+        speedTenths = packet.speedTenths();
+        diveTenths = packet.diveTenths();
+        autopilot = packet.autopilot() != 0;
+        hasTarget = packet.hasTarget();
+        targetX = packet.targetX();
+        targetY = packet.targetY();
+        targetZ = packet.targetZ();
+        stamp = System.currentTimeMillis();
+    }
+
     public static SonarScan.Frame frame() {
         return frame;
     }

@@ -29,6 +29,9 @@ public final class ModNetwork {
                 SonarPingPacket::encode, SonarPingPacket::decode, SonarPingPacket::handle);
         CHANNEL.registerMessage(nextId++, SonarDataPacket.class,
                 SonarDataPacket::encode, SonarDataPacket::decode, SonarDataPacket::handle);
+        CHANNEL.registerMessage(nextId++, SonarTelemetryPacket.class,
+                SonarTelemetryPacket::encode, SonarTelemetryPacket::decode,
+                SonarTelemetryPacket::handle);
         CHANNEL.registerMessage(nextId++, ShipWaterStatePacket.class,
                 ShipWaterStatePacket::encode, ShipWaterStatePacket::decode, ShipWaterStatePacket::handle);
         CHANNEL.registerMessage(nextId++, MissionStatePacket.class,

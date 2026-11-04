@@ -32,7 +32,25 @@ import java.util.Locale;
 public final class VsThruster implements ShipPhysicsListener {
 
     /** 满油门时的水平加速度（格/秒²）。 */
-    private static final double ACCEL = 2.5D;
+    private static final double ACCEL = 3.0D;
+    /**
+     * 水平水阻（1/秒，按速度线性衰减）。
+     *
+     * <p>之前只给推力、不给阻力：松油门没有任何减速力，船会一直滑行；油门按着
+     * 也没有速度上限，推多久就有多快（用户实测"开船速度太快、刹不了车"）。
+     * 现在始终按速度反向施加阻尼：满油门稳态速度 ≈ ACCEL / DRAG ≈ 5 格/秒，
+     * 松开油门后约 1.7 秒衰减到 1/e，几秒内停住。</p>
+     */
+    private static final double HORIZONTAL_DRAG = 0.6D;
+    /**
+     * 满舵偏航力矩（乘质量）。
+     *
+     * <p>控制模型：只能沿船头前后走，转向 = 绕世界 Y 轴的偏航力矩（船体真的调头）。
+     * 力矩按质量缩放和姿态阻尼一致，避免大船纹丝不动、小船被甩飞。</p>
+     */
+    private static final double YAW_TORQUE = 60.0D;
+    /** 偏航阻尼（乘质量）：松开转向后把角速度刹住，同时给出转向的终端角速度。 */
+    private static final double YAW_DAMPING = 60.0D;
     /** 垂直推进器加速度（格/秒²）。 */
     private static final double ACCEL_VERTICAL = 1.8D;
     /** 压载满水时额外的下沉比例（相对重力加速度）。 */
@@ -216,18 +234,37 @@ public final class VsThruster implements ShipPhysicsListener {
             return;
         }
         double throttle = power / 100.0D;
-
-        // 水平：八向推力归一化，斜着走不会比直着走快
-        double hx = throttleX;
-        double hz = throttleZ;
-        double len = Math.sqrt(hx * hx + hz * hz);
-        double ax = 0.0D;
-        double az = 0.0D;
-        if (len > 0.0D) {
-            ax = hx / len * ACCEL * throttle;
-            az = hz / len * ACCEL * throttle;
+        // 水平推力沿船头方向：潜艇只能前进/后退，转向交给偏航力矩（用户要求"能调头、
+        // 只能前后走"）。船头 = 船体局部 +Z 在世界里的水平投影。
+        double forwardX = 0.0D;
+        double forwardZ = 1.0D;
+        try {
+            Vector3d fwd = target.getTransform().getShipToWorldRotation()
+                    .transform(new Vector3d(0.0D, 0.0D, 1.0D), new Vector3d());
+            double flen = Math.sqrt(fwd.x * fwd.x + fwd.z * fwd.z);
+            if (flen > 1.0E-4D) {
+                forwardX = fwd.x / flen;
+                forwardZ = fwd.z / flen;
+            }
+        } catch (Throwable ignored) {
+            // 拿不到姿态就按装配朝向的 +Z 兜底
         }
+        // throttleZ = 前后（-1 后退 / +1 前进）；斜向输入不再存在。
+        double ax = forwardX * throttleZ * ACCEL * throttle;
+        double az = forwardZ * throttleZ * ACCEL * throttle;
+        // 水平水阻：无论有没有油门都按速度反向衰减——这是"松油门能停下来"的唯一来源，
+        // 同时把满油门速度封顶在 ACCEL/DRAG 附近，不再推多久多快。
+        ax -= vel.x() * HORIZONTAL_DRAG;
+        az -= vel.z() * HORIZONTAL_DRAG;
         double ay = throttleY * ACCEL_VERTICAL * throttle;
+
+        // 偏航：throttleX = 转向（-1 左 / +1 右）。+1 = 右转 = 绕 +Y 的角速度。
+        // 松舵后靠 YAW_DAMPING 把角速度刹住。（符号按用户实测修正：之前 +1 转的是左边。）
+        double yawRate = ship.getAngularVelocity().y();
+        double yawTorque = (throttleX * YAW_TORQUE - yawRate * YAW_DAMPING) * mass;
+        if (Math.abs(yawTorque) > 1.0E-6D) {
+            target.applyInvariantTorque(new Vector3d(0.0D, yawTorque, 0.0D));
+        }
         // 空气海域的浮力完全由数值计算：完整船体接近中性，压载/进水按比例扣掉浮力。
         // 不再依赖 VS2 的 liquidOverlap（它对我们的自定义方块恒为 0），也不依赖世界里的水。
         double ballastLoad = clamp01(ballast);
@@ -303,9 +340,12 @@ public final class VsThruster implements ShipPhysicsListener {
             if (tilt < 1.0E-5D && angular.lengthSquared() < 1.0E-9D) {
                 return;
             }
-            // 1) 角速度阻尼：和角速度反向
-            Vector3d torque = new Vector3d(-angular.x(), -angular.y(), -angular.z())
-                    .mul(ATTITUDE_DAMPING * mass);
+            // 1) 角速度阻尼：只压横滚/俯仰（x/z 轴）；偏航（y 轴）交给 YAW_DAMPING，
+            //    否则转向力矩会被这里整段抵消，船永远调不了头（用户要求能调头）。
+            Vector3d torque = new Vector3d(
+                    -angular.x() * ATTITUDE_DAMPING,
+                    0.0D,
+                    -angular.z() * ATTITUDE_DAMPING).mul(mass);
             // 2) 回正：转轴 = 上方向 × 世界 +Y，绕它正转就能把 up 转回 +Y
             if (tilt > 1.0E-4D) {
                 Vector3d axis = up.cross(new Vector3d(0.0D, 1.0D, 0.0D), new Vector3d());

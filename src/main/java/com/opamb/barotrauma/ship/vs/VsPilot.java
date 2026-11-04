@@ -111,6 +111,7 @@ public final class VsPilot {
     static {
         VsState.install(VsPilot::observeCore, VsPilot::tryDamage,
                 VsPilot::tryRepair, VsPilot::damageExplosion);
+        VsState.installBow(VsPilot::bowDirection);
         // 只注册服务端干燥区：单人存档里客户端和集成服务端同进程，
         // 客户端渲染用的 ShipWaterRenderer 不能被这里覆盖（否则方块船舱内会漏滤镜）。
         OceanEnvironment.setServerDryZone(VsPilot::isInsideDryZone);
@@ -186,6 +187,28 @@ public final class VsPilot {
             return VsBridge.position(live);
         } catch (Throwable ignored) {
             return null;
+        }
+    }
+
+    /**
+     * 船头朝向：船体局部 +Z 在世界里的水平方向（单位向量）。
+     * 声纳箭头和航向文字用它显示船真正对着哪边——不再是"指令方向"。
+     */
+    public static float[] bowDirection() {
+        ServerShip current = ship;
+        if (current == null) {
+            return new float[]{0.0F, 0.0F, 1.0F};
+        }
+        try {
+            org.joml.Vector3d fwd = current.getTransform().getShipToWorldRotation()
+                    .transform(new org.joml.Vector3d(0.0D, 0.0D, 1.0D), new org.joml.Vector3d());
+            double len = Math.sqrt(fwd.x * fwd.x + fwd.z * fwd.z);
+            if (len < 1.0E-4D) {
+                return new float[]{0.0F, 0.0F, 1.0F};
+            }
+            return new float[]{(float) (fwd.x / len), 0.0F, (float) (fwd.z / len)};
+        } catch (Throwable ignored) {
+            return new float[]{0.0F, 0.0F, 1.0F};
         }
     }
 
@@ -463,9 +486,24 @@ public final class VsPilot {
             if (state != null && ++waterSyncTimer % 2 == 0) {
                 sendWaterState(state);
             }
-            // 自动驾驶：物理船没有方块形态的 tickMovement 了，这里按目标点算推力再推给刚体
+            // 自动驾驶：物理船没有方块形态的 tickMovement 了，这里按目标点算推力再推给刚体。
+            // 控制模型是"沿船头前后 + 偏航转向"，所以要把船头方向带进去。
             if (state != null && state.autopilotHold()) {
-                state.autopilotStep(now.x, now.y, now.z, vel.x, vel.y, vel.z);
+                double fx = 0.0D;
+                double fz = 1.0D;
+                try {
+                    org.joml.Vector3d fwd = ship.getTransform().getShipToWorldRotation()
+                            .transform(new org.joml.Vector3d(0.0D, 0.0D, 1.0D),
+                                    new org.joml.Vector3d());
+                    double flen = Math.sqrt(fwd.x * fwd.x + fwd.z * fwd.z);
+                    if (flen > 1.0E-4D) {
+                        fx = fwd.x / flen;
+                        fz = fwd.z / flen;
+                    }
+                } catch (Throwable ignored) {
+                    // 拿不到姿态就用装配朝向兜底
+                }
+                state.autopilotStep(now.x, now.y, now.z, vel.x, vel.y, vel.z, fx, fz);
                 applyControl(state);
             }
             if (state != null) {

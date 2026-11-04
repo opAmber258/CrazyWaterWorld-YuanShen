@@ -58,6 +58,11 @@ public final class VsState {
                             double radius, float baseAmount);
     }
 
+    /** 船头朝向（世界坐标单位向量，水平）。由 {@link VsPilot} 提供，声纳箭头/航向显示用。 */
+    public interface Bow {
+        float[] bowDirection();
+    }
+
     private static volatile boolean active;
     private static volatile Probe probe;
     private static volatile Control control;
@@ -65,6 +70,7 @@ public final class VsState {
     private static volatile Damager damager;
     private static volatile Repairer repairer;
     private static volatile ExplosionDamager explosionDamager;
+    private static volatile Bow bow;
     private static volatile BlockPos corePos;
     private static volatile ShipState activeState;
     /** 船中心相对装配时刻的整数偏移（格）——拆船时按它把方块铺回世界。 */
@@ -130,6 +136,31 @@ public final class VsState {
         damager = newDamager;
         repairer = newRepairer;
         explosionDamager = newExplosionDamager;
+    }
+
+    /** 注册船头朝向回调（{@link VsPilot} 类初始化时调一次）。 */
+    public static void installBow(Bow newBow) {
+        bow = newBow;
+    }
+
+    /**
+     * 船头朝向（世界坐标水平单位向量）。没有物理船/没注册时返回装配朝向 +Z 兜底，
+     * 这样声纳箭头在方块船上也有一个确定的指向。
+     */
+    public static float[] bowDirection() {
+        Bow supplier = bow;
+        if (!active || supplier == null) {
+            return new float[]{0.0F, 0.0F, 1.0F};
+        }
+        try {
+            float[] dir = supplier.bowDirection();
+            if (dir != null && dir.length >= 3) {
+                return dir;
+            }
+        } catch (Throwable ignored) {
+            // 姿态查询失败就用兜底朝向
+        }
+        return new float[]{0.0F, 0.0F, 1.0F};
     }
 
     /** 物理船核心方块实体在船坞里 tick 时调用。 */

@@ -8,6 +8,7 @@ import com.opamb.barotrauma.network.SonarPingPacket;
 import com.opamb.barotrauma.sonar.ClientSonarCache;
 import com.opamb.barotrauma.sonar.SonarScan;
 import com.opamb.barotrauma.ship.vs.VsState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -71,6 +72,8 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     private static final int SCOPE_RIM = 0xFF3A4238;
     private static final int SCOPE_TICK = 0xFF7E5B36;
     private static final int TARGET_COLOR = 0xFFFFB03A;
+    /** 任务目标标记（金色菱形，和自动驾驶目标的橙色缺口框区分）。 */
+    private static final int MISSION_COLOR = 0xFFFFD45A;
     private static final int BTN_BG = 0xFF232B25;
     private static final int BTN_ON = 0xFF3F5A40;
 
@@ -157,22 +160,13 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         }
 
         float fwd = (forward ? 1 : 0) - (back ? 1 : 0);
-        float strafe = (right ? 1 : 0) - (left ? 1 : 0);
+        float steer = (right ? 1 : 0) - (left ? 1 : 0);
         int dy = (up ? 1 : 0) - (sink ? 1 : 0);
 
-        int dx;
-        int dz;
-        if (fwd == 0.0F && strafe == 0.0F) {
-            dx = 0;
-            dz = 0;
-        } else {
-            float sin = Mth.sin(camYaw);
-            float cos = Mth.cos(camYaw);
-            float wx = sin * fwd + (-cos) * strafe;
-            float wz = cos * fwd + sin * strafe;
-            dx = Math.abs(wx) > 0.38F ? (wx > 0 ? 1 : -1) : 0;
-            dz = Math.abs(wz) > 0.38F ? (wz > 0 ? 1 : -1) : 0;
-        }
+        // 新控制模型（和 VsThruster 一致）：W/S 沿船头前进/后退，A/D 转向（船体调头），
+        // Space/Shift 升降。不再做"相机坐标系 → 世界八向"的换算。
+        int dx = steer > 0.0F ? 1 : steer < 0.0F ? -1 : 0;
+        int dz = fwd > 0.0F ? 1 : fwd < 0.0F ? -1 : 0;
 
         if (dx != headingX || dz != headingZ) {
             headingX = dx;
@@ -226,9 +220,8 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         if (!synced && ClientSonarCache.frame() != null) {
             power = ClientSonarCache.power();
             autoMode = ClientSonarCache.autopilot();
-            headingX = ClientSonarCache.headingX();
-            headingY = ClientSonarCache.headingY();
-            headingZ = ClientSonarCache.headingZ();
+            // 注意：Cache 里的 heading 现在是"船头真实朝向 ×1000"，不是操舵指令；
+            // 舵盘按钮显示的是本地指令状态，两边不再同步。
             synced = true;
         }
         super.render(graphics, mouseX, mouseY, partialTick);
@@ -320,14 +313,12 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
 
         drawHeadingArrow(graphics, cx, cy);
         drawTargetMarker(graphics, cx, cy, viewRange);
+        drawMissionMarker(graphics, cx, cy, viewRange);
         drawBearings(graphics, cx, cy);
         graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, 0xFFD8FFE8);
 
         // 圆下方直接报航向：之前只有底部一行小字，转视角之后完全不知道船头朝哪
-        String headingText = headingX == 0 && headingZ == 0
-                ? (autoMode ? "自动·无航向" : "停车")
-                : headingName(headingX, headingY, headingZ) + " " + String.format("%03d°",
-                        bearingDegrees(headingX, headingZ));
+        String headingText = autoMode ? "自动航行" : commandText(headingX, headingY, headingZ);
         graphics.drawString(font, headingText, cx - font.width(headingText) / 2, cy + FIELD_R + 7,
                 autoMode ? TARGET_COLOR : 0xFF9FE8C8, false);
     }
@@ -463,37 +454,69 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     }
 
     /** 圆心箭头：指向船实际在走的方向。 */
+    /**
+     * 示波器中心画"本船"：一个随船头朝向旋转的俯视船形轮廓（不再是箭头）。
+     *
+     * <p>船头朝向优先读客户端刚体的实时渲染旋转（转船跟手）；方块船/读不到时
+     * 退回声纳包里的朝向（方块船没有刚体旋转，固定按装配朝向画）。</p>
+     */
     private void drawHeadingArrow(GuiGraphics graphics, int cx, int cy) {
-        if (headingX == 0 && headingY == 0 && headingZ == 0) {
-            graphics.fill(cx - 6, cy - 6, cx - 4, cy + 6, DIM);
-            graphics.fill(cx + 4, cy - 6, cx + 6, cy + 6, DIM);
-            graphics.fill(cx - 6, cy - 6, cx + 6, cy - 4, DIM);
-            graphics.fill(cx - 6, cy + 4, cx + 6, cy + 6, DIM);
+        float[] live = liveBow();
+        float bowX;
+        float bowY;
+        float bowZ;
+        if (live != null) {
+            bowX = live[0];
+            bowY = live[1];
+            bowZ = live[2];
+        } else {
+            bowX = ClientSonarCache.headingX() / 1000.0F;
+            bowY = ClientSonarCache.headingY() / 1000.0F;
+            bowZ = ClientSonarCache.headingZ() / 1000.0F;
+        }
+        if (Math.abs(bowX) + Math.abs(bowY) + Math.abs(bowZ) < 1.0E-4F) {
             return;
         }
         float[] b = basis();
-        float sxRight = headingX * b[3] + headingZ * b[5];
-        float sxUp = headingX * b[6] + headingY * b[7] + headingZ * b[8];
+        float sxRight = bowX * b[3] + bowZ * b[5];
+        float sxUp = bowX * b[6] + bowY * b[7] + bowZ * b[8];
         double len = Math.sqrt((double) sxRight * sxRight + (double) sxUp * sxUp);
         if (len < 0.15D) {
-            int dir = headingY >= 0 ? -1 : 1;
-            graphics.fill(cx - 5, cy + dir * 12, cx + 5, cy + dir * 14, ACCENT);
-            graphics.fill(cx - 2, cy + dir * 16, cx + 2, cy + dir * 20, ACCENT);
+            // 船头正对/背对屏幕：画一个缩小的船形剪影（方框 + 中点）
+            line(graphics, cx - 6, cy - 4, cx + 6, cy - 4, ACCENT);
+            line(graphics, cx - 6, cy + 8, cx + 6, cy + 8, ACCENT);
+            line(graphics, cx - 6, cy - 4, cx - 6, cy + 8, ACCENT);
+            line(graphics, cx + 6, cy - 4, cx + 6, cy + 8, ACCENT);
+            graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, ACCENT);
             return;
         }
         double nx = sxRight / len;
-        double ny = -sxUp / len;
-        float reach = 26.0F + 30.0F * (power / 100.0F);
-        int tipX = cx + (int) Math.round(nx * reach);
-        int tipY = cy + (int) Math.round(ny * reach);
-        line(graphics, cx, cy, tipX, tipY, ACCENT);
-        line(graphics, cx, cy, tipX, tipY, 0xFFFFC08A);
+        double ny = -sxUp / len;          // 屏幕 y 向下
         double px = -ny;
         double py = nx;
-        line(graphics, tipX, tipY, tipX - (int) Math.round(nx * 7 + px * 5),
-                tipY - (int) Math.round(ny * 7 + py * 5), ACCENT);
-        line(graphics, tipX, tipY, tipX - (int) Math.round(nx * 7 - px * 5),
-                tipY - (int) Math.round(ny * 7 - py * 5), ACCENT);
+
+        // 船体轮廓：船头尖、两侧平行、船尾平——朝哪边开就转到哪边
+        int bowTipX = cx + (int) Math.round(nx * 14);
+        int bowTipY = cy + (int) Math.round(ny * 14);
+        int portBowX = cx + (int) Math.round(nx * 5 - px * 6);
+        int portBowY = cy + (int) Math.round(ny * 5 - py * 6);
+        int portSternX = cx - (int) Math.round(nx * 9 + px * 6);
+        int portSternY = cy - (int) Math.round(ny * 9 + py * 6);
+        int sternX = cx - (int) Math.round(nx * 12);
+        int sternY = cy - (int) Math.round(ny * 12);
+        int starSternX = cx - (int) Math.round(nx * 9 - px * 6);
+        int starSternY = cy - (int) Math.round(ny * 9 - py * 6);
+        int starBowX = cx + (int) Math.round(nx * 5 + px * 6);
+        int starBowY = cy + (int) Math.round(ny * 5 + py * 6);
+
+        line(graphics, bowTipX, bowTipY, portBowX, portBowY, ACCENT);
+        line(graphics, portBowX, portBowY, portSternX, portSternY, ACCENT);
+        line(graphics, portSternX, portSternY, sternX, sternY, ACCENT);
+        line(graphics, sternX, sternY, starSternX, starSternY, ACCENT);
+        line(graphics, starSternX, starSternY, starBowX, starBowY, ACCENT);
+        line(graphics, starBowX, starBowY, bowTipX, bowTipY, ACCENT);
+        // 船中点
+        graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, ACCENT);
     }
 
     /** 自动驾驶目标点标记。 */
@@ -529,6 +552,53 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         graphics.fill(px + 4, py - 5, px + 6, py + 6, TARGET_COLOR);
         graphics.fill(px - 5, py - 5, px + 6, py - 3, TARGET_COLOR);
         graphics.fill(px - 5, py + 4, px + 6, py + 6, TARGET_COLOR);
+    }
+
+    /**
+     * 当前任务目标：用与自动驾驶目标同一套投影画在示波器上（坐标取"相对玩家位置"，
+     * 和服务端下发目标点的方式一致）。金色菱形；超出量程时钳在圆盘边缘，
+     * 圆盘下方报水平距离。
+     */
+    private void drawMissionMarker(GuiGraphics graphics, int cx, int cy, int viewRange) {
+        com.opamb.barotrauma.mission.Mission mission = ClientMissionCache.active();
+        if (mission == null || minecraft == null || minecraft.player == null) {
+            return;
+        }
+        net.minecraft.core.BlockPos origin = minecraft.player.blockPosition();
+        net.minecraft.core.BlockPos target = mission.target;
+        int tx = target.getX() - origin.getX();
+        int ty = target.getY() - origin.getY();
+        int tz = target.getZ() - origin.getZ();
+
+        float[] b = basis();
+        float camDistance = viewRange * 1.5F;
+        float focal = FIELD_R * 0.95F / 0.57735F;
+        float depth = tx * b[0] + ty * b[1] + tz * b[2] + camDistance;
+        if (depth < 2.0F) {
+            return; // 目标在身后：不画（和自动驾驶目标一致）
+        }
+        int px = cx + Math.round((tx * b[3] + tz * b[5]) * focal / depth);
+        int py = cy - Math.round((tx * b[6] + ty * b[7] + tz * b[8]) * focal / depth);
+        int ox = px - cx;
+        int oy = py - cy;
+        if (ox * ox + oy * oy > FIELD_R * FIELD_R) {
+            double len = Math.sqrt((double) ox * ox + (double) oy * oy);
+            px = cx + (int) Math.round(ox / len * (FIELD_R - 6));
+            py = cy + (int) Math.round(oy / len * (FIELD_R - 6));
+        }
+
+        // 菱形标记：中间实心、上下渐窄，和自动驾驶目标（缺口方框）一眼区分
+        graphics.fill(px - 2, py - 5, px + 3, py - 4, MISSION_COLOR);
+        graphics.fill(px - 3, py - 4, px + 4, py - 3, MISSION_COLOR);
+        graphics.fill(px - 4, py - 3, px + 5, py + 2, MISSION_COLOR);
+        graphics.fill(px - 3, py + 2, px + 4, py + 3, MISSION_COLOR);
+        graphics.fill(px - 2, py + 3, px + 3, py + 4, MISSION_COLOR);
+
+        // 圆盘下方：任务目标距离（水平距离，和声纳量程同一单位）
+        int dist = (int) Math.round(Math.sqrt((double) tx * tx + (double) tz * tz));
+        String label = "任务目标 " + dist + "m";
+        graphics.drawString(font, label, cx - font.width(label) / 2,
+                cy + FIELD_R + 18, MISSION_COLOR, false);
     }
 
     // ---------------------------------------------------------- 右上：声纳设置
@@ -599,16 +669,21 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     }
 
     private void drawManualPanel(GuiGraphics graphics, int x, int y, int mouseX, int mouseY) {
-        String[] labels = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
-        int[][] dirs = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
-        for (int i = 0; i < 8; i++) {
-            int bx = x + 8 + i * 30;
+        // 控制行：左转 / 前进 / 后退 / 右转——转向让船体真的调头，只能沿船头前后走。
+        String[] labels = {"左转", "前进", "后退", "右转"};
+        for (int i = 0; i < 4; i++) {
+            int bx = x + 8 + i * 58;
             int by = y + 46;
-            boolean on = headingX == dirs[i][0] && headingZ == dirs[i][1];
-            boolean hover = mouseX >= bx && mouseX < bx + 28 && mouseY >= by && mouseY < by + 16;
-            graphics.fill(bx, by, bx + 28, by + 16, on ? BTN_ON : hover ? 0xFF39483A : BTN_BG);
-            graphics.fill(bx, by, bx + 28, by + 1, BOX_EDGE);
-            graphics.drawCenteredString(font, labels[i], bx + 14, by + 4, on ? 0xFFE8FFE8 : TEXT);
+            boolean on = switch (i) {
+                case 0 -> headingX < 0;
+                case 1 -> headingZ > 0;
+                case 2 -> headingZ < 0;
+                default -> headingX > 0;
+            };
+            boolean hover = mouseX >= bx && mouseX < bx + 54 && mouseY >= by && mouseY < by + 16;
+            graphics.fill(bx, by, bx + 54, by + 16, on ? BTN_ON : hover ? 0xFF39483A : BTN_BG);
+            graphics.fill(bx, by, bx + 54, by + 1, BOX_EDGE);
+            graphics.drawCenteredString(font, labels[i], bx + 27, by + 4, on ? 0xFFE8FFE8 : TEXT);
         }
         String[] vert = {"上浮", "停车", "下潜"};
         int[] values = {1, 0, -1};
@@ -659,11 +734,24 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                 0xFF5F6A5C, false);
 
         int y = topPos + 244;
-        String heading = headingX == 0 && headingZ == 0 && headingY == 0
-                ? (autoMode ? "自动" : "停车") : headingName(headingX, headingY, headingZ);
-        String line1 = String.format("航向 %s %03d°   深度 %d 米   速度 %.1f 公里/时   下潜 %.1f 公里/时",
-                heading, bearingDegrees(headingX, headingZ), ClientSonarCache.depth(),
-                ClientSonarCache.speedTenths() / 10.0D, ClientSonarCache.diveTenths() / 10.0D);
+        // 航向用船头真实朝向：优先读客户端刚体的实时旋转，读不到再退回声纳包里的缓存值。
+        float[] live = liveBow();
+        int bowX;
+        int bowZ;
+        if (live != null) {
+            bowX = Math.round(live[0] * 1000.0F);
+            bowZ = Math.round(live[2] * 1000.0F);
+        } else {
+            bowX = ClientSonarCache.headingX();
+            bowZ = ClientSonarCache.headingZ();
+        }
+        String bowName = Math.abs(bowX) + Math.abs(bowZ) < 1
+                ? "—" : headingName(bowX, 0, bowZ);
+        int bowDeg = Math.abs(bowX) + Math.abs(bowZ) < 1 ? 0 : bearingDegrees(bowX, bowZ);
+        String command = autoMode ? "自动" : commandText(headingX, headingY, headingZ);
+        String line1 = String.format("航向 %s %03d°   指令 %s   深度 %d 米   速度 %.1f 公里/时",
+                bowName, bowDeg, command, ClientSonarCache.depth(),
+                ClientSonarCache.speedTenths() / 10.0D);
         graphics.drawString(font, line1, leftPos + 12, y, LED, false);
 
         String[] status = ClientSonarCache.status().split("\n");
@@ -753,6 +841,25 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         }
         int deg = (int) Math.round(Math.toDegrees(Math.atan2(dx, -dz)));
         return (deg + 360) % 360;
+    }
+
+    /** 手动操舵状态文本（前进/后退 + 左转/右转 + 上浮/下潜）。转向不再是世界方向。 */
+    private static String commandText(int steer, int vertical, int fwd) {
+        StringBuilder sb = new StringBuilder();
+        appendCommand(sb, fwd > 0 ? "前进" : fwd < 0 ? "后退" : null);
+        appendCommand(sb, steer < 0 ? "左转" : steer > 0 ? "右转" : null);
+        appendCommand(sb, vertical > 0 ? "上浮" : vertical < 0 ? "下潜" : null);
+        return sb.length() == 0 ? "停车" : sb.toString();
+    }
+
+    private static void appendCommand(StringBuilder sb, String word) {
+        if (word == null) {
+            return;
+        }
+        if (sb.length() > 0) {
+            sb.append('·');
+        }
+        sb.append(word);
     }
 
     private static String headingName(int dx, int dy, int dz) {
@@ -860,10 +967,18 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                 return true;
             }
         } else {
-            for (int i = 0; i < 8; i++) {
-                if (inRect(mouseX, mouseY, x + 8 + i * 30, hy + 46, 28, 16)) {
-                    int[][] dirs = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
-                    steer(dirs[i][0], headingY, dirs[i][1]);
+            for (int i = 0; i < 4; i++) {
+                if (inRect(mouseX, mouseY, x + 8 + i * 58, hy + 46, 54, 16)) {
+                    // 左转 / 前进 / 后退 / 右转：再点一次取消该轴
+                    if (i == 0) {
+                        steer(headingX < 0 ? 0 : -1, headingY, headingZ);
+                    } else if (i == 1) {
+                        steer(headingX, headingY, headingZ > 0 ? 0 : 1);
+                    } else if (i == 2) {
+                        steer(headingX, headingY, headingZ < 0 ? 0 : -1);
+                    } else {
+                        steer(headingX > 0 ? 0 : 1, headingY, headingZ);
+                    }
                     return true;
                 }
             }
@@ -903,10 +1018,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        // 单击 = 标记目标，两种模式都生效（手动模式下点一下就切自动，省得先去点单选）
-        if (orbiting && !draggedFarEnough && button == 0) {
-            markTargetAt(mouseX, mouseY);
-        }
+        // 左键只用于拖拽转视角；单击不再"标记目标/切自动驾驶"（用户要求删除）。
         orbiting = false;
         draggingZoom = false;
         return super.mouseReleased(mouseX, mouseY, button);
@@ -929,80 +1041,54 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
-    /** 在示波器上点一下：沿视线找最近的声纳点当目标；没点中就按视线取半程距离。 */
-    private void markTargetAt(double mouseX, double mouseY) {
-        int cx = leftPos + SCOPE_CX;
-        int cy = topPos + SCOPE_CY;
-        float focal = FIELD_R * 0.95F / 0.57735F;
-
-        float[] b = basis();
-        float fx = b[0], fy = b[1], fz = b[2];
-        float rx = b[3], ry = b[4], rz = b[5];
-        float ux = b[6], uy = b[7], uz = b[8];
-
-        float nx = (float) (mouseX - cx) / focal;
-        float ny = (float) -(mouseY - cy) / focal;
-        double dx = fx + rx * nx + ux * ny;
-        double dy = fy + ry * nx + uy * ny;
-        double dz = fz + rz * nx + uz * ny;
-        double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (len < 1.0E-4D) {
-            return;
-        }
-        dx /= len;
-        dy /= len;
-        dz /= len;
-
-        SonarScan.Frame frame = ClientSonarCache.frame();
-        int viewRange = frame == null ? range : frame.range();
-        // 相机在球外 camDistance 处，画点云时也是这么算的。射线必须从这里出发，
-        // 从球心出发的话，点到射线的距离会系统性偏大一个 camDistance，点击位置整个跑偏。
-        double camX = -fx * camDistanceOf(viewRange);
-        double camY = -fy * camDistanceOf(viewRange);
-        double camZ = -fz * camDistanceOf(viewRange);
-
-        double bestDist = -1.0D;
-        double bestOffset = 4.5D;
-        if (frame != null) {
-            for (int point : frame.points()) {
-                if (SonarScan.type(point) != SonarScan.TYPE_TERRAIN) {
-                    continue;
-                }
-                double px = SonarScan.x(point) - camX;
-                double py = SonarScan.y(point) - camY;
-                double pz = SonarScan.z(point) - camZ;
-                double t = px * dx + py * dy + pz * dz;
-                if (t <= 2.0D || t > viewRange * 2.5D) {
-                    continue;
-                }
-                double qx = px - dx * t;
-                double qy = py - dy * t;
-                double qz = pz - dz * t;
-                double off = Math.sqrt(qx * qx + qy * qy + qz * qz);
-                if (off < bestOffset) {
-                    bestOffset = off;
-                    bestDist = t;
-                }
-            }
-        }
-        double dist = bestDist > 0.0D ? bestDist : Math.max(8.0D, viewRange * 0.5D);
-        int tx = (int) Math.round(camX + dx * dist);
-        int ty = (int) Math.round(camY + dy * dist);
-        int tz = (int) Math.round(camZ + dz * dist);
-
-        localTarget = true;
-        localTargetX = tx;
-        localTargetY = ty;
-        localTargetZ = tz;
-        autoMode = true;
-        ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.SET_AUTOPILOT_TARGET,
-                tx, ty, tz));
-        sendPing();
-    }
-
     /** 相机到球心的距离，画点云和反投影必须用同一个值。 */
     private static float camDistanceOf(int viewRange) {
         return viewRange * 1.5F;
+    }
+
+    /**
+     * 每帧直接读最近一艘 VS2 客户船的渲染朝向（船体局部 +Z 的水平方向）。
+     *
+     * <p>声纳回包里也带朝向，但它只在 ping 时更新一次；舵台界面开着转船时箭头必须
+     * 实时跟动（用户实测"箭头不会转"），所以优先用客户端刚体的实时渲染旋转。
+     * 找不到客户船（方块船/没装 VS2）返回 null，调用方退回声纳包里的缓存值。</p>
+     */
+    private static float[] liveBow() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || minecraft.player == null) {
+            return null;
+        }
+        double px = minecraft.player.getX();
+        double pz = minecraft.player.getZ();
+        double best = Double.MAX_VALUE;
+        org.valkyrienskies.core.api.ships.ClientShip bestShip = null;
+        try {
+            for (org.valkyrienskies.core.api.ships.Ship candidate
+                    : org.valkyrienskies.mod.common.VSGameUtilsKt.getShipObjectWorld(minecraft.level)
+                    .getAllShips()) {
+                if (!(candidate instanceof org.valkyrienskies.core.api.ships.ClientShip client)) {
+                    continue;
+                }
+                org.joml.Vector3dc at = client.getRenderTransform().getPositionInWorld();
+                double d = (at.x() - px) * (at.x() - px) + (at.z() - pz) * (at.z() - pz);
+                if (d < best) {
+                    best = d;
+                    bestShip = client;
+                }
+            }
+            if (bestShip == null) {
+                return null;
+            }
+            org.joml.Vector3d fwd = bestShip.getRenderTransform().getShipToWorldRotation()
+                    .transform(new org.joml.Vector3d(0.0D, 0.0D, 1.0D), new org.joml.Vector3d());
+            double len = Math.sqrt(fwd.x * fwd.x + fwd.z * fwd.z);
+            if (len < 1.0E-4D) {
+                return null;
+            }
+            return new float[]{(float) (fwd.x / len), 0.0F, (float) (fwd.z / len)};
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     private void clearTarget() {

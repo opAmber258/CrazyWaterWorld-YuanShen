@@ -264,7 +264,7 @@ public final class ShipState {
         return out;
     }
 
-    /** 设定推进方向（每轴 −1/0/1）。 */
+    /** 设定操舵指令：x = 转向（−1 左 / +1 右），y = 升降，z = 前后（−1 退 / +1 进）。 */
     public void setThrottle(int x, int y, int z) {
         throttleX = x;
         throttleY = y;
@@ -345,14 +345,18 @@ public final class ShipState {
      * 现在按物理船的 PD 控制：期望速度 = 位置误差 × 增益（限幅），
      * 推力方向 = 期望速度 − 当前速度，所以接近目标时会提前反向刹车。</p>
      *
+     * <p>控制模型和 {@code VsThruster} 一致：沿船头前后（throttleZ）+ 偏航转向
+     * （throttleX，+1 右转）。横向误差转化为转向指令，船会先转向目标再前进。</p>
+     *
      * <p>不经过 {@link #setThrottle}，否则会被当成手动操舵、把自动驾驶关掉。</p>
      */
     public void autopilotStep(double x, double y, double z,
-                             double vx, double vy, double vz) {
+                             double vx, double vy, double vz,
+                             double forwardX, double forwardZ) {
         if (!autopilotHold || autopilotTarget == null) {
             return;
         }
-        // 推进器满功率能给出的速度（和 VsThruster 的 ACCEL 匹配）
+        // 推进器满功率能给出的速度（和 VsThruster 的 ACCEL/HORIZONTAL_DRAG 匹配）
         double maxHorizontal = 6.0D;
         double maxVertical = 2.5D;
         double gain = 0.5D;
@@ -366,9 +370,14 @@ public final class ShipState {
         double dvy = clamp(ey * gain, -maxVertical, maxVertical) - vy;
         double dvz = clamp(ez * gain, -maxHorizontal, maxHorizontal) - vz;
 
-        throttleX = Math.abs(dvx) > deadband ? (int) Math.signum(dvx) : 0;
+        // 期望速度在船头方向的分量 → 前进/后退；横向分量 → 转向
+        double fwdCmd = dvx * forwardX + dvz * forwardZ;
+        throttleZ = Math.abs(fwdCmd) > deadband ? (int) Math.signum(fwdCmd) : 0;
+        // cross > 0 表示期望方向在船头左侧；右转 = throttleX 正
+        double cross = forwardX * dvz - forwardZ * dvx;
+        double steerCmd = clamp(-cross * 0.35D, -1.0D, 1.0D);
+        throttleX = Math.abs(steerCmd) > 0.15D ? (int) Math.signum(steerCmd) : 0;
         throttleY = Math.abs(dvy) > deadband ? (int) Math.signum(dvy) : 0;
-        throttleZ = Math.abs(dvz) > deadband ? (int) Math.signum(dvz) : 0;
 
         // 到点附近且基本停住：清掉目标，避免原地抖
         if (Math.abs(ex) < 1.5D && Math.abs(ey) < 1.5D && Math.abs(ez) < 1.5D

@@ -76,17 +76,17 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                     ? passiveRange(ship)
                     : range;
 
-            // 定向脉冲打向"视线方向"（屏幕里准星指的地方），没给就退回船的推力方向
+            // 船头真实朝向（世界坐标水平单位向量）：声纳箭头和航向文字用它显示，
+            // 新操舵模型下 throttle 已经不是方向，不能再当朝向用。
+            float[] bow = com.opamb.barotrauma.ship.vs.VsState.bowDirection();
+            // 定向脉冲打向"视线方向"（屏幕里准星指的地方），没给就退回船头朝向
             float dirX = aimX;
             float dirY = aimY;
             float dirZ = aimZ;
             if (Math.abs(dirX) + Math.abs(dirY) + Math.abs(dirZ) < 1.0E-4F) {
-                dirX = ship == null ? 0.0F : ship.throttleX();
-                dirY = ship == null ? 0.0F : ship.throttleY();
-                dirZ = ship == null ? 1.0F : ship.throttleZ();
-                if (dirX == 0.0F && dirY == 0.0F && dirZ == 0.0F) {
-                    dirZ = 1.0F;
-                }
+                dirX = bow[0];
+                dirY = bow[1];
+                dirZ = bow[2];
             }
 
             SonarScan.Frame frame = SonarScan.scan(level, center, effectiveRange, hull, player,
@@ -107,9 +107,10 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
 
             ModNetwork.sendToPlayer(player, new SonarDataPacket(frame.range(), frame.points(),
                     power,
-                    ship == null ? 0 : ship.throttleX(),
-                    ship == null ? 0 : ship.throttleY(),
-                    ship == null ? 0 : ship.throttleZ(),
+                    // 船头朝向 ×1000（整数传输；客户端归一化后画箭头/算方位角）
+                    Math.round(bow[0] * 1000.0F),
+                    Math.round(bow[1] * 1000.0F),
+                    Math.round(bow[2] * 1000.0F),
                     scanMode.id(),
                     -center.getY(),
                     (int) speedTenths,

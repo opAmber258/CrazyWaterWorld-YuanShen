@@ -1108,6 +1108,17 @@ public final class DeepSeaEvents {
         if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) {
             return;
         }
+        // 声纳界面遥测：舵台打开时每 2 tick（10 Hz）刷新一次界面数字（朝向/速度/深度/目标）。
+        // 扫描（SonarPingPacket）仍然 1 秒一次——这里只刷新显示，不重扫。
+        if (event.getServer().getTickCount() % 2 == 0) {
+            for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
+                if (player.containerMenu instanceof com.opamb.barotrauma.menu.SonarMenu menu) {
+                    com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
+                            com.opamb.barotrauma.network.SonarTelemetryPacket.build(
+                                    player, menu.sonarPos()));
+                }
+            }
+        }
         if (persistTicks > 0) {
             persistTicks--;
             tickPersistScenario(event.getServer());
