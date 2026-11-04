@@ -921,8 +921,14 @@ public final class ShipWaterRenderer {
                     dirX = fx;
                     dirZ = fz;
                 }
-                // 舱壁破口：服务端已给轴对齐法线；门行用"洞口→来水侧"的方向。
-                float[] normal = coversCell
+                // 舱壁破口：服务端发的是轴对齐法线，直接用——不要再拿相邻水柱重推断。
+                // 连续墙洞沿墙方向的邻列可能有水、舱内那列还干着，重推断会把补面翻到
+                // 隔壁洞口上。只有兜底的斜方向（厚船壳/质心方向）才让 inwardNormal 校正。
+                boolean axisAligned =
+                        (Math.abs(Math.abs(dirX) - 1.0F) < 1.0E-3F && Math.abs(dirZ) < 1.0E-3F)
+                                || (Math.abs(Math.abs(dirZ) - 1.0F) < 1.0E-3F
+                                && Math.abs(dirX) < 1.0E-3F);
+                float[] normal = coversCell && !axisAligned
                         ? inwardNormal(boxes, box, bx, by, bz, dirX / length, dirZ / length)
                         : new float[]{dirX / length, dirZ / length};
                 nx = normal[0];
