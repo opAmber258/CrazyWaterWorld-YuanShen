@@ -1,7 +1,7 @@
 ---
 name: agents
 description: Always-loaded project anchor. Read this first. Contains project identity, non-negotiables, commands, and pointer to ROUTER.md for full context.
-last_updated: 2026-11-03
+last_updated: 2026-11-06
 ---
 
 # Barotrauma Minecraft Mod
@@ -14,7 +14,7 @@ A Minecraft 1.20.1 Forge mod that simulates Barotrauma-style deep-sea submarines
 - Never add real water blocks to the deep-sea dimension; it is an air ocean by design (see `context/decisions.md`).
 - Keep all Valkyrien Skies 2 types inside `ship/vs/`; never bundle VS2 in the mod jar.
 - After changing world generation, delete `run/world` before testing — existing chunks are never regenerated.
-- Never commit, push, or pull without explicit human authorization. A request to publish changes (e.g. “推到仓库/提交并推送”) defaults to task branch → commit → push task branch → create a PR targeting the main branch (or update the existing PR) → return the actual PR link. Do not stop at a pushed branch or a compare link. Never push directly to the main branch, force-push, or auto-merge; merging and pulling need separate explicit authorization. Honor narrower authorizations without expanding their scope.
+- Never commit, push, or pull without explicit human authorization. A request to publish changes (e.g. “推到仓库/提交并推送”) defaults to committing and pushing directly to main. Only use a task branch + PR when the user explicitly asks for a PR or a branch. Never force-push; pulling still needs separate explicit authorization. CodeRabbit only reviews PRs, so direct main pushes skip automated review. Honor narrower authorizations without expanding their scope.
 
 ## Commands
 - Build: `./gradlew build --offline` (set `JAVA_HOME` to JDK 17 first)
