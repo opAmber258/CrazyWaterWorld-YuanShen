@@ -4,6 +4,7 @@ import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.BulkheadDoorBlock;
 import com.opamb.barotrauma.block.HatchBlock;
 import com.opamb.barotrauma.block.HullBlock;
+import com.opamb.barotrauma.block.PumpProxyBlock;
 import com.opamb.barotrauma.block.SonarBlock;
 import com.opamb.barotrauma.block.SonarProxyBlock;
 import net.minecraft.world.level.block.Block;
@@ -68,6 +69,17 @@ public final class ModShipBlocks {
      */
     public static final RegistryObject<Block> SONAR_PROXY = BLOCKS.register("sonar_proxy",
             () -> new SonarProxyBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.NONE)
+                    .strength(-1.0F, 3600000.0F)
+                    .noLootTable()
+                    .noOcclusion()
+                    .noCollission()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /** 物理船排水泵的交互锚点；泵方块被 VS2 收走后靠它打开泵菜单。 */
+    public static final RegistryObject<Block> PUMP_PROXY = BLOCKS.register("pump_proxy",
+            () -> new PumpProxyBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.NONE)
                     .strength(-1.0F, 3600000.0F)
                     .noLootTable()

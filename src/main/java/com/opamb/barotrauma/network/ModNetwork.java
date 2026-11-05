@@ -10,7 +10,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class ModNetwork {
 
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -21,6 +21,12 @@ public final class ModNetwork {
     }
 
     public static void register() {
+        CHANNEL.messageBuilder(CampaignStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(CampaignStatePacket::encode).decoder(CampaignStatePacket::decode)
+                .consumerNetworkThread(CampaignStatePacket::handle).add();
+        CHANNEL.messageBuilder(CampaignActionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(CampaignActionPacket::encode).decoder(CampaignActionPacket::decode)
+                .consumerNetworkThread(CampaignActionPacket::handle).add();
         CHANNEL.registerMessage(nextId++, ShipActionPacket.class,
                 ShipActionPacket::encode, ShipActionPacket::decode, ShipActionPacket::handle);
         CHANNEL.registerMessage(nextId++, VesselPalettePacket.class,

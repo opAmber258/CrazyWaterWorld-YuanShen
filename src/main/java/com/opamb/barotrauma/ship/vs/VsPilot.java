@@ -1,11 +1,13 @@
 package com.opamb.barotrauma.ship.vs;
 
 import com.opamb.barotrauma.block.HullBlock;
+import com.opamb.barotrauma.blockentity.DrainPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.data.ShipSavedData;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.ShipHullDamagePacket;
 import com.opamb.barotrauma.network.ShipWaterStatePacket;
+import com.opamb.barotrauma.registry.ModBlocks;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.ShipGeometry;
 import com.opamb.barotrauma.ship.MachineCount;
@@ -91,6 +93,9 @@ public final class VsPilot {
     private static BlockPos sonarAnchor;
     /** 当前交互锚点实际所在的位置。 */
     private static BlockPos proxyPos;
+    /** 排水泵的交互锚点（泵方块同样会被 VS2 收走，右键不到）。 */
+    private static BlockPos pumpAnchor;
+    private static BlockPos pumpProxyPos;
     /** 上一次 launch 用的维度。 */
     private static ServerLevel lastLevel;
     /**
@@ -111,6 +116,7 @@ public final class VsPilot {
     static {
         VsState.install(VsPilot::observeCore, VsPilot::tryDamage,
                 VsPilot::tryRepair, VsPilot::damageExplosion);
+        VsState.installBoardingResolver(VsPilot::boardingPositions);
         VsState.installGeometryRefresh(VsPilot::refreshPhysicalGeometry);
         // 只注册服务端干燥区：单人存档里客户端和集成服务端同进程，
         // 客户端渲染用的 ShipWaterRenderer 不能被这里覆盖（否则方块船舱内会漏滤镜）。
@@ -292,6 +298,8 @@ public final class VsPilot {
         interiorOffsetZ = Integer.MIN_VALUE;
         sonarAnchor = null;
         proxyPos = null;
+        pumpAnchor = null;
+        pumpProxyPos = null;
         lastLevel = null;
         yardOffsetX = Integer.MIN_VALUE;
         yardOffsetY = Integer.MIN_VALUE;
@@ -768,6 +776,25 @@ public final class VsPilot {
         return yardPos.offset(-yardOffsetX, -yardOffsetY, -yardOffsetZ);
     }
 
+    /** 物理船排水泵在船坞里的坐标；偏移未知或没有泵时返回 null。 */
+    @Nullable
+    public static BlockPos pumpYardPos() {
+        if (pumpAnchor == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        return pumpAnchor.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+    }
+
+    /** 物理船的排水泵方块实体（泵菜单/操作走它，而不是右键不到的船坞方块）。 */
+    @Nullable
+    public static DrainPumpBlockEntity pumpBlockEntity(ServerLevel level) {
+        BlockPos pos = pumpYardPos();
+        if (level == null || pos == null) {
+            return null;
+        }
+        return level.getBlockEntity(pos) instanceof DrainPumpBlockEntity pump ? pump : null;
+    }
+
     private static void refreshHull(ServerLevel level) {
         ShipState current = state;
         if (current == null || snapshot.isEmpty() || yardOffsetX == Integer.MIN_VALUE) {
@@ -1061,6 +1088,54 @@ public final class VsPilot {
         return true;
     }
 
+    /** 服务端预检全部登船位置：真实船坞碰撞 + 舱室 + 当前完整刚体变换（含旋转）。 */
+    private static List<Vec3> boardingPositions(ServerLevel level, int count) {
+        if (ship == null || state == null || lastLevel != level || count < 1) return List.of();
+        ServerShip live = VsBridge.loaded(level, ship);
+        if (live == null || !discoverYardOffset(level)) return List.of();
+        List<Vec3> result = new ArrayList<>();
+        for (ShipGeometry.Compartment compartment : state.geometry().compartments()) {
+            for (BlockPos original : compartment.cells().stream().sorted(java.util.Comparator
+                    .comparingInt((BlockPos p) -> p.getY()).thenComparingInt(p -> p.getX())
+                    .thenComparingInt(p -> p.getZ())).toList()) {
+                if (!compartment.cells().contains(original.above())) continue;
+                BlockPos yard = original.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+                if (!level.getBlockState(yard).getCollisionShape(level, yard).isEmpty()
+                        || !level.getBlockState(yard.above()).getCollisionShape(level, yard.above()).isEmpty()
+                        || !level.getBlockState(yard.below()).isFaceSturdy(level, yard.below(), net.minecraft.core.Direction.UP)) continue;
+                // Feet and head both dry; don't silently board a flooded compartment.
+                org.joml.Vector3d feet = live.getTransform().getShipToWorld().transformPosition(
+                        new org.joml.Vector3d(yard.getX() + 0.5, yard.getY() + 0.05, yard.getZ() + 0.5));
+                org.joml.Vector3d head = live.getTransform().getShipToWorld().transformPosition(
+                        new org.joml.Vector3d(yard.getX() + 0.5, yard.getY() + 1.7, yard.getZ() + 0.5));
+                Vec3 pos = new Vec3(feet.x, feet.y, feet.z);
+                if (!boardingCellDry(original)) continue;
+                if (!Double.isFinite(pos.x) || !Double.isFinite(pos.y) || !Double.isFinite(pos.z)
+                        || !level.getWorldBorder().isWithinBounds(BlockPos.containing(pos))) continue;
+                // Entity remains world-upright: reject strong pitch/roll rather than clip into the hull.
+                if (Math.abs(head.y - feet.y - 1.65) > 0.001
+                        || Math.abs(head.x - feet.x) > 0.01 || Math.abs(head.z - feet.z) > 0.01) continue;
+                if (!level.noCollision(new net.minecraft.world.phys.AABB(pos.x - .31, pos.y, pos.z - .31,
+                        pos.x + .31, pos.y + 1.8, pos.z + .31))) continue;
+                result.add(pos);
+                if (result.size() == count) return List.copyOf(result);
+            }
+        }
+        return List.of();
+    }
+
+    /** 水面包为装配快照坐标；在同一坐标空间检查，不用只支持平移的旧干区近似。 */
+    private static boolean boardingCellDry(BlockPos original) {
+        float[] boxes = lastWaterPacket.boxes();
+        for (int i = 0; i + 6 < boxes.length; i += 7) {
+            if (original.getX() + .5 >= boxes[i] && original.getX() + .5 <= boxes[i + 3] + 1
+                    && original.getZ() + .5 >= boxes[i + 2] && original.getZ() + .5 <= boxes[i + 5] + 1
+                    && original.getY() + .05 >= boxes[i + 1] && original.getY() + 1.7 <= boxes[i + 4] + 1
+                    && original.getY() + .05 > boxes[i + 6] + .01) return true;
+        }
+        return false;
+    }
+
     /** 把装配快照里的原坐标映射到船当前的世界坐标。 */
     private static Vec3 toWorld(BlockPos original) {
         if (ship == null) {
@@ -1221,31 +1296,46 @@ public final class VsPilot {
      * 船挪一格，代理挪一格；旧位置的代理撤掉、新位置补上。</p>
      */
     private static void moveProxy(ServerLevel level, int dx, int dy, int dz) {
-        if (sonarAnchor == null) {
-            return;
+        proxyPos = moveProxyOne(level, sonarAnchor, proxyPos,
+                ModShipBlocks.SONAR_PROXY.get(), dx, dy, dz);
+        pumpProxyPos = moveProxyOne(level, pumpAnchor, pumpProxyPos,
+                ModShipBlocks.PUMP_PROXY.get(), dx, dy, dz);
+    }
+
+    private static BlockPos moveProxyOne(ServerLevel level, BlockPos anchor, BlockPos current,
+                                         Block proxy, int dx, int dy, int dz) {
+        if (anchor == null) {
+            return null;
         }
-        BlockPos target = sonarAnchor.offset(dx, dy, dz);
-        if (target.equals(proxyPos)) {
-            return;
+        BlockPos target = anchor.offset(dx, dy, dz);
+        if (target.equals(current)) {
+            return current;
         }
-        if (proxyPos != null && level.getBlockState(proxyPos).is(ModShipBlocks.SONAR_PROXY.get())) {
-            level.setBlock(proxyPos, Blocks.AIR.defaultBlockState(), 2);
+        if (current != null && level.getBlockState(current).is(proxy)) {
+            level.setBlock(current, Blocks.AIR.defaultBlockState(), 2);
         }
-        proxyPos = target;
         BlockState existing = level.getBlockState(target);
         if (existing.isAir() || existing.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) {
-            level.setBlock(target, ModShipBlocks.SONAR_PROXY.get().defaultBlockState(), 2);
+            level.setBlock(target, proxy.defaultBlockState(), 2);
         }
+        return target;
     }
 
     /** 撤掉交互锚点（拆船 / 船丢了的时候）。 */
     private static void removeProxy(ServerLevel level) {
-        if (level != null && proxyPos != null
-                && level.getBlockState(proxyPos).is(ModShipBlocks.SONAR_PROXY.get())) {
-            level.setBlock(proxyPos, Blocks.AIR.defaultBlockState(), 2);
+        if (level != null) {
+            if (proxyPos != null && level.getBlockState(proxyPos).is(ModShipBlocks.SONAR_PROXY.get())) {
+                level.setBlock(proxyPos, Blocks.AIR.defaultBlockState(), 2);
+            }
+            if (pumpProxyPos != null
+                    && level.getBlockState(pumpProxyPos).is(ModShipBlocks.PUMP_PROXY.get())) {
+                level.setBlock(pumpProxyPos, Blocks.AIR.defaultBlockState(), 2);
+            }
         }
         proxyPos = null;
         sonarAnchor = null;
+        pumpProxyPos = null;
+        pumpAnchor = null;
     }
 
     /** 水面同步日志节流。 */
@@ -1452,6 +1542,19 @@ public final class VsPilot {
         if (sonarAnchor != null) {
             proxyPos = sonarAnchor;
             level.setBlock(sonarAnchor, ModShipBlocks.SONAR_PROXY.get().defaultBlockState(), 3);
+        }
+        // 4c) 排水泵同理：泵方块被收进刚体后右键不到，放一个不可见锚点。
+        pumpAnchor = null;
+        for (Map.Entry<BlockPos, BlockState> entry : captured.entrySet()) {
+            if (entry.getValue().is(ModBlocks.DRAIN_PUMP.get())) {
+                pumpAnchor = entry.getKey().immutable();
+                break;
+            }
+        }
+        pumpProxyPos = null;
+        if (pumpAnchor != null) {
+            pumpProxyPos = pumpAnchor;
+            level.setBlock(pumpAnchor, ModShipBlocks.PUMP_PROXY.get().defaultBlockState(), 3);
         }
         // 见 unstaticTicks 的注释：装配出来的船默认是静态体，要连推几 tick 才动得起来
         unstaticTicks = 20;
@@ -1942,6 +2045,15 @@ public final class VsPilot {
         corePos = core;
         sonarAnchor = core;
         proxyPos = record.proxyPos;
+        // 泵锚点从装配快照里恢复；实际代理方块由 moveProxy 按当前偏移补放。
+        pumpAnchor = null;
+        for (Map.Entry<BlockPos, BlockState> entry : snap.entrySet()) {
+            if (entry.getValue().is(ModBlocks.DRAIN_PUMP.get())) {
+                pumpAnchor = entry.getKey().immutable();
+                break;
+            }
+        }
+        pumpProxyPos = null;
         assembledPos = new Vec3(record.x, record.y, record.z);
         lastLevel = level;
         yardOffsetX = Integer.MIN_VALUE;

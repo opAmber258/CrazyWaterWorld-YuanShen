@@ -36,6 +36,8 @@ public class SonarProxyBlock extends Block {
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            com.opamb.barotrauma.BarotraumaMod.LOGGER.info("[campaign] 右键声纳锚点 {} active={}",
+                    pos, com.opamb.barotrauma.ship.vs.VsState.active());
             NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inventory, p) -> new SonarMenu(id, inventory, pos, SonarScan.DEFAULT_RANGE),
