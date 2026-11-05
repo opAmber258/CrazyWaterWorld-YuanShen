@@ -24,6 +24,11 @@ public final class ClientSetup {
     }
 
     @SubscribeEvent
+    public static void onRegisterKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
+        event.register(CampaignClient.OPEN_MAP);
+    }
+
+    @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             OceanEnvironment.setClientDryZone(new OceanEnvironment.DryZone() {

@@ -63,6 +63,20 @@ public final class VsState {
         void refresh(ServerLevel level);
     }
 
+    @FunctionalInterface
+    public interface BoardingResolver {
+        java.util.List<net.minecraft.world.phys.Vec3> resolve(ServerLevel level, int count);
+    }
+    private static volatile BoardingResolver boardingResolver;
+
+    public static void installBoardingResolver(BoardingResolver resolver) { boardingResolver = resolver; }
+
+    public static java.util.List<net.minecraft.world.phys.Vec3> boardingPositions(ServerLevel level, int count) {
+        BoardingResolver resolver = boardingResolver;
+        if (!active || resolver == null) return java.util.List.of();
+        return resolver.resolve(level, count);
+    }
+
     private static volatile boolean active;
     private static volatile Probe probe;
     private static volatile Control control;
