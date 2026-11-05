@@ -37,16 +37,12 @@ public final class CampaignMapScreen extends Screen {
         bodyY = 53; bodyBottom = height - 54;
         dive = addRenderableWidget(Button.builder(tr("dive"), button -> {
             if (!canDive()) {
-                var why = selected < 0 ? "先左键选择一个相邻站点"
-                        : pending ? "正在处理上一次下潜请求"
-                        : "当前航线/任务选择不合法，请重新选择";
+                Component why = selected < 0 ? Component.translatable("campaign.barotrauma.select_first")
+                        : pending ? Component.translatable("campaign.barotrauma.pending")
+                        : Component.translatable("campaign.barotrauma.invalid");
                 if (net.minecraft.client.Minecraft.getInstance().player != null) {
-                    net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(
-                            Component.literal(why), true);
+                    net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(why, true);
                 }
-                org.slf4j.LoggerFactory.getLogger("barotrauma")
-                        .info("[campaign] 下潜按钮未发送：selected={} pending={} origin={} checked={}",
-                                selected, pending, origin, checked);
                 return;
             }
             pending = true; dive.active = false;
@@ -159,11 +155,9 @@ public final class CampaignMapScreen extends Screen {
                 selected = n.id(); checked.clear(); scroll = 0; dive.active = canDive(); return true;
             }
             if (n != null) {
-                org.slf4j.LoggerFactory.getLogger("barotrauma")
-                        .info("[campaign] 点击站点 {} 不相邻（当前 {}）", n.id(), origin);
                 if (net.minecraft.client.Minecraft.getInstance().player != null) {
                     net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(
-                            Component.literal("只能选择与当前站点相连的相邻站点"), true);
+                            Component.translatable("campaign.barotrauma.adjacent_only"), true);
                 }
             }
             if (mx >= panelX && mx < width - 10 && my >= bodyY && my < bodyBottom && !pending) {

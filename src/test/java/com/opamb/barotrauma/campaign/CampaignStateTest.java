@@ -13,10 +13,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CampaignStateTest {
 
     @Test
-    @DisplayName("回档恢复节点/资金/轮数/阶段")
-    void rollbackRestoresSnapshot() {
+    @DisplayName("出发后未抵达时回档恢复节点/资金/轮数/阶段")
+    void rollbackRestoresBeforeArrival() {
         CampaignState state = new CampaignState();
         int startNode = state.currentNode();
+        int startCredits = state.credits();
+
+        state.takeSnapshot();
+        state.addCredits(500);
+        state.beginTravel(1, 100L);
+
+        assertTrue(state.rollback());
+        assertEquals(startNode, state.currentNode());
+        assertEquals(startCredits, state.credits());
+        assertEquals(0, state.roundsCompleted());
+        assertEquals(RoundPhase.AT_NODE, state.round().phase());
+    }
+
+    @Test
+    @DisplayName("抵达后清除出发快照，不能再回档撤销抵达")
+    void arriveClearsSnapshot() {
+        CampaignState state = new CampaignState();
         int startCredits = state.credits();
 
         state.takeSnapshot();
@@ -28,10 +45,10 @@ class CampaignStateTest {
         assertEquals(startCredits + 500, state.credits());
         assertEquals(1, state.roundsCompleted());
 
-        assertTrue(state.rollback());
-        assertEquals(startNode, state.currentNode());
-        assertEquals(startCredits, state.credits());
-        assertEquals(0, state.roundsCompleted());
+        assertFalse(state.rollback());
+        assertEquals(1, state.currentNode());
+        assertEquals(startCredits + 500, state.credits());
+        assertEquals(1, state.roundsCompleted());
         assertEquals(RoundPhase.AT_NODE, state.round().phase());
     }
 

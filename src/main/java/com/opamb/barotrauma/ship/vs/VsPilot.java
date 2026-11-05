@@ -1296,29 +1296,45 @@ public final class VsPilot {
      * 船挪一格，代理挪一格；旧位置的代理撤掉、新位置补上。</p>
      */
     private static void moveProxy(ServerLevel level, int dx, int dy, int dz) {
-        proxyPos = moveProxyOne(level, sonarAnchor, proxyPos,
-                ModShipBlocks.SONAR_PROXY.get(), dx, dy, dz);
-        pumpProxyPos = moveProxyOne(level, pumpAnchor, pumpProxyPos,
-                ModShipBlocks.PUMP_PROXY.get(), dx, dy, dz);
+        BlockPos sonarTarget = sonarAnchor == null ? null : sonarAnchor.offset(dx, dy, dz);
+        BlockPos pumpTarget = pumpAnchor == null ? null : pumpAnchor.offset(dx, dy, dz);
+        boolean sonarSame = sonarTarget != null && sonarTarget.equals(proxyPos);
+        boolean pumpSame = pumpTarget != null && pumpTarget.equals(pumpProxyPos);
+        if (sonarSame && pumpSame) {
+            return;
+        }
+        // 两阶段：先撤所有要移动的旧代理，再放新代理。声纳和泵可能相邻，
+        // 若先放后撤，会把对方刚放好的代理当成障碍物而跳过。
+        if (!sonarSame) {
+            clearProxy(level, proxyPos, ModShipBlocks.SONAR_PROXY.get());
+        }
+        if (!pumpSame) {
+            clearProxy(level, pumpProxyPos, ModShipBlocks.PUMP_PROXY.get());
+        }
+        proxyPos = sonarSame ? proxyPos : placeProxy(level, sonarTarget, ModShipBlocks.SONAR_PROXY.get());
+        pumpProxyPos = pumpSame ? pumpProxyPos : placeProxy(level, pumpTarget, ModShipBlocks.PUMP_PROXY.get());
     }
 
-    private static BlockPos moveProxyOne(ServerLevel level, BlockPos anchor, BlockPos current,
-                                         Block proxy, int dx, int dy, int dz) {
-        if (anchor == null) {
-            return null;
-        }
-        BlockPos target = anchor.offset(dx, dy, dz);
-        if (target.equals(current)) {
-            return current;
-        }
+    private static void clearProxy(ServerLevel level, BlockPos current, Block proxy) {
         if (current != null && level.getBlockState(current).is(proxy)) {
             level.setBlock(current, Blocks.AIR.defaultBlockState(), 2);
         }
+    }
+
+    /** 放置代理；目标被别的方块占着时返回 null，不把该格记成当前位置。 */
+    private static BlockPos placeProxy(ServerLevel level, BlockPos target, Block proxy) {
+        if (target == null) {
+            return null;
+        }
         BlockState existing = level.getBlockState(target);
+        if (existing.is(proxy)) {
+            return target;
+        }
         if (existing.isAir() || existing.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) {
             level.setBlock(target, proxy.defaultBlockState(), 2);
+            return target;
         }
-        return target;
+        return null;
     }
 
     /** 撤掉交互锚点（拆船 / 船丢了的时候）。 */

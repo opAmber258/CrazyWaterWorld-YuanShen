@@ -173,8 +173,12 @@ public final class CampaignManager {
                 && Math.abs(pos.getY() - anchor.getY()) <= ARRIVAL_VERTICAL;
     }
 
-    public static String name(int node) {
+    public static Component name(int node) {
         MapNode n = CampaignMap.node(node);
-        return n == null ? "#" + node : n.name() + " #" + n.id();
+        if (n == null) {
+            return Component.literal("#" + node);
+        }
+        return Component.translatable("campaign.barotrauma.node." + n.id())
+                .append(Component.literal(" #" + n.id()));
     }
 }

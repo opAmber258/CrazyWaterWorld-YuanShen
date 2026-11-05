@@ -58,11 +58,17 @@ public final class CampaignCommand {
         }
         CampaignState state = CampaignState.get(level);
         source.sendSuccess(() -> Component.literal("== 战役状态 ==").withStyle(ChatFormatting.AQUA), false);
-        source.sendSuccess(() -> Component.literal("当前节点：" + CampaignManager.name(state.currentNode())), false);
+        source.sendSuccess(() -> Component.literal("当前节点：").append(CampaignManager.name(state.currentNode())), false);
         source.sendSuccess(() -> Component.literal("共享资金：" + state.credits() + " credits"), false);
-        source.sendSuccess(() -> Component.literal("阶段：" + state.round().phase()
-                + (state.round().phase() == RoundPhase.DIVING
-                ? "（→ " + CampaignManager.name(state.round().destination()) + "）" : "")), false);
+        source.sendSuccess(() -> {
+            var line = Component.literal("阶段：" + state.round().phase());
+            if (state.round().phase() == RoundPhase.DIVING) {
+                line.append(Component.literal("（→ "))
+                        .append(CampaignManager.name(state.round().destination()))
+                        .append(Component.literal("）"));
+            }
+            return line;
+        }, false);
         source.sendSuccess(() -> Component.literal("已完成巡回：" + state.roundsCompleted()), false);
         source.sendSuccess(() -> Component.literal("已访问节点：" + state.visited()), false);
         return 1;
@@ -78,14 +84,14 @@ public final class CampaignCommand {
         CampaignState state = CampaignState.get(level);
         source.sendSuccess(() -> Component.literal("== 战役地图（★=当前）==").withStyle(ChatFormatting.AQUA), false);
         for (MapNode node : CampaignMap.nodes()) {
-            StringBuilder line = new StringBuilder();
-            line.append(node.id() == state.currentNode() ? "★ " : "  ");
-            line.append("#").append(node.id()).append(" ").append(node.name());
-            line.append(node.type() == NodeType.OUTPOST ? " [前哨站]" : " [航路点]");
-            line.append(" @ ").append(node.anchor().getX()).append(",")
-                    .append(node.anchor().getY()).append(",").append(node.anchor().getZ());
-            line.append(" → ").append(node.neighbors());
-            source.sendSuccess(() -> Component.literal(line.toString()), false);
+            source.sendSuccess(() -> {
+                var line = Component.literal(node.id() == state.currentNode() ? "★ " : "  ");
+                line.append(CampaignManager.name(node.id()));
+                line.append(Component.literal((node.type() == NodeType.OUTPOST ? " [前哨站]" : " [航路点]")
+                        + " @ " + node.anchor().getX() + "," + node.anchor().getY() + ","
+                        + node.anchor().getZ() + " → " + node.neighbors()));
+                return line;
+            }, false);
         }
         return 1;
     }

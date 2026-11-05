@@ -71,7 +71,9 @@ public final class CampaignState extends SavedData {
     }
 
     public void addCredits(int amount) {
-        credits = Math.max(0, credits + amount);
+        // 用 long 求和再饱和，避免 int 溢出把余额清成 0。
+        long sum = (long) credits + amount;
+        credits = (int) Math.max(0L, Math.min(Integer.MAX_VALUE, sum));
         setDirty();
     }
 
@@ -98,6 +100,8 @@ public final class CampaignState extends SavedData {
         roundsCompleted++;
         selectedMissions = java.util.List.of();
         round.arrive(currentNode);
+        // 抵达已经提交，出发前快照失效——不清掉的话 rollback() 还能撤销一次已完成的抵达。
+        snapshot = null;
         setDirty();
     }
 
