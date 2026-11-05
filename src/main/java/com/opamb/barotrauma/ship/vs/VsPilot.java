@@ -2016,8 +2016,7 @@ public final class VsPilot {
         return count;
     }
 
-    public static String status() {
-        ServerLevel level = pendingLevel != null ? pendingLevel : lastLevel;
+    public static String status() {        ServerLevel level = pendingLevel != null ? pendingLevel : lastLevel;
         if (ship != null && !stillExists(level)) {
             dropStale();
         }
