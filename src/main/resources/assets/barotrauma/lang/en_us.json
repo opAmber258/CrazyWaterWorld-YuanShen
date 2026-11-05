@@ -36,6 +36,7 @@
   "campaign.barotrauma.reward": "Expected reward: %s mk",
   "campaign.barotrauma.boundary": "M1 boundary: shared commissions and all-player boarding only. Mission sea instances, objectives and payout are not implemented. The old terminal is a separate system.",
   "campaign.barotrauma.invalid": "Invalid or stale route/mission selection. Reopen the map.",
+  "campaign.barotrauma.launch_failed": "Failed to assemble the physical ship: %s",
   "campaign.barotrauma.select_first": "Left-click an adjacent location first.",
   "campaign.barotrauma.pending": "The previous dive request is still pending.",
   "campaign.barotrauma.adjacent_only": "Only locations connected to the current one can be selected.",

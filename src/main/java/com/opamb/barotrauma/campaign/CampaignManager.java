@@ -61,7 +61,7 @@ public final class CampaignManager {
             if (positions.size() == players.size() && VsSupport.available()) {
                 String launch = launchStarter(deep);
                 if (!VsState.active()) {
-                    player.sendSystemMessage(Component.literal("物理船装配失败：" + launch));
+                    player.sendSystemMessage(Component.translatable("campaign.barotrauma.launch_failed", launch));
                     sync(player);
                     return false;
                 }

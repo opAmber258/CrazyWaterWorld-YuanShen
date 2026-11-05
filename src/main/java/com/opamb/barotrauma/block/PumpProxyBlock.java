@@ -1,8 +1,10 @@
 package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.menu.PumpMenu;
+import com.opamb.barotrauma.ship.vs.VsPilot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -31,6 +33,11 @@ public class PumpProxyBlock extends Block {
     public InteractionResult use(BlockState state, Level level, BlockPos pos,
                                  Player player, InteractionHand hand, BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            // 船坞偏移还没扫出来/真实泵不可用时先不打开空菜单；解析完成后玩家可再次右键。
+            if (!(level instanceof ServerLevel serverLevel)
+                    || VsPilot.pumpBlockEntity(serverLevel) == null) {
+                return InteractionResult.CONSUME;
+            }
             NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inventory, p) -> new PumpMenu(id, inventory, pos),

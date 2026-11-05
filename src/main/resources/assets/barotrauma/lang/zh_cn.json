@@ -36,6 +36,7 @@
   "campaign.barotrauma.reward": "预期报酬：%s mk",
   "campaign.barotrauma.boundary": "M1 边界：此处只接取共享委托并全员传送到潜艇。任务海域、目标生成与报酬结算尚未接入；旧任务终端仍为独立系统。",
   "campaign.barotrauma.invalid": "航线/任务选择已过期或不合法，请重新打开地图。",
+  "campaign.barotrauma.launch_failed": "物理船装配失败：%s",
   "campaign.barotrauma.select_first": "先左键选择一个相邻站点",
   "campaign.barotrauma.pending": "正在处理上一次下潜请求",
   "campaign.barotrauma.adjacent_only": "只能选择与当前站点相连的相邻站点",

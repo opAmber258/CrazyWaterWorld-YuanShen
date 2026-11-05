@@ -1298,8 +1298,10 @@ public final class VsPilot {
     private static void moveProxy(ServerLevel level, int dx, int dy, int dz) {
         BlockPos sonarTarget = sonarAnchor == null ? null : sonarAnchor.offset(dx, dy, dz);
         BlockPos pumpTarget = pumpAnchor == null ? null : pumpAnchor.offset(dx, dy, dz);
-        boolean sonarSame = sonarTarget != null && sonarTarget.equals(proxyPos);
-        boolean pumpSame = pumpTarget != null && pumpTarget.equals(pumpProxyPos);
+        boolean sonarSame = sonarTarget != null && sonarTarget.equals(proxyPos)
+                && proxyPos != null && level.getBlockState(proxyPos).is(ModShipBlocks.SONAR_PROXY.get());
+        boolean pumpSame = pumpTarget != null && pumpTarget.equals(pumpProxyPos)
+                && pumpProxyPos != null && level.getBlockState(pumpProxyPos).is(ModShipBlocks.PUMP_PROXY.get());
         if (sonarSame && pumpSame) {
             return;
         }
