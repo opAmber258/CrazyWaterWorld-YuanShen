@@ -71,6 +71,7 @@
   "item.barotrauma.small_pump": "小型泵",
   "block.barotrauma.drain_outlet": "排水口",
   "item.barotrauma.drain_outlet": "排水口",
-  "barotrauma.ballast_pump.auto_on": "压载泵 自动控制：开",
-  "barotrauma.ballast_pump.auto_off": "压载泵 自动控制：关"
+  "key.barotrauma.toggle_natural_sink": "切换水中自然下沉",
+  "message.barotrauma.natural_sink.on": "水中自然下沉：开",
+  "message.barotrauma.natural_sink.off": "水中自然下沉：关"
 }

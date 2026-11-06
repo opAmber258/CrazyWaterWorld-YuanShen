@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.campaign;
 
+import com.opamb.barotrauma.data.MissionSavedData;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -11,9 +12,8 @@ import java.util.Set;
 /**
  * 战役的世界存档：当前节点、共享资金、已访问节点、当前巡回、回档快照。
  *
- * <p>v1 先只落这些；任务池/升级/船体状态在后续里程碑接进来。注意：现有
- * {@link com.opamb.barotrauma.data.MissionSavedData} 里的 credits 是按玩家存的，
- * 这里是战役共享钱包，两者会在任务系统重构里程碑合并。</p>
+ * <p>共享钱包是 v1 唯一的经济来源；旧版 {@link MissionSavedData} 里按玩家存的
+ * credits 会在第一次访问钱包时一次性迁移进来（见 {@link #wallet}）。</p>
  */
 public final class CampaignState extends SavedData {
 
@@ -29,6 +29,8 @@ public final class CampaignState extends SavedData {
     private final RoundState round = new RoundState();
     @Nullable
     private CompoundTag snapshot;
+    /** 旧版按玩家余额是否已迁入；标记放在战役存档顶层，不参与回档快照。 */
+    private boolean legacyCreditsMigrated;
 
     public CampaignState() {
         visited.add(currentNode);
@@ -37,6 +39,17 @@ public final class CampaignState extends SavedData {
     public static CampaignState get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(
                 CampaignState::load, CampaignState::new, NAME);
+    }
+
+    /**
+     * 共享钱包入口：读取战役状态，并顺带把旧版按玩家余额迁入（一次性）。
+     *
+     * <p>只应在 {@code barotrauma:the_deep} 维度调用——钱包固定挂在这个维度。</p>
+     */
+    public static CampaignState wallet(ServerLevel level) {
+        CampaignState state = get(level);
+        MissionSavedData.get(level).migrateLegacyCreditsTo(state);
+        return state;
     }
 
     public java.util.List<String> selectedMissions() { return selectedMissions; }
@@ -70,10 +83,42 @@ public final class CampaignState extends SavedData {
         return snapshot != null;
     }
 
+    /** 旧版按玩家余额是否已经迁入共享钱包。 */
+    public boolean legacyCreditsMigrated() {
+        return legacyCreditsMigrated;
+    }
+
+    /**
+     * 把旧版按玩家余额并入钱包，并同步更新已有的回档快照。
+     *
+     * <p>只执行一次：标记和余额都在战役存档里，迁移源保持只读，避免两个
+     * {@link SavedData} 分别落盘时中断导致旧余额丢失或重复迁入。</p>
+     */
+    public void applyLegacyMigration(int amount) {
+        if (legacyCreditsMigrated) {
+            return;
+        }
+        if (amount > 0) {
+            credits = saturatedAdd(credits, amount);
+            if (snapshot != null) {
+                // 快照直接存的就是 saveCore()（credits 在顶层），不能再套一层 "core"。
+                CompoundTag updated = snapshot.copy();
+                updated.putInt("credits", saturatedAdd(updated.getInt("credits"), amount));
+                snapshot = updated;
+            }
+        }
+        legacyCreditsMigrated = true;
+        setDirty();
+    }
+
+    private static int saturatedAdd(int value, int amount) {
+        long sum = (long) value + amount;
+        return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, sum));
+    }
+
+    /** 增加共享钱包余额（饱和到 int 上限）。 */
     public void addCredits(int amount) {
-        // 用 long 求和再饱和，避免 int 溢出把余额清成 0。
-        long sum = (long) credits + amount;
-        credits = (int) Math.max(0L, Math.min(Integer.MAX_VALUE, sum));
+        credits = saturatedAdd(credits, amount);
         setDirty();
     }
 
@@ -169,6 +214,7 @@ public final class CampaignState extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag) {
         tag.put("core", saveCore());
+        tag.putBoolean("legacyCreditsMigrated", legacyCreditsMigrated);
         if (snapshot != null) {
             tag.put("snapshot", snapshot.copy());
         }
@@ -183,6 +229,7 @@ public final class CampaignState extends SavedData {
         if (tag.contains("snapshot")) {
             state.snapshot = tag.getCompound("snapshot").copy();
         }
+        state.legacyCreditsMigrated = tag.getBoolean("legacyCreditsMigrated");
         return state;
     }
 }

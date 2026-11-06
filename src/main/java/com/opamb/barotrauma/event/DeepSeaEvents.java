@@ -270,9 +270,13 @@ public final class DeepSeaEvents {
         if (salvage1.state() != Mission.State.READY) {
             failures.add("任务 #1 markReady 后不是 READY");
         }
+        var wallet = com.opamb.barotrauma.campaign.CampaignState.wallet(deep);
+        int walletBefore = wallet.credits();
+        wallet.addCredits(salvage1.reward);
         data.finish(tester, salvage1);
-        if (data.credits(tester) != salvage1.reward || data.credits(tester) != 80) {
-            failures.add("交付 #1 后 credits != 80（实际 " + data.credits(tester) + "）");
+        if (wallet.credits() - walletBefore != salvage1.reward || salvage1.reward != 80) {
+            failures.add("交付 #1 后共享钱包 +" + (wallet.credits() - walletBefore)
+                    + " != 80");
         }
         if (salvage1.state() != Mission.State.DONE) {
             failures.add("交付 #1 后不是 DONE");
