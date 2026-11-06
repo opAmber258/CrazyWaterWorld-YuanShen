@@ -2650,3 +2650,94 @@ along/across 直接写模型像素、y 写 0..16。
 ### 10.56.6 临时诊断清理
 删除 `client/DoorDebug.java`、`UnderwaterMovement` 的 `[swim]` 状态行与键位检测行；
 `[pump]`（20 tick 一次）保留，供下一轮查"水泵抽远处水"。
+
+## 10.57 进水渲染与潜行卡死根因（2026-11-05）
+
+### 10.57.1 纠正 §10.56.5："按 Shift 不沉"不是站位问题
+
+§10.56.5 的结论**是错的**。这次用逐 tick 日志量到的是：
+
+```
+y=-123.29 dy=0.000 垂直碰撞=true 水平碰撞=true onGround=false deltaY=-0.120
+y=-123.92 dy=-0.120 垂直碰撞=false 水平碰撞=false
+```
+
+速度确实给了 `-0.12`，偶尔也能走满一格。真正的原因是原版
+`Player#maybeBackOffFromEdge()`（`Player.java:1033`）：
+
+```java
+while(d0 != 0.0 && this.level().noCollision(this, this.getBoundingBox().move(d0, -maxUpStep, 0.0))) {
+    d0 -= 0.05;   // 一直 true → 一路减到 0
+}
+p_36201_ = new Vec3(d0, p_36201_.y, d1);   // y 原样保留
+```
+
+- `isStayingOnGroundSurface()` 就是 `isShiftKeyDown()`（`Player.java:296`）；
+- `isAboveGround()` 在 `onGround()` 抖动为 true 时成立；
+- 而 **VS2 的船体方块对 `level.noCollision()` 不可见**（同一次实测
+  `getBlockCollisions()` 返回 0 个形状），于是它认为四面都是悬崖，把水平位移清零。
+
+所以：**水平被锁死、垂直被舱底挡住**，表现就是"按 Shift 钉在原地"。
+修复：`mixin/PlayerSneakEdgeMixin` 只在 `OceanEnvironment.isSubmerged()` 时让
+`isStayingOnGroundSurface()` 返回 false。陆地潜行防掉边不变。
+
+教训：**物理船上 `level.getBlockState()` 恒为 air，`getBlockCollisions()` 也可能为空**，
+不能用它们证明"脚下没有东西"；要判断碰撞得看 `player.verticalCollision/horizontalCollision`。
+
+### 10.57.2 侧面剔除必须按竖直区间，不能按"有没有邻居"
+
+`neighborAcross()` 原来的语义是"这一侧有相邻水柱就整面剔掉"。破口所在的那一列
+只要 1 格高，旁边 3 格高的列就会把整条侧墙剔掉，水面与舱底之间留下竖直"干洞"，
+用户看到的是**打穿一格后同一 (x,z) 整列变干**。
+
+改成 `coveredSpans()`：收集所有相邻水柱覆盖的 `[y0, y1]` 区间，排序合并，
+只补画没被盖住的部分（`faceGaps()` / `wallSpan()`）。
+完整被盖住时一个面都不画；完全没邻居时仍走 `wallStrip()` 保留波浪与角点平滑。
+
+### 10.57.3 贴天花板时角点高度必须钳住
+
+水面顶点高度 = 周围四格的顶面平均。破口列水位高一格时，相邻格子的角点被抬高
+约 `1格/4 = 0.25`，**顶面钻进天花板方块**，被深度测试整片剔掉 ——
+用户看到的是舱顶一大片 3×4 的不规则干区（形状 = 破口周围被抬高的投影）。
+
+修复：`waterTop >= maxY - 0.01` 时，四个角点都 `min(y, drawTop)`。
+
+### 10.57.4 顶/底破口看不到水色：朝向 + 0% 方块仍然渲染
+
+两个原因叠加：
+
+1. 破口补面一直按**竖直面 + 水平朝内法线**画。舱壁洞是对的，但顶/底洞的开口是
+   水平面，竖直面根本盖不住洞口；
+2. 破口方块是 0% 耐久——**无碰撞但仍然渲染**。补面放进洞里 1cm，正好在方块模型
+   内部，被方块自己挡住。
+
+判定开口方向要用**本格在它自己那一列水柱里的位置**，不能看"同高度有没有别的水柱"
+（连续打穿 4 格时这些洞彼此水平相邻，会全部误判成舱壁）：
+
+| 水柱形态 | 判为 | 画法 |
+| --- | --- | --- |
+| 只往上延伸（本格在最底） | 舱底 | 朝上的水平面，贴地板上方 `cellMaxY + 1cm` |
+| 只往下延伸（本格在最顶） | 舱顶 | 朝下的水平面，贴天花板下方 `cellMinY - 1cm` |
+| 上下都没有（单格列） | 舱壁 | 竖直面，沿朝内方向偏 `0.5 + 1cm` |
+
+### 10.57.5 裂痕朝上一面法线反了
+
+`HullDamageRenderer.crackFace()` 内部会把传入的四个顶点**倒序**发出。朝上那一面
+传入顺序写成 `z1→z1→z0→z0`，倒序后法线是 `-Y`：方块上方（舱内）被背面剔除，
+只有从船底外面往上看才见 —— 用户实测"底部舱壁的裂痕舱内看不见、舱外可以"。
+其余五面逐个验算法线都是对的，只改了这一面。
+
+### 10.57.6 本轮新增/改动的文件
+
+- `mixin/PlayerSneakEdgeMixin.java`（新增，已注册进 `barotrauma.mixins.json`）
+- `client/ShipWaterRenderer.java`：`coveredSpans`/`faceGaps`/`wallSpan`/`hasWaterAbove`/
+  `openKind`、角点钳制、补面朝向
+- `client/HullDamageRenderer.java`：朝上裂痕顶点顺序
+- `ship/ShipWaterStateBuilder.java`、`network/ShipWaterStatePacket.java`：破口偏移与真实水位
+- `client/UnderwaterMovement.java`、`ship/vs/VsPilot.java`：临时诊断（**待清理**）
+
+### 10.57.7 待办
+
+1. 清理临时诊断（`[swim]`、`[vs] 卡住探针`、`[water]` 直方图/快照/干列、`[water-breach]`）；
+2. 清理后跑 `./gradlew test --offline`（当前 48 个测试通过）；
+3. 按 PR 优先规则发到 `修复/船内下潜` 分支并开 PR，等 CodeRabbit 审查后再合。

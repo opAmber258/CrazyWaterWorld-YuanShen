@@ -2,6 +2,9 @@ package com.opamb.barotrauma.menu;
 
 import com.opamb.barotrauma.blockentity.DrainPumpBlockEntity;
 import com.opamb.barotrauma.registry.ModMenus;
+import com.opamb.barotrauma.registry.ModShipBlocks;
+import com.opamb.barotrauma.ship.vs.VsPilot;
+import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -35,9 +38,19 @@ public class PumpMenu extends AbstractContainerMenu {
     public PumpMenu(int id, Inventory inventory, BlockPos pumpPos) {
         super(ModMenus.PUMP.get(), id);
         this.pumpPos = pumpPos;
+        DrainPumpBlockEntity resolved = null;
         if (!inventory.player.level().isClientSide
-                && inventory.player.level() instanceof ServerLevel serverLevel
-                && serverLevel.getBlockEntity(pumpPos) instanceof DrainPumpBlockEntity pump) {
+                && inventory.player.level() instanceof ServerLevel serverLevel) {
+            if (serverLevel.getBlockEntity(pumpPos) instanceof DrainPumpBlockEntity direct) {
+                resolved = direct;
+            } else if (VsState.active()
+                    && serverLevel.getBlockState(pumpPos).is(ModShipBlocks.PUMP_PROXY.get())) {
+                // 物理船：泵方块实体在船坞里，菜单用代理位置做距离校验，数据仍读真实泵。
+                resolved = VsPilot.pumpBlockEntity(serverLevel);
+            }
+        }
+        if (resolved != null) {
+            DrainPumpBlockEntity pump = resolved;
             this.data = new ContainerData() {
                 @Override
                 public int get(int index) {

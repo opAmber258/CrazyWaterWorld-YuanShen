@@ -6,6 +6,7 @@
   "refmap": "barotrauma.refmap.json",
   "mixins": [
     "LevelFluidGuardMixin",
+    "PlayerSneakEdgeMixin",
     "ShipBreakMixin"
   ],
   "injectors": {

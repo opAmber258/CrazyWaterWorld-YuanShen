@@ -1,6 +1,9 @@
 package com.opamb.barotrauma.network;
 
 import com.opamb.barotrauma.blockentity.DrainPumpBlockEntity;
+import com.opamb.barotrauma.registry.ModShipBlocks;
+import com.opamb.barotrauma.ship.vs.VsPilot;
+import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
@@ -40,7 +43,14 @@ public record PumpActionPacket(BlockPos pos, int action, int value) {
             if (player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(pos)) > 64.0D) {
                 return;
             }
-            if (!(level.getBlockEntity(pos) instanceof DrainPumpBlockEntity pump)) {
+            DrainPumpBlockEntity pump = level.getBlockEntity(pos) instanceof DrainPumpBlockEntity direct
+                    ? direct : null;
+            if (pump == null && VsState.active()
+                    && level.getBlockState(pos).is(ModShipBlocks.PUMP_PROXY.get())) {
+                // 物理船：pos 是跟船移动的代理方块，真实泵方块实体在船坞里。
+                pump = VsPilot.pumpBlockEntity(level);
+            }
+            if (pump == null) {
                 return;
             }
             switch (action) {

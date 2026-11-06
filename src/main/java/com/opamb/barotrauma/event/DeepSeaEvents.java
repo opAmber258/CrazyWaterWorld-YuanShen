@@ -7,6 +7,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
+import com.opamb.barotrauma.command.CampaignCommand;
 import com.opamb.barotrauma.data.MissionSavedData;
 import com.opamb.barotrauma.mission.Mission;
 import com.opamb.barotrauma.registry.ModBlocks;
@@ -304,6 +305,7 @@ public final class DeepSeaEvents {
                             () -> Component.literal("当前深度 " + meters + " m").withStyle(ChatFormatting.AQUA), false);
                     return 1;
                 }))
+                .then(CampaignCommand.node())
                 .then(Commands.literal("ship")
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
