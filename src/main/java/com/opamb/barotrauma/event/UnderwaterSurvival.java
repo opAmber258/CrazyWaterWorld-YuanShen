@@ -31,6 +31,7 @@ public final class UnderwaterSurvival {
     /** 本模组设置过游泳标志的玩家，避免清掉原版真实水中的游泳状态。 */
     private static final Set<UUID> modSwimming = new HashSet<>();
 
+    /** 服务端每 tick：同步游泳姿态、消耗氧气并处理深水挤压。 */
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
@@ -87,6 +88,7 @@ public final class UnderwaterSurvival {
         }
     }
 
+    /** 空气海域里取消原版摔落伤害（玩家实际落点是海底）。 */
     @SubscribeEvent
     public static void onFall(LivingFallEvent event) {
         if (event.getEntity() instanceof Player player
@@ -95,6 +97,7 @@ public final class UnderwaterSurvival {
         }
     }
 
+    /** 恢复氧气值（哨站、干舱或呼吸豁免时调用）。 */
     private static void refill(Player player) {
         if (player.getAirSupply() < player.getMaxAirSupply()) {
             player.setAirSupply(Math.min(player.getMaxAirSupply(), player.getAirSupply() + 4));

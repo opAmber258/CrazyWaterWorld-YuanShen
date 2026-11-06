@@ -41,6 +41,7 @@ public final class UnderwaterMovement {
     private UnderwaterMovement() {
     }
 
+    /** 每 tick 处理浸没判定、疾跑游泳姿态和水中垂直速度。 */
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
