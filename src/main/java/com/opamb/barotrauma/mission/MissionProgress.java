@@ -62,6 +62,20 @@ public final class MissionProgress {
                         false);
                 continue;
             }
+            // 运送类已达成但补给箱丢了：退回 ACTIVE（保留认领人与时限），
+            // 玩家可回终端放弃后重新接取——accept 会补发补给箱（CodeRabbit 审查意见）。
+            if (mission.state() == Mission.State.READY
+                    && (mission.type == MissionType.DELIVERY
+                        || mission.type == MissionType.URGENT_DELIVERY)
+                    && player.getInventory().countItem(
+                            com.opamb.barotrauma.registry.ModItems.SUPPLY_CRATE.get().asItem()) == 0) {
+                data.demoteToActive(mission);
+                com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
+                        com.opamb.barotrauma.network.MissionStatePacket.build(player, deep));
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                        "补给箱丢失：任务退回进行中；可在终端放弃后重新接取（补发补给箱）"), false);
+                continue;
+            }
             if (mission.state() != Mission.State.ACTIVE) {
                 continue;
             }

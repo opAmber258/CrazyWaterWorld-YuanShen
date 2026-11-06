@@ -118,6 +118,12 @@ public final class MissionSavedData extends SavedData {
         setDirty();
     }
 
+    /** 运送类货物丢失：READY 退回 ACTIVE，保留认领人与时限（可放弃后重新接取补货）。 */
+    public void demoteToActive(Mission mission) {
+        mission.setState(Mission.State.ACTIVE);
+        setDirty();
+    }
+
     /** 超时失败：零报酬，任务保留到本轮抵达目的地时重置。 */
     public void failMission(Mission mission) {
         mission.fail();

@@ -49,6 +49,19 @@ class MissionSavedDataFailureTest {
     }
 
     @Test
+    void 运送货物丢失时READY退回ACTIVE并保留时限() {
+        MissionSavedData data = new MissionSavedData();
+        UUID player = UUID.randomUUID();
+        data.accept(player, 6, 0L);
+        Mission mission = data.missions().get(6);
+        data.markReady(mission);
+        data.demoteToActive(mission);
+        assertEquals(Mission.State.ACTIVE, mission.state());
+        assertEquals(player, mission.assignedTo(), "认领人保留");
+        assertEquals(24000L, mission.deadlineAtGameTime(), "时限保留");
+    }
+
+    @Test
     void 本轮重置会清掉指向已重置任务的占用() {
         MissionSavedData data = new MissionSavedData();
         UUID player = UUID.randomUUID();
