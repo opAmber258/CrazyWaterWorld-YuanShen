@@ -22,6 +22,17 @@ class DockingBayTest {
     }
 
     @Test
+    @DisplayName("通道要同时打穿两层地板，且与舱口连续（issue #22）")
+    void shaftCutsBothFloorLayers() {
+        assertEquals(-63, DockingBay.STATION_FLOOR_UPPER_Y);
+        assertEquals(-64, DockingBay.STATION_FLOOR_Y);
+        assertEquals(-65, DockingBay.STATION_HATCH_Y);
+        // -63 → -64 → -65 必须连续：站内(-62 起)到通道无遮挡。
+        assertEquals(DockingBay.STATION_FLOOR_UPPER_Y - 1, DockingBay.STATION_FLOOR_Y);
+        assertEquals(DockingBay.STATION_FLOOR_Y - 1, DockingBay.STATION_HATCH_Y);
+    }
+
+    @Test
     @DisplayName("潜艇顶部舱口正对通道，出生点在艇内")
     void hatchAlignsAndSpawnIsInside() {
         assertTrue(DockingBay.inTube(0, 0));
