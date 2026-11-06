@@ -111,6 +111,7 @@ public class DrainPumpBlockEntity extends BlockEntity {
         setChanged();
     }
 
+    /** 服务端每 tick：把泵设置上报给所在船的模拟器（含归属校验）。 */
     public static void serverTick(Level level, BlockPos pos, BlockState state,
                                   DrainPumpBlockEntity be) {
         if (!(level instanceof ServerLevel server)) {
@@ -154,6 +155,7 @@ public class DrainPumpBlockEntity extends BlockEntity {
     }
 
     @Override
+    /** 保存自动/手动流量设置。 */
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
         tag.putBoolean("PumpAuto", auto);

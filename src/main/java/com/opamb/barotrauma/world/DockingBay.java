@@ -51,6 +51,7 @@ public final class DockingBay {
     private DockingBay() {
     }
 
+    /** 该 (x,z) 是否落在 3×1 通道内部。 */
     public static boolean inTube(int x, int z) {
         return Math.abs(x - X) <= HALF_WIDTH && z == Z;
     }
@@ -131,6 +132,8 @@ public final class DockingBay {
      * 中段的 {@link com.opamb.barotrauma.blockentity.HatchBlockEntity}（issue #22）。
      */
     public static void ensureStationHatch(ServerLevel level) {
+        // 旧存档修复：地板两层开洞是新改动，老哨站区块不会重跑 worldgen（issue #22）。
+        repairStationShaft(level);
         for (int i = 0; i < 3; i++) {
             int x = X - HALF_WIDTH + i;
             BlockPos pos = new BlockPos(x, STATION_HATCH_Y, Z);
@@ -144,6 +147,23 @@ public final class DockingBay {
             if (i == 1 && level.getBlockEntity(pos) == null) {
                 level.setBlockEntity(
                         new com.opamb.barotrauma.blockentity.HatchBlockEntity(pos, state));
+            }
+        }
+    }
+
+    /**
+     * 旧存档一次性修复：y=-63/-64 的 3×1 通道若仍是哨站装甲则打通。
+     *
+     * <p>只替换哨站装甲，玩家自己改过的方块不动；结果是幂等的
+     * （修复后再跑只看到空气）。issue #22：老哨站区块不会重跑 worldgen。</p>
+     */
+    public static void repairStationShaft(ServerLevel level) {
+        for (int y = STATION_FLOOR_Y; y <= STATION_FLOOR_UPPER_Y; y++) {
+            for (int x = X - HALF_WIDTH; x <= X + HALF_WIDTH; x++) {
+                BlockPos pos = new BlockPos(x, y, Z);
+                if (level.getBlockState(pos).is(ModShipBlocks.STATION_PLATING.get())) {
+                    level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+                }
             }
         }
     }
@@ -168,6 +188,7 @@ public final class DockingBay {
         }
     }
 
+    /** 按行设置某层 3 格舱口的开关。 */
     private static void setHatchOpen(ServerLevel level, int y, boolean open) {
         for (int x = X - HALF_WIDTH; x <= X + HALF_WIDTH; x++) {
             BlockPos pos = new BlockPos(x, y, Z);
@@ -214,6 +235,7 @@ public final class DockingBay {
                 .setValue(HatchBlock.OPEN, open);
     }
 
+    /** 两侧通海舱门（木门，2 格高）。 */
     private static void placeSideDoor(ChunkAccess chunk, int x, int y, int z, Direction facing) {
         BlockState lower = Blocks.OAK_DOOR.defaultBlockState()
                 .setValue(net.minecraft.world.level.block.DoorBlock.FACING, facing)

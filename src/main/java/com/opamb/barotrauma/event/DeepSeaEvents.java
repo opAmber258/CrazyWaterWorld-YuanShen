@@ -102,6 +102,7 @@ public final class DeepSeaEvents {
                 .withStyle(ChatFormatting.GRAY));
     }
 
+    /** 把玩家送回哨站（登录/换维/首次引导入口）；返回是否成功。 */
     public static boolean sendToOutpost(ServerPlayer player) {
         MinecraftServer server = player.getServer();
         if (server == null) {
@@ -114,20 +115,21 @@ public final class DeepSeaEvents {
         }
         // 先造好潜艇，再把人放进舱内；否则出生点还是一片空水。
         StarterSub.ensure(deep);
-        // 潜艇位置判定（issue #22）：已发放但物理船未激活时不能默认还在码头——
-        // 刚体认领挂起时世界里没有方块潜艇，把玩家传进出生点会掉进空位。
+        // 潜艇位置判定（issue #22 + CodeRabbit 审查）：统一用"声纳台是否在码头原位"兜底。
+        // 旧存档没有 starterClaimed 标记但艇已装配驶离时，声纳台不在 → 不会误判在码头；
+        // 活动物理船是别的船、初始方块潜艇仍在码头时，声纳台在 → 仍然算在码头。
+        boolean sonarAtDock = deep.getBlockState(StarterSub.corePos())
+                .is(com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get());
         boolean docked;
-        var saved = com.opamb.barotrauma.data.ShipSavedData.get(deep);
-        if (!saved.starterClaimed()) {
-            docked = true; // 方块潜艇还停在码头
-        } else if (com.opamb.barotrauma.ship.vs.VsState.active()) {
+        if (com.opamb.barotrauma.ship.vs.VsState.active()) {
             var ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
             var dock = StarterSub.spawnPos();
-            docked = ship != null && ship.distanceToSqr(dock) < 24.0D * 24.0D;
+            boolean activeNear = ship != null && ship.distanceToSqr(dock) < 24.0D * 24.0D;
+            docked = activeNear || sonarAtDock;
         } else {
-            // 靠泊拆回后方块潜艇在码头（声纳台在原位）；认领挂起时不在 → 退回哨站内部。
-            docked = deep.getBlockState(StarterSub.corePos())
-                    .is(com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get());
+            // 未认领（方块潜艇在码头）或已靠泊拆回 → 声纳台在原位；
+            // 刚体认领挂起（世界里既没方块也没活动船）→ 不在，退回哨站内部。
+            docked = sonarAtDock;
         }
         if (docked) {
             var spawn = StarterSub.spawnPos();
