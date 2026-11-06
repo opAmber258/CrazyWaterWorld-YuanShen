@@ -49,6 +49,7 @@ public final class CampaignCommand {
         return source.getServer().getLevel(ModDimensions.THE_DEEP);
     }
 
+    /** 输出当前节点、钱包、阶段与已访问节点。 */
     private static int status(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
         ServerLevel level = level(source);
@@ -74,6 +75,7 @@ public final class CampaignCommand {
         return 1;
     }
 
+    /** 输出节点图与相邻关系。 */
     private static int map(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
         ServerLevel level = level(source);
@@ -127,6 +129,7 @@ public final class CampaignCommand {
         return 1;
     }
 
+    /** 增加/扣除共享资金（管理员）。 */
     private static int credits(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
         ServerLevel level = level(source);

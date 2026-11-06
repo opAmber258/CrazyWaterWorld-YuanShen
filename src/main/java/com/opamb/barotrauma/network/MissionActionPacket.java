@@ -92,6 +92,7 @@ public record MissionActionPacket(int action, int missionId) {
         context.setPacketHandled(true);
     }
 
+    /** 接取任务；DELIVERY 同时发放补给箱。 */
     private static void handleAccept(ServerPlayer player, ServerLevel level, MissionSavedData data, int missionId) {
         Mission mission = data.missions().get(missionId);
         if (mission == null) {
@@ -112,6 +113,7 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
+    /** 交付：校验 READY 与货物，奖励打进共享钱包。 */
     private static void handleTurnIn(ServerPlayer player, ServerLevel level,
                                      MissionSavedData data, CampaignState wallet) {
         Mission mission = data.activeMission(player.getUUID());
@@ -147,6 +149,7 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
+    /** 修船：按缺失耐久扣共享钱包。 */
     private static void handleRepair(ServerPlayer player, ServerLevel level, CampaignState wallet) {
         var core = ShipCores.nearestCore(level, player.blockPosition(), 24.0D);
         if (core == null || core.state() == null) {
@@ -208,6 +211,7 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
+    /** 船体加固：每级 +20%，上限 3 级。 */
     private static void handleUpgrade(ServerPlayer player, ServerLevel level, CampaignState wallet) {
         var core = ShipCores.nearestCore(level, player.blockPosition(), 24.0D);
         if (core == null || core.state() == null) {

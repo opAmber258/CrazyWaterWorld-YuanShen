@@ -24,6 +24,7 @@ public record MissionStatePacket(int credits, int activeId, int activeState, int
                                  int targetX, int targetY, int targetZ, int radius, int reward,
                                  int[] offeredIds, int[] offeredStates, boolean[] offeredTaken) {
 
+    /** 组装任务面板状态；余额取自共享钱包。 */
     public static MissionStatePacket build(ServerPlayer player, Level level) {
         if (!(level instanceof ServerLevel serverLevel)) {
             return empty();

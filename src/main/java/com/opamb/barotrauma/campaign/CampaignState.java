@@ -116,6 +116,7 @@ public final class CampaignState extends SavedData {
         return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, sum));
     }
 
+    /** 增加共享钱包余额（饱和到 int 上限）。 */
     public void addCredits(int amount) {
         credits = saturatedAdd(credits, amount);
         setDirty();

@@ -25,11 +25,13 @@ public final class CampaignManager {
     public static final double ARRIVAL_HORIZONTAL = 64, ARRIVAL_VERTICAL = 32;
     private CampaignManager() {}
 
+    /** 从当前节点出发到相邻节点。 */
     public static boolean startTravel(ServerPlayer player, int destination) {
         ServerLevel deep = player.server.getLevel(ModDimensions.THE_DEEP);
         return deep != null && startTravel(player, CampaignState.wallet(deep).currentNode(), destination, List.of());
     }
 
+    /** 校验相邻边、阶段与全员登船后开始下潜。 */
     public static boolean startTravel(ServerPlayer player, int origin, int destination, List<String> ids) {
         ServerLevel deep = player.server.getLevel(ModDimensions.THE_DEEP);
         if (deep == null) return false;
@@ -136,6 +138,7 @@ public final class CampaignManager {
     /** 自动抵达明确禁用：玩家坐标不代表潜艇物理靠泊。 */
     public static void tick(MinecraftServer server) {}
 
+    /** 管理员调试：直接推进到目的地并自动存档。 */
     public static boolean forceArrive(MinecraftServer server) {
         ServerLevel deep = server.getLevel(ModDimensions.THE_DEEP);
         if (deep == null) return false;
@@ -158,11 +161,13 @@ public final class CampaignManager {
         return restored;
     }
 
+    /** 把战役状态推给单个玩家。 */
     public static void sync(ServerPlayer player) {
         ServerLevel deep = player.server.getLevel(ModDimensions.THE_DEEP);
         if (deep != null) ModNetwork.sendToPlayer(player, CampaignStatePacket.build(CampaignState.wallet(deep)));
     }
 
+    /** 把战役状态推给所有在线玩家。 */
     public static void syncAll(MinecraftServer server) {
         for (ServerPlayer online : server.getPlayerList().getPlayers()) sync(online);
     }

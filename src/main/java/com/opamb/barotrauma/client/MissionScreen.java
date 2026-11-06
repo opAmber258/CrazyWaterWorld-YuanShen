@@ -57,6 +57,7 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
     }
 
     @Override
+    /** 绘制任务板、共享余额和商店按钮。 */
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         int x = leftPos;
         int y = topPos;

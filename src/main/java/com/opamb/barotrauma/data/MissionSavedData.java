@@ -113,6 +113,7 @@ public final class MissionSavedData extends SavedData {
     // ------------------------------------------------------------------ NBT
 
     @Override
+    /** 序列化任务池、进行中任务和旧版余额（迁移源）。 */
     public CompoundTag save(CompoundTag tag) {
         ListTag missionList = new ListTag();
         for (Mission mission : missions.values()) {
