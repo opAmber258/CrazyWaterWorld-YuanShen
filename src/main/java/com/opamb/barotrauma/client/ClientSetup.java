@@ -26,6 +26,7 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void onRegisterKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
         event.register(CampaignClient.OPEN_MAP);
+        event.register(UnderwaterMovement.TOGGLE_NATURAL_SINK);
     }
 
     @SubscribeEvent

@@ -65,5 +65,8 @@
   "campaign.barotrauma.mission.recon.description": "沿航线检查冰隙并完成测绘扫描，为后续船队确认通路。无时限。扫描目标待海域接入。",
   "campaign.barotrauma.mission.delivery.name": "运送：前哨补给箱",
   "campaign.barotrauma.mission.delivery.description": "把密封的常规补给箱安全运抵目的地。普通运送无时限。实际货物待任务海域接入。",
-  "key.barotrauma.campaign_map": "打开战役地图"
+  "key.barotrauma.campaign_map": "打开战役地图",
+  "key.barotrauma.toggle_natural_sink": "切换水中自然下沉",
+  "message.barotrauma.natural_sink.on": "水中自然下沉：开",
+  "message.barotrauma.natural_sink.off": "水中自然下沉：关"
 }

@@ -65,5 +65,8 @@
   "campaign.barotrauma.mission.recon.description": "Inspect the fissure and finish a survey scan to chart a safe passage for later crews. No time limit. Scan objectives await mission seas.",
   "campaign.barotrauma.mission.delivery.name": "Delivery: outpost supplies",
   "campaign.barotrauma.mission.delivery.description": "Bring sealed routine supplies safely to the destination. Ordinary delivery has no timer. Cargo generation awaits mission seas.",
-  "key.barotrauma.campaign_map": "Open campaign map"
+  "key.barotrauma.campaign_map": "Open campaign map",
+  "key.barotrauma.toggle_natural_sink": "Toggle natural sinking",
+  "message.barotrauma.natural_sink.on": "Natural sinking: ON",
+  "message.barotrauma.natural_sink.off": "Natural sinking: OFF"
 }
