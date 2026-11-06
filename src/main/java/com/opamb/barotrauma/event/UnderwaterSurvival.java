@@ -38,6 +38,19 @@ public final class UnderwaterSurvival {
             refill(player);
             return;
         }
+        // 疾跑 + 浸没 = 原版自由泳姿态（视情况同步给其他客户端；单人也是同一 JVM）。
+        // 判定用脚上方 0.4 格，和 UnderwaterMovement 保持一致。
+        boolean submergedBody = OceanEnvironment.isSubmerged(player.level(),
+                player.position().add(0.0D, 0.4D, 0.0D));
+        boolean sprintSwim = submergedBody && player.isSprinting()
+                && !player.isPassenger() && !player.getAbilities().flying
+                && !player.isSpectator();
+        if (sprintSwim) {
+            player.setSwimming(true);
+            player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
+        } else if (player.isSwimming()) {
+            player.setSwimming(false);
+        }
         boolean blockShipDry = OceanEnvironment.isInsideBlockShipDryZone(
                 player.level(), player.getEyePosition());
         if (!blockShipDry && OceanEnvironment.isSubmerged(player.level(), player.getEyePosition())) {

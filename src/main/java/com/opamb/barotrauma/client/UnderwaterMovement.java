@@ -42,6 +42,16 @@ public final class UnderwaterMovement {
         //    于是干舱里也有粘滞的游泳感（用户实测"船内还没开就有漏水游泳的感觉"）。
         Vec3 sample = player.position().add(0.0D, 0.4D, 0.0D);
         boolean submergedFeet = OceanEnvironment.isSubmerged(mc.level, sample);
+        // 疾跑 + 浸没 = 原版自由泳：swimming 标志 + SWIMMING 姿态（本地即时生效，
+        // 服务端 handler 负责同步给其他客户端）。
+        boolean sprintSwim = submergedFeet && player.isSprinting()
+                && !player.getAbilities().flying;
+        if (sprintSwim) {
+            player.setSwimming(true);
+            player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
+        } else if (player.isSwimming()) {
+            player.setSwimming(false);
+        }
         if (!submergedFeet) {
             return;
         }
@@ -50,6 +60,37 @@ public final class UnderwaterMovement {
         // 这里直接读物理键盘，保证开着声纳按 Shift 也能下潜。
         boolean shiftDown = physicalKeyDown(mc, mc.options.keyShift);
         boolean jumpDown = physicalKeyDown(mc, mc.options.keyJump);
+
+        // 自由泳（疾跑触发）：按视线方向游，像原版水里疾泳一样头朝哪游哪。
+        //
+        // 关键：不能用"旧速度 × 阻力 + 加速度"，因为原版每 tick 都会先给 delta.y
+        // 叠一次重力，乘阻力会把它累积成持续下沉（用户实测"只会往底下游"）。
+        // 这里每 tick 直接把竖直速度设成 look.y × 泳速（重力清零），水平保留一点惯性。
+        if (sprintSwim) {
+            final double swimSpeed = 0.11D;
+            Vec3 look = player.getLookAngle();
+            double yaw = Math.toRadians(player.getYRot());
+            Vec3 right = new Vec3(-Math.cos(yaw), 0.0D, -Math.sin(yaw));
+            Vec3 wish = look.scale(player.zza).add(right.scale(player.xxa * 0.7D));
+            if (wish.lengthSqr() > 1.0E-4D) {
+                wish = wish.normalize().scale(swimSpeed);
+            } else {
+                wish = Vec3.ZERO;
+            }
+            double vy = wish.y;
+            if (jumpDown) {
+                vy = Math.max(vy, 0.10D);
+            } else if (shiftDown) {
+                vy = Math.min(vy, -0.10D);
+            }
+            double blend = 0.55D;
+            player.setDeltaMovement(
+                    motion.x * (1.0D - blend) + wish.x * blend,
+                    vy,
+                    motion.z * (1.0D - blend) + wish.z * blend);
+            player.resetFallDistance();
+            return;
+        }
         double y;
         if (jumpDown) {
             // 直接给一个明确的上浮速度；不要在原版重力后的负速度上做加法。
