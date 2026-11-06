@@ -29,6 +29,8 @@ public final class CampaignState extends SavedData {
     private final RoundState round = new RoundState();
     @Nullable
     private CompoundTag snapshot;
+    /** 旧版按玩家余额是否已迁入；标记放在战役存档顶层，不参与回档快照。 */
+    private boolean legacyCreditsMigrated;
 
     public CampaignState() {
         visited.add(currentNode);
@@ -81,10 +83,41 @@ public final class CampaignState extends SavedData {
         return snapshot != null;
     }
 
+    /** 旧版按玩家余额是否已经迁入共享钱包。 */
+    public boolean legacyCreditsMigrated() {
+        return legacyCreditsMigrated;
+    }
+
+    /**
+     * 把旧版按玩家余额并入钱包，并同步更新已有的回档快照。
+     *
+     * <p>只执行一次：标记和余额都在战役存档里，迁移源保持只读，避免两个
+     * {@link SavedData} 分别落盘时中断导致旧余额丢失或重复迁入。</p>
+     */
+    public void applyLegacyMigration(int amount) {
+        if (legacyCreditsMigrated) {
+            return;
+        }
+        if (amount > 0) {
+            credits = saturatedAdd(credits, amount);
+            if (snapshot != null) {
+                // 快照直接存的就是 saveCore()（credits 在顶层），不能再套一层 "core"。
+                CompoundTag updated = snapshot.copy();
+                updated.putInt("credits", saturatedAdd(updated.getInt("credits"), amount));
+                snapshot = updated;
+            }
+        }
+        legacyCreditsMigrated = true;
+        setDirty();
+    }
+
+    private static int saturatedAdd(int value, int amount) {
+        long sum = (long) value + amount;
+        return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, sum));
+    }
+
     public void addCredits(int amount) {
-        // 用 long 求和再饱和，避免 int 溢出把余额清成 0。
-        long sum = (long) credits + amount;
-        credits = (int) Math.max(0L, Math.min(Integer.MAX_VALUE, sum));
+        credits = saturatedAdd(credits, amount);
         setDirty();
     }
 
@@ -174,6 +207,7 @@ public final class CampaignState extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag) {
         tag.put("core", saveCore());
+        tag.putBoolean("legacyCreditsMigrated", legacyCreditsMigrated);
         if (snapshot != null) {
             tag.put("snapshot", snapshot.copy());
         }
@@ -188,6 +222,7 @@ public final class CampaignState extends SavedData {
         if (tag.contains("snapshot")) {
             state.snapshot = tag.getCompound("snapshot").copy();
         }
+        state.legacyCreditsMigrated = tag.getBoolean("legacyCreditsMigrated");
         return state;
     }
 }

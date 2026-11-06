@@ -57,11 +57,11 @@ public final class MissionSavedData extends SavedData {
     /**
      * 把旧版按玩家保存的 credits 一次性合并进共享钱包。
      *
-     * <p>只在第一次调用时生效：迁移后清空旧余额，避免每次打开终端都重复加钱。
-     * 返回实际迁入的总额。</p>
+     * <p>迁移标记和余额都在 {@link CampaignState} 里，旧余额保持只读：即使两个
+     * SavedData 的落盘时机不同，也不会丢失或重复迁入。返回实际迁入的总额。</p>
      */
     public int migrateLegacyCreditsTo(CampaignState wallet) {
-        if (legacyCredits.isEmpty()) {
+        if (legacyCredits.isEmpty() || wallet.legacyCreditsMigrated()) {
             return 0;
         }
         long total = 0L;
@@ -69,11 +69,7 @@ public final class MissionSavedData extends SavedData {
             total += Math.max(0, value);
         }
         int moved = (int) Math.min(Integer.MAX_VALUE, total);
-        legacyCredits.clear();
-        if (moved > 0) {
-            wallet.addCredits(moved);
-        }
-        setDirty();
+        wallet.applyLegacyMigration(moved);
         return moved;
     }
 

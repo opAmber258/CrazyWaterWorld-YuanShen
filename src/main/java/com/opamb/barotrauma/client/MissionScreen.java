@@ -66,7 +66,8 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         graphics.fill(x, y, x + 1, y + PANEL_H, EDGE);
         graphics.fill(x + PANEL_W - 1, y, x + PANEL_W, y + PANEL_H, EDGE);
 
-        String wallet = "共享资金：" + ClientMissionCache.credits();
+        Component wallet = Component.translatable("campaign.barotrauma.wallet",
+                ClientMissionCache.credits());
         graphics.drawString(font, wallet,
                 x + PANEL_W - 8 - font.width(wallet), y + 6, GREEN, false);
 

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 旧版按玩家 credits → 战役共享钱包的一次性迁移。 */
 class MissionSavedDataWalletTest {
@@ -30,6 +31,24 @@ class MissionSavedDataWalletTest {
         // 第二次不能再加一遍
         assertEquals(0, data.migrateLegacyCreditsTo(wallet));
         assertEquals(before + 200, wallet.credits());
+    }
+
+    @Test
+    void 迁移同步更新已有的回档快照() {
+        UUID a = UUID.randomUUID();
+        CompoundTag tag = new CompoundTag();
+        CompoundTag creditsTag = new CompoundTag();
+        creditsTag.putInt(a.toString(), 80);
+        tag.put("credits", creditsTag);
+
+        MissionSavedData data = MissionSavedData.load(tag);
+        CampaignState wallet = new CampaignState();
+        int before = wallet.credits();
+        wallet.takeSnapshot();
+
+        assertEquals(80, data.migrateLegacyCreditsTo(wallet));
+        assertTrue(wallet.rollback());
+        assertEquals(before + 80, wallet.credits(), "回档不应吞掉已迁移的旧余额");
     }
 
     @Test

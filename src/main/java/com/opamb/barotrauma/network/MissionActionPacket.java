@@ -185,6 +185,7 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
+    /** 商店购买：先扣钱再入包；背包放不下时退款并提示。 */
     private static void handleBuyItem(ServerPlayer player, ServerLevel level,
                                       CampaignState wallet, int cost, ItemStack stack) {
         if (!wallet.spendCredits(cost)) {
@@ -194,7 +195,13 @@ public record MissionActionPacket(int action, int missionId) {
             sendState(player, level);
             return;
         }
-        player.getInventory().add(stack);
+        if (!player.getInventory().add(stack)) {
+            wallet.addCredits(cost);
+            player.sendSystemMessage(Component.literal("购买失败：背包已满，未扣除 credits")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         player.sendSystemMessage(Component.literal(
                 "已购买 " + stack.getHoverName().getString() + "（-" + cost + " credits）")
                 .withStyle(ChatFormatting.GREEN));
