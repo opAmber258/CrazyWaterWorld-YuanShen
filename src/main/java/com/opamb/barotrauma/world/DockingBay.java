@@ -154,10 +154,15 @@ public final class DockingBay {
     /**
      * 旧存档一次性修复：y=-63/-64 的 3×1 通道若仍是哨站装甲则打通。
      *
-     * <p>只替换哨站装甲，玩家自己改过的方块不动；结果是幂等的
-     * （修复后再跑只看到空气）。issue #22：老哨站区块不会重跑 worldgen。</p>
+     * <p>只替换哨站装甲，玩家自己改过的方块不动；跑过一次后写世界级标记，
+     * 之后永久跳过（玩家在通道放的装甲不会再被删）。issue #22：老哨站区块
+     * 不会重跑 worldgen。</p>
      */
     public static void repairStationShaft(ServerLevel level) {
+        // 修复只跑一次：之后玩家在通道放的装甲不再被删（StationRepairSavedData 标记）。
+        if (StationRepairSavedData.get(level).done()) {
+            return;
+        }
         for (int y = STATION_FLOOR_Y; y <= STATION_FLOOR_UPPER_Y; y++) {
             for (int x = X - HALF_WIDTH; x <= X + HALF_WIDTH; x++) {
                 BlockPos pos = new BlockPos(x, y, Z);
@@ -166,6 +171,7 @@ public final class DockingBay {
                 }
             }
         }
+        StationRepairSavedData.get(level).markDone();
     }
 
     // ------------------------------------------------------------------
