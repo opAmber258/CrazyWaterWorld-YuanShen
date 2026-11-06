@@ -91,6 +91,12 @@ public final class CampaignState extends SavedData {
         setDirty();
     }
 
+    /** 记录本轮任务海域实例锚点；跟巡回一起写进 core，回档时一起恢复。 */
+    public void setInstance(int x, int y, int z) {
+        round.setInstance(x, y, z);
+        setDirty();
+    }
+
     /** 抵达目的地：推进节点、记一轮、清空终点。 */
     public void arrive() {
         if (round.destination() >= 0) {

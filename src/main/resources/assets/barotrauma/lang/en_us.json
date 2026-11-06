@@ -34,7 +34,7 @@
   "campaign.barotrauma.choose": "Left-click an adjacent location and tick route missions. Departing without missions is allowed. Scroll the right panel for details.",
   "campaign.barotrauma.route": "%s -> %s",
   "campaign.barotrauma.reward": "Expected reward: %s mk",
-  "campaign.barotrauma.boundary": "M1 boundary: shared commissions and all-player boarding only. Mission sea instances, objectives and payout are not implemented. The old terminal is a separate system.",
+  "campaign.barotrauma.boundary": "M1 boundary: shared commissions, all-player boarding and mission-sea terrain only. Objectives, creatures and payout are not implemented. The old terminal is a separate system.",
   "campaign.barotrauma.invalid": "Invalid or stale route/mission selection. Reopen the map.",
   "campaign.barotrauma.launch_failed": "Failed to assemble the physical ship: %s",
   "campaign.barotrauma.select_first": "Left-click an adjacent location first.",
@@ -42,7 +42,7 @@
   "campaign.barotrauma.adjacent_only": "Only locations connected to the current one can be selected.",
   "campaign.barotrauma.not_ready": "A player has not respawned; all-player boarding is unavailable.",
   "campaign.barotrauma.no_interior": "Not enough safe interior positions. Check the ship is loaded, dry and level. Round state was not changed.",
-  "campaign.barotrauma.boarded": "All players boarded. Mission sea instances are not implemented; no objectives or payouts were generated.",
+  "campaign.barotrauma.boarded": "All players boarded. Diving into the mission sea.",
   "campaign.barotrauma.node.0": "Starting Outpost",
   "campaign.barotrauma.node.1": "B Relay Waypoint",
   "campaign.barotrauma.node.2": "Ice Fissure Passage",
@@ -65,5 +65,12 @@
   "campaign.barotrauma.mission.recon.description": "Inspect the fissure and finish a survey scan to chart a safe passage for later crews. No time limit. Scan objectives await mission seas.",
   "campaign.barotrauma.mission.delivery.name": "Delivery: outpost supplies",
   "campaign.barotrauma.mission.delivery.description": "Bring sealed routine supplies safely to the destination. Ordinary delivery has no timer. Cargo generation awaits mission seas.",
-  "key.barotrauma.campaign_map": "Open campaign map"
+  "key.barotrauma.campaign_map": "Open campaign map",
+  "campaign.barotrauma.instance_failed": "Could not enter the mission sea: %s",
+  "block.barotrauma.small_pump": "Small Pump",
+  "item.barotrauma.small_pump": "Small Pump",
+  "block.barotrauma.drain_outlet": "Drain Duct",
+  "item.barotrauma.drain_outlet": "Drain Duct",
+  "barotrauma.ballast_pump.auto_on": "Ballast Pump auto control: ON",
+  "barotrauma.ballast_pump.auto_off": "Ballast Pump auto control: OFF"
 }

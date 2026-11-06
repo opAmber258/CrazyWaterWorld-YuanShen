@@ -5,6 +5,7 @@ import com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity;
 import com.opamb.barotrauma.blockentity.DrainPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.HatchBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
+import com.opamb.barotrauma.blockentity.SmallPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.SonarBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -24,9 +25,17 @@ public final class ModBlockEntities {
             BLOCK_ENTITIES.register("sonar",
                     () -> BlockEntityType.Builder.of(SonarBlockEntity::new, ModShipBlocks.SONAR.get()).build(null));
 
+    /** 普通排水泵：普通方块模型 + 流量/自动控制逻辑。 */
     public static final RegistryObject<BlockEntityType<DrainPumpBlockEntity>> DRAIN_PUMP =
             BLOCK_ENTITIES.register("drain_pump", () -> BlockEntityType.Builder
-                    .of(DrainPumpBlockEntity::new, ModBlocks.DRAIN_PUMP.get()).build(null));
+                    .of(DrainPumpBlockEntity::new, ModBlocks.DRAIN_PUMP.get())
+                    .build(null));
+
+    /** 小型泵：同一套逻辑，但方块实体额外实现 GeoBlockEntity（GeckoLib 体素模型）。 */
+    public static final RegistryObject<BlockEntityType<SmallPumpBlockEntity>> SMALL_PUMP =
+            BLOCK_ENTITIES.register("small_pump", () -> BlockEntityType.Builder
+                    .of(SmallPumpBlockEntity::new, ModBlocks.SMALL_PUMP.get())
+                    .build(null));
 
     /** 3 格宽舱口；只有中间段有方块实体，渲染整扇模型。 */
     public static final RegistryObject<BlockEntityType<HatchBlockEntity>> HATCH =

@@ -22,10 +22,13 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class StarterSub {
 
-    /** 最小角坐标。船体占 x −4..4、y −72..−68、z 16..30（泡在哨站水池椭球里，见 OutpostBuilder）。 */
+    /**
+     * 最小角坐标。船体占 x −4..4、y −78..−74、z −7..7，正对哨站底部的对接口：
+     * 船顶舱口在 y=-74，哨站地板在 y=-64，中间是 {@link DockingBay} 的 10 格垂直通道。
+     */
     public static final int ORIGIN_X = -4;
-    public static final int ORIGIN_Y = -72;
-    public static final int ORIGIN_Z = 16;
+    public static final int ORIGIN_Y = -78;
+    public static final int ORIGIN_Z = -7;
     public static final int SIZE_X = 9;
     public static final int SIZE_Y = 5;
     public static final int SIZE_Z = 15;
@@ -53,6 +56,7 @@ public final class StarterSub {
      */
     @Nullable
     public static ShipCoreBlockEntity ensure(ServerLevel level) {
+        DockingBay.ensureStationHatch(level);
         BlockPos corePos = corePos();
         // 这艘船已经被收成 VS2 物理刚体了：方块搬到船坞区块里、世界里这一格是空气。
         // 如果这里还照旧"没看到声纳就现造一艘"，就会在物理船旁边凭空长出一艘方块潜艇，
@@ -116,12 +120,32 @@ public final class StarterSub {
             }
         }
 
+        // 顶部 3×1 对接舱口：正对哨站通道，出生时打开
+        for (int i = 0; i < 3; i++) {
+            level.setBlock(new BlockPos(ORIGIN_X + 3 + i, ORIGIN_Y + SIZE_Y - 1, ORIGIN_Z + 7),
+                    DockingBay.subHatchState(i, true), 2);
+        }
+        // 舱口爬梯井：玩家从舱底爬到顶部对接舱口（梯子本身没有碰撞）
+        BlockState ladder = Blocks.LADDER.defaultBlockState().setValue(
+                net.minecraft.world.level.block.LadderBlock.FACING, net.minecraft.core.Direction.SOUTH);
+        for (int y = ORIGIN_Y + 1; y <= ORIGIN_Y + SIZE_Y - 2; y++) {
+            level.setBlock(new BlockPos(ORIGIN_X + 4, y, ORIGIN_Z + 6), hull, 2);
+            level.setBlock(new BlockPos(ORIGIN_X + 4, y, ORIGIN_Z + 7), ladder, 2);
+        }
+
         // 声纳台就是船脑（机器/舱门已按用户要求全部删除，船上只留船壳和声纳）
         level.setBlock(new BlockPos(ORIGIN_X + 5, ORIGIN_Y + 1, ORIGIN_Z + 4),
                 ModShipBlocks.SONAR.get().defaultBlockState(), 2);
-        // 排水泵：摆在声纳旁边，右键可设开关/排水量
-        level.setBlock(new BlockPos(ORIGIN_X + 4, ORIGIN_Y + 1, ORIGIN_Z + 4),
+        // 排水泵：普通泵只留在压载舱（船尾）
+        level.setBlock(new BlockPos(ORIGIN_X + 4, ORIGIN_Y + 1, ORIGIN_Z + 2),
                 com.opamb.barotrauma.registry.ModBlocks.DRAIN_PUMP.get().defaultBlockState(), 2);
+        // 小型泵/排水口铺在船舱前后段
+        level.setBlock(new BlockPos(ORIGIN_X + 6, ORIGIN_Y + 1, ORIGIN_Z + 11),
+                com.opamb.barotrauma.registry.ModBlocks.SMALL_PUMP.get().defaultBlockState(), 2);
+        level.setBlock(new BlockPos(ORIGIN_X + 2, ORIGIN_Y + 1, ORIGIN_Z + 11),
+                com.opamb.barotrauma.registry.ModBlocks.DRAIN_OUTLET.get().defaultBlockState(), 2);
+        level.setBlock(new BlockPos(ORIGIN_X + 2, ORIGIN_Y + 1, ORIGIN_Z + 2),
+                com.opamb.barotrauma.registry.ModBlocks.DRAIN_OUTLET.get().defaultBlockState(), 2);
 
         // 声纳台就是船脑（在上面的机器布局里已经放下去了），这里直接拿它的方块实体扫一次
         if (level.getBlockEntity(corePos) instanceof ShipCoreBlockEntity core) {
@@ -132,6 +156,11 @@ public final class StarterSub {
             return core;
         }
         return null;
+    }
+
+    /** 玩家出生点：潜艇舱内（对接时从这里进站）。 */
+    public static net.minecraft.world.phys.Vec3 spawnPos() {
+        return new net.minecraft.world.phys.Vec3(0.5D, ORIGIN_Y + 1.0D, 4.5D);
     }
 
     /** 初始潜艇的包围盒里还有没有船体方块（用来判断"船还在、只是核心没了"）。 */

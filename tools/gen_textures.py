@@ -120,43 +120,24 @@ def diving_knife() -> Image.Image:
 
 
 def submarine_plating() -> Image.Image:
-    """铆接钢板：边框中缝 + 四角铆钉 + 锈斑。"""
-    img = Image.new("RGBA", (16, 16), STEEL)
+    """潜艇装甲：分段维修板、加强筋和少量锈色，避免整面噪点。"""
+    img = Image.new("RGBA", (16, 16), (104, 113, 118, 255))
     d = ImageDraw.Draw(img)
-    rng = random.Random(47)
-
-    # 噪声：让平面不那么死
-    for y in range(16):
-        for x in range(16):
-            if rng.random() < 0.28:
-                delta = rng.randint(-12, 12)
-                base = STEEL
-                d.point((x, y), fill=(
-                    max(0, min(255, base[0] + delta)),
-                    max(0, min(255, base[1] + delta)),
-                    max(0, min(255, base[2] + delta)),
-                    255,
-                ))
-
-    # 外框
-    d.rectangle([0, 0, 15, 15], outline=STEEL_DARK)
     d.rectangle([0, 0, 15, 15], outline=OUTLINE)
-
-    # 中缝（焊接线）：上亮下暗
-    for x in range(0, 16):
-        d.point((x, 7), fill=STEEL_LIGHT)
-        d.point((x, 8), fill=STEEL_DARK)
-
-    # 四角铆钉
-    for (cx, cy) in ((2, 2), (13, 2), (2, 13), (13, 13)):
-        d.point((cx, cy), fill=(60, 66, 71, 255))
-        d.point((cx - 1, cy - 1), fill=STEEL_LIGHT)
-        d.point((cx, cy + 1), fill=(44, 49, 53, 255))
-
-    # 锈斑
-    for (x, y) in ((4, 12), (5, 12), (4, 13), (11, 4), (12, 4), (10, 11)):
+    d.rectangle([1, 1, 14, 14], outline=STEEL_DARK)
+    # 两块可替换装甲板
+    d.rectangle([2, 2, 13, 6], fill=(128, 137, 142, 255), outline=(70, 78, 82, 255))
+    d.rectangle([2, 9, 13, 13], fill=(118, 127, 132, 255), outline=(70, 78, 82, 255))
+    d.line([(2, 7), (13, 7)], fill=(42, 48, 51, 255))
+    d.line([(2, 8), (13, 8)], fill=(165, 174, 178, 255))
+    # 加强筋与维修螺栓
+    d.line([(4, 2), (4, 6)], fill=(164, 173, 177, 255))
+    d.line([(11, 9), (11, 13)], fill=(72, 80, 84, 255))
+    for cx, cy in ((3, 3), (12, 3), (3, 12), (12, 12)):
+        d.point((cx, cy), fill=(205, 210, 211, 255))
+        d.point((cx + 1, cy + 1), fill=(47, 53, 56, 255))
+    for x, y in ((6, 11), (7, 11), (6, 12), (10, 4)):
         d.point((x, y), fill=RUST)
-
     return img
 
 
@@ -390,20 +371,23 @@ def ship_core() -> Image.Image:
 
 
 def station_plating() -> Image.Image:
-    """站点装甲：比船体更暗、带黄黑警示条，一眼能和船板区分开。"""
-    img = Image.new("RGBA", (16, 16), (58, 62, 68, 255))
+    """哨站装甲：深色固定墙板、粗边框和克制的警示色。"""
+    img = Image.new("RGBA", (16, 16), (53, 58, 63, 255))
     d = ImageDraw.Draw(img)
-    for y in range(16):
-        for x in range(16):
-            if (x * 7 + y * 13) % 11 == 0:
-                d.point((x, y), fill=(48, 52, 58, 255))
-    d.rectangle([0, 0, 15, 15], outline=(28, 30, 34, 255))
-    for x in range(2, 14, 4):
-        for i in range(4):
-            d.point((x + i, 2 + i), fill=(196, 160, 52, 255))
-            d.point((x + i, 13 - i), fill=(196, 160, 52, 255))
-    for (cx, cy) in ((3, 8), (12, 8)):
-        d.point((cx, cy), fill=(150, 156, 160, 255))
+    d.rectangle([0, 0, 15, 15], outline=(22, 26, 29, 255))
+    d.rectangle([1, 1, 14, 14], outline=(88, 94, 98, 255))
+    d.rectangle([2, 2, 13, 13], fill=(62, 67, 72, 255))
+    # 哨站是固定结构，强调厚重的横向装甲分段
+    d.rectangle([2, 6, 13, 7], fill=(35, 40, 43, 255))
+    d.line([(2, 8), (13, 8)], fill=(102, 108, 111, 255))
+    d.rectangle([2, 11, 13, 12], fill=(48, 53, 57, 255))
+    # 仅在上下边缘保留警示色，避免整面噪声
+    for x in range(3, 13, 4):
+        d.point((x, 2), fill=(196, 158, 42, 255))
+        d.point((x + 1, 2), fill=(196, 158, 42, 255))
+    for cx, cy in ((3, 4), (12, 4), (3, 10), (12, 10)):
+        d.point((cx, cy), fill=(139, 147, 151, 255))
+        d.point((cx + 1, cy + 1), fill=(30, 34, 37, 255))
     return img
 
 

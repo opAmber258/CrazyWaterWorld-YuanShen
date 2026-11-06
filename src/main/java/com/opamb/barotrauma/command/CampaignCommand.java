@@ -70,6 +70,10 @@ public final class CampaignCommand {
             return line;
         }, false);
         source.sendSuccess(() -> Component.literal("已完成巡回：" + state.roundsCompleted()), false);
+        source.sendSuccess(() -> Component.literal(state.round().hasInstance()
+                ? "任务海域：" + state.round().instanceX() + ", " + state.round().instanceY()
+                        + ", " + state.round().instanceZ()
+                : "任务海域：未生成"), false);
         source.sendSuccess(() -> Component.literal("已访问节点：" + state.visited()), false);
         return 1;
     }

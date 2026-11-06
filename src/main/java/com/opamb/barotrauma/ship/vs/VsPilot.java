@@ -221,6 +221,47 @@ public final class VsPilot {
     }
 
     /**
+     * 把物理船传送到同一维度的目标坐标；成功返回 null，失败返回原因。
+     *
+     * <p>下潜进任务海域实例时用。传送前先加载船坞里船实际占用的区块：VS2 下一 tick
+     * 会把船的 activeChunks 更新到新位置，如果那时区块还没加载，玩家一移动就会被
+     * 判定成"撞到未加载的船"并回弹（日志 {@code moved while colliding with unloaded ships}）。</p>
+     */
+    @Nullable
+    public static String teleportShipTo(ServerLevel level, Vec3 target) {
+        if (ship == null) {
+            return "没有物理船";
+        }
+        try {
+            ServerShip live = VsBridge.loaded(level, ship);
+            if (live == null) {
+                live = ship;
+            }
+            VsBridge.loadShipChunks(level, live);
+            Vec3 from = VsBridge.position(live);
+            VsBridge.teleport(level, live, target);
+            LOGGER.info("[vs] 物理船传送：{} -> {}（船坞区块已预加载）", from, target);
+            return null;
+        } catch (Throwable error) {
+            LOGGER.warn("[vs] 物理船传送失败", error);
+            return "传送失败：" + error;
+        }
+    }
+
+    /** 同步加载船坞里船实际占用的区块（见 {@link VsBridge#loadShipChunks}）。 */
+    public static void preloadShipChunks(ServerLevel level) {
+        if (ship == null) {
+            return;
+        }
+        try {
+            ServerShip live = VsBridge.loaded(level, ship);
+            VsBridge.loadShipChunks(level, live == null ? ship : live);
+        } catch (Throwable ignored) {
+            // 预加载失败不影响后续流程，VS2 自己的 chunk watch 还会补
+        }
+    }
+
+    /**
      * 这艘船还在 VS2 的船列表里吗。
      *
      * <p>{@code /vs delete} 之类的操作会把船从船世界里删掉，但我们手里的
@@ -774,6 +815,27 @@ public final class VsPilot {
             return yardPos;
         }
         return yardPos.offset(-yardOffsetX, -yardOffsetY, -yardOffsetZ);
+    }
+
+    /**
+     * 装配快照里优先挑普通泵当锚点；没有普通泵时退回小型泵。
+     *
+     * <p>物理船收进刚体后方块右键不到，泵菜单只能靠这一个锚点找真实方块实体，
+     * 所以只装小型泵的船也得能打开面板。</p>
+     */
+    @Nullable
+    private static BlockPos findPumpAnchor(Map<BlockPos, BlockState> blocks) {
+        for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
+            if (entry.getValue().is(ModBlocks.DRAIN_PUMP.get())) {
+                return entry.getKey().immutable();
+            }
+        }
+        for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
+            if (entry.getValue().is(ModBlocks.SMALL_PUMP.get())) {
+                return entry.getKey().immutable();
+            }
+        }
+        return null;
     }
 
     /** 物理船排水泵在船坞里的坐标；偏移未知或没有泵时返回 null。 */
@@ -1562,13 +1624,7 @@ public final class VsPilot {
             level.setBlock(sonarAnchor, ModShipBlocks.SONAR_PROXY.get().defaultBlockState(), 3);
         }
         // 4c) 排水泵同理：泵方块被收进刚体后右键不到，放一个不可见锚点。
-        pumpAnchor = null;
-        for (Map.Entry<BlockPos, BlockState> entry : captured.entrySet()) {
-            if (entry.getValue().is(ModBlocks.DRAIN_PUMP.get())) {
-                pumpAnchor = entry.getKey().immutable();
-                break;
-            }
-        }
+        pumpAnchor = findPumpAnchor(captured);
         pumpProxyPos = null;
         if (pumpAnchor != null) {
             pumpProxyPos = pumpAnchor;
@@ -2064,13 +2120,7 @@ public final class VsPilot {
         sonarAnchor = core;
         proxyPos = record.proxyPos;
         // 泵锚点从装配快照里恢复；实际代理方块由 moveProxy 按当前偏移补放。
-        pumpAnchor = null;
-        for (Map.Entry<BlockPos, BlockState> entry : snap.entrySet()) {
-            if (entry.getValue().is(ModBlocks.DRAIN_PUMP.get())) {
-                pumpAnchor = entry.getKey().immutable();
-                break;
-            }
-        }
+        pumpAnchor = findPumpAnchor(snap);
         pumpProxyPos = null;
         assembledPos = new Vec3(record.x, record.y, record.z);
         lastLevel = level;

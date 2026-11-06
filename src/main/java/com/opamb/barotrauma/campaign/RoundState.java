@@ -9,6 +9,10 @@ public final class RoundState {
     private int origin = CampaignMap.START_NODE;
     private int destination = -1;
     private long startedAtGameTime;
+    /** 本轮任务海域实例的锚点；没出发过就是 MIN_VALUE。 */
+    private int instanceX = Integer.MIN_VALUE;
+    private int instanceY = Integer.MIN_VALUE;
+    private int instanceZ = Integer.MIN_VALUE;
 
     public RoundPhase phase() {
         return phase;
@@ -28,6 +32,29 @@ public final class RoundState {
 
     public boolean isDiving() {
         return phase == RoundPhase.DIVING;
+    }
+
+    public boolean hasInstance() {
+        return instanceX != Integer.MIN_VALUE;
+    }
+
+    public int instanceX() {
+        return instanceX;
+    }
+
+    public int instanceY() {
+        return instanceY;
+    }
+
+    public int instanceZ() {
+        return instanceZ;
+    }
+
+    /** 记录本轮任务海域实例锚点（同一轮内不变）。 */
+    public void setInstance(int x, int y, int z) {
+        instanceX = x;
+        instanceY = y;
+        instanceZ = z;
     }
 
     public void beginTravel(int from, int to, long gameTime) {
@@ -62,6 +89,9 @@ public final class RoundState {
         tag.putInt("origin", origin);
         tag.putInt("destination", destination);
         tag.putLong("startedAt", startedAtGameTime);
+        tag.putInt("instanceX", instanceX);
+        tag.putInt("instanceY", instanceY);
+        tag.putInt("instanceZ", instanceZ);
         return tag;
     }
 
@@ -75,6 +105,14 @@ public final class RoundState {
         origin = tag.getInt("origin");
         destination = tag.getInt("destination");
         startedAtGameTime = tag.getLong("startedAt");
+        instanceX = tag.contains("instanceX") ? tag.getInt("instanceX") : Integer.MIN_VALUE;
+        instanceY = tag.contains("instanceY") ? tag.getInt("instanceY") : Integer.MIN_VALUE;
+        instanceZ = tag.contains("instanceZ") ? tag.getInt("instanceZ") : Integer.MIN_VALUE;
+        if (instanceX == Integer.MIN_VALUE || instanceY == Integer.MIN_VALUE || instanceZ == Integer.MIN_VALUE) {
+            instanceX = Integer.MIN_VALUE;
+            instanceY = Integer.MIN_VALUE;
+            instanceZ = Integer.MIN_VALUE;
+        }
         if (!CampaignMap.isValid(origin)) {
             origin = CampaignMap.START_NODE;
         }

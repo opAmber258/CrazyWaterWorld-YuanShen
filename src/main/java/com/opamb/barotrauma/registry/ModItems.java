@@ -50,6 +50,11 @@ public final class ModItems {
     /** 排水泵方块物品。 */
     public static final RegistryObject<Item> DRAIN_PUMP = blockItem("drain_pump", ModBlocks.DRAIN_PUMP);
 
+    public static final RegistryObject<Item> SMALL_PUMP = blockItem("small_pump", ModBlocks.SMALL_PUMP);
+
+    public static final RegistryObject<Item> DRAIN_OUTLET = blockItem("drain_outlet", ModBlocks.DRAIN_OUTLET);
+
+
     // ---- 任务/经济 ----
     public static final RegistryObject<Item> MISSION_TERMINAL =
             blockItem("mission_terminal", ModBlocks.MISSION_TERMINAL);

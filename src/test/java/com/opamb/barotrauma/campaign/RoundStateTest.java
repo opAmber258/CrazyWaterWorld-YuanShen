@@ -63,6 +63,32 @@ class RoundStateTest {
     }
 
     @Test
+    @DisplayName("NBT 往返保留任务海域锚点")
+    void instanceAnchorRoundTrip() {
+        RoundState source = new RoundState();
+        source.beginTravel(0, 1, 100L);
+        source.setInstance(20000, -84, 0);
+
+        RoundState restored = new RoundState();
+        restored.load(source.save());
+
+        assertTrue(restored.hasInstance());
+        assertEquals(20000, restored.instanceX());
+        assertEquals(-84, restored.instanceY());
+        assertEquals(0, restored.instanceZ());
+    }
+
+    @Test
+    @DisplayName("没出发过就没有任务海域锚点")
+    void noInstanceBeforeTravel() {
+        RoundState round = new RoundState();
+        assertFalse(round.hasInstance());
+        RoundState restored = new RoundState();
+        restored.load(round.save());
+        assertFalse(restored.hasInstance());
+    }
+
+    @Test
     @DisplayName("空 NBT 回到安全默认值")
     void emptyTagFallsBack() {
         RoundState round = new RoundState();
