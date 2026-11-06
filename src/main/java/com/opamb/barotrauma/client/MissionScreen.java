@@ -102,6 +102,7 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
                 x + 10, shopY + 30, DIM, false);
     }
 
+    /** 画一条任务：类型/奖励/目标、状态与倒计时、操作按钮。 */
     private void drawMissionRow(GuiGraphics graphics, int x, int y, int mouseX, int mouseY,
                                 Mission mission) {
         graphics.fill(x + 8, y, x + PANEL_W - 8, y + ROW_H, BOX);
@@ -132,12 +133,15 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
 
         boolean mine = ClientMissionCache.active() != null
                 && ClientMissionCache.active().id == mission.id;
-        if (mine && mission.deadlineAtGameTime() > 0) {
-            long left = ClientMissionCache.activeDeadlineAt() - ClientMissionCache.nowGameTime();
+        if (mine && mission.deadlineAtGameTime() > 0
+                && minecraft.level != null) {
+            // 用客户端世界时间实时递减，不用发包时的快照（CodeRabbit 审查意见）。
+            long left = mission.deadlineAtGameTime() - minecraft.level.getGameTime();
             String leftLabel = left > 0
                     ? String.format("剩余 %d:%02d", left / 1200L, (left / 20L) % 60L)
                     : "已超时";
-            graphics.drawString(font, leftLabel, x + PANEL_W - 92, y + 15,
+            // 放在按钮左侧，避免被按钮盖住。
+            graphics.drawString(font, leftLabel, x + PANEL_W - 150, y + 15,
                     left > 0 ? ACCENT : RED, false);
         }
         String button = mine

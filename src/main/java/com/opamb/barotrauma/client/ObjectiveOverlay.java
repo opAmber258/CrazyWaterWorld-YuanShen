@@ -66,6 +66,7 @@ public final class ObjectiveOverlay {
         return VsState.active() ? SAILING : ACCENT;
     }
 
+    /** 默认目标文案：活动任务 → 出航提示 → 首次引导。 */
     private static String defaultObjective() {
         Mission mission = ClientMissionCache.active();
         if (mission != null) {
@@ -74,6 +75,10 @@ public final class ObjectiveOverlay {
                     || mission.type == com.opamb.barotrauma.mission.MissionType.URGENT_DELIVERY;
             String where = delivery
                     ? "B 中继站" : mission.target.getX() + ", " + mission.target.getY() + ", " + mission.target.getZ();
+            if (mission.state() == Mission.State.FAILED) {
+                // 失败任务单独提示，避免玩家以为还能去交付（CodeRabbit 审查意见）。
+                return "任务已超时失败：抵达目的地后可重新接取";
+            }
             if (mission.state() == Mission.State.READY) {
                 String base = "任务达成！回终端交付（+" + mission.reward + "）";
                 return delivery ? base + "：送到 B 中继站全额，其他终端半额" : base;

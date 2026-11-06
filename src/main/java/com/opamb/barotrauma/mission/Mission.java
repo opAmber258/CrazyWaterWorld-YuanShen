@@ -45,6 +45,7 @@ public final class Mission {
         this(id, type, target, radius, reward, 0L);
     }
 
+    /** 带时限的任务定义；{@code deadlineTicks=0} 表示不限时。 */
     public Mission(int id, MissionType type, BlockPos target, int radius, int reward,
                    long deadlineTicks) {
         this.id = id;

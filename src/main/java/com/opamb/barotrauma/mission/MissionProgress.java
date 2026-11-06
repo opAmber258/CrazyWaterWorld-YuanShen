@@ -71,7 +71,9 @@ public final class MissionProgress {
                         <= (double) mission.radius * mission.radius;
                 case SALVAGE -> ready = player.getInventory()
                         .countItem(ModItems.BLACK_BOX.get().asItem()) > 0;
-                case DELIVERY, URGENT_DELIVERY -> { /* 在 B 端终端交付时判定 */ }
+                // 运送类"达成"= 携带补给箱即可回终端交付；全额/半额由交付终端位置决定。
+                case DELIVERY, URGENT_DELIVERY -> ready = player.getInventory()
+                        .countItem(com.opamb.barotrauma.registry.ModItems.SUPPLY_CRATE.get().asItem()) > 0;
             }
             if (ready) {
                 data.markReady(mission);

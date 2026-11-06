@@ -53,10 +53,12 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
     /** 交付终端判定半径（格²）：离 B 中继站终端 8 格内算送到终点。 */
     private static final double DELIVERY_ENDPOINT_RADIUS_SQR = 64.0D;
 
+    /** 不带任务 id 的操作（商店购买）。 */
     public MissionActionPacket(int action) {
         this(action, -1, BlockPos.ZERO);
     }
 
+    /** 不关心交付终端位置的操作（接取/放弃；交付请用三参构造）。 */
     public MissionActionPacket(int action, int missionId) {
         this(action, missionId, BlockPos.ZERO);
     }
