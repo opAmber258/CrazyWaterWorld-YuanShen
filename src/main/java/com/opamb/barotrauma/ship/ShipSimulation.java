@@ -62,15 +62,21 @@ public final class ShipSimulation {
     private double ballast;
     private double ballastCapacity;
     private boolean pumpOut = true;
-    /** 独立排水泵方块控制：开关 + 速率（单位/秒，1 格 = 100 单位）。 */
-    private boolean drainPumpEnabled;
-    private double drainPumpRate = 600.0D;
-    /** 排水泵所在格（装配坐标）：只抽这个格子所在的舱。 */
-    private net.minecraft.core.BlockPos drainPumpCell;
+    /**
+     * 排水泵上报表：格子 → (速率, 最后上报 tick)。
+     *
+     * <p>船上可能同时有小型泵、排水口、普通泵；每台泵只管自己所在的舱室，同一舱室的
+     * 多台泵按速率相加。方块实体每 tick 上报一次，{@link #PUMP_STALE_TICKS} tick
+     * 没上报的视为已经拆掉。</p>
+     */
+    private final java.util.Map<net.minecraft.core.BlockPos, PumpReport> pumps = new java.util.HashMap<>();
+    private long pumpTick;
+    private static final int PUMP_STALE_TICKS = 40;
+
+    private record PumpReport(double rate, long lastSeen) {
+    }
     /** 格子 → 水体下标的缓存；换几何时整个 simulated 对象会重建，缓存自然失效。 */
     private java.util.Map<net.minecraft.core.BlockPos, Integer> bodyIndexOfCell;
-    /** 临时诊断计数。 */
-    private int pumpDebugTicks;
     /**
      * 破口格数。洞越大进水越快——潜渊症按 Gap 的开口面积算，
      * 我们先按"被砸掉的船体格数"线性放大，至少 1 格。
@@ -148,9 +154,6 @@ public final class ShipSimulation {
         this.ballast = old.ballast;
         this.ballastCapacity = old.ballastCapacity;
         this.pumpOut = old.pumpOut;
-        this.drainPumpEnabled = old.drainPumpEnabled;
-        this.drainPumpRate = old.drainPumpRate;
-        this.drainPumpCell = old.drainPumpCell;
         this.airlockPhase = old.airlockPhase;
         this.airlockWater = old.airlockWater;
         this.airlockCycles = old.airlockCycles;
@@ -282,31 +285,43 @@ public final class ShipSimulation {
         // 排水泵方块：只抽自己所在的那个舱（原版水泵也是这样——关上的门后面
         // 的水泵不归它管）。旧实现是把全船的水按顺序抽一遍，用户实测"门关着水还能
         // 被泵出去"。水泵位置由方块实体每 tick 报上来（物理船是装配坐标）。
-        if (drainPumpEnabled && drainPumpRate > 0.0D) {
-            int body = pumpBody();
-            if (body >= 0) {
-                double take = Math.min(bodyWater(body), drainPumpRate * dt);
-                if (take > 0.0D) {
-                    removeBodyWater(body, take);
-                }
+        pumpTick++;
+        // 原版泵的 FlowPercentage：负值泵出、正值泵入、0 停机。同舱多台泵分别汇总后
+        // 再结算，避免"一台泵入一台泵出"互相抵消成不动作。
+        java.util.Map<Integer, Double> pumpOutRates = new java.util.HashMap<>();
+        java.util.Map<Integer, Double> pumpInRates = new java.util.HashMap<>();
+        var pumpIterator = pumps.entrySet().iterator();
+        while (pumpIterator.hasNext()) {
+            var entry = pumpIterator.next();
+            PumpReport report = entry.getValue();
+            if (pumpTick - report.lastSeen() > PUMP_STALE_TICKS) {
+                pumpIterator.remove();
+                continue;
             }
-            // 临时诊断：水泵到底抽的是哪个水体，以及它六个邻居分别属于哪个水体。
-            if (++pumpDebugTicks % 20 == 0) {
-                StringBuilder around = new StringBuilder();
-                if (drainPumpCell != null) {
-                    net.minecraft.core.BlockPos[] sides = {drainPumpCell.above(),
-                            drainPumpCell.below(), drainPumpCell.north(),
-                            drainPumpCell.south(), drainPumpCell.east(), drainPumpCell.west()};
-                    String[] names = {"上", "下", "北", "南", "东", "西"};
-                    for (int i = 0; i < sides.length; i++) {
-                        around.append(names[i]).append('=').append(bodyOf(sides[i])).append(' ');
-                    }
-                }
-                com.opamb.barotrauma.BarotraumaMod.LOGGER.info(
-                        "[pump] 泵格={} 抽出水体={} 水体水={} 邻居[{}] 密闭总水={} 连海总水={}",
-                        drainPumpCell, body, Math.round(bodyWater(Math.max(0, body))),
-                        around.toString().trim(), Math.round(waterUnits()),
-                        Math.round(pocketWaterTotal()));
+            if (report.rate() == 0.0D) {
+                continue;
+            }
+            int body = pumpBody(entry.getKey());
+            if (body < 0) {
+                continue;
+            }
+            if (report.rate() > 0.0D) {
+                pumpOutRates.merge(body, report.rate(), Double::sum);
+            } else {
+                pumpInRates.merge(body, -report.rate(), Double::sum);
+            }
+        }
+        for (var entry : pumpOutRates.entrySet()) {
+            double take = Math.min(bodyWater(entry.getKey()), entry.getValue() * dt);
+            if (take > 0.0D) {
+                removeBodyWater(entry.getKey(), take);
+            }
+        }
+        for (var entry : pumpInRates.entrySet()) {
+            double room = Math.max(0.0D, bodyCapacity(entry.getKey()) - bodyWater(entry.getKey()));
+            double add = Math.min(room, entry.getValue() * dt);
+            if (add > 0.0D) {
+                addBodyWater(entry.getKey(), add);
             }
         }
 
@@ -488,6 +503,19 @@ public final class ShipSimulation {
         }
     }
 
+    /** 第 body 个水体的容量（单位）；泵入时用来判断还能灌多少。 */
+    private double bodyCapacity(int body) {
+        if (body >= 0 && body < water.length) {
+            return volumes[body] * UNITS_PER_BLOCK;
+        }
+        int pocket = body - water.length;
+        List<ShipGeometry.Compartment> pockets = geometry.openPockets();
+        if (pocket >= 0 && pocket < pocketWater.length && pocket < pockets.size()) {
+            return pockets.get(pocket).volume() * UNITS_PER_BLOCK;
+        }
+        return 0.0D;
+    }
+
     /**
      * 按"每一格里的水"重建水量。
      *
@@ -523,26 +551,33 @@ public final class ShipSimulation {
         this.pumpOut = pumpOut;
     }
 
-    /** 排水泵设置：速率夹紧到 100..3000 单位/秒（1~30 格³/秒）。 */
-    public void setDrainPump(boolean enabled, double rate) {
-        this.drainPumpEnabled = enabled;
-        this.drainPumpRate = Math.max(100.0D, Math.min(3000.0D, rate));
+    /**
+     * 方块实体每 tick 上报：这个泵（装配坐标）的流量，单位/秒。
+     *
+     * <p>符号对齐原版 {@code FlowPercentage}：正值泵出（抽本舱水），负值泵入
+     * （往本舱注水），0 停机。</p>
+     */
+    public void reportPump(net.minecraft.core.BlockPos cell, double rate) {
+        if (cell == null) {
+            return;
+        }
+        pumps.put(cell.immutable(),
+                new PumpReport(Mth.clamp(rate, -3000.0D, 3000.0D), pumpTick));
     }
 
-    /** 排水泵的位置（装配坐标）：只抽这一格所在的舱。 */
-    public void setDrainPumpCell(net.minecraft.core.BlockPos cell) {
-        this.drainPumpCell = cell == null ? null : cell.immutable();
-    }
-
-    /** 排水泵所在的那个水体：泵本身是实心方块，取它旁边那一格舱室。 */
-    private int pumpBody() {
-        int body = bodyOf(drainPumpCell);
-        if (body >= 0 || drainPumpCell == null) {
+    /**
+     * 泵所在的水体：泵本身是实心方块，取它旁边那一格舱室。
+     *
+     * <p>自动控制（水传感器）也走这里，否则泵格子永远不在舱室里、判定成"没水"。</p>
+     */
+    public int pumpBody(net.minecraft.core.BlockPos cell) {
+        int body = bodyOf(cell);
+        if (body >= 0 || cell == null) {
             return body;
         }
         for (net.minecraft.core.BlockPos next : new net.minecraft.core.BlockPos[]{
-                drainPumpCell.above(), drainPumpCell.below(), drainPumpCell.north(),
-                drainPumpCell.south(), drainPumpCell.east(), drainPumpCell.west()}) {
+                cell.above(), cell.below(), cell.north(),
+                cell.south(), cell.east(), cell.west()}) {
             body = bodyOf(next);
             if (body >= 0) {
                 return body;
@@ -578,12 +613,18 @@ public final class ShipSimulation {
         return geometry;
     }
 
-    public boolean drainPumpEnabled() {
-        return drainPumpEnabled;
+    /** 当前登记的泵数量（诊断/测试用）。 */
+    public int pumpCount() {
+        return pumps.size();
     }
 
-    public double drainPumpRate() {
-        return drainPumpRate;
+    /** 当前所有泵的流量总和（单位/秒，按绝对值累加，诊断/测试用）。 */
+    public double pumpTotalRate() {
+        double total = 0.0D;
+        for (PumpReport report : pumps.values()) {
+            total += Math.abs(report.rate());
+        }
+        return total;
     }
 
     /** 设置裂变率 / 涡轮输出（0..1）。 */

@@ -9,6 +9,7 @@ import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.ship.vs.VsSupport;
 import com.opamb.barotrauma.world.ModDimensions;
+import com.opamb.barotrauma.world.MissionInstance;
 import com.opamb.barotrauma.world.StarterSub;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -52,13 +53,17 @@ public final class CampaignManager {
             sync(player);
             return false;
         }
-        // 先为每名玩家预检，不够安全位置时不改变巡回/任务，也不传送任何人。
+        // 1) 登船点、物理船、任务海域一次算清：
+        //    - 首次下潜：先在方块船上找安全舱内，再把船收成 VS2 刚体；
+        //    - 之后：直接在物理船里找舱内点。
+        //    传送只平移不旋转，所以登船点整体加上船的位移即可。这样不依赖"船坞偏移"
+        //    是否已经扫出来（首次装配后船坞里的声纳还没 tick 过）。
+        // 离站前把对接口两道舱口都关上，否则装成物理船后艇顶是个洞。
+        com.opamb.barotrauma.world.DockingBay.close(deep);
         List<Vec3> positions;
         if (VsState.active()) {
             positions = VsState.boardingPositions(deep, players.size());
         } else {
-            // 方块船先取真实舱内位置，再把船收成物理船；VS2 装配后船的世界位置不变，
-            // 这些落点仍然有效，而且能避开“船坞偏移还没扫出来”的一 tick 空窗。
             positions = blockBoardingPositions(deep, players.size());
             if (positions.size() == players.size() && VsSupport.available()) {
                 String launch = launchStarter(deep);
@@ -77,14 +82,53 @@ public final class CampaignManager {
             sync(player);
             return false;
         }
-        BarotraumaMod.LOGGER.info("[campaign] 登船预检通过：active={} support={} positions={}",
-                VsState.active(), VsSupport.available(), positions.size());
-        if (VsState.active()) {
-            BarotraumaMod.LOGGER.info("[campaign] 登船时物理船位置：{}", VsPilot.shipPosition());
+        if (!VsState.active()) {
+            // 没装 VS2 就没有可传送的物理船，任务海域实例走不了。
+            player.sendSystemMessage(Component.translatable("campaign.barotrauma.no_interior"));
+            sync(player);
+            return false;
         }
+
+        // 2) 把船传送进本轮任务海域实例。先同步加载目标区块，再传送：
+        //    VS2 下一 tick 更新 activeChunks 后，玩家移动才不会撞上"未加载的船"被回弹。
+        MissionInstance.Anchor anchor = MissionInstance.anchorForRound(state.roundsCompleted());
+        Vec3 before = VsPilot.shipPosition();
+        int preloaded = MissionInstance.preload(deep, anchor, 2);
+        VsPilot.preloadShipChunks(deep);
+        String moved = VsPilot.teleportShipTo(deep, anchor.spawn());
+        if (moved != null) {
+            BarotraumaMod.LOGGER.info("[campaign] 任务海域传送失败：{}", moved);
+            player.sendSystemMessage(Component.translatable("campaign.barotrauma.instance_failed", moved));
+            sync(player);
+            return false;
+        }
+        Vec3 after = VsPilot.shipPosition();
+        if (before == null || after == null) {
+            if (before != null) {
+                VsPilot.teleportShipTo(deep, before);
+            }
+            player.sendSystemMessage(Component.translatable("campaign.barotrauma.instance_failed", "船位置不可读"));
+            sync(player);
+            return false;
+        }
+        Vec3 delta = after.subtract(before);
+        if (after.distanceTo(anchor.spawn()) > 8.0D) {
+            // 读回来的位置没落到目标附近（VS2 回写时序/旧句柄）：按目标点算位移更稳。
+            BarotraumaMod.LOGGER.warn("[campaign] 传送后的船位置 {} 偏离目标 {}，按目标点计算登船位移",
+                    after, anchor.spawn());
+            delta = anchor.spawn().subtract(before);
+        }
+        final Vec3 shift = delta;
+        positions = positions.stream().map(p -> p.add(shift)).toList();
+        BarotraumaMod.LOGGER.info("[campaign] 任务海域实例：slot={} 锚点=({},{},{}) 预加载区块={} 位移={}",
+                anchor.slot(), anchor.x(), anchor.y(), anchor.z(), preloaded, delta);
+        BarotraumaMod.LOGGER.info("[campaign] 登船预检通过：active=true support={} positions={}",
+                VsSupport.available(), positions.size());
+        BarotraumaMod.LOGGER.info("[campaign] 登船时物理船位置：{}", after);
         state.takeSnapshot();
         state.selectMissions(ids);
         state.beginTravel(destination, deep.getGameTime());
+        state.setInstance(anchor.x(), anchor.y(), anchor.z());
         for (int i = 0; i < players.size(); i++) {
             ServerPlayer online = players.get(i);
             Vec3 pos = positions.get(i);

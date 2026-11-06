@@ -75,6 +75,13 @@ public final class OceanEnvironment {
                 && pos.y <= OutpostBuilder.MAX_Y) {
             return true;
         }
+        // 对接通道（站内地板到潜艇顶舱口之间）也算站内干燥区
+        if (Math.abs(pos.x) <= DockingBay.HALF_WIDTH + 1
+                && Math.abs(pos.z - DockingBay.Z) <= 1
+                && pos.y >= DockingBay.SUB_HATCH_Y
+                && pos.y <= DockingBay.STATION_FLOOR_Y) {
+            return true;
+        }
         // B 中继站（任务交付点）的内部干燥区
         BlockPos block = BlockPos.containing(pos);
         return PoiNetwork.isInsideOutpostBDryZone(block);

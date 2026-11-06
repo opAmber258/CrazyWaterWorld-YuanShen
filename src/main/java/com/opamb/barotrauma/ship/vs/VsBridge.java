@@ -3,11 +3,14 @@ package com.opamb.barotrauma.ship.vs;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3d;
 import org.joml.Vector3dc;
 import org.jetbrains.annotations.Nullable;
 import org.valkyrienskies.core.api.ships.LoadedServerShip;
 import org.valkyrienskies.core.api.ships.ServerShip;
 import org.valkyrienskies.core.api.ships.ShipPhysicsListener;
+import org.valkyrienskies.core.internal.ShipTeleportData;
+import org.valkyrienskies.core.internal.VsiCore;
 import org.valkyrienskies.core.internal.world.VsiServerShipWorld;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 import org.valkyrienskies.mod.common.ValkyrienSkiesMod;
@@ -386,5 +389,49 @@ public final class VsBridge {
         } catch (Throwable error) {
             return null;
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 任务海域实例：区块预加载 + 整船传送
+    // ------------------------------------------------------------------
+
+    /**
+     * 把船坞里这艘船<strong>实际占用</strong>的区块同步加载出来。
+     *
+     * <p>注意不能遍历 {@code getChunkClaim()}：一个 claim 是 256×256 个区块
+     * （{@code ChunkClaimImpl} 里 xStart = xIndex &lt;&lt; 8），全加载会卡死。
+     * 船的 activeChunks 集合里只有它真正压到的几十个区块，正好是 VS2 判定
+     * "撞到未加载的船"时要检查的那批。</p>
+     */
+    public static void loadShipChunks(ServerLevel level, ServerShip ship) {
+        try {
+            ship.getActiveChunksSet().forEach((cx, cz) -> level.getChunk(cx, cz));
+        } catch (Throwable ignored) {
+            // 拿不到 activeChunks 就交给 VS2 自己的 chunk watch 流程
+        }
+    }
+
+    /**
+     * 把整艘船传送到目标世界坐标（同维度，保留朝向，速度清零）。
+     *
+     * <p>走的是 VS2 {@code /vs teleport} 命令同一条官方路径：
+     * {@link VsiCore#newShipTeleportData} + {@link VsiCore#teleportShip}，
+     * 不直接改 transform，避免物理实体和区块跟踪对不上。</p>
+     */
+    public static void teleport(ServerLevel level, ServerShip ship, Vec3 target) {
+        VsiCore core = ValkyrienSkiesMod.getVsCore();
+        VsiServerShipWorld world = VSGameUtilsKt.getShipObjectWorld(level);
+        if (core == null || world == null) {
+            throw new IllegalStateException("VS2 船世界不可用");
+        }
+        ShipTeleportData data = core.newShipTeleportData(
+                new Vector3d(target.x, target.y, target.z),
+                ship.getTransform().getRotation(),
+                new Vector3d(),
+                new Vector3d(),
+                VSGameUtilsKt.getDimensionId(level),
+                null,
+                null);
+        core.teleportShip(world, ship, data);
     }
 }

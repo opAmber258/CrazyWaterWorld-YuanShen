@@ -68,6 +68,7 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModBlockEntities.SONAR.get(), SonarRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.SMALL_PUMP.get(), context -> new SmallPumpRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.HATCH.get(), context -> new HatchRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.BULKHEAD_DOOR.get(),
                 context -> new BulkheadDoorRenderer());

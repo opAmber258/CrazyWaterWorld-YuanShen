@@ -1,31 +1,48 @@
 package com.opamb.barotrauma.client;
 
-import com.opamb.barotrauma.blockentity.DrainPumpBlockEntity;
 import com.opamb.barotrauma.menu.PumpMenu;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.PumpActionPacket;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 
 /**
- * 排水泵界面：开关 + 四档排水量。状态来自 {@link PumpMenu} 的 ContainerData（自动同步），
- * 按钮只发 {@link PumpActionPacket}，服务端改完方块实体后由容器数据包刷新。
+ * 水泵面板，布局照原版 {@code pump + water detector} 的组合界面：
+ *
+ * <pre>
+ *   能源 ●        自动控制 ●
+ *   泵出速度: -100%
+ *   [====滑块====]
+ *   泵出                泵入
+ * </pre>
+ *
+ * <p>原版是水泵读水传感器；这里传感器已经并进泵里，所以"自动控制"就是
+ * 有水自动泵出、没水停机。自动控制打开时滑块置灰，等同原版传感器接管。</p>
  */
 public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
 
-    private static final int W = 260;
-    private static final int H = 132;
+    private static final int W = 220;
+    private static final int H = 118;
 
-    private static final int BG = 0xF01B2320;
+    private static final int BG = 0xF0141B16;
     private static final int EDGE = 0xFF3B463C;
-    private static final int BOX = 0xFF232B25;
+    private static final int PANEL = 0xFF1E2A22;
     private static final int TEXT = 0xFFD8D2BF;
-    private static final int DIM = 0xFF8B9184;
+    private static final int DIM = 0xFF7C8478;
     private static final int ACCENT = 0xFFE0762F;
-    private static final int GREEN = 0xFF7BE38B;
-    private static final int HOVER = 0xFF39483A;
+    private static final int GREEN = 0xFF6FD07A;
+    private static final int RED = 0xFFC8483C;
+    private static final int YELLOW = 0xFFD8B44A;
+    private static final int TRACK = 0xFF0C120E;
+
+    /** 滑块的百分比下限/上限。 */
+    private static final int FLOW_MIN = -100;
+    private static final int FLOW_MAX = 100;
+
+    private boolean dragging;
 
     public PumpScreen(PumpMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -41,8 +58,7 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        // 标题用菜单的本地化名字，避免和原版标题叠成中英文双重影（和任务终端同一个问题）。
-        graphics.drawString(font, title, 10, 7, ACCENT, false);
+        graphics.drawString(font, title, 9, 7, ACCENT, false);
     }
 
     @Override
@@ -55,40 +71,90 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
         graphics.fill(x, y, x + 1, y + H, EDGE);
         graphics.fill(x + W - 1, y, x + W, y + H, EDGE);
 
-        boolean enabled = menu.data().get(PumpMenu.DATA_ENABLED) != 0;
-        int rate = menu.data().get(PumpMenu.DATA_RATE);
+        boolean auto = menu.data().get(PumpMenu.DATA_AUTO) != 0;
+        int flow = menu.data().get(PumpMenu.DATA_FLOW);
+        boolean powered = menu.data().get(PumpMenu.DATA_POWER) != 0;
 
-        graphics.drawString(font, enabled ? "运行中" : "已关闭", x + W - 60, y + 7,
-                enabled ? GREEN : DIM, false);
+        // 能源灯（原版左上角那颗）
+        graphics.drawString(font, "能源", x + 10, y + 24, TEXT, false);
+        drawLamp(graphics, x + 44, y + 27, powered ? GREEN : RED);
 
-        graphics.drawString(font,
-                String.format("排水量 %d 单位/秒（%.0f 格³/分）", rate, rate * 60.0D / 100.0D),
-                x + 10, y + 24, TEXT, false);
+        // 自动控制开关
+        graphics.drawString(font, "自动控制", x + W - 74, y + 24, TEXT, false);
+        drawLamp(graphics, x + W - 22, y + 27, auto ? YELLOW : 0xFF39423A);
 
-        // 开关按钮
-        int by = y + 42;
-        boolean hover = mouseX >= x + 10 && mouseX < x + 110 && mouseY >= by && mouseY < by + 18;
-        graphics.fill(x + 10, by, x + 110, by + 18, hover ? HOVER : BOX);
-        graphics.fill(x + 10, by, x + 110, by + 1, EDGE);
-        graphics.drawCenteredString(font, enabled ? "关闭排水" : "开启排水",
-                x + 60, by + 5, TEXT);
+        // 泵出速度
+        int percentY = y + 44;
+        graphics.drawString(font, "泵出速度: " + flow + "%", x + 10, percentY,
+                auto ? DIM : TEXT, false);
 
-        // 四档排水量
-        graphics.drawString(font, "档位", x + 10, y + 70, DIM, false);
-        int[] rates = DrainPumpBlockEntity.RATES;
-        for (int i = 0; i < rates.length; i++) {
-            int bx = x + 10 + i * 60;
-            int byRate = y + 84;
-            boolean on = rate == rates[i];
-            boolean hoverRate = mouseX >= bx && mouseX < bx + 54 && mouseY >= byRate && mouseY < byRate + 18;
-            graphics.fill(bx, byRate, bx + 54, byRate + 18,
-                    on ? 0xFF3F5A40 : hoverRate ? HOVER : BOX);
-            graphics.fill(bx, byRate, bx + 54, byRate + 1, EDGE);
-            graphics.drawCenteredString(font, rates[i] / 100 + " 格/秒",
-                    bx + 27, byRate + 5, on ? 0xFFE8FFE8 : TEXT);
+        // 滑块
+        int trackX = x + 10;
+        int trackW = W - 20;
+        int trackY = y + 60;
+        graphics.fill(trackX, trackY, trackX + trackW, trackY + 8, TRACK);
+        graphics.fill(trackX, trackY, trackX + trackW, trackY + 1, EDGE);
+        // 中位刻度（0%）
+        int midX = trackX + trackW / 2;
+        graphics.fill(midX, trackY, midX + 1, trackY + 8, EDGE);
+        int knobX = trackX + Math.round((flow - FLOW_MIN) / (float) (FLOW_MAX - FLOW_MIN) * trackW);
+        graphics.fill(knobX - 3, trackY - 2, knobX + 3, trackY + 10,
+                auto ? 0xFF4A544B : 0xFFB8C0B4);
+
+        // 两端说明
+        graphics.drawString(font, "泵出", trackX, trackY + 14, flow < 0 ? GREEN : DIM, false);
+        graphics.drawString(font, "泵入", trackX + trackW - font.width("泵入"),
+                trackY + 14, flow > 0 ? ACCENT : DIM, false);
+
+        // 状态/提示
+        String state;
+        if (!powered) {
+            state = "无电力，泵无法运行";
+        } else if (auto) {
+            state = flow < 0 ? "自动：检测到积水，全速泵出" : "自动：舱内干燥，待机";
+        } else if (flow == 0) {
+            state = "已停机";
+        } else if (flow < 0) {
+            state = "手动：泵出 " + (-flow) + "%";
+        } else {
+            state = "手动：泵入 " + flow + "%";
         }
-        graphics.drawString(font, "泵只能延缓进水；破口不堵，抽不赢海水。",
-                x + 10, y + 110, DIM, false);
+        graphics.drawString(font, state, x + 10, y + 92,
+                powered ? DIM : RED, false);
+    }
+
+    /** 圆角指示灯（4 层像素圆，避免引入额外贴图）。 */
+    private static void drawLamp(GuiGraphics graphics, int cx, int cy, int color) {
+        graphics.fill(cx - 3, cy - 3, cx + 3, cy + 3, color);
+        graphics.fill(cx - 4, cy - 2, cx + 4, cy + 2, color);
+        graphics.fill(cx - 2, cy - 4, cx + 2, cy + 4, color);
+    }
+
+    private int trackLeft() {
+        return leftPos + 10;
+    }
+
+    private int trackWidth() {
+        return W - 20;
+    }
+
+    private int flowAt(double mouseX) {
+        double t = Mth.clamp((mouseX - trackLeft()) / trackWidth(), 0.0D, 1.0D);
+        int value = (int) Math.round(FLOW_MIN + t * (FLOW_MAX - FLOW_MIN));
+        // 对齐滑块刻度，避免鼠标抖动发出大量包
+        return Math.round(value / 5.0F) * 5;
+    }
+
+    private boolean inSlider(double mouseX, double mouseY) {
+        int y = topPos + 56;
+        return mouseX >= trackLeft() - 4 && mouseX <= trackLeft() + trackWidth() + 4
+                && mouseY >= y && mouseY <= y + 20;
+    }
+
+    private boolean inAutoToggle(double mouseX, double mouseY) {
+        int x = leftPos + W - 84;
+        int y = topPos + 18;
+        return mouseX >= x && mouseX <= leftPos + W - 10 && mouseY >= y && mouseY <= y + 22;
     }
 
     @Override
@@ -96,23 +162,36 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
         if (button != 0) {
             return super.mouseClicked(mouseX, mouseY, button);
         }
-        int x = leftPos;
-        int y = topPos;
-        if (mouseX >= x + 10 && mouseX < x + 110 && mouseY >= y + 42 && mouseY < y + 60) {
+        if (inAutoToggle(mouseX, mouseY)) {
             ModNetwork.CHANNEL.sendToServer(
-                    new PumpActionPacket(menu.pumpPos(), PumpActionPacket.TOGGLE, 0));
+                    new PumpActionPacket(menu.pumpPos(), PumpActionPacket.TOGGLE_AUTO, 0));
             return true;
         }
-        int[] rates = DrainPumpBlockEntity.RATES;
-        for (int i = 0; i < rates.length; i++) {
-            int bx = x + 10 + i * 60;
-            int byRate = y + 84;
-            if (mouseX >= bx && mouseX < bx + 54 && mouseY >= byRate && mouseY < byRate + 18) {
-                ModNetwork.CHANNEL.sendToServer(
-                        new PumpActionPacket(menu.pumpPos(), PumpActionPacket.SET_RATE, rates[i]));
-                return true;
-            }
+        if (inSlider(mouseX, mouseY) && menu.data().get(PumpMenu.DATA_AUTO) == 0) {
+            dragging = true;
+            sendFlow(flowAt(mouseX));
+            return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (dragging && button == 0) {
+            sendFlow(flowAt(mouseX));
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        dragging = false;
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    private void sendFlow(int value) {
+        ModNetwork.CHANNEL.sendToServer(
+                new PumpActionPacket(menu.pumpPos(), PumpActionPacket.SET_FLOW, value));
     }
 }

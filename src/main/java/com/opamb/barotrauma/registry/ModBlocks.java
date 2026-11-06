@@ -48,6 +48,25 @@ public final class ModBlocks {
                     .strength(10.0F, 600.0F)
                     .sound(SoundType.METAL)));
 
+    /** 小型泵：船内大多数位置用的小功率排水泵（GeckoLib 体素模型）。 */
+    public static final RegistryObject<Block> SMALL_PUMP = BLOCKS.register("small_pump",
+            () -> new com.opamb.barotrauma.block.SmallPumpBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(6.0F, 300.0F)
+                    .sound(SoundType.METAL)));
+
+    /**
+     * 排水口：对照原版 duct block（地板通水格栅）。
+     *
+     * <p>不是泵，没有方块实体；水可以穿过这一格流向相邻舱室（见
+     * {@link ModShipBlocks#isDoorway} / {@link ModShipBlocks#isOpenDoorway}）。</p>
+     */
+    public static final RegistryObject<Block> DRAIN_OUTLET = BLOCKS.register("drain_outlet",
+            () -> new Block(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(4.0F, 200.0F)
+                    .sound(SoundType.METAL)));
+
     /** 黑匣子方块：沉船船舱里那一格，打掉掉落 black_box（打捞任务的交付物）。 */
     public static final RegistryObject<Block> BLACK_BOX_BLOCK = BLOCKS.register("black_box_block",
             () -> new Block(BlockBehaviour.Properties.of()

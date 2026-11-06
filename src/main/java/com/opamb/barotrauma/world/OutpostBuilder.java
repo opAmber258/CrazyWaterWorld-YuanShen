@@ -14,11 +14,10 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 /**
  * 新手哨站（M1 版本）：一个 40×21×24 的气密盒子，内部分成前厅 / 医疗 / 补给三间。
  *
- * <p>位置：挂在<b>第一层顶板岩壁的正下方</b>，顶部装甲与压平后的顶板底面（y=-44）重合
+ * <p>位置：挂在<b>顶部岩壳的底面</b>，顶部装甲与压平后的顶板底面（y=-44）重合
  * （用户要求：之前哨站悬在 carveCavern 挖出的椭球洞正中，四周全是光滑洞壁，看起来"生在洞里"）。
- * 顶板厚度随噪声在 14~82 格之间波动，所以在哨站的 x/z 范围内把顶板底面<b>压平</b>到
- * {@link #FLAT_ROOF_FRACTION} 对应的 {@code y=-44}（见 {@code inRoofFlattenZone}），
- * 哨站上方是一整片平岩壁；四周噪声只会让顶板更厚，岩壁自然包住哨站两侧。</p>
+ * 顶板厚度由 {@code DeepSeaChunkGenerator} 的 {@code ceilingY} 决定：哨站核心区固定压平在
+ * {@code y=-44}，外圈渐变到噪声岩壳；哨站上方是一整片平岩壁，四周岩壳更厚，自然包住哨站两侧。</p>
  *
  * <p>生成方式是"按坐标算方块"，每个区块只写和自己相交的部分，所以可以跨区块无缝拼起来。
  * 内墙都是双层装甲板，只有气闸门洞例外——门用橡木门（可以手开，关着的时候挡水），
@@ -41,20 +40,6 @@ public final class OutpostBuilder {
     private static final int INNER_HALF_Z = 10;
     private static final int INNER_MIN_Y = -62;
     private static final int INNER_MAX_Y = -46;
-
-    /**
-     * 压平后顶板占层高的比例（= {@code DeepSeaChunkGenerator.ROCK_FRACTION - ROCK_WOBBLE}，
-     * 噪声能取到的最小值），所以压平区顶板是最薄、且无岩柱的。
-     */
-    public static final double FLAT_ROOF_FRACTION = 0.12D;
-
-    /**
-     * 这一列的第一层顶板要不要压平。哨站本体范围外扩 1 格，避免边缘留下 1 格高的岩檐。
-     * 压平区外噪声顶板只会更厚（底面 y 更低），所以岩壁从平顶向四周自然下垂。
-     */
-    public static boolean inRoofFlattenZone(int x, int z) {
-        return x >= -HALF_X - 1 && x <= HALF_X + 1 && z >= -HALF_Z - 1 && z <= HALF_Z + 1;
-    }
 
     private OutpostBuilder() {
     }
@@ -134,6 +119,9 @@ public final class OutpostBuilder {
                     com.opamb.barotrauma.registry.ModBlocks.MISSION_TERMINAL.get().defaultBlockState(),
                     false);
         }
+
+        // 对接通道：站内地板开洞、向下 10 格的垂直气密通道、底部水平对接舱口
+        DockingBay.buildStation(chunk);
     }
 
     private static BlockState stateAt(int x, int y, int z) {

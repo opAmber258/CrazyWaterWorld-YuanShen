@@ -3,11 +3,108 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-05（进水后的 Shift 卡死、同列变干、顶/底破口看不到水全部定位并修好；用户实测确认）。
+> 上次更新：2026-11-06（小型泵实装：用户参考模型 + 泵出/泵入 + 自动控制面板）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
 > ⚠️ 2026-11-04 那条"按 Shift 不沉 = 人站在舱底，非代码问题"的定性**是错的**，
 > 已在 §10.57.1 纠正：是原版潜行边缘保护在 VS2 船上把水平位移清零。
+
+## 2026-11-06 小型泵实装（已编译 + 94 项单测通过，待实机验收）
+
+**分支 `main`，改动未提交。** 用户提供 `small_pump_reference_v1.bbmodel`（66 体块、256×256 贴图），
+本轮只做小型泵，做完即停。
+
+1. **模型与渲染**
+   - `art/models/small_pump.bbmodel`（按用户参考模型保存）+ `art/models/small_pump.geo.json`。
+   - 运行时资源：`geo/block/small_pump.geo.json`、`textures/block/small_pump.png`、
+     `animations/block/small_pump.animation.json`（空表，静态模型）。
+   - 坐标沿用舱口约定：X/Z 以方块中心为 0、Y 从 0 起，`GeoBlockRenderer` 负责居中。
+   - 新增 `SmallPumpBlockEntity implements GeoBlockEntity`、`SmallPumpBlock`（`RenderShape.INVISIBLE`）、
+     `SmallPumpRenderer`；`ModBlockEntities` 拆出独立的 `small_pump` 类型，
+     `DRAIN_PUMP` 类型只挂普通泵。
+   - 物品图标改为 `item/generated` + 新画的 16×16 `item/small_pump.png`（方块模型改为粒子占位）。
+
+2. **流量模型对齐原版水传感器**
+   - 原版是 `pump` 读 `water detector` 的 `FlowPercentage`（-100 全速泵出 / 0 停机 / +100 全速泵入）；
+     这里把传感器并进泵：`DrainPumpBlockEntity` 只保留 `auto` + `flow(-100..100)`。
+   - 自动控制：本舱水位 ≥ 0.05 格 → -100%，干燥 → 0。
+     舱室解析走新的 `ShipSimulation.pumpBody`（泵格子本身是实心，必须看邻格）。
+   - `ShipSimulation.reportPump` 改为带符号流量：正值抽水、负值注水（按舱容夹紧），
+     同舱泵出/泵入分别汇总，不会互相抵消。
+   - 旧存档 `PumpRate` 会换算成百分比并切到手动。
+
+3. **面板（照原版截图）**
+   - `能源` 灯（船电力 `powerRatio > 0.02` 亮绿，否则红）、`自动控制` 开关灯、
+     `泵出速度: -100%`、`-100..100` 滑块、两端 `泵出` / `泵入`、底部状态行。
+   - 自动控制开启时滑块置灰（原版传感器接管时同样不可拖）。
+   - 数据位改为 `DATA_AUTO=0 / DATA_FLOW=1 / DATA_POWER=2`；网络包改为
+     `TOGGLE_AUTO / SET_FLOW`，服务端夹到 -100..100。
+   - 菜单标题改用方块自己的名字（小型泵不再显示成"排水泵"）。
+
+4. **船坞锚点**：`VsPilot.findPumpAnchor` 优先普通泵、没有时退回小型泵，
+   只装小型泵的船也能打开面板。
+
+## 2026-11-06 任务海域实例地形 + 下潜整船传送 + 区块预加载 + 主世界地形重做（待实机验收）
+
+**分支 `main`（9980cd6 之后），改动未提交。**
+
+本轮按用户要求先 `git pull`（已是最新，只多出远端分支 `feat/underwater-swim`，未合并），然后：
+
+1. **区块预加载（修 `moved while colliding with unloaded ships`）**
+   - `VsBridge.loadShipChunks`：只加载 `ship.getActiveChunksSet()` 里的区块。**不能遍历 `getChunkClaim()`**：一个 claim 是 256×256 个区块（`ChunkClaimImpl` 里 `xStart = xIndex << 8`），全加载会卡死。
+   - `VsBridge.teleport`：走 VS2 `/vs teleport` 同一条官方路径 `VsiCore.newShipTeleportData + teleportShip`，保留朝向、速度清零。
+   - `VsPilot.teleportShipTo` / `preloadShipChunks`：传送前先加载船坞区块；`MissionInstance.preload` 在传送前同步加载锚点周围 5×5 区块。
+   - 原理：VS2 的 `EntityShipCollisionUtils.isCollidingWithUnloadedShips` 在 activeChunks 已更新而区块未加载时取消玩家移动；先加载就不会回弹。
+
+2. **任务海域实例地形** `world/MissionInstance`
+   - 第 n 轮出勤用第 n 个 slot：锚点 `x = 20000 + n*1024, y = -84, z = 0`（`roundsCompleted` 作轮次）。
+   - 区块生成时按坐标刻洞穴：水平半径约 96 格、洞顶 -46..-54、洞底 -122..-130；洞壁 1.0~1.12 半径填实心岩，洞顶再填 8 格、洞底填 6 格岩壳，保证和外面天然分层海域不连通。
+   - 装饰：钟乳石/石笋（噪声）、洞顶冰脉（寒冷深穴）、凝灰岩/砂砾地面；出生点 12 格球体净空。
+   - 纯坐标 + 世界种子确定性生成，不写存档差异；同一轮重进地形一致，没去过的 slot 不生成。
+
+3. **下潜流程改为进实例**
+   - `CampaignManager.startTravel`：装配物理船（首次）→ 先算好舱内登船点 → 传送船到锚点 → 登船点整体加船的位移（只平移不旋转）→ 全员传送 → `RoundState` 记录实例锚点并持久化。
+   - 首次下潜仍用方块船真实舱内位置，不依赖首次装配后还没 tick 出来的船坞偏移。
+   - 传送失败 / 船位置不可读：尝试把船挪回原处，保持 `AT_NODE`，不消耗本轮。
+   - `/barotrauma campaign status` 增加任务海域锚点显示。
+   - lang：`boarded`、`boundary` 文案更新，新增 `instance_failed`。
+
+4. **主世界地形改成"潜渊症式"开阔海域（用户确认）**
+   - 撤销上一版"每 120 格一层岩板 + TrunkNetwork 竖井"；`TrunkNetwork.java` 整个删除。
+   - 新增 `world/SeaTerrain`（纯数学，可单测）：洞顶压平 -44、噪声最深 -164；洞底基准 -544、噪声抬升到 -500；两者之间是开阔水域，**寒冷深穴按 500 格高**（用户 2026-11-06 反馈：1000 格太高）。
+   - 水里由 2D 噪声长出岩柱、钟乳石、浮岩岛和隔断岩墙；岩柱/钟乳石最多只占水域高度的 18%（用户两次反馈太高：90% → 30% → 18%），浮岩岛厚度 ±24 格。
+   - 哨站核心区（±40 格）只压平洞顶到 -44；**海底不再抬 -98 岩台**（用户要求去掉，潜艇直接悬在开阔水域）。POI（沉船/中继站）周围强制留空，不会被岩柱埋掉。`WRECK_C` 从 -602 抬到 -470，否则会落到新海底以下。
+   - 说明：只影响**新生成**的区块；已生成的老世界/老区块仍是旧地形，验证请开新世界。
+
+5. **对接口第一版（照原版截图）**
+   - 新 `world/DockingBay`：哨站地板开 3×1 洞 → 哨站侧水平对接舱口（y=-65）→ 3×1 垂直气密通道（-66..-73，中间梯子，两侧 x=±2 是通海木门）→ 潜艇顶部 3×1 水平舱口（y=-74）。
+   - 潜艇整体移到哨站正下方：`StarterSub` 原点改为 (-4,-78,-7)，船顶 -74，正好比哨站地板低 10 格；船内加了爬梯井（梯子 + 支撑块）通到顶部舱口。
+   - 出生点改到潜艇舱内 `(0.5,-77,4.5)`；登录时先 `StarterSub.ensure` 再造人。潜艇已经离站（物理船不在码头 24 格内）时退回哨站内部出生，避免把玩家放进深水。
+   - 下潜前 `DockingBay.close` 把站侧/艇侧舱口都关上；世界生成放的舱口没有方块实体，登录时 `ensureStationHatch` 用 setBlock 补一次（GeckoLib 模型需要）。
+   - 哨站干燥区扩展到对接通道。
+
+6. **多泵系统 + 压载泵**
+   - `ShipSimulation`：原来的单泵字段换成 `Map<格子, (速率, 上报tick)>`；每台泵每 tick 由方块实体 `reportPump` 上报，同舱多台泵速率相加，40 tick 没上报视为拆除。新增 `trimBallastTo` 给压载泵自动控制。
+   - 新增方块：`small_pump` 小型泵（60/120/240/480 档）、`drain_outlet` 排水口（固定 40）、`ballast_pump` 压载泵（右键切自动控制，自动把压载缓慢调向 35%）。
+   - 三种排水类方块共用 `DrainPumpBlockEntity`，功率按方块决定；压载泵有独立 BE。
+   - 摆放：潜艇内小型泵 (2,-77,4)、排水口 (-2,-77,4)/(-2,-77,-5)、普通泵留在船尾压载舱 (0,-77,-5)、压载泵 (2,-77,-5)；对接通道底部 (1,-73,0) 一台小型泵。
+   - `MachineCount.ballast` 由船内压载泵数量决定（压载舱容量）；`ModShipBlocks.isShipBlock`/`Machine` 已包含新方块。
+   - 美术是占位（复用原版材质），等 GPT-6.1 补画。
+   - **已对照本机原版 1.13.5.0 数据**（维基连接超时，用游戏 XML）：
+     - `Content/Items/Pump/pump.xml`：pump MaxFlow=600、功率 300；`smallpump` MaxFlow=100、功率 60。
+     - `BilgePump`/`OutpostPump`/`AirlockPump` 装配：smallpump + 水探测器，`FlowPercentage=-100`（自动往外抽）。
+     - `Dugong.sub`：5 台 smallpump（100，往外抽）+ 2 台普通 pump（600，压载舱底部）。
+     - 原版**没有独立的“压载泵”物品**：压载舱用的是普通泵，压载由舵台控制；“自动控制”指水探测器接线的自动排水。
+     - 功率已改为：小型泵 25/50/75/100，普通泵 150/300/450/600。
+     - 原版**没有独立的“压载泵”方块**，按用户确认删掉自建的 `ballast_pump`：压载舱用普通泵（600），压载由舵台控制。
+     - **“排水口”查到原版是 `ductblock`（地板通水格栅）**：不是泵，没有功率，常开时水可以穿到相邻舱室。`drain_outlet` 已改成普通方块，并在 `ModShipBlocks.isDoorway/isOpenDoorway` 里当常开门处理。
+
+测试：`./gradlew test --offline` → **92 项 0 失败**（新增 `MissionInstanceTest` 5 项、`DeepSeaTerrainTest` 4 项、`DockingBayTest` 3 项，多泵测试 +2 项）。
+
+**边界**：
+- 抵达/返航未接：`/barotrauma campaign arrive` 只推战役状态，不会把船送回哨站；再次下潜会从当前实例直接传送到下一实例。
+- 实例里还没有任务目标、沉船 POI、生物和报酬结算。
+- 未实机验收：洞穴观感、传送后物理/登船、客户端区块加载、双人。
 
 ## 2026-11-05 进水渲染 + Shift 卡死（全部已实测确认）
 

@@ -65,7 +65,8 @@ public class DrainPumpBlock extends BaseEntityBlock {
                     new MenuProvider() {
                         @Override
                         public Component getDisplayName() {
-                            return Component.translatable("block.barotrauma.drain_pump");
+                            // 小型泵和普通泵共用这个方块类，标题要跟方块自己的名字走。
+                            return Component.translatable(state.getBlock().getDescriptionId());
                         }
 
                         @Override

@@ -23,7 +23,6 @@ import com.opamb.barotrauma.ship.water.ShipVolumeGuard;
 import com.opamb.barotrauma.sonar.SonarScan;
 import com.opamb.barotrauma.world.ModDimensions;
 import com.opamb.barotrauma.world.StarterSub;
-import com.opamb.barotrauma.world.TrunkNetwork;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -93,7 +92,7 @@ public final class DeepSeaEvents {
         // 登录事件里直接传送容易被打断，推迟到下一 tick。
         server.execute(() -> sendToOutpost(player));
         // 新手引导：不依赖文档，聊天里说清楚第一步；左上角还有常驻目标 HUD（ObjectiveOverlay）。
-        player.sendSystemMessage(Component.literal("欢迎来到《潜渊症》深海。你出生在哨站，门外码头上停着你的初始潜艇。")
+        player.sendSystemMessage(Component.literal("欢迎来到《潜渊症》深海。你出生在潜艇里，潜艇正与哨站对接；抬头爬梯子可以进站，按 ~ 选择航线并下潜。")
                 .withStyle(ChatFormatting.AQUA));
         player.sendSystemMessage(Component.literal("▸ 右键潜艇里的声纳台打开舵台，点「下潜」启动物理船")
                 .withStyle(ChatFormatting.GOLD));
@@ -113,12 +112,26 @@ public final class DeepSeaEvents {
             BarotraumaMod.LOGGER.warn("[Barotrauma] 深海维度未加载，检查 data/barotrauma/dimension/the_deep.json");
             return false;
         }
-        player.teleportTo(deep, 0.5D, ModDimensions.OUTPOST_SPAWN_Y, 0.5D, 0.0F, 0.0F);
-        player.setRespawnPosition(ModDimensions.THE_DEEP,
-                new BlockPos(ModDimensions.OUTPOST_X, ModDimensions.OUTPOST_SPAWN_Y, ModDimensions.OUTPOST_Z),
-                0.0F, true, false);
-        // 门口那艘初始潜艇：出生点旁边就该有自己的船（第一次调用会现造 + 扫舱）
+        // 先造好潜艇，再把人放进舱内；否则出生点还是一片空水。
         StarterSub.ensure(deep);
+        // 潜艇已经被收成物理船并且不在码头（例如正在任务海域）：退回哨站内部出生，
+        // 避免把玩家直接放进深水。复活小艇（M3）接进来之前先这样兜底。
+        boolean docked = true;
+        if (com.opamb.barotrauma.ship.vs.VsState.active()) {
+            var ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
+            var dock = StarterSub.spawnPos();
+            docked = ship != null && ship.distanceToSqr(dock) < 24.0D * 24.0D;
+        }
+        if (docked) {
+            var spawn = StarterSub.spawnPos();
+            player.teleportTo(deep, spawn.x, spawn.y, spawn.z, 0.0F, 0.0F);
+            player.setRespawnPosition(ModDimensions.THE_DEEP, BlockPos.containing(spawn), 0.0F, true, false);
+        } else {
+            player.teleportTo(deep, 0.5D, ModDimensions.OUTPOST_SPAWN_Y, 0.5D, 0.0F, 0.0F);
+            player.setRespawnPosition(ModDimensions.THE_DEEP,
+                    new BlockPos(ModDimensions.OUTPOST_X, ModDimensions.OUTPOST_SPAWN_Y, ModDimensions.OUTPOST_Z),
+                    0.0F, true, false);
+        }
         return true;
     }
 
@@ -1057,7 +1070,6 @@ public final class DeepSeaEvents {
                 map.append('\n');
             }
             BarotraumaMod.LOGGER.info(map.toString());
-            BarotraumaMod.LOGGER.info("[smoketest] trunk carved blocks = {}", TrunkNetwork.totalCarved());
 
             // 体积占比：32×32×32 的方块里有多少是水（衡量隧道密度）
             for (int centerY : new int[]{-300, -600, -900}) {

@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * 深海世界的兴趣点（POI）与任务池：全部**确定性生成**，不写任何存档。
  *
- * <p>仿 {@link TrunkNetwork} 的思路：坐标写死，每个区块生成时只写和自己相交的部分，
+ * <p>思路：坐标写死，每个区块生成时只写和自己相交的部分，
  * 跨区块无缝拼接、重复生成幂等（后写的覆盖先写的，结果一致）。</p>
  *
  * <ul>
@@ -30,7 +30,7 @@ public final class PoiNetwork {
     // ---- 沉船（9×5×7 壳，中心 = 壳几何中心）----
     public static final BlockPos WRECK_A = new BlockPos(80, -122, 40);
     public static final BlockPos WRECK_B = new BlockPos(-150, -302, 90);
-    public static final BlockPos WRECK_C = new BlockPos(200, -602, -120);
+    public static final BlockPos WRECK_C = new BlockPos(200, -470, -120);
 
     /** 侦察点（无方块）。 */
     public static final BlockPos RECON_POINT = new BlockPos(-60, -452, 150);

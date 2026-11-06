@@ -147,7 +147,9 @@ public final class ModShipBlocks {
     /** 是不是门/舱口格：算舱内（能站人、算干燥区），但水不能穿过去。 */
     public static boolean isDoorway(BlockState state) {
         return state.getBlock() instanceof HatchBlock
-                || state.getBlock() instanceof BulkheadDoorBlock;
+                || state.getBlock() instanceof BulkheadDoorBlock
+                // 排水口 = 原版 duct block：地板上的通水格栅，水可以穿过去
+                || state.getBlock() == ModBlocks.DRAIN_OUTLET.get();
     }
 
     /** 门格当前是不是开着（只有开着的门才有两侧水流）。 */
@@ -158,7 +160,8 @@ public final class ModShipBlocks {
         if (state.getBlock() instanceof BulkheadDoorBlock) {
             return state.getValue(BulkheadDoorBlock.OPEN);
         }
-        return false;
+        // 排水口（duct block）是常开格栅，没有开关状态
+        return state.getBlock() == ModBlocks.DRAIN_OUTLET.get();
     }
 
     /** 判定一个方块是否属于"船体结构"（用于识别船的范围）。核心不算，站体也不算。 */
@@ -171,6 +174,8 @@ public final class ModShipBlocks {
                 // 排水泵是船上设备：必须被扫描当作船体方块收进刚体，否则装船后泵会
                 // 留在世界原地不跟船走（用户实测"水泵不会受到物理效果影响"）。
                 || block == ModBlocks.DRAIN_PUMP.get()
+                || block == ModBlocks.SMALL_PUMP.get()
+                || block == ModBlocks.DRAIN_OUTLET.get()
                 || block == HATCH.get()
                 || block == BULKHEAD_DOOR.get();
     }

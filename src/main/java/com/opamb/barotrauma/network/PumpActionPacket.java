@@ -8,20 +8,22 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
 /**
- * 客户端 → 服务端：排水泵菜单操作（开关 / 设置排水量）。
+ * 客户端 → 服务端：水泵面板操作（自动控制开关 / 手动流量百分比）。
  *
- * <p>服务端权威：只接受 8 格内的方块实体、档位只取预置值；改完由
+ * <p>服务端权威：只接受 8 格内的方块实体；百分比夹到 -100..100
+ * （负值泵出、正值泵入，和原版 {@code FlowPercentage} 一致）。改完由
  * {@code ContainerData} 自动同步回客户端。</p>
  */
 public record PumpActionPacket(BlockPos pos, int action, int value) {
 
-    public static final int TOGGLE = 0;
-    public static final int SET_RATE = 1;
+    public static final int TOGGLE_AUTO = 0;
+    public static final int SET_FLOW = 1;
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
@@ -54,15 +56,8 @@ public record PumpActionPacket(BlockPos pos, int action, int value) {
                 return;
             }
             switch (action) {
-                case TOGGLE -> pump.setEnabled(!pump.enabled());
-                case SET_RATE -> {
-                    for (int allowed : DrainPumpBlockEntity.RATES) {
-                        if (allowed == value) {
-                            pump.setRate(value);
-                            break;
-                        }
-                    }
-                }
+                case TOGGLE_AUTO -> pump.setAuto(!pump.auto());
+                case SET_FLOW -> pump.setFlow(Mth.clamp(value, -100, 100));
                 default -> { /* 未知操作忽略 */ }
             }
         });

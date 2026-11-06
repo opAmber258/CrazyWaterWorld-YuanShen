@@ -29,19 +29,20 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 /**
- * 深海维度生成器：一整根 1000 米高的实心岩柱，隧道和洞窟是从岩里"挖"出来的水腔。
+ * 深海维度生成器：一整根 1000 格高的岩柱，中间掏出一整片开阔的"潜渊症式"海域。
  *
- * <p>为什么是实心而不是"水里漂岩石"：实心岩挖出来的才是真正的隧道——四面都是岩壁、不漏光、
- * 走进去有压迫感，和《潜渊症》的关卡一致；水漂岩石只会变成开放峡谷。</p>
+ * <p>形状（对照原作 Cold Caverns 关卡参数：关卡高度远大于隧道直径）：</p>
+ * <ul>
+ *   <li><b>顶部岩壳</b>：压平在 y=-44（哨站屋顶严丝合缝），向噪声深处最厚到 y=-240；</li>
+ *   <li><b>底部岩床</b>：基准 y=-1000，噪声抬升最高约 180 格；</li>
+ *   <li><b>开阔水域</b>：夹在两者之间，最高接近 1000 格；</li>
+ *   <li><b>岩柱 / 钟乳石 / 浮岩岛 / 隔断岩墙</b>：都从 2D 噪声长出来，潜艇要绕行；</li>
+ *   <li><b>哨站台地</b>：哨站下方压出一块 -98 的岩台当水池底，外圈 140 格渐变到世界岩床；</li>
+ *   <li><b>POI 净空</b>：沉船/中继站周围强制留空，不会被岩柱埋掉。</li>
+ * </ul>
  *
- * <p>挖法（全部由种子哈希，无存档数据）：</p>
- * <ol>
- *   <li><b>隧道网</b>：两个三维噪声的等值面相交处（{@code |a|<w && |b|<w}）天然是一条三维管道网络，
- *       宽约 8 格，随便怎么走都能通；</li>
- *   <li><b>洞窟</b>：一层更低频的噪声，{@code |c| < w} 的地方挖成 15~20 格的大空腔，用来破开纯隧道的单调；</li>
- *   <li><b>主干道</b>：{@link TrunkNetwork} 挖出 17×25 的长走廊，8 层，带竖井；</li>
- *   <li><b>哨站水池</b>：哨站外面挖一个椭球空腔，让气闸门外面有水。</li>
- * </ol>
+ * <p>上一版的"每 120 格一层岩板 + TrunkNetwork 竖井"已按用户要求撤掉：那些岩板把海域切成
+ * 一层层，竖井又像电梯井。现在上下移动靠岩床起伏和天然开口，不再有竖直井道。</p>
  */
 public class DeepSeaChunkGenerator extends ChunkGenerator {
 
@@ -53,25 +54,12 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
     private static final int GRID_XZ = 16 / STEP + 1;
     private static final int GRID_Y = ModDimensions.HEIGHT / STEP + 1;
 
-    /**
-     * 层高（格）：每隔这么多米有一层"岩层"，其余是开阔水域。
-     *
-     * <p>原版《潜渊症》的地形不是"实心岩里挖小洞"，而是<b>上下是岩壁、中间一大片开阔海域</b>：
-     * 潜艇在上百米高的水域里横着开，偶尔要绕开垂下来的岩柱。之前用 3D 噪声挖洞，
-     * 洞径最多十几格，潜艇 15 米长根本转不开——用户反馈"洞太小""中间要有大片海域"已经是第二次，
-     * 所以这一版直接换成"分层海域"结构。</p>
-     */
-    private static final int LAYER_HEIGHT = 120;
-    /** 第一层岩层的顶部（y）。往上到水面全是水。 */
-    private static final int BAND_TOP_Y = -30;
-    /** 岩层厚度占层高的基准比例与波动。 */
-    private static final double ROCK_FRACTION = 0.21D;
-    private static final double ROCK_WOBBLE = 0.09D;
-    /** 岩柱最大伸出比例（相对层高）。 */
-    private static final double PILLAR_REACH = 0.38D;
-
-    private static final long SALT_LAYER = 0x51A7E001L;
-    private static final long SALT_PILLAR = 0x9B2C4407L;
+    /** 岩柱/钟乳石/浮岩岛/岩墙的形状噪声（高度场本体在 {@link SeaTerrain}）。 */
+    private static final long SALT_WALL = 0x3C6EF372L;
+    private static final long SALT_PILLAR = 0xA54FF53AL;
+    private static final long SALT_HANG = 0x510E527FL;
+    private static final long SALT_ISLAND = 0x1F83D9ABL;
+    private static final long SALT_ISLAND_Y = 0x5BE0CD19L;
 
     private long cachedWorldSeed = Long.MIN_VALUE;
 
@@ -138,43 +126,64 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             }
         }
 
-        // 3) 分层海域：上下是起伏的岩层，中间一大片开阔空气（视觉上由水下滤镜表现）
+        // 3) 开阔海域：上岩壳、下岩床，中间整片开放（最高接近 1000 格），
+        //    水里再长岩柱/钟乳石/浮岩岛/隔断岩墙。没有分层岩板，也没有竖井。
         for (int lx = 0; lx < 16; lx++) {
             for (int lz = 0; lz < 16; lz++) {
                 int x = originX + lx;
                 int z = originZ + lz;
-                // 这一列岩层有多厚（占层高的比例），随水平位置起伏，所以岩壁是波浪形的；
-                // 哨站上方压平成最薄值，让哨站顶部与顶板底面严丝合缝（见 OutpostBuilder）
-                boolean flatRoof = OutpostBuilder.inRoofFlattenZone(x, z);
-                double rock = flatRoof
-                        ? OutpostBuilder.FLAT_ROOF_FRACTION
-                        : ROCK_FRACTION + ROCK_WOBBLE
-                                * DeepSeaNoise.fbm3(seed ^ SALT_LAYER, x / 90.0D, 0.0D, z / 90.0D, 2);
-                // 上下交错的岩柱：噪声高的地方从天花板垂下来，低的地方从地面升起来（压平区无岩柱）
-                double pillar = DeepSeaNoise.fbm3(seed ^ SALT_PILLAR, x / 42.0D, 0.0D, z / 42.0D, 2);
-                double hanging = flatRoof ? 0.0D : Math.max(0.0D, pillar - 0.30D) * PILLAR_REACH / 0.70D;
-                double rising = Math.max(0.0D, -pillar - 0.30D) * PILLAR_REACH / 0.70D;
-                double roof = rock + hanging;
-                double floor = 1.0D - rock - rising;
+                int ceiling = SeaTerrain.ceilingY(seed, x, z);
+                int floor = SeaTerrain.floorY(seed, x, z);
+                int open = ceiling - floor;
+                if (open <= 0) {
+                    continue; // 整列都是岩（噪声把洞顶压到洞底以下），保持原样
+                }
 
-                for (int y = ModDimensions.WATER_TOP_Y; y >= ModDimensions.WATER_BOTTOM_Y; y--) {
-                    if (y > BAND_TOP_Y) {
+                boolean clear = SeaTerrain.inClearZone(x, z);
+                boolean wall = DeepSeaNoise.fbm2(seed ^ SALT_WALL, x / 110.0D, z / 110.0D, 3) > 0.58D;
+                double pillarNoise = DeepSeaNoise.fbm2(seed ^ SALT_PILLAR, x / 48.0D, z / 48.0D, 2);
+                double hangNoise = DeepSeaNoise.fbm2(seed ^ SALT_HANG, x / 46.0D, z / 46.0D, 2);
+                double islandNoise = DeepSeaNoise.fbm2(seed ^ SALT_ISLAND, x / 130.0D, z / 130.0D, 2);
+                double islandYNoise = DeepSeaNoise.fbm2(seed ^ SALT_ISLAND_Y, x / 70.0D, z / 70.0D, 2);
+
+                // 岩柱/钟乳石只长到水域高度的 18%：用户反馈三成仍然太高。
+                int pillarTop = pillarNoise > 0.34D
+                        ? floor + (int) ((pillarNoise - 0.34D) * open * 0.18D) : floor;
+                int hangBottom = hangNoise > 0.34D
+                        ? ceiling - (int) ((hangNoise - 0.34D) * open * 0.18D) : ceiling;
+                int islandBottom = Integer.MIN_VALUE;
+                int islandTop = Integer.MIN_VALUE;
+                if (islandNoise > 0.55D) {
+                    int centerY = floor + (int) ((0.5D + islandYNoise * 0.30D) * open);
+                    int half = (int) ((islandNoise - 0.55D) * 24.0D) + 2;
+                    islandBottom = centerY - half;
+                    islandTop = centerY + half;
+                }
+
+                for (int y = floor + 1; y < ceiling; y++) {
+                    if (clear) {
                         setBlock(chunk, x, y, z, ocean);
                         continue;
                     }
-                    double k = (BAND_TOP_Y - y) / (double) LAYER_HEIGHT;
-                    double frac = k - Math.floor(k);
-                    if (frac >= roof && frac <= floor) {
-                        setBlock(chunk, x, y, z, ocean);
+                    boolean rock = wall
+                            || y <= pillarTop
+                            || y >= hangBottom
+                            || (y >= islandBottom && y <= islandTop);
+                    setBlock(chunk, x, y, z, rock ? stone : ocean);
+                }
+
+                // 岩床表面掺凝灰岩，别让整片海底是一块纯石头
+                if (!clear) {
+                    for (int y = floor; y > floor - 3; y--) {
+                        if (((x * 31 + z * 17 + y * 13) & 7) == 0) {
+                            setBlock(chunk, x, y, z, tuff);
+                        }
                     }
                 }
             }
         }
 
-        // 4) 主干道 / 竖井（层与层之间的通道）
-        TrunkNetwork.carveInto(chunk, seed);
-
-        // 6) 哨站：先挖出外面的水池，再放建筑
+        // 4) 哨站：先挖出外面的水池，再放建筑
         if (OutpostBuilder.intersectsCavern(chunkPos)) {
             OutpostBuilder.carveCavern(chunk);
         }
@@ -184,6 +193,9 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
 
         // 6b) 任务 POI：沉船/侦察点/B 中继站（确定性，幂等）
         PoiNetwork.buildInto(chunk);
+
+        // 6c) 任务海域实例：远处保留带里的封闭洞穴，只有落在锚点影响范围的区块才写
+        MissionInstance.generate(chunk, seed);
 
         // 7) 高度图
         Heightmap.primeHeightmaps(chunk,
