@@ -9,6 +9,9 @@
     "PlayerSneakEdgeMixin",
     "ShipBreakMixin"
   ],
+  "client": [
+    "PlayerSwimRotationMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }
