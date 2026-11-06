@@ -81,11 +81,16 @@ public final class DeepSeaEvents {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        if (player.getPersistentData().getBoolean(VISITED_TAG)) {
-            return;
-        }
         MinecraftServer server = player.getServer();
         if (server == null) {
+            return;
+        }
+        // 旧存档通道修复不依赖首次登录：老玩家每次登录也跑一遍（幂等，issue #22）。
+        ServerLevel deepEarly = server.getLevel(ModDimensions.THE_DEEP);
+        if (deepEarly != null) {
+            com.opamb.barotrauma.world.DockingBay.repairStationShaft(deepEarly);
+        }
+        if (player.getPersistentData().getBoolean(VISITED_TAG)) {
             return;
         }
         player.getPersistentData().putBoolean(VISITED_TAG, true);
