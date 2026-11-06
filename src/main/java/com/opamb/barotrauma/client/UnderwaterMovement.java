@@ -35,6 +35,9 @@ public final class UnderwaterMovement {
 
     private static boolean naturalSink;
 
+    /** 当前客户端游泳标志是否由本模组设置（离开海域时只清理自己设置的）。 */
+    private static boolean modSwimming;
+
     private UnderwaterMovement() {
     }
 
@@ -45,8 +48,18 @@ public final class UnderwaterMovement {
         }
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
-        if (player == null || mc.level == null
-                || player.isSpectator() || player.isPassenger()) {
+        if (player == null || mc.level == null) {
+            modSwimming = false;
+            return;
+        }
+        if (player.isSpectator()) {
+            return;
+        }
+        if (player.isPassenger()) {
+            // 乘坐时丢弃积压的 N 键点击，避免下船后的第一个 tick 误切换自然下沉。
+            while (TOGGLE_NATURAL_SINK.consumeClick()) {
+                // discard
+            }
             return;
         }
         // 一键切换自然下沉（默认 N，可在"控制 → 按键绑定 → 潜渊症"里改）。
@@ -71,8 +84,13 @@ public final class UnderwaterMovement {
         if (sprintSwim) {
             player.setSwimming(true);
             player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
-        } else if (player.isSwimming()) {
-            player.setSwimming(false);
+            modSwimming = true;
+        } else if (modSwimming) {
+            // 只清理本模组设置的游泳标志，保留原版真实水中的游泳状态。
+            if (player.isSwimming()) {
+                player.setSwimming(false);
+            }
+            modSwimming = false;
         }
         if (!submergedFeet) {
             return;

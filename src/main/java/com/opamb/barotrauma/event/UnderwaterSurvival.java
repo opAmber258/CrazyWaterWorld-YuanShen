@@ -9,6 +9,10 @@ import net.minecraftforge.event.entity.living.LivingFallEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
 /**
  * 空气海域的呼吸规则：水下消耗氧气，回到哨站/未进水船舱后恢复。
  *
@@ -24,6 +28,9 @@ public final class UnderwaterSurvival {
     /** 深水挤压的节流计数（60 tick = 3 秒）。 */
     private static int pressureAccumulator;
 
+    /** 本模组设置过游泳标志的玩家，避免清掉原版真实水中的游泳状态。 */
+    private static final Set<UUID> modSwimming = new HashSet<>();
+
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
@@ -33,12 +40,8 @@ public final class UnderwaterSurvival {
         if (player.level().isClientSide()) {
             return;
         }
-        if (player.isCreative() || player.isSpectator()
-                || player.hasEffect(MobEffects.WATER_BREATHING)) {
-            refill(player);
-            return;
-        }
         // 疾跑 + 浸没 = 原版自由泳姿态（视情况同步给其他客户端；单人也是同一 JVM）。
+        // 放在呼吸豁免之前：创造/水肺玩家同样要同步姿态，并清理本模组设置的游泳标志。
         // 判定用脚上方 0.4 格，和 UnderwaterMovement 保持一致。
         boolean submergedBody = OceanEnvironment.isSubmerged(player.level(),
                 player.position().add(0.0D, 0.4D, 0.0D));
@@ -48,8 +51,17 @@ public final class UnderwaterSurvival {
         if (sprintSwim) {
             player.setSwimming(true);
             player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
-        } else if (player.isSwimming()) {
-            player.setSwimming(false);
+            modSwimming.add(player.getUUID());
+        } else if (modSwimming.remove(player.getUUID())) {
+            // 只清除本模组设置的标志；原版真实水中的游泳状态不动。
+            if (player.isSwimming()) {
+                player.setSwimming(false);
+            }
+        }
+        if (player.isCreative() || player.isSpectator()
+                || player.hasEffect(MobEffects.WATER_BREATHING)) {
+            refill(player);
+            return;
         }
         boolean blockShipDry = OceanEnvironment.isInsideBlockShipDryZone(
                 player.level(), player.getEyePosition());

@@ -20,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(PlayerRenderer.class)
 public abstract class PlayerSwimRotationMixin {
 
+    /** 把「本模组判定为浸没」补进原版的 isInWater 门控，让身体俯仰跟随视线。 */
     @Redirect(
             method = "setupRotations(Lnet/minecraft/client/player/AbstractClientPlayer;Lcom/mojang/blaze3d/vertex/PoseStack;FFF)V",
             at = @At(value = "INVOKE",
