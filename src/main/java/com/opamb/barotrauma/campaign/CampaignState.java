@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.campaign;
 
+import com.opamb.barotrauma.data.MissionSavedData;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -11,9 +12,8 @@ import java.util.Set;
 /**
  * 战役的世界存档：当前节点、共享资金、已访问节点、当前巡回、回档快照。
  *
- * <p>v1 先只落这些；任务池/升级/船体状态在后续里程碑接进来。注意：现有
- * {@link com.opamb.barotrauma.data.MissionSavedData} 里的 credits 是按玩家存的，
- * 这里是战役共享钱包，两者会在任务系统重构里程碑合并。</p>
+ * <p>共享钱包是 v1 唯一的经济来源；旧版 {@link MissionSavedData} 里按玩家存的
+ * credits 会在第一次访问钱包时一次性迁移进来（见 {@link #wallet}）。</p>
  */
 public final class CampaignState extends SavedData {
 
@@ -37,6 +37,17 @@ public final class CampaignState extends SavedData {
     public static CampaignState get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(
                 CampaignState::load, CampaignState::new, NAME);
+    }
+
+    /**
+     * 共享钱包入口：读取战役状态，并顺带把旧版按玩家余额迁入（一次性）。
+     *
+     * <p>只应在 {@code barotrauma:the_deep} 维度调用——钱包固定挂在这个维度。</p>
+     */
+    public static CampaignState wallet(ServerLevel level) {
+        CampaignState state = get(level);
+        MissionSavedData.get(level).migrateLegacyCreditsTo(state);
+        return state;
     }
 
     public java.util.List<String> selectedMissions() { return selectedMissions; }

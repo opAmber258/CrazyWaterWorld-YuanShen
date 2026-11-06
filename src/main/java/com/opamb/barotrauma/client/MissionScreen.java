@@ -66,8 +66,9 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         graphics.fill(x, y, x + 1, y + PANEL_H, EDGE);
         graphics.fill(x + PANEL_W - 1, y, x + PANEL_W, y + PANEL_H, EDGE);
 
-        graphics.drawString(font, "Credits：" + ClientMissionCache.credits(),
-                x + PANEL_W - 90, y + 6, GREEN, false);
+        String wallet = "共享资金：" + ClientMissionCache.credits();
+        graphics.drawString(font, wallet,
+                x + PANEL_W - 8 - font.width(wallet), y + 6, GREEN, false);
 
         List<Mission> offered = ClientMissionCache.offered();
         int rowY = y + 20;

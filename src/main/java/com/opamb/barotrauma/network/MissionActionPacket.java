@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.network;
 
+import com.opamb.barotrauma.campaign.CampaignState;
 import com.opamb.barotrauma.data.MissionSavedData;
 import com.opamb.barotrauma.mission.Mission;
 import com.opamb.barotrauma.mission.MissionType;
@@ -70,19 +71,21 @@ public record MissionActionPacket(int action, int missionId) {
                 return;
             }
             MissionSavedData data = MissionSavedData.get(level);
+            // 共享钱包：顺带完成旧版按玩家余额的一次性迁移。
+            CampaignState wallet = CampaignState.wallet(level);
             switch (action) {
                 case ACCEPT -> handleAccept(player, level, data, missionId);
                 case ABANDON -> {
                     data.abandon(player.getUUID());
                     sendState(player, level);
                 }
-                case TURN_IN -> handleTurnIn(player, level, data);
-                case BUY_REPAIR -> handleRepair(player, level, data);
-                case BUY_OXYGEN -> handleBuyItem(player, level, data, COST_OXYGEN,
+                case TURN_IN -> handleTurnIn(player, level, data, wallet);
+                case BUY_REPAIR -> handleRepair(player, level, wallet);
+                case BUY_OXYGEN -> handleBuyItem(player, level, wallet, COST_OXYGEN,
                         new ItemStack(ModItems.OXYGEN_TANK.get()));
-                case BUY_WELDER -> handleBuyItem(player, level, data, COST_WELDER,
+                case BUY_WELDER -> handleBuyItem(player, level, wallet, COST_WELDER,
                         new ItemStack(ModItems.WELDING_TOOL.get()));
-                case BUY_UPGRADE -> handleUpgrade(player, level, data);
+                case BUY_UPGRADE -> handleUpgrade(player, level, wallet);
                 default -> { /* 未知操作忽略 */ }
             }
         });
@@ -109,7 +112,8 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
-    private static void handleTurnIn(ServerPlayer player, ServerLevel level, MissionSavedData data) {
+    private static void handleTurnIn(ServerPlayer player, ServerLevel level,
+                                     MissionSavedData data, CampaignState wallet) {
         Mission mission = data.activeMission(player.getUUID());
         if (mission == null) {
             return;
@@ -136,13 +140,14 @@ public record MissionActionPacket(int action, int missionId) {
             sendState(player, level);
             return;
         }
+        wallet.addCredits(mission.reward);
         data.finish(player.getUUID(), mission);
         player.sendSystemMessage(Component.literal("任务完成！+" + mission.reward + " credits")
                 .withStyle(ChatFormatting.GREEN));
         sendState(player, level);
     }
 
-    private static void handleRepair(ServerPlayer player, ServerLevel level, MissionSavedData data) {
+    private static void handleRepair(ServerPlayer player, ServerLevel level, CampaignState wallet) {
         var core = ShipCores.nearestCore(level, player.blockPosition(), 24.0D);
         if (core == null || core.state() == null) {
             player.sendSystemMessage(Component.literal("附近 24 格内没有船（把船停在泊位再修）")
@@ -161,9 +166,9 @@ public record MissionActionPacket(int action, int missionId) {
             return;
         }
         int cost = missing * COST_REPAIR_PER_HP;
-        if (!data.spendCredits(player.getUUID(), cost)) {
+        if (!wallet.spendCredits(cost)) {
             player.sendSystemMessage(Component.literal(
-                    "修船需要 " + cost + " credits，余额不足（当前 " + data.credits(player.getUUID()) + "）")
+                    "修船需要 " + cost + " credits，余额不足（当前 " + wallet.credits() + "）")
                     .withStyle(ChatFormatting.RED));
             sendState(player, level);
             return;
@@ -180,11 +185,11 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
-    private static void handleBuyItem(ServerPlayer player, ServerLevel level, MissionSavedData data,
-                                      int cost, ItemStack stack) {
-        if (!data.spendCredits(player.getUUID(), cost)) {
+    private static void handleBuyItem(ServerPlayer player, ServerLevel level,
+                                      CampaignState wallet, int cost, ItemStack stack) {
+        if (!wallet.spendCredits(cost)) {
             player.sendSystemMessage(Component.literal(
-                    "需要 " + cost + " credits，余额不足（当前 " + data.credits(player.getUUID()) + "）")
+                    "需要 " + cost + " credits，余额不足（当前 " + wallet.credits() + "）")
                     .withStyle(ChatFormatting.RED));
             sendState(player, level);
             return;
@@ -196,7 +201,7 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
-    private static void handleUpgrade(ServerPlayer player, ServerLevel level, MissionSavedData data) {
+    private static void handleUpgrade(ServerPlayer player, ServerLevel level, CampaignState wallet) {
         var core = ShipCores.nearestCore(level, player.blockPosition(), 24.0D);
         if (core == null || core.state() == null) {
             player.sendSystemMessage(Component.literal("附近 24 格内没有船（升级装在船上）")
@@ -213,9 +218,9 @@ public record MissionActionPacket(int action, int missionId) {
             return;
         }
         int cost = COST_UPGRADE_BASE * (level1 + 1);
-        if (!data.spendCredits(player.getUUID(), cost)) {
+        if (!wallet.spendCredits(cost)) {
             player.sendSystemMessage(Component.literal(
-                    "升级需要 " + cost + " credits，余额不足（当前 " + data.credits(player.getUUID()) + "）")
+                    "升级需要 " + cost + " credits，余额不足（当前 " + wallet.credits() + "）")
                     .withStyle(ChatFormatting.RED));
             sendState(player, level);
             return;

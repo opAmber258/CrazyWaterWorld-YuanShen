@@ -1,8 +1,10 @@
 package com.opamb.barotrauma.network;
 
+import com.opamb.barotrauma.campaign.CampaignState;
 import com.opamb.barotrauma.data.MissionSavedData;
 import com.opamb.barotrauma.mission.Mission;
 import com.opamb.barotrauma.mission.MissionType;
+import com.opamb.barotrauma.world.ModDimensions;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -27,6 +29,7 @@ public record MissionStatePacket(int credits, int activeId, int activeState, int
             return empty();
         }
         MissionSavedData data = MissionSavedData.get(serverLevel);
+        int credits = walletCredits(serverLevel);
         Mission active = data.activeMission(player.getUUID());
         var missions = data.missions();
         int[] ids = new int[missions.size()];
@@ -40,13 +43,20 @@ public record MissionStatePacket(int credits, int activeId, int activeState, int
             i++;
         }
         if (active != null) {
-            return new MissionStatePacket(data.credits(player.getUUID()), active.id,
+            return new MissionStatePacket(credits, active.id,
                     active.state().ordinal(), active.type.ordinal(),
                     active.target.getX(), active.target.getY(), active.target.getZ(),
                     active.radius, active.reward, ids, states, taken);
         }
-        return new MissionStatePacket(data.credits(player.getUUID()), -1, -1, -1,
+        return new MissionStatePacket(credits, -1, -1, -1,
                 0, 0, 0, 0, 0, ids, states, taken);
+    }
+
+    /** 共享钱包固定挂在深海维度；终端在别的维度打开时也从那里取。 */
+    private static int walletCredits(ServerLevel level) {
+        ServerLevel deep = level.dimension().equals(ModDimensions.THE_DEEP)
+                ? level : level.getServer().getLevel(ModDimensions.THE_DEEP);
+        return deep == null ? 0 : CampaignState.wallet(deep).credits();
     }
 
     private static MissionStatePacket empty() {

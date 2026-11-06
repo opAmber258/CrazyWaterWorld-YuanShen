@@ -27,13 +27,13 @@ public final class CampaignManager {
 
     public static boolean startTravel(ServerPlayer player, int destination) {
         ServerLevel deep = player.server.getLevel(ModDimensions.THE_DEEP);
-        return deep != null && startTravel(player, CampaignState.get(deep).currentNode(), destination, List.of());
+        return deep != null && startTravel(player, CampaignState.wallet(deep).currentNode(), destination, List.of());
     }
 
     public static boolean startTravel(ServerPlayer player, int origin, int destination, List<String> ids) {
         ServerLevel deep = player.server.getLevel(ModDimensions.THE_DEEP);
         if (deep == null) return false;
-        CampaignState state = CampaignState.get(deep);
+        CampaignState state = CampaignState.wallet(deep);
         if (player.serverLevel() != deep || !player.isAlive() || player.isSpectator()
                 || !CampaignMission.valid(state.round().phase(), state.currentNode(), origin, destination, ids)) {
             BarotraumaMod.LOGGER.info("[campaign] 下潜被拒绝：level={} alive={} spectator={} phase={} current={} origin={} dest={} ids={}",
@@ -139,7 +139,7 @@ public final class CampaignManager {
     public static boolean forceArrive(MinecraftServer server) {
         ServerLevel deep = server.getLevel(ModDimensions.THE_DEEP);
         if (deep == null) return false;
-        CampaignState state = CampaignState.get(deep);
+        CampaignState state = CampaignState.wallet(deep);
         if (state.round().phase() != RoundPhase.DIVING) return false;
         // 调试推进，不结算未生成/未完成的任务，也不移动玩家到逻辑地图坐标。
         state.arrive();
@@ -150,7 +150,7 @@ public final class CampaignManager {
 
     /** 仅恢复战役核心数据，绝非船/玩家/物品的完整回档。 */
     public static boolean failAndRollback(ServerLevel level) {
-        CampaignState state = CampaignState.get(level);
+        CampaignState state = CampaignState.wallet(level);
         if (state.round().phase() != RoundPhase.DIVING || !state.hasSnapshot()) return false;
         state.failRound();
         boolean restored = state.rollback();
@@ -160,7 +160,7 @@ public final class CampaignManager {
 
     public static void sync(ServerPlayer player) {
         ServerLevel deep = player.server.getLevel(ModDimensions.THE_DEEP);
-        if (deep != null) ModNetwork.sendToPlayer(player, CampaignStatePacket.build(CampaignState.get(deep)));
+        if (deep != null) ModNetwork.sendToPlayer(player, CampaignStatePacket.build(CampaignState.wallet(deep)));
     }
 
     public static void syncAll(MinecraftServer server) {

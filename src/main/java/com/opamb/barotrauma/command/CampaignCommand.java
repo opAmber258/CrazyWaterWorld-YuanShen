@@ -56,7 +56,7 @@ public final class CampaignCommand {
             source.sendFailure(Component.literal("深海维度未加载"));
             return 0;
         }
-        CampaignState state = CampaignState.get(level);
+        CampaignState state = CampaignState.wallet(level);
         source.sendSuccess(() -> Component.literal("== 战役状态 ==").withStyle(ChatFormatting.AQUA), false);
         source.sendSuccess(() -> Component.literal("当前节点：").append(CampaignManager.name(state.currentNode())), false);
         source.sendSuccess(() -> Component.literal("共享资金：" + state.credits() + " credits"), false);
@@ -81,7 +81,7 @@ public final class CampaignCommand {
             source.sendFailure(Component.literal("深海维度未加载"));
             return 0;
         }
-        CampaignState state = CampaignState.get(level);
+        CampaignState state = CampaignState.wallet(level);
         source.sendSuccess(() -> Component.literal("== 战役地图（★=当前）==").withStyle(ChatFormatting.AQUA), false);
         for (MapNode node : CampaignMap.nodes()) {
             source.sendSuccess(() -> {
@@ -134,7 +134,7 @@ public final class CampaignCommand {
             source.sendFailure(Component.literal("深海维度未加载"));
             return 0;
         }
-        CampaignState state = CampaignState.get(level);
+        CampaignState state = CampaignState.wallet(level);
         int amount = IntegerArgumentType.getInteger(ctx, "amount");
         if (amount >= 0) {
             state.addCredits(amount);
