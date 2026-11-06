@@ -22,7 +22,8 @@ import java.util.function.Supplier;
  */
 public record MissionStatePacket(int credits, int activeId, int activeState, int activeType,
                                  int targetX, int targetY, int targetZ, int radius, int reward,
-                                 int[] offeredIds, int[] offeredStates, boolean[] offeredTaken) {
+                                 int[] offeredIds, int[] offeredStates, boolean[] offeredTaken,
+                                 long activeDeadlineAt, long nowGameTime) {
 
     /** 组装任务面板状态；余额取自共享钱包。 */
     public static MissionStatePacket build(ServerPlayer player, Level level) {
@@ -47,10 +48,11 @@ public record MissionStatePacket(int credits, int activeId, int activeState, int
             return new MissionStatePacket(credits, active.id,
                     active.state().ordinal(), active.type.ordinal(),
                     active.target.getX(), active.target.getY(), active.target.getZ(),
-                    active.radius, active.reward, ids, states, taken);
+                    active.radius, active.reward, ids, states, taken,
+                    active.deadlineAtGameTime(), serverLevel.getGameTime());
         }
         return new MissionStatePacket(credits, -1, -1, -1,
-                0, 0, 0, 0, 0, ids, states, taken);
+                0, 0, 0, 0, 0, ids, states, taken, 0L, 0L);
     }
 
     /** 共享钱包固定挂在深海维度；终端在别的维度打开时也从那里取。 */
@@ -62,7 +64,7 @@ public record MissionStatePacket(int credits, int activeId, int activeState, int
 
     private static MissionStatePacket empty() {
         return new MissionStatePacket(0, -1, -1, -1, 0, 0, 0, 0, 0,
-                new int[0], new int[0], new boolean[0]);
+                new int[0], new int[0], new boolean[0], 0L, 0L);
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -73,6 +75,8 @@ public record MissionStatePacket(int credits, int activeId, int activeState, int
         buf.writeBlockPos(new net.minecraft.core.BlockPos(targetX, targetY, targetZ));
         buf.writeVarInt(radius);
         buf.writeVarInt(reward);
+        buf.writeLong(activeDeadlineAt);
+        buf.writeLong(nowGameTime);
         buf.writeVarInt(offeredIds.length);
         for (int i = 0; i < offeredIds.length; i++) {
             buf.writeVarInt(offeredIds[i]);
@@ -89,6 +93,8 @@ public record MissionStatePacket(int credits, int activeId, int activeState, int
         net.minecraft.core.BlockPos target = buf.readBlockPos();
         int radius = buf.readVarInt();
         int reward = buf.readVarInt();
+        long activeDeadlineAt = buf.readLong();
+        long nowGameTime = buf.readLong();
         int count = buf.readVarInt();
         int[] ids = new int[count];
         int[] states = new int[count];
@@ -99,7 +105,8 @@ public record MissionStatePacket(int credits, int activeId, int activeState, int
             taken[i] = buf.readBoolean();
         }
         return new MissionStatePacket(credits, activeId, activeState, activeType,
-                target.getX(), target.getY(), target.getZ(), radius, reward, ids, states, taken);
+                target.getX(), target.getY(), target.getZ(), radius, reward, ids, states, taken,
+                activeDeadlineAt, nowGameTime);
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

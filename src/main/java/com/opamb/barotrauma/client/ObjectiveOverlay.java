@@ -70,12 +70,22 @@ public final class ObjectiveOverlay {
         Mission mission = ClientMissionCache.active();
         if (mission != null) {
             int dist = (int) Math.sqrt(minecraft().player.blockPosition().distSqr(mission.target));
-            String where = mission.type == com.opamb.barotrauma.mission.MissionType.DELIVERY
+            boolean delivery = mission.type == com.opamb.barotrauma.mission.MissionType.DELIVERY
+                    || mission.type == com.opamb.barotrauma.mission.MissionType.URGENT_DELIVERY;
+            String where = delivery
                     ? "B 中继站" : mission.target.getX() + ", " + mission.target.getY() + ", " + mission.target.getZ();
             if (mission.state() == Mission.State.READY) {
-                return "任务达成！回哨站终端交付（+" + mission.reward + "）";
+                String base = "任务达成！回终端交付（+" + mission.reward + "）";
+                return delivery ? base + "：送到 B 中继站全额，其他终端半额" : base;
             }
-            return String.format("任务 #%d：前往 %s（%dm）", mission.id, where, dist);
+            String deadline = "";
+            if (mission.deadlineAtGameTime() > 0 && minecraft().level != null) {
+                long left = mission.deadlineAtGameTime() - minecraft().level.getGameTime();
+                deadline = left > 0
+                        ? String.format(" · 剩余 %d:%02d", left / 1200L, (left / 20L) % 60L)
+                        : " · 已超时";
+            }
+            return String.format("任务 #%d：前往 %s（%dm）%s", mission.id, where, dist, deadline);
         }
         if (VsState.active()) {
             return "出航中：WASD/舵台操舵 · 返航后在声纳台点「靠泊」";

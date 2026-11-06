@@ -30,6 +30,7 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
     private static final int DIM = 0xFF8B9184;
     private static final int ACCENT = 0xFFE0762F;
     private static final int GREEN = 0xFF7BE38B;
+    private static final int RED = 0xFFE06666;
     private static final int HOVER = 0xFF39483A;
 
     public MissionScreen(MissionMenu menu, Inventory inventory, Component title) {
@@ -110,10 +111,12 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
             case SALVAGE -> "打捞";
             case RECON -> "侦察";
             case DELIVERY -> "运输";
+            case URGENT_DELIVERY -> "紧急运输";
         };
+        String timed = mission.deadlineTicks > 0 ? " · 限时" : "";
         int dist = (int) Math.sqrt(minecraft.player.blockPosition().distSqr(mission.target));
-        String title = String.format("#%d %s · 奖励 %d · 目标 %s %dm", mission.id, type,
-                mission.reward, coord(mission), dist);
+        String title = String.format("#%d %s%s · 奖励 %d · 目标 %s %dm", mission.id, type,
+                timed, mission.reward, coord(mission), dist);
         graphics.drawString(font, title, x + 14, y + 4, TEXT, false);
 
         String stateLabel = switch (mission.state()) {
@@ -121,12 +124,22 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
             case ACTIVE -> "进行中";
             case READY -> "已达成！回终端交付";
             case DONE -> "已完成";
+            case FAILED -> "已超时失败";
         };
         graphics.drawString(font, stateLabel, x + 14, y + 15,
-                mission.state() == Mission.State.READY ? GREEN : DIM, false);
+                mission.state() == Mission.State.READY ? GREEN
+                        : mission.state() == Mission.State.FAILED ? RED : DIM, false);
 
         boolean mine = ClientMissionCache.active() != null
                 && ClientMissionCache.active().id == mission.id;
+        if (mine && mission.deadlineAtGameTime() > 0) {
+            long left = ClientMissionCache.activeDeadlineAt() - ClientMissionCache.nowGameTime();
+            String leftLabel = left > 0
+                    ? String.format("剩余 %d:%02d", left / 1200L, (left / 20L) % 60L)
+                    : "已超时";
+            graphics.drawString(font, leftLabel, x + PANEL_W - 92, y + 15,
+                    left > 0 ? ACCENT : RED, false);
+        }
         String button = mine
                 ? (mission.state() == Mission.State.READY ? "交付" : "放弃")
                 : (mission.isTaken() ? "已被接走" : "接取");
@@ -161,7 +174,8 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0 && pendingAction != 0) {
-            ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(pendingAction, pendingMissionId));
+            ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(pendingAction,
+                    pendingMissionId, menu.terminalPos()));
             pendingAction = 0;
             return true;
         }

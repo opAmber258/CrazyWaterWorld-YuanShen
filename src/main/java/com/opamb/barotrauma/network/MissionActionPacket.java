@@ -23,16 +23,19 @@ import java.util.function.Supplier;
  * 客户端 → 服务端：任务面板上的操作。
  *
  * <ul>
- *   <li>{@code ACCEPT}——接取任务（DELIVERY 同时发一批补给箱）；</li>
+ *   <li>{@code ACCEPT}——接取任务（DELIVERY/URGENT_DELIVERY 同时发一批补给箱）；</li>
  *   <li>{@code ABANDON}——放弃；</li>
- *   <li>{@code TURN_IN}——交付（READY 才允许，按类型扣货物）；</li>
+ *   <li>{@code TURN_IN}——交付（READY 才允许，按类型扣货物；运送类按终端位置
+ *       结算全额/部分奖励）；</li>
  *   <li>{@code BUY_*}——商店：修船 / 氧气瓶 / 焊枪 / 船体加固。</li>
  * </ul>
  *
  * <p>全部服务端权威：接取竞争、余额、货物、距离都在这里校验，
  * 处理完给操作者回发一包 {@link MissionStatePacket} 刷新界面。</p>
+ *
+ * @param terminalPos 交付时玩家所操作的终端位置（商店等操作传 {@code BlockPos.ZERO}）
  */
-public record MissionActionPacket(int action, int missionId) {
+public record MissionActionPacket(int action, int missionId, BlockPos terminalPos) {
 
     public static final int ACCEPT = 1;
     public static final int ABANDON = 2;
@@ -47,17 +50,25 @@ public record MissionActionPacket(int action, int missionId) {
     private static final int COST_REPAIR_PER_HP = 1;
     private static final int COST_UPGRADE_BASE = 150;
 
+    /** 交付终端判定半径（格²）：离 B 中继站终端 8 格内算送到终点。 */
+    private static final double DELIVERY_ENDPOINT_RADIUS_SQR = 64.0D;
+
     public MissionActionPacket(int action) {
-        this(action, -1);
+        this(action, -1, BlockPos.ZERO);
+    }
+
+    public MissionActionPacket(int action, int missionId) {
+        this(action, missionId, BlockPos.ZERO);
     }
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeVarInt(action);
         buf.writeVarInt(missionId);
+        buf.writeBlockPos(terminalPos);
     }
 
     public static MissionActionPacket decode(FriendlyByteBuf buf) {
-        return new MissionActionPacket(buf.readVarInt(), buf.readVarInt());
+        return new MissionActionPacket(buf.readVarInt(), buf.readVarInt(), buf.readBlockPos());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {
@@ -79,7 +90,7 @@ public record MissionActionPacket(int action, int missionId) {
                     data.abandon(player.getUUID());
                     sendState(player, level);
                 }
-                case TURN_IN -> handleTurnIn(player, level, data, wallet);
+                case TURN_IN -> handleTurnIn(player, level, data, wallet, terminalPos);
                 case BUY_REPAIR -> handleRepair(player, level, wallet);
                 case BUY_OXYGEN -> handleBuyItem(player, level, wallet, COST_OXYGEN,
                         new ItemStack(ModItems.OXYGEN_TANK.get()));
@@ -101,7 +112,8 @@ public record MissionActionPacket(int action, int missionId) {
         if (data.accept(player.getUUID(), missionId, level.getGameTime())) {
             player.sendSystemMessage(Component.literal("已接取任务：" + describe(mission))
                     .withStyle(ChatFormatting.GOLD));
-            if (mission.type == MissionType.DELIVERY) {
+            if (mission.type == MissionType.DELIVERY
+                    || mission.type == MissionType.URGENT_DELIVERY) {
                 player.getInventory().add(new ItemStack(ModItems.SUPPLY_CRATE.get()));
                 player.sendSystemMessage(Component.literal("补给箱已放进背包，送到 B 中继站的终端交付")
                         .withStyle(ChatFormatting.AQUA));
@@ -113,11 +125,18 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
-    /** 交付：校验 READY 与货物，奖励打进共享钱包。 */
+    /** 交付：校验 READY 与货物，按终点/部分完成比例结算，奖励打进共享钱包。 */
     private static void handleTurnIn(ServerPlayer player, ServerLevel level,
-                                     MissionSavedData data, CampaignState wallet) {
+                                     MissionSavedData data, CampaignState wallet,
+                                     BlockPos terminalPos) {
         Mission mission = data.activeMission(player.getUUID());
         if (mission == null) {
+            return;
+        }
+        if (mission.state() == Mission.State.FAILED) {
+            player.sendSystemMessage(Component.literal("任务已超时失败，抵达目的地后可再次接取")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
             return;
         }
         if (mission.state() != Mission.State.READY) {
@@ -131,7 +150,7 @@ public record MissionActionPacket(int action, int missionId) {
             case SALVAGE -> consumed = player.getInventory()
                     .clearOrCountMatchingItems(stack -> stack.is(ModItems.BLACK_BOX.get().asItem()),
                             1, player.getInventory()) > 0;
-            case DELIVERY -> consumed = player.getInventory()
+            case DELIVERY, URGENT_DELIVERY -> consumed = player.getInventory()
                     .clearOrCountMatchingItems(stack -> stack.is(ModItems.SUPPLY_CRATE.get().asItem()),
                             1, player.getInventory()) > 0;
             default -> { /* RECON 无货物 */ }
@@ -142,10 +161,21 @@ public record MissionActionPacket(int action, int missionId) {
             sendState(player, level);
             return;
         }
-        wallet.addCredits(mission.reward);
+        boolean atEndpoint = terminalPos != null
+                && terminalPos.distSqr(com.opamb.barotrauma.world.PoiNetwork.POST_B_TERMINAL)
+                        <= DELIVERY_ENDPOINT_RADIUS_SQR;
+        double fraction = mission.rewardFraction(atEndpoint);
+        int payout = (int) Math.round(mission.reward * fraction);
+        wallet.addCredits(payout);
         data.finish(player.getUUID(), mission);
-        player.sendSystemMessage(Component.literal("任务完成！+" + mission.reward + " credits")
-                .withStyle(ChatFormatting.GREEN));
+        if (fraction >= 1.0D) {
+            player.sendSystemMessage(Component.literal("任务完成！+" + payout + " credits")
+                    .withStyle(ChatFormatting.GREEN));
+        } else {
+            player.sendSystemMessage(Component.literal(
+                    "部分完成（未送到 B 中继站）：+" + payout + " / " + mission.reward + " credits")
+                    .withStyle(ChatFormatting.YELLOW));
+        }
         sendState(player, level);
     }
 
@@ -251,6 +281,7 @@ public record MissionActionPacket(int action, int missionId) {
             case RECON -> "侦察（抵达 " + mission.target.getX() + ", " + mission.target.getY()
                     + ", " + mission.target.getZ() + " 半径 " + mission.radius + "m）";
             case DELIVERY -> "运输（把补给箱送到 B 中继站）";
+            case URGENT_DELIVERY -> "紧急运送（30 分钟内把补给箱送到 B 中继站，超时零报酬）";
         };
     }
 

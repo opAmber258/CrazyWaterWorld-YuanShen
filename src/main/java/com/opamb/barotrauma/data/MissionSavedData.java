@@ -110,6 +110,26 @@ public final class MissionSavedData extends SavedData {
         setDirty();
     }
 
+    /** 超时失败：零报酬，任务保留到本轮抵达目的地时重置。 */
+    public void failMission(Mission mission) {
+        mission.fail();
+        setDirty();
+    }
+
+    /** 本轮抵达目的地：所有 FAILED 回到 OFFERED 可再次接取。返回重置条数。 */
+    public int resetFailed() {
+        int reset = 0;
+        for (Mission mission : missions.values()) {
+            if (mission.resetIfFailed()) {
+                reset++;
+            }
+        }
+        if (reset > 0) {
+            setDirty();
+        }
+        return reset;
+    }
+
     // ------------------------------------------------------------------ NBT
 
     @Override
