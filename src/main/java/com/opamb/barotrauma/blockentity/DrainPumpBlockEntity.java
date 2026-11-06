@@ -123,6 +123,11 @@ public class DrainPumpBlockEntity extends BlockEntity {
         // 每台泵每 tick 上报一次；同舱多台泵由 ShipSimulation 汇总。
         // 物理船的方块实体活在船坞里，要换算成装配坐标。
         BlockPos cell = assemblyPos(server, pos);
+        // 归属校验：哨站对接区的小型泵不属于任何船，不能上报流量，
+        // 否则会被 toAssembly 转换坐标后登记进活动船（issue #22）。
+        if (!ship.tracksHullBlock(cell)) {
+            return;
+        }
         if (be.auto) {
             // 泵格子本身是实心方块，要用邻格解析出它服务的舱室（水传感器语义）。
             int body = ship.simulation().pumpBody(cell);
@@ -158,14 +163,37 @@ public class DrainPumpBlockEntity extends BlockEntity {
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
-        auto = !tag.contains("PumpAuto") || tag.getBoolean("PumpAuto");
-        if (tag.contains("PumpFlow")) {
-            flow = Mth.clamp(tag.getInt("PumpFlow"), -100, 100);
-        } else if (tag.contains("PumpRate")) {
-            // 旧存档只有正整数档位：换算成百分比并改走手动控制。
-            auto = false;
-            flow = -Mth.clamp(Math.round(tag.getInt("PumpRate") * 100.0F
-                    / Math.max(1, maxFlow(getBlockState()))), 0, 100);
+        int[] migrated = migrateLegacy(
+                tag.contains("PumpEnabled"), tag.getBoolean("PumpEnabled"),
+                tag.contains("PumpAuto"), tag.getBoolean("PumpAuto"),
+                tag.contains("PumpFlow"), tag.getInt("PumpFlow"),
+                tag.contains("PumpRate"), tag.getInt("PumpRate"),
+                maxFlow(getBlockState()));
+        auto = migrated[0] != 0;
+        flow = migrated[1];
+    }
+
+    /**
+     * 旧档/新档统一迁移策略（纯函数，可单测）：返回 {@code [auto, flow]}。
+     *
+     * <p>旧档明确关掉的泵保持停机——{@code PumpEnabled=false} + 正档位不能
+     * 迁移成继续抽水（issue #22）；有 {@code PumpFlow} 走新格式；
+     * 只有 {@code PumpRate} 的旧档位换算成负百分比并切手动。</p>
+     */
+    static int[] migrateLegacy(boolean hasEnabled, boolean enabled,
+                               boolean hasAuto, boolean auto,
+                               boolean hasFlow, int flow,
+                               boolean hasRate, int rate, int maxFlow) {
+        if (hasEnabled && !enabled) {
+            return new int[] {0, 0};
         }
+        if (hasFlow) {
+            return new int[] {hasAuto && auto ? 1 : 0, Mth.clamp(flow, -100, 100)};
+        }
+        if (hasRate) {
+            return new int[] {0,
+                    -Mth.clamp(Math.round(rate * 100.0F / Math.max(1, maxFlow)), 0, 100)};
+        }
+        return new int[] {1, -100};
     }
 }

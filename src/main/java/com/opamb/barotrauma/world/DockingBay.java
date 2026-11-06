@@ -15,7 +15,8 @@ import net.minecraft.world.level.chunk.ChunkAccess;
  *
  * <p>布局（竖剖面，中心 x=0、z=0）：</p>
  * <pre>
- *   y=-64  哨站地板（开 3×1 洞）
+ *   y=-63  哨站内层地板（和 -64 一起开 3×1 洞，否则被装甲挡住）
+ *   y=-64  哨站地板外壳层（开 3×1 洞）
  *   y=-65  哨站侧水平对接舱口（3 格宽，对接时打开）
  *   -66..-73  垂直气密通道（3×1，带梯子；两侧 x=±2 是通海舱门）
  *   y=-74  潜艇顶部水平舱口（3 格宽）
@@ -35,6 +36,8 @@ public final class DockingBay {
     public static final int HALF_WIDTH = 1;
     /** 哨站地板 y。 */
     public static final int STATION_FLOOR_Y = OutpostBuilder.MIN_Y;
+    /** 哨站内层地板 y：通道必须同时打穿两层，否则被 -63 的装甲挡住（issue #22）。 */
+    public static final int STATION_FLOOR_UPPER_Y = STATION_FLOOR_Y + 1;
     /** 哨站侧对接舱口 y。 */
     public static final int STATION_HATCH_Y = STATION_FLOOR_Y - 1;
     /** 通道内部上下端。 */
@@ -61,11 +64,14 @@ public final class DockingBay {
         ChunkPos pos = chunk.getPos();
         BlockState plating = ModShipBlocks.STATION_PLATING.get().defaultBlockState();
 
-        // 哨站地板上的 3×1 洞
-        for (int x = X - HALF_WIDTH; x <= X + HALF_WIDTH; x++) {
-            if (inChunk(pos, x, Z)) {
-                chunk.setBlockState(new BlockPos(x, STATION_FLOOR_Y, Z),
-                        Blocks.AIR.defaultBlockState(), false);
+        // 哨站地板两层都开 3×1 洞：只开 -64 会被 -63 的内层装甲挡住
+        // （issue #22：玩家无法从站内进通道）。
+        for (int y = STATION_FLOOR_Y; y <= STATION_FLOOR_UPPER_Y; y++) {
+            for (int x = X - HALF_WIDTH; x <= X + HALF_WIDTH; x++) {
+                if (inChunk(pos, x, Z)) {
+                    chunk.setBlockState(new BlockPos(x, y, Z),
+                            Blocks.AIR.defaultBlockState(), false);
+                }
             }
         }
 
@@ -121,7 +127,8 @@ public final class DockingBay {
 
     /**
      * 世界生成阶段放的舱口没有方块实体（GeckoLib 模型靠方块实体渲染），
-     * 玩家进世界时用 {@code setBlock} 重新放一次，补出方块实体。
+     * 玩家进世界时补一次：同状态 {@code setBlock} 是 no-op，必须显式创建
+     * 中段的 {@link com.opamb.barotrauma.blockentity.HatchBlockEntity}（issue #22）。
      */
     public static void ensureStationHatch(ServerLevel level) {
         for (int i = 0; i < 3; i++) {
@@ -131,7 +138,12 @@ public final class DockingBay {
             if (state.getBlock() instanceof HatchBlock) {
                 level.setBlock(pos, state, 2);
             } else {
-                level.setBlock(pos, subHatchState(i, true), 2);
+                state = subHatchState(i, true);
+                level.setBlock(pos, state, 2);
+            }
+            if (i == 1 && level.getBlockEntity(pos) == null) {
+                level.setBlockEntity(
+                        new com.opamb.barotrauma.blockentity.HatchBlockEntity(pos, state));
             }
         }
     }

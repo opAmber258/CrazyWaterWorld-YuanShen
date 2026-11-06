@@ -114,13 +114,20 @@ public final class DeepSeaEvents {
         }
         // 先造好潜艇，再把人放进舱内；否则出生点还是一片空水。
         StarterSub.ensure(deep);
-        // 潜艇已经被收成物理船并且不在码头（例如正在任务海域）：退回哨站内部出生，
-        // 避免把玩家直接放进深水。复活小艇（M3）接进来之前先这样兜底。
-        boolean docked = true;
-        if (com.opamb.barotrauma.ship.vs.VsState.active()) {
+        // 潜艇位置判定（issue #22）：已发放但物理船未激活时不能默认还在码头——
+        // 刚体认领挂起时世界里没有方块潜艇，把玩家传进出生点会掉进空位。
+        boolean docked;
+        var saved = com.opamb.barotrauma.data.ShipSavedData.get(deep);
+        if (!saved.starterClaimed()) {
+            docked = true; // 方块潜艇还停在码头
+        } else if (com.opamb.barotrauma.ship.vs.VsState.active()) {
             var ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
             var dock = StarterSub.spawnPos();
             docked = ship != null && ship.distanceToSqr(dock) < 24.0D * 24.0D;
+        } else {
+            // 靠泊拆回后方块潜艇在码头（声纳台在原位）；认领挂起时不在 → 退回哨站内部。
+            docked = deep.getBlockState(StarterSub.corePos())
+                    .is(com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get());
         }
         if (docked) {
             var spawn = StarterSub.spawnPos();
