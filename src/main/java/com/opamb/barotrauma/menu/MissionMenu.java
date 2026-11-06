@@ -32,6 +32,11 @@ public class MissionMenu extends AbstractContainerMenu {
         return player.distanceToSqr(Vec3.atCenterOf(terminalPos)) <= 64.0D;
     }
 
+    /** 交付结算用的终端位置（区分 B 中继站终点）。 */
+    public BlockPos terminalPos() {
+        return terminalPos;
+    }
+
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         return ItemStack.EMPTY;

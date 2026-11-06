@@ -64,7 +64,9 @@ public final class PoiNetwork {
                 new Mission(2, MissionType.SALVAGE, WRECK_B, 20, 200),
                 new Mission(3, MissionType.SALVAGE, WRECK_C, 20, 500),
                 new Mission(4, MissionType.RECON, RECON_POINT, 14, 120),
-                new Mission(5, MissionType.DELIVERY, POST_B_TERMINAL, 12, 150));
+                new Mission(5, MissionType.DELIVERY, POST_B_TERMINAL, 12, 150),
+                // 紧急运送：接取后 30 分钟（24000 刻）内送到 B 中继站，奖励更高
+                new Mission(6, MissionType.URGENT_DELIVERY, POST_B_TERMINAL, 12, 260, 24000L));
     }
 
     // ------------------------------------------------------------------ 区块写入
