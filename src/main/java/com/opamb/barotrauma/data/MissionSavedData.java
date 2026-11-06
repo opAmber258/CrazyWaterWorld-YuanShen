@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.data;
 
+import com.opamb.barotrauma.campaign.CampaignState;
 import com.opamb.barotrauma.mission.Mission;
 import com.opamb.barotrauma.mission.MissionType;
 import com.opamb.barotrauma.world.PoiNetwork;
@@ -16,10 +17,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 任务与经济的世界存档：任务池状态、每个玩家的进行中任务和 credits。
+ * 任务的世界存档：任务池状态和每个玩家的进行中任务。
  *
  * <p>任务定义（id/类型/目标/奖励）来自 {@link PoiNetwork#definitions()}，是确定性的；
- * 这里只存运行时状态。credits 死亡不掉（存档在服务端，不在背包里）。</p>
+ * 这里只存运行时状态。credits 已统一到 {@link CampaignState} 的共享钱包，
+ * 这里的 {@code credits} 字段只用于旧存档的一次性迁移。</p>
  */
 public final class MissionSavedData extends SavedData {
 
@@ -28,7 +30,8 @@ public final class MissionSavedData extends SavedData {
     private final Map<Integer, Mission> missions = new LinkedHashMap<>();
     /** 玩家 → 进行中的任务 id（一人同时一条）。 */
     private final Map<UUID, Integer> active = new HashMap<>();
-    private final Map<UUID, Integer> credits = new HashMap<>();
+    /** 旧版按玩家保存的余额；迁移进共享钱包后清空。 */
+    private final Map<UUID, Integer> legacyCredits = new HashMap<>();
 
     public MissionSavedData() {
         for (Mission mission : PoiNetwork.definitions()) {
@@ -51,23 +54,23 @@ public final class MissionSavedData extends SavedData {
         return id == null ? null : missions.get(id);
     }
 
-    public int credits(UUID player) {
-        return credits.getOrDefault(player, 0);
-    }
-
-    public void addCredits(UUID player, int amount) {
-        credits.put(player, credits.getOrDefault(player, 0) + amount);
-        setDirty();
-    }
-
-    public boolean spendCredits(UUID player, int amount) {
-        int current = credits.getOrDefault(player, 0);
-        if (current < amount) {
-            return false;
+    /**
+     * 把旧版按玩家保存的 credits 一次性合并进共享钱包。
+     *
+     * <p>迁移标记和余额都在 {@link CampaignState} 里，旧余额保持只读：即使两个
+     * SavedData 的落盘时机不同，也不会丢失或重复迁入。返回实际迁入的总额。</p>
+     */
+    public int migrateLegacyCreditsTo(CampaignState wallet) {
+        if (legacyCredits.isEmpty() || wallet.legacyCreditsMigrated()) {
+            return 0;
         }
-        credits.put(player, current - amount);
-        setDirty();
-        return true;
+        long total = 0L;
+        for (int value : legacyCredits.values()) {
+            total += Math.max(0, value);
+        }
+        int moved = (int) Math.min(Integer.MAX_VALUE, total);
+        wallet.applyLegacyMigration(moved);
+        return moved;
     }
 
     /** 接取。false = 已有进行中任务/任务被别人接走。 */
@@ -100,16 +103,17 @@ public final class MissionSavedData extends SavedData {
         setDirty();
     }
 
-    /** 交付成功：任务关闭并从 active 摘除。 */
+    /** 交付成功：任务关闭并从 active 摘除（奖励由调用方打进共享钱包）。 */
     public void finish(UUID player, Mission mission) {
         mission.complete();
         active.remove(player);
-        addCredits(player, mission.reward);
+        setDirty();
     }
 
     // ------------------------------------------------------------------ NBT
 
     @Override
+    /** 序列化任务池、进行中任务和旧版余额（迁移源）。 */
     public CompoundTag save(CompoundTag tag) {
         ListTag missionList = new ListTag();
         for (Mission mission : missions.values()) {
@@ -122,14 +126,15 @@ public final class MissionSavedData extends SavedData {
         }
         tag.put("active", activeTag);
         CompoundTag creditsTag = new CompoundTag();
-        for (Map.Entry<UUID, Integer> entry : credits.entrySet()) {
+        for (Map.Entry<UUID, Integer> entry : legacyCredits.entrySet()) {
             creditsTag.putInt(entry.getKey().toString(), entry.getValue());
         }
         tag.put("credits", creditsTag);
         return tag;
     }
 
-    private static MissionSavedData load(CompoundTag tag) {
+    /** 包级可见：只给同包测试构造旧存档用。 */
+    static MissionSavedData load(CompoundTag tag) {
         MissionSavedData data = new MissionSavedData();
         ListTag missionList = tag.getList("missions", Tag.TAG_COMPOUND);
         for (int i = 0; i < missionList.size(); i++) {
@@ -150,7 +155,7 @@ public final class MissionSavedData extends SavedData {
         CompoundTag creditsTag = tag.getCompound("credits");
         for (String key : creditsTag.getAllKeys()) {
             try {
-                data.credits.put(UUID.fromString(key), creditsTag.getInt(key));
+                data.legacyCredits.put(UUID.fromString(key), creditsTag.getInt(key));
             } catch (IllegalArgumentException ignored) {
                 // 同上
             }
