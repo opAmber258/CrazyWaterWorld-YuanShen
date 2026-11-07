@@ -44,6 +44,10 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
     public static final int BUY_OXYGEN = 5;
     public static final int BUY_WELDER = 6;
     public static final int BUY_UPGRADE = 7;
+    public static final int BUY_DEEP_PERMIT = 9;
+
+    /** 深潜许可售价。 */
+    private static final int COST_DEEP_PERMIT = 500;
 
     private static final int COST_OXYGEN = 40;
     private static final int COST_WELDER = 30;
@@ -99,16 +103,26 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 case BUY_WELDER -> handleBuyItem(player, level, wallet, COST_WELDER,
                         new ItemStack(ModItems.WELDING_TOOL.get()));
                 case BUY_UPGRADE -> handleUpgrade(player, level, wallet);
+                case BUY_DEEP_PERMIT -> handleBuyItem(player, level, wallet, COST_DEEP_PERMIT,
+                        new ItemStack(ModItems.DEEP_PERMIT.get()));
                 default -> { /* 未知操作忽略 */ }
             }
         });
         context.setPacketHandled(true);
     }
 
-    /** 接取任务；DELIVERY 同时发放补给箱。 */
+    /** 接取任务；DELIVERY 同时发放补给箱；深潜任务需要深潜许可。 */
     private static void handleAccept(ServerPlayer player, ServerLevel level, MissionSavedData data, int missionId) {
         Mission mission = data.missions().get(missionId);
         if (mission == null) {
+            return;
+        }
+        if (mission.requiresDeepPermit()
+                && player.getInventory().countItem(ModItems.DEEP_PERMIT.get().asItem()) == 0) {
+            player.sendSystemMessage(Component.literal(
+                    "该任务目标超过 " + Mission.DEEP_PERMIT_DEPTH + "m，需要「深潜许可」（商店有售）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
             return;
         }
         if (data.accept(player.getUUID(), missionId, level.getGameTime())) {

@@ -87,16 +87,18 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         int shopY = y + PANEL_H - 52;
         graphics.fill(x + 8, shopY - 4, x + PANEL_W - 8, shopY - 3, EDGE);
         graphics.drawString(font, "商店", x + 10, shopY, ACCENT, false);
-        String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（30）", "船体加固 +20%（150 起）"};
+        String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（30）",
+                "船体加固（150 起）", "深潜许可（500）"};
         int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
-                MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE};
+                MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
+                MissionActionPacket.BUY_DEEP_PERMIT};
         for (int i = 0; i < labels.length; i++) {
-            int bx = x + 8 + i * 102;
-            boolean hover = mouseX >= bx && mouseX < bx + 100 && mouseY >= shopY + 12
+            int bx = x + 8 + i * 80;
+            boolean hover = mouseX >= bx && mouseX < bx + 76 && mouseY >= shopY + 12
                     && mouseY < shopY + 26;
-            graphics.fill(bx, shopY + 12, bx + 100, shopY + 26, hover ? HOVER : BOX);
-            graphics.fill(bx, shopY + 12, bx + 100, shopY + 13, EDGE);
-            graphics.drawCenteredString(font, labels[i], bx + 50, shopY + 16, TEXT);
+            graphics.fill(bx, shopY + 12, bx + 76, shopY + 26, hover ? HOVER : BOX);
+            graphics.fill(bx, shopY + 12, bx + 76, shopY + 13, EDGE);
+            graphics.drawCenteredString(font, labels[i], bx + 38, shopY + 16, TEXT);
         }
         graphics.drawString(font, "修船/加固需要对着一艘已靠泊的船（24 格内）",
                 x + 10, shopY + 30, DIM, false);
@@ -115,9 +117,10 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
             case URGENT_DELIVERY -> "紧急运输";
         };
         String timed = mission.deadlineTicks > 0 ? " · 限时" : "";
+        String gated = mission.requiresDeepPermit() ? " · 需许可" : "";
         int dist = (int) Math.sqrt(minecraft.player.blockPosition().distSqr(mission.target));
-        String title = String.format("#%d %s%s · 奖励 %d · 目标 %s %dm", mission.id, type,
-                timed, mission.reward, coord(mission), dist);
+        String title = String.format("#%d %s%s%s · 奖励 %d · 目标 %s %dm", mission.id, type,
+                timed, gated, mission.reward, coord(mission), dist);
         graphics.drawString(font, title, x + 14, y + 4, TEXT, false);
 
         String stateLabel = switch (mission.state()) {
@@ -189,13 +192,17 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         int localY = (int) mouseY - topPos;
         if (button == 0 && localY >= shopY + 12 && localY < shopY + 26
                 && localX >= 8 && localX < PANEL_W - 8) {
-            int idx = (localX - 8) / 102;
+            int rel = localX - 8;
+            int idx = rel / 80;
+            int off = rel - idx * 80;
             int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
-                    MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE};
-            if (idx >= 0 && idx < actions.length) {
-                ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(actions[idx]));
-                return true;
+                    MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
+                    MissionActionPacket.BUY_DEEP_PERMIT};
+            if (idx < 0 || idx >= actions.length || off >= 76) {
+                return super.mouseClicked(mouseX, mouseY, button);
             }
+            ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(actions[idx]));
+            return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }

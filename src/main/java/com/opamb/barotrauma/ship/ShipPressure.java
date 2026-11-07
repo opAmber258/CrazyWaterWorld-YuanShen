@@ -87,9 +87,19 @@ public final class ShipPressure {
 
     /** 玩家出舱的挤压阈值与速率（UnderwaterSurvival 用）。 */
     public static final int PLAYER_SAFE_DEPTH = 300;
+    /** 穿潜水服（胸甲槽）时的出舱安全深度（REQUIREMENTS：diving_suit 耐压 400m）。 */
+    public static final int DIVING_SUIT_SAFE_DEPTH = 400;
     public static final float PLAYER_DAMAGE_PER_SECOND = 1.0F / 3.0F;
 
+    /** 是否潜水服。 */
     public static boolean hasPressureSuit(ItemStack stack) {
-        return false; // MVP：暂无潜水服，出舱深潜有代价
+        return !stack.isEmpty()
+                && stack.getItem() instanceof com.opamb.barotrauma.item.DivingSuitItem;
+    }
+
+    /** 玩家出舱安全深度：穿潜水服（胸甲槽）时 300→400m。 */
+    public static int playerSafeDepth(net.minecraft.world.entity.player.Player player) {
+        return hasPressureSuit(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST))
+                ? DIVING_SUIT_SAFE_DEPTH : PLAYER_SAFE_DEPTH;
     }
 }

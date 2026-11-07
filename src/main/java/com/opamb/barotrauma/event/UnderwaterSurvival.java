@@ -77,7 +77,7 @@ public final class UnderwaterSurvival {
             // P3：深水挤压——300m 以下裸潜每 3 秒 1 点（任务最深 600m，出舱拿黑匣子要快）
             double depth = -player.getEyePosition().y;
             pressureAccumulator++;
-            if (depth > com.opamb.barotrauma.ship.ShipPressure.PLAYER_SAFE_DEPTH
+            if (depth > com.opamb.barotrauma.ship.ShipPressure.playerSafeDepth(player)
                     && pressureAccumulator >= 60) {
                 pressureAccumulator = 0;
                 player.hurt(player.damageSources().generic(), 

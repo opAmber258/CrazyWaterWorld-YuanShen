@@ -2,6 +2,7 @@ package com.opamb.barotrauma.registry;
 
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.item.DivingKnifeItem;
+import com.opamb.barotrauma.item.DivingSuitItem;
 import com.opamb.barotrauma.item.OxygenTankItem;
 import com.opamb.barotrauma.item.WeldingToolItem;
 import net.minecraft.world.item.BlockItem;
@@ -65,6 +66,12 @@ public final class ModItems {
             () -> new Item(new Item.Properties()));
     /** 补给箱（物品）：DELIVERY 任务的货物，接任务时发，送到 B 中继站交付。 */
     public static final RegistryObject<Item> SUPPLY_CRATE = ITEMS.register("supply_crate",
+            () -> new Item(new Item.Properties()));
+    /** 潜水服（胸甲槽）：穿戴后出舱安全深度 300→400m。 */
+    public static final RegistryObject<Item> DIVING_SUIT = ITEMS.register("diving_suit",
+            () -> new DivingSuitItem(new Item.Properties()));
+    /** 深潜许可：解锁 320m 以深任务的接取（商店有售，不消耗）。 */
+    public static final RegistryObject<Item> DEEP_PERMIT = ITEMS.register("deep_permit",
             () -> new Item(new Item.Properties()));
 
     private ModItems() {
