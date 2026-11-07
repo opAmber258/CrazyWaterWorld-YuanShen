@@ -123,12 +123,15 @@ public final class DeepSeaEvents {
         // 潜艇位置判定（issue #22 + CodeRabbit 审查）：统一用"声纳台是否在码头原位"兜底。
         // 旧存档没有 starterClaimed 标记但艇已装配驶离时，声纳台不在 → 不会误判在码头；
         // 活动物理船是别的船、初始方块潜艇仍在码头时，声纳台在 → 仍然算在码头。
-        boolean sonarAtDock = deep.getBlockState(StarterSub.corePos())
-                .is(com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get());
+        var sonarBlock = com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get();
+        boolean legacyDock = !deep.getBlockState(StarterSub.corePos()).is(sonarBlock)
+                && deep.getBlockState(StarterSub.legacyCorePos()).is(sonarBlock);
+        boolean sonarAtDock = legacyDock
+                || deep.getBlockState(StarterSub.corePos()).is(sonarBlock);
         boolean docked;
         if (com.opamb.barotrauma.ship.vs.VsState.active()) {
             var ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
-            var dock = StarterSub.spawnPos();
+            var dock = legacyDock ? StarterSub.legacySpawnPos() : StarterSub.spawnPos();
             boolean activeNear = ship != null && ship.distanceToSqr(dock) < 24.0D * 24.0D;
             docked = activeNear || sonarAtDock;
         } else {
@@ -137,7 +140,7 @@ public final class DeepSeaEvents {
             docked = sonarAtDock;
         }
         if (docked) {
-            var spawn = StarterSub.spawnPos();
+            var spawn = legacyDock ? StarterSub.legacySpawnPos() : StarterSub.spawnPos();
             player.teleportTo(deep, spawn.x, spawn.y, spawn.z, 0.0F, 0.0F);
             player.setRespawnPosition(ModDimensions.THE_DEEP, BlockPos.containing(spawn), 0.0F, true, false);
         } else {
@@ -687,7 +690,7 @@ public final class DeepSeaEvents {
             return 0;
         }
         ServerPlayer player = ctx.getSource().getPlayerOrException();
-        player.sendSystemMessage(Component.literal(VsPilot.dock(player.serverLevel()))
+        player.sendSystemMessage(Component.literal(VsPilot.dock(player.serverLevel(), true))
                 .withStyle(ChatFormatting.AQUA));
         return 1;
     }

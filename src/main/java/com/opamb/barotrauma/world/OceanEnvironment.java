@@ -64,22 +64,21 @@ public final class OceanEnvironment {
                 && pos.y >= ModDimensions.WATER_BOTTOM_Y;
     }
 
-    /** 哨站内部固定是干燥的；门外平台不算。 */
+    /** 哨站内部固定是干燥的；门外平台不算。主站和每个副本顶部的站都一样。 */
     public static boolean isInOutpostDryZone(Vec3 pos) {
         if (pos == null) {
             return false;
         }
-        if (Math.abs(pos.x) <= OutpostBuilder.HALF_X
-                && Math.abs(pos.z) <= OutpostBuilder.HALF_Z
+        DockingBay.Site site = DockingBay.siteAt((int) Math.floor(pos.x), (int) Math.floor(pos.z));
+        if (site != null
+                && Math.abs(pos.x - site.x()) <= OutpostBuilder.HALF_X
+                && Math.abs(pos.z - site.z()) <= OutpostBuilder.HALF_Z
                 && pos.y >= OutpostBuilder.MIN_Y
                 && pos.y <= OutpostBuilder.MAX_Y) {
             return true;
         }
         // 对接通道（站内地板到潜艇顶舱口之间）也算站内干燥区
-        if (Math.abs(pos.x) <= DockingBay.HALF_WIDTH + 1
-                && Math.abs(pos.z - DockingBay.Z) <= 1
-                && pos.y >= DockingBay.SUB_HATCH_Y
-                && pos.y <= DockingBay.STATION_FLOOR_Y) {
+        if (DockingBay.inDryZone(pos.x, pos.z, pos.y)) {
             return true;
         }
         // B 中继站（任务交付点）的内部干燥区
@@ -98,11 +97,17 @@ public final class OceanEnvironment {
         if (pos == null) {
             return false;
         }
+        // 新世界船在 -76；旧存档没迁移，船还在 -78，两个盒子都认一下。
+        return insideSubBox(pos, StarterSub.ORIGIN_Y)
+                || insideSubBox(pos, StarterSub.LEGACY_ORIGIN_Y);
+    }
+
+    private static boolean insideSubBox(Vec3 pos, int originY) {
         return pos.x > StarterSub.ORIGIN_X && pos.x < StarterSub.ORIGIN_X + StarterSub.SIZE_X - 1
-                // 上界留半格余量：舱内跳跃顶点眼睛约 -68.1，屋顶表面在 -67；
-                // 用 -67.5 既不会在跳跃时闪滤镜，也不会把贴着屋顶游泳的人算成干燥。
-                && pos.y >= StarterSub.ORIGIN_Y + 1
-                && pos.y < StarterSub.ORIGIN_Y + StarterSub.SIZE_Y - 0.5D
+                // 上界留半格余量：跳跃顶点眼睛会贴到屋顶，放宽到顶层方块中间，
+                // 既不会闪滤镜，也不会把贴着屋顶游泳的人算成干燥。
+                && pos.y >= originY + 1
+                && pos.y < originY + StarterSub.SIZE_Y - 0.5D
                 && pos.z > StarterSub.ORIGIN_Z && pos.z < StarterSub.ORIGIN_Z + StarterSub.SIZE_Z - 1;
     }
 

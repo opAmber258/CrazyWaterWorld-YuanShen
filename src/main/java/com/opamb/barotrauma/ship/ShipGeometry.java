@@ -155,6 +155,15 @@ public final class ShipGeometry {
      * @param probe       实心/水判定
      */
     public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock, Probe probe) {
+        return scanShip(core, radius, isShipBlock, probe, 0);
+    }
+
+    /**
+     * @param padUp 包围盒向上额外扩几格。对接时用 1，把潜艇头顶的站侧舱口/平台
+     *              包进扫描，配合 Probe 的虚拟密封盖防止“拆艇顶舱口就进水”。
+     */
+    public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock,
+                                  Probe probe, int padUp) {
         Set<BlockPos> hull = collectHull(core, radius, isShipBlock);
         if (hull.isEmpty()) {
             return new Result(List.of(), List.of(), 0, 0, new Bounds(core.getX(), core.getY(), core.getZ(),
@@ -170,6 +179,9 @@ public final class ShipGeometry {
             maxX = Math.max(maxX, pos.getX());
             maxY = Math.max(maxY, pos.getY());
             maxZ = Math.max(maxZ, pos.getZ());
+        }
+        if (padUp > 0) {
+            maxY += padUp;
         }
 
         // ---- 3) 包围盒内分舱 ----

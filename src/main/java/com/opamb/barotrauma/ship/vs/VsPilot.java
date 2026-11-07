@@ -14,6 +14,7 @@ import com.opamb.barotrauma.ship.MachineCount;
 import com.opamb.barotrauma.ship.ShipSimulation;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.world.OceanEnvironment;
+import com.opamb.barotrauma.world.StarterSub;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -204,6 +205,20 @@ public final class VsPilot {
         } catch (Throwable ignored) {
             return null;
         }
+    }
+
+    /**
+     * 刚体中心到方块核心的偏移（装配时定下，随船平移不变）。
+     * 传送到副本码头时用它把"核心应该落在哪"换算成 {@link #teleportShipTo} 要的船中心坐标。
+     */
+    @Nullable
+    public static Vec3 shipCoreOffset() {
+        if (ship == null || corePos == null) {
+            return null;
+        }
+        return new Vec3(corePos.getX() - assembledPos.x,
+                corePos.getY() - assembledPos.y,
+                corePos.getZ() - assembledPos.z);
     }
 
     /** 刚体速度（格/秒）；没船返回 null。 */
@@ -925,7 +940,9 @@ public final class VsPilot {
             }
         };
         ShipGeometry.Result geometry = ShipGeometry.scanShip(core, ShipCoreBlockEntity.RADIUS,
-                pos -> ModShipBlocks.isShipBlock(level.getBlockState(pos.offset(ox, oy, oz))), probe);
+                pos -> ModShipBlocks.isShipBlock(level.getBlockState(pos.offset(ox, oy, oz)))
+                        && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(pos)
+                        && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos), probe);
         current.replaceGeometry(geometry);
         // breached 方块仍是 ship block，重新装配/重扫后耐久表可能是空的：按 blockstate 补 0%。
         List<BlockPos> breached = new ArrayList<>();
@@ -1154,33 +1171,26 @@ public final class VsPilot {
     /** 服务端预检全部登船位置：真实船坞碰撞 + 舱室 + 当前完整刚体变换（含旋转）。 */
     private static List<Vec3> boardingPositions(ServerLevel level, int count) {
         if (ship == null || state == null || lastLevel != level || count < 1) return List.of();
-        ServerShip live = VsBridge.loaded(level, ship);
-        if (live == null || !discoverYardOffset(level)) return List.of();
+        // 刚装配/刚传送到副本码头时，船坞偏移和水面包都还是旧位置的，不能拿来做判定。
+        // 直接把装配快照里的舱室格按刚体当前变换换到世界坐标，再查世界碰撞。
         List<Vec3> result = new ArrayList<>();
         for (ShipGeometry.Compartment compartment : state.geometry().compartments()) {
             for (BlockPos original : compartment.cells().stream().sorted(java.util.Comparator
                     .comparingInt((BlockPos p) -> p.getY()).thenComparingInt(p -> p.getX())
                     .thenComparingInt(p -> p.getZ())).toList()) {
                 if (!compartment.cells().contains(original.above())) continue;
-                BlockPos yard = original.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
-                if (!level.getBlockState(yard).getCollisionShape(level, yard).isEmpty()
-                        || !level.getBlockState(yard.above()).getCollisionShape(level, yard.above()).isEmpty()
-                        || !level.getBlockState(yard.below()).isFaceSturdy(level, yard.below(), net.minecraft.core.Direction.UP)) continue;
-                // Feet and head both dry; don't silently board a flooded compartment.
-                org.joml.Vector3d feet = live.getTransform().getShipToWorld().transformPosition(
-                        new org.joml.Vector3d(yard.getX() + 0.5, yard.getY() + 0.05, yard.getZ() + 0.5));
-                org.joml.Vector3d head = live.getTransform().getShipToWorld().transformPosition(
-                        new org.joml.Vector3d(yard.getX() + 0.5, yard.getY() + 1.7, yard.getZ() + 0.5));
-                Vec3 pos = new Vec3(feet.x, feet.y, feet.z);
-                if (!boardingCellDry(original)) continue;
-                if (!Double.isFinite(pos.x) || !Double.isFinite(pos.y) || !Double.isFinite(pos.z)
-                        || !level.getWorldBorder().isWithinBounds(BlockPos.containing(pos))) continue;
-                // Entity remains world-upright: reject strong pitch/roll rather than clip into the hull.
-                if (Math.abs(head.y - feet.y - 1.65) > 0.001
-                        || Math.abs(head.x - feet.x) > 0.01 || Math.abs(head.z - feet.z) > 0.01) continue;
-                if (!level.noCollision(new net.minecraft.world.phys.AABB(pos.x - .31, pos.y, pos.z - .31,
-                        pos.x + .31, pos.y + 1.8, pos.z + .31))) continue;
-                result.add(pos);
+                Vec3 center = toWorld(original);
+                if (!Double.isFinite(center.x) || !Double.isFinite(center.y) || !Double.isFinite(center.z)) {
+                    continue;
+                }
+                double feetY = center.y - 0.45D;
+                if (!level.getWorldBorder().isWithinBounds(BlockPos.containing(center))) continue;
+                if (!level.noCollision(new net.minecraft.world.phys.AABB(
+                        center.x - .31D, feetY, center.z - .31D,
+                        center.x + .31D, feetY + 1.8D, center.z + .31D))) {
+                    continue;
+                }
+                result.add(new Vec3(center.x, feetY, center.z));
                 if (result.size() == count) return List.copyOf(result);
             }
         }
@@ -1484,6 +1494,8 @@ public final class VsPilot {
     public static String launch(ServerLevel level, Collection<BlockPos> blocks,
                                 @Nullable ShipState shipState, @Nullable BlockPos core) {
         lastLevel = level;
+        // 离站：先把对接口舱口都关上，免得装成物理船后艇顶还开着洞。
+        com.opamb.barotrauma.world.DockingBay.close(level);
         if (ship != null && !stillExists(level)) {
             dropStale();
         }
@@ -1714,6 +1726,13 @@ public final class VsPilot {
      * 这里不需要做旋转变换，位移就是纯平移。</p>
      */
     public static String dock(ServerLevel level) {
+        return dock(level, false);
+    }
+
+    /**
+     * @param force 调试命令用：不做距离判定、不吸附码头，按当前位置拆回。
+     */
+    public static String dock(ServerLevel level, boolean force) {
         if (ship == null) {
             return "现在没有物理船";
         }
@@ -1731,6 +1750,35 @@ public final class VsPilot {
         int dz = (int) Math.round(now.z - assembledPos.z);
         Map<BlockPos, BlockState> restore = snapshot;
         BlockPos oldCore = corePos;
+
+        // 0) 靠泊判定：必须把船开到某个哨站对接口附近；靠泊时吸附到码头标准位。
+        com.opamb.barotrauma.world.DockingBay.Site dockSite = null;
+        if (!force) {
+            BlockPos currentCore = oldCore == null ? null : oldCore.offset(dx, dy, dz);
+            if (currentCore == null) {
+                return "不知道船核心在哪，无法判断靠泊位置";
+            }
+            dockSite = com.opamb.barotrauma.world.DockingBay.siteAt(currentCore.getX(), currentCore.getZ());
+            if (dockSite == null) {
+                return "离哨站太远：把船开到哨站对接口附近再靠泊";
+            }
+            int dockCoreX = dockSite.x() + 1;
+            int dockCoreZ = dockSite.z() - 3;
+            double horizontal = Math.hypot(currentCore.getX() - dockCoreX, currentCore.getZ() - dockCoreZ);
+            if (horizontal > 16.0D || Math.abs(currentCore.getY() - (StarterSub.ORIGIN_Y + 1)) > 6) {
+                return String.format(Locale.ROOT,
+                        "离对接口太远（水平 %.1f 格 / 高度差 %d 格），开到对接口 16 格内再靠泊",
+                        horizontal, Math.abs(currentCore.getY() - (StarterSub.ORIGIN_Y + 1)));
+            }
+            // 吸附：把核心拉到该站的标准码头核心位
+            int snapX = dockCoreX - currentCore.getX();
+            int snapY = (StarterSub.ORIGIN_Y + 1) - currentCore.getY();
+            int snapZ = dockCoreZ - currentCore.getZ();
+            dx += snapX;
+            dy += snapY;
+            dz += snapZ;
+            LOGGER.info("[vs] 靠泊吸附：站点=({},{}) 位移=({},{},{})", dockSite.x(), dockSite.z(), dx, dy, dz);
+        }
 
         // 1) 先把刚体从船世界里删掉，但不碰世界方块（VS2 的 deleteShip 参数不是"铺回方块"）
         try {
@@ -1793,6 +1841,11 @@ public final class VsPilot {
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
         VsState.deactivate();
+        // 5) 靠泊成功：船已经回到方块形态，再打开该站舱口并结算本轮出勤。
+        if (dockSite != null) {
+            com.opamb.barotrauma.world.DockingBay.setHatchOpen(level, dockSite, true);
+            com.opamb.barotrauma.campaign.CampaignManager.onDocked(level, dockSite);
+        }
         String where = String.format(Locale.ROOT, "%+d,%+d,%+d", dx, dy, dz);
         return skipped == 0
                 ? "已拆回世界：铺回 " + placed + " 格（船位移 " + where + "）"
@@ -2362,7 +2415,7 @@ public final class VsPilot {
                 + "｜物理回调次数=" + VsThruster.calls() + "｜" + VsThruster.probe();
         // 装配之后过了 10 秒，原地灌了多少海水——这就是用户看到的"船里全是水"
         line += "｜10s 后｜" + floodProbe(level, state) + "｜" + VsBridge.claim(live);
-        String docked = dock(level);
+        String docked = dock(level, true);
         int placed = countBlocks(level, pos);
         return line + " | " + docked + "，拆回后方块数=" + placed;
     }

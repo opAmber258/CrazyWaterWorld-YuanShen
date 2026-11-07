@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Mirror;
@@ -202,6 +203,15 @@ public class HatchBlock extends Block implements EntityBlock {
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
                                         CollisionContext context) {
         return state.getValue(OPEN) ? Shapes.empty() : PANEL;
+    }
+
+    /**
+     * 打开的舱口算攀爬面：对接井的铁梯上下两道舱口，人要从舱口中间爬过去。
+     * 关着的时候不算，否则站在 1px 薄板上会被当成在梯子上。
+     */
+    @Override
+    public boolean isLadder(BlockState state, LevelReader level, BlockPos pos, LivingEntity entity) {
+        return state.getValue(OPEN);
     }
 
     @Override

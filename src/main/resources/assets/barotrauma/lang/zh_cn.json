@@ -9,6 +9,7 @@
   "block.barotrauma.sonar": "声纳台",
   "block.barotrauma.station_plating": "站点装甲",
   "block.barotrauma.hatch": "水平舱口",
+  "block.barotrauma.hatch_ladder": "带梯舱口",
   "block.barotrauma.bulkhead_door": "舱壁门",
   "tooltip.barotrauma.oxygen_tank": "右键补满氧气",
   "tooltip.barotrauma.diving_knife": "潜水员标准配发",
@@ -71,6 +72,8 @@
   "item.barotrauma.small_pump": "小型泵",
   "block.barotrauma.drain_outlet": "排水口",
   "item.barotrauma.drain_outlet": "排水口",
+  "block.barotrauma.iron_ladder": "铁梯",
+  "item.barotrauma.iron_ladder": "铁梯",
   "item.barotrauma.diving_suit": "潜水服",
   "item.barotrauma.deep_permit": "深潜许可",
   "key.barotrauma.toggle_natural_sink": "切换水中自然下沉",
@@ -86,5 +89,6 @@
   "item.barotrauma.saline": "生理盐水",
   "item.barotrauma.naloxone": "纳洛酮",
   "item.barotrauma.fentanyl": "芬太尼",
-  "item.barotrauma.67": "67"
+  "item.barotrauma.67": "67",
+  "subtitles.barotrauma.ladder_climb": "攀爬铁梯"
 }

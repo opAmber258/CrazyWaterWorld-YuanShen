@@ -37,10 +37,13 @@ public final class ModBlockEntities {
                     .of(SmallPumpBlockEntity::new, ModBlocks.SMALL_PUMP.get())
                     .build(null));
 
-    /** 3 格宽舱口；只有中间段有方块实体，渲染整扇模型。 */
+    /** 3 格宽舱口（普通舱口和带梯变种共用）；只有中间段有方块实体，渲染整扇模型。 */
     public static final RegistryObject<BlockEntityType<HatchBlockEntity>> HATCH =
             BLOCK_ENTITIES.register("hatch", () -> BlockEntityType.Builder
-                    .of(HatchBlockEntity::new, ModShipBlocks.HATCH.get()).build(null));
+                    .of(HatchBlockEntity::new,
+                            ModShipBlocks.HATCH.get(),
+                            ModShipBlocks.HATCH_LADDER.get())
+                    .build(null));
 
     /** 3 格高舱壁门；只有最下面一段有方块实体，渲染整扇模型。 */
     public static final RegistryObject<BlockEntityType<BulkheadDoorBlockEntity>> BULKHEAD_DOOR =

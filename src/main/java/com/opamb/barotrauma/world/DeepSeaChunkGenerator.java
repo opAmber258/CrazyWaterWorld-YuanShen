@@ -183,19 +183,27 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             }
         }
 
-        // 4) 哨站：先挖出外面的水池，再放建筑
-        if (OutpostBuilder.intersectsCavern(chunkPos)) {
-            OutpostBuilder.carveCavern(chunk);
-        }
-        if (OutpostBuilder.intersects(chunkPos)) {
-            OutpostBuilder.build(chunk);
-        }
-
         // 6b) 任务 POI：沉船/侦察点/B 中继站（确定性，幂等）
         PoiNetwork.buildInto(chunk);
 
         // 6c) 任务海域实例：远处保留带里的封闭洞穴，只有落在锚点影响范围的区块才写
         MissionInstance.generate(chunk, seed);
+
+        // 6d) 哨站：主站 + 每个任务副本顶部各一座。
+        //     放在洞穴之后：站外水池要把洞顶岩壳挖开，船才能从码头下到洞里。
+        for (DockingBay.Site site : DockingBay.sitesNear(chunkPos)) {
+            if (DockingBay.Site.MAIN.equals(site)) {
+                if (OutpostBuilder.intersectsCavern(chunkPos, site)) {
+                    OutpostBuilder.carveCavern(chunk, site);
+                }
+            } else if (OutpostBuilder.intersectsWell(chunkPos, site)) {
+                // 副本站只挖码头竖井，哨站本身挂在岩壁上，不泡在大洞里。
+                OutpostBuilder.carveDockWell(chunk, site);
+            }
+            if (OutpostBuilder.intersects(chunkPos, site)) {
+                OutpostBuilder.build(chunk, site);
+            }
+        }
 
         // 7) 高度图
         Heightmap.primeHeightmaps(chunk,
