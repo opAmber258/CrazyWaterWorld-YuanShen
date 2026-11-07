@@ -38,6 +38,7 @@ public final class MedicalProvider implements ICapabilitySerializable<CompoundTa
         }
         tag.put("afflictions", list);
         tag.putDouble("downedDrain", container.downedDrainValue());
+        tag.putBoolean("downed", container.downedState());
         return tag;
     }
 
@@ -50,6 +51,9 @@ public final class MedicalProvider implements ICapabilitySerializable<CompoundTa
         }
         if (tag.contains("downedDrain")) {
             container.restoreDownedDrain(tag.getDouble("downedDrain"));
+        }
+        if (tag.contains("downed")) {
+            container.restoreDownedState(tag.getBoolean("downed"));
         }
     }
 

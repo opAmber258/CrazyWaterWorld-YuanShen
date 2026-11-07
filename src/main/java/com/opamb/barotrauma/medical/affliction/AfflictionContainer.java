@@ -256,6 +256,16 @@ public final class AfflictionContainer {
         downedDrain = Double.isFinite(value) ? value : 0.0;
     }
 
+    /** 倒地标志（持久化用）。 */
+    public boolean downedState() {
+        return downed;
+    }
+
+    /** 从存档恢复倒地标志；直接赋值，不清治疗（清理只应在进入倒地的那一次发生）。 */
+    public void restoreDownedState(boolean value) {
+        downed = value;
+    }
+
     /** 非死亡克隆：把旧容器的全部医疗状态复制到新容器。 */
     public void copyFrom(AfflictionContainer other) {
         if (other == null || other == this) {

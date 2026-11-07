@@ -57,6 +57,7 @@ public final class MedicalScreen extends Screen {
     /** 粘性选中部位：悬停即选中，鼠标移开（去看药品图标）后保持，右侧状态不再闪没（用户实测反馈 #4）。 */
     private Limb selectedLimb;
     private final List<IconRect> iconRects = new ArrayList<>();
+    private int refreshTicks;
 
     public MedicalScreen(UUID target, String targetName) {
         super(Component.literal("医疗"));
@@ -67,6 +68,16 @@ public final class MedicalScreen extends Screen {
     @Override
     protected void init() {
         ModNetwork.sendToServer(new MedicalRequestPacket(target));
+    }
+
+    /** 面板打开期间每秒刷新一次目标快照；关闭后 tick 停止，请求自然结束。 */
+    @Override
+    public void tick() {
+        super.tick();
+        if (++refreshTicks >= 20) {
+            refreshTicks = 0;
+            ModNetwork.sendToServer(new MedicalRequestPacket(target));
+        }
     }
 
     @Override
