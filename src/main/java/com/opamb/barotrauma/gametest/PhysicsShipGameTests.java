@@ -58,7 +58,7 @@ public final class PhysicsShipGameTests {
     private static void resetShip(GameTestHelper helper) {
         if (VsSupport.available() && VsPilot.hasShip()) {
             try {
-                VsPilot.dock(helper.getLevel());
+                VsPilot.dock(helper.getLevel(), true);
             } catch (Throwable ignored) {
                 // 拆不掉也要继续，否则后面的断言会给出误导性的失败
             }
@@ -181,7 +181,7 @@ public final class PhysicsShipGameTests {
         VsPilot.launch(helper.getLevel(), blocks, state, sonarAbs);
         helper.assertTrue(VsPilot.hasShip(), "前提：装配成功");
 
-        String dockMessage = VsPilot.dock(helper.getLevel());
+        String dockMessage = VsPilot.dock(helper.getLevel(), true);
         helper.assertTrue(!VsPilot.hasShip(), "拆完之后不该还有物理船");
 
         // 不断言"具体某一格"，而是数整个船体区域：拆船要么全铺回来，要么有明显缺口。

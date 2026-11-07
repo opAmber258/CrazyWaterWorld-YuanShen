@@ -23,6 +23,9 @@ public final class ModSounds {
     /** 舱门开/关：原版四段门音随机。 */
     public static final RegistryObject<SoundEvent> DOOR_TOGGLE = register("door_toggle");
 
+    /** 爬铁梯：原版 {@code footstep_metal}（登梯时手脚撞金属梯级的声音）。 */
+    public static final RegistryObject<SoundEvent> LADDER_CLIMB = register("ladder_climb");
+
     private ModSounds() {
     }
 

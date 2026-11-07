@@ -53,78 +53,58 @@ public final class CampaignManager {
             sync(player);
             return false;
         }
-        // 1) 登船点、物理船、任务海域一次算清：
-        //    - 首次下潜：先在方块船上找安全舱内，再把船收成 VS2 刚体；
-        //    - 之后：直接在物理船里找舱内点。
-        //    传送只平移不旋转，所以登船点整体加上船的位移即可。这样不依赖"船坞偏移"
-        //    是否已经扫出来（首次装配后船坞里的声纳还没 tick 过）。
-        // 离站前把对接口两道舱口都关上，否则装成物理船后艇顶是个洞。
+        // 1) 出发站 = 船现在停靠的站（第一次是主站，之后是本轮站立在副本顶部）。
+        //    离站前把对接口舱口都关上，否则装成物理船后艇顶是个洞。
+        com.opamb.barotrauma.world.DockingBay.Site originSite = currentSite(deep, state);
         com.opamb.barotrauma.world.DockingBay.close(deep);
-        List<Vec3> positions;
-        if (VsState.active()) {
-            positions = VsState.boardingPositions(deep, players.size());
-        } else {
-            positions = blockBoardingPositions(deep, players.size());
-            if (positions.size() == players.size() && VsSupport.available()) {
-                String launch = launchStarter(deep);
-                if (!VsState.active()) {
-                    player.sendSystemMessage(Component.translatable("campaign.barotrauma.launch_failed", launch));
-                    sync(player);
-                    return false;
-                }
-                BarotraumaMod.LOGGER.info("[campaign] 下潜前装配物理船：{}", launch);
-            }
-        }
-        if (positions.size() != players.size()) {
-            BarotraumaMod.LOGGER.info("[campaign] 登船预检失败：active={} support={} positions={}/{}",
-                    VsState.active(), VsSupport.available(), positions.size(), players.size());
-            player.sendSystemMessage(Component.translatable("campaign.barotrauma.no_interior"));
-            sync(player);
-            return false;
-        }
+
+        // 2) 船还是方块就先在出发站装配成 VS2 刚体；已经物理化就跳过。
         if (!VsState.active()) {
-            // 没装 VS2 就没有可传送的物理船，任务海域实例走不了。
-            player.sendSystemMessage(Component.translatable("campaign.barotrauma.no_interior"));
-            sync(player);
-            return false;
+            String launch = launchStarter(deep, originSite);
+            if (!VsState.active()) {
+                player.sendSystemMessage(Component.translatable("campaign.barotrauma.launch_failed", launch));
+                sync(player);
+                return false;
+            }
+            BarotraumaMod.LOGGER.info("[campaign] 下潜前装配物理船：{}", launch);
         }
 
-        // 2) 把船传送进本轮任务海域实例。先同步加载目标区块，再传送：
-        //    VS2 下一 tick 更新 activeChunks 后，玩家移动才不会撞上"未加载的船"被回弹。
+        // 3) 目的地 = 本轮副本顶部的哨站；船传送到哨站正下方的水里（不下潜时不再靠泊），
+        //    玩家在物理船里登船，直接往下开进任务洞穴。
         MissionInstance.Anchor anchor = MissionInstance.anchorForRound(state.roundsCompleted());
-        Vec3 before = VsPilot.shipPosition();
+        com.opamb.barotrauma.world.DockingBay.Site destSite =
+                new com.opamb.barotrauma.world.DockingBay.Site(anchor.x(), anchor.z());
         int preloaded = MissionInstance.preload(deep, anchor, 2);
         VsPilot.preloadShipChunks(deep);
+        Vec3 shipBefore = VsPilot.shipPosition();
         String moved = VsPilot.teleportShipTo(deep, anchor.spawn());
         if (moved != null) {
-            BarotraumaMod.LOGGER.info("[campaign] 任务海域传送失败：{}", moved);
+            BarotraumaMod.LOGGER.info("[campaign] 副本码头传送失败：{}", moved);
+            rollbackShip(deep, shipBefore);
             player.sendSystemMessage(Component.translatable("campaign.barotrauma.instance_failed", moved));
             sync(player);
             return false;
         }
-        Vec3 after = VsPilot.shipPosition();
-        if (before == null || after == null) {
-            if (before != null) {
-                VsPilot.teleportShipTo(deep, before);
-            }
-            player.sendSystemMessage(Component.translatable("campaign.barotrauma.instance_failed", "船位置不可读"));
+        com.opamb.barotrauma.world.DockingBay.ensureStationHatch(deep, destSite);
+        // 传送到副本后停车：别把出发时的油门/自动驾驶带过去，船会自己开走。
+        if (VsPilot.state() != null) {
+            VsPilot.state().setThrottle(0, 0, 0);
+            VsPilot.state().setAutopilotHold(false);
+        }
+        List<Vec3> positions = VsState.boardingPositions(deep, players.size());
+        if (positions.size() != players.size()) {
+            BarotraumaMod.LOGGER.info("[campaign] 登船预检失败：support={} positions={}/{}",
+                    VsSupport.available(), positions.size(), players.size());
+            // 船已经传送过去了但没人能上船：把它送回出发站并拆回方块，别让船自己留在副本里。
+            rollbackShip(deep, shipBefore);
+            player.sendSystemMessage(Component.translatable("campaign.barotrauma.no_interior"));
             sync(player);
             return false;
         }
-        Vec3 delta = after.subtract(before);
-        if (after.distanceTo(anchor.spawn()) > 8.0D) {
-            // 读回来的位置没落到目标附近（VS2 回写时序/旧句柄）：按目标点算位移更稳。
-            BarotraumaMod.LOGGER.warn("[campaign] 传送后的船位置 {} 偏离目标 {}，按目标点计算登船位移",
-                    after, anchor.spawn());
-            delta = anchor.spawn().subtract(before);
-        }
-        final Vec3 shift = delta;
-        positions = positions.stream().map(p -> p.add(shift)).toList();
-        BarotraumaMod.LOGGER.info("[campaign] 任务海域实例：slot={} 锚点=({},{},{}) 预加载区块={} 位移={}",
-                anchor.slot(), anchor.x(), anchor.y(), anchor.z(), preloaded, delta);
-        BarotraumaMod.LOGGER.info("[campaign] 登船预检通过：active=true support={} positions={}",
+        BarotraumaMod.LOGGER.info("[campaign] 副本站点：slot={} 站点=({},{}) 预加载区块={}",
+                anchor.slot(), destSite.x(), destSite.z(), preloaded);
+        BarotraumaMod.LOGGER.info("[campaign] 登船预检通过：support={} positions={}",
                 VsSupport.available(), positions.size());
-        BarotraumaMod.LOGGER.info("[campaign] 登船时物理船位置：{}", after);
         state.takeSnapshot();
         state.selectMissions(ids);
         state.beginTravel(destination, deep.getGameTime());
@@ -143,10 +123,37 @@ public final class CampaignManager {
         return true;
     }
 
-    /** 下潜前把初始方块船收成 VS2 物理船；失败时返回原因，由调用方决定是否中止。 */
-    private static String launchStarter(ServerLevel deep) {
-        deep.getChunkAt(StarterSub.corePos());
-        if (!(deep.getBlockEntity(StarterSub.corePos()) instanceof ShipCoreBlockEntity core)) {
+    /** 船当前停靠的站：本轮副本（如果那里真有方块船）或主站。 */
+    private static com.opamb.barotrauma.world.DockingBay.Site currentSite(
+            ServerLevel deep, CampaignState state) {
+        if (state.round().hasInstance()) {
+            com.opamb.barotrauma.world.DockingBay.Site instance =
+                    new com.opamb.barotrauma.world.DockingBay.Site(
+                            state.round().instanceX(), state.round().instanceZ());
+            BlockPos core = new BlockPos(instance.x() + 1, StarterSub.ORIGIN_Y + 1, instance.z() - 3);
+            deep.getChunkAt(core);
+            if (deep.getBlockEntity(core) instanceof ShipCoreBlockEntity) {
+                return instance;
+            }
+        }
+        return com.opamb.barotrauma.world.DockingBay.Site.MAIN;
+    }
+
+    /** 下潜流程失败时把已经传过去的物理船送回出发站并拆回方块。 */
+    private static void rollbackShip(ServerLevel deep, Vec3 before) {
+        if (before == null || !VsState.active()) {
+            return;
+        }
+        VsPilot.teleportShipTo(deep, before);
+        String docked = VsPilot.dock(deep, true);
+        BarotraumaMod.LOGGER.info("[campaign] 下潜失败回滚：{}", docked);
+    }
+
+    /** 下潜前把出发站的方块船收成 VS2 物理船；失败时返回原因，由调用方决定是否中止。 */
+    private static String launchStarter(ServerLevel deep, com.opamb.barotrauma.world.DockingBay.Site site) {
+        BlockPos corePos = starterCorePos(deep, site);
+        if (corePos == null
+                || !(deep.getBlockEntity(corePos) instanceof ShipCoreBlockEntity core)) {
             return "找不到初始潜艇核心";
         }
         ShipState state = core.state() != null ? core.state() : core.rescan(deep);
@@ -156,18 +163,23 @@ public final class CampaignManager {
         return VsPilot.launch(deep, state.collectBlocks(deep), state, core.getBlockPos());
     }
 
-    private static List<Vec3> blockBoardingPositions(ServerLevel deep, int count) {
-        if (VsState.active()) return VsState.boardingPositions(deep, count);
-        // 无活动船时只认原始初始艇的真实核心和已存在的安全舱内，绝不生成替身船。
-        deep.getChunkAt(StarterSub.corePos());
-        if (!(deep.getBlockEntity(StarterSub.corePos()) instanceof com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core))
+    private static List<Vec3> blockBoardingPositions(ServerLevel deep, int count,
+                                                    com.opamb.barotrauma.world.DockingBay.Site site) {
+        // 只认这个站方块船的真实核心和已存在的安全舱内，绝不生成替身船。
+        BlockPos corePos = starterCorePos(deep, site);
+        if (corePos == null
+                || !(deep.getBlockEntity(corePos) instanceof com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core))
             return List.of();
+        // 核心在 originY+1；旧存档的船还在 -78。
+        int originY = corePos.getY() - 1;
+        int shipX = site.x() + StarterSub.ORIGIN_X;
+        int shipZ = site.z() + StarterSub.ORIGIN_Z;
         var boat = core.state() == null ? core.rescan(deep) : core.state();
         if (boat == null || boat.compartments().isEmpty() || boat.floodRatio() > 0.001) return List.of();
         List<Vec3> result = new ArrayList<>();
-        for (int x = StarterSub.ORIGIN_X + 1; x < StarterSub.ORIGIN_X + StarterSub.SIZE_X - 1; x++) {
-            for (int z = StarterSub.ORIGIN_Z + 1; z < StarterSub.ORIGIN_Z + StarterSub.SIZE_Z - 1; z++) {
-                BlockPos feet = new BlockPos(x, StarterSub.ORIGIN_Y + 1, z);
+        for (int x = shipX + 1; x < shipX + StarterSub.SIZE_X - 1; x++) {
+            for (int z = shipZ + 1; z < shipZ + StarterSub.SIZE_Z - 1; z++) {
+                BlockPos feet = new BlockPos(x, originY + 1, z);
                 if (boat.compartments().stream().noneMatch(c -> c.cells().contains(feet) && c.cells().contains(feet.above()))) continue;
                 if (!deep.getBlockState(feet).getCollisionShape(deep, feet).isEmpty()
                         || !deep.getBlockState(feet.above()).getCollisionShape(deep, feet.above()).isEmpty()
@@ -179,26 +191,57 @@ public final class CampaignManager {
         return List.of();
     }
 
+    /** 找到这个站停靠的初始潜艇核心；主站兼容 -75/-77 的旧存档。 */
+    private static BlockPos starterCorePos(ServerLevel deep, com.opamb.barotrauma.world.DockingBay.Site site) {
+        BlockPos pos = new BlockPos(site.x() + 1, StarterSub.ORIGIN_Y + 1, site.z() - 3);
+        deep.getChunkAt(pos);
+        if (deep.getBlockEntity(pos) instanceof ShipCoreBlockEntity) {
+            return pos;
+        }
+        if (com.opamb.barotrauma.world.DockingBay.Site.MAIN.equals(site)) {
+            for (BlockPos legacy : List.of(StarterSub.oldCorePos(), StarterSub.legacyCorePos())) {
+                deep.getChunkAt(legacy);
+                if (deep.getBlockEntity(legacy) instanceof ShipCoreBlockEntity) {
+                    return legacy;
+                }
+            }
+        }
+        return null;
+    }
+
     /** 自动抵达明确禁用：玩家坐标不代表潜艇物理靠泊。 */
     public static void tick(MinecraftServer server) {}
 
-    /** 管理员调试：直接推进到目的地并自动存档。 */
     /** 管理员调试：直接推进到目的地并自动存档。 */
     public static boolean forceArrive(MinecraftServer server) {
         ServerLevel deep = server.getLevel(ModDimensions.THE_DEEP);
         if (deep == null) return false;
         CampaignState state = CampaignState.wallet(deep);
         if (state.round().phase() != RoundPhase.DIVING) return false;
-        // 调试推进，不结算未生成/未完成的任务，也不移动玩家到逻辑地图坐标。
+        settleArrival(deep, state);
+        syncAll(server);
+        server.saveEverything(false, false, true);
+        return true;
+    }
+
+    /** 物理船在实际哨站靠泊成功：正在出勤就当作抵达，推进一轮。 */
+    public static void onDocked(ServerLevel deep) {
+        CampaignState state = CampaignState.wallet(deep);
+        if (state.round().phase() != RoundPhase.DIVING) {
+            return;
+        }
+        settleArrival(deep, state);
+        syncAll(deep.getServer());
+        deep.getServer().saveEverything(false, false, true);
+    }
+
+    /** 抵达结算：推节点、记一轮、把超时失败的任务放回池子。 */
+    private static void settleArrival(ServerLevel deep, CampaignState state) {
         state.arrive();
-        // 本轮结束：超时失败的任务回到任务池，供下一轮再次接取。
         int resetFailed = com.opamb.barotrauma.data.MissionSavedData.get(deep).resetFailed();
         if (resetFailed > 0) {
             BarotraumaMod.LOGGER.info("[campaign] 抵达目的地，重置 {} 条失败任务", resetFailed);
         }
-        syncAll(server);
-        server.saveEverything(false, false, true);
-        return true;
     }
 
     /** 仅恢复战役核心数据，绝非船/玩家/物品的完整回档。 */

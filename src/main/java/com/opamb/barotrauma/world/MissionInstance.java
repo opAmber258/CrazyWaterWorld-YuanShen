@@ -35,12 +35,13 @@ public final class MissionInstance {
     /** 洞穴水平半径。 */
     public static final int RX = 96;
     public static final int RZ = 96;
-    /** 潜艇在本实例里的出生高度。 */
-    public static final int ANCHOR_Y = -84;
+    /** 潜艇在本实例里的出生高度：副本站码头正下方的竖井里（船中心）。 */
+    public static final int ANCHOR_Y = -100;
 
-    public static final int CEILING_BASE = -46;
+    /** 洞顶/洞底：整条洞穴压到副本站码头（-73）之下，船从码头往下开进洞。 */
+    public static final int CEILING_BASE = -80;
     public static final int CEILING_WOBBLE = 8;
-    public static final int FLOOR_BASE = -122;
+    public static final int FLOOR_BASE = -156;
     public static final int FLOOR_WOBBLE = 8;
 
     /** 洞壁外沿（相对半径）。1.0 是洞内空气，1.0~RIM 是实心岩壁。 */

@@ -406,7 +406,9 @@ public final class ShipState {
         for (net.minecraft.core.BlockPos pos : net.minecraft.core.BlockPos.betweenClosed(
                 b.minX() - 1, b.minY() - 1, b.minZ() - 1,
                 b.maxX() + 1, b.maxY() + 1, b.maxZ() + 1)) {
-            if (com.opamb.barotrauma.registry.ModShipBlocks.isShipBlock(level.getBlockState(pos))) {
+            if (com.opamb.barotrauma.registry.ModShipBlocks.isShipBlock(level.getBlockState(pos))
+                    && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(pos)
+                    && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos)) {
                 out.add(pos.immutable());
             }
         }

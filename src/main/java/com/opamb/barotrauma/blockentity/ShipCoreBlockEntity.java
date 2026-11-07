@@ -365,12 +365,17 @@ public class ShipCoreBlockEntity extends BlockEntity {
             }
         }
         BlockPos corePos = worldPosition;
+        final boolean docked = com.opamb.barotrauma.world.DockingBay.isDockedCore(corePos);
         ShipGeometry.Probe probe = new ShipGeometry.Probe() {
             @Override
             public boolean isSolid(BlockPos pos) {
                 if (pos.equals(corePos)) {
                     // 核心自身占一格，不能把自己当成墙，否则洪水填充从起点就走不动
                     return false;
+                }
+                if (docked && com.opamb.barotrauma.world.DockingBay.isDockCapRow(pos)) {
+                    // 对接时头顶 -68 那一层是站侧平台/舱口，算虚拟密封盖。
+                    return true;
                 }
                 BlockState state = level.getBlockState(pos);
                 return ModShipBlocks.isSolidForShip(state);
@@ -383,16 +388,25 @@ public class ShipCoreBlockEntity extends BlockEntity {
 
             @Override
             public boolean isDoorway(BlockPos pos) {
+                if (docked && com.opamb.barotrauma.world.DockingBay.isDockCapRow(pos)) {
+                    return false;
+                }
                 return ModShipBlocks.isDoorway(level.getBlockState(pos));
             }
 
             @Override
             public boolean isOpenDoorway(BlockPos pos) {
+                if (docked && com.opamb.barotrauma.world.DockingBay.isDockCapRow(pos)) {
+                    return false;
+                }
                 return ModShipBlocks.isOpenDoorway(level.getBlockState(pos));
             }
         };
         ShipGeometry.Result geometry = ShipGeometry.scanShip(corePos, RADIUS,
-                pos -> ModShipBlocks.isShipBlock(level.getBlockState(pos)), probe);
+                pos -> ModShipBlocks.isShipBlock(level.getBlockState(pos))
+                        && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(pos)
+                        && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos),
+                probe, docked ? 1 : 0);
 
         int sonar = 0;
         if (geometry.hullBlocks() > 0) {

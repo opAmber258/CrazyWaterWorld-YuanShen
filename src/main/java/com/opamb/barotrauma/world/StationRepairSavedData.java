@@ -16,32 +16,47 @@ public final class StationRepairSavedData extends SavedData {
     public static final String NAME = "barotrauma_station_repair";
 
     private boolean done;
+    /** 新对接气闸室是否已经密封过一次（2026-11-07 布局）。 */
+    private boolean dockSealed;
 
     public static StationRepairSavedData get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(
                 StationRepairSavedData::load, StationRepairSavedData::new, NAME);
     }
 
-    /** 修复是否已经跑过一次。 */
+    /** 地板开洞修复是否已经跑过一次。 */
     public boolean done() {
         return done;
     }
 
-    /** 标记完成并落盘。 */
+    /** 标记地板开洞修复完成并落盘。 */
     public void markDone() {
         done = true;
+        setDirty();
+    }
+
+    /** 新布局（气闸室四角/平台边条/竖井墙）是否已经密封过。 */
+    public boolean dockSealed() {
+        return dockSealed;
+    }
+
+    /** 标记对接气闸室密封完成并落盘。 */
+    public void markDockSealed() {
+        dockSealed = true;
         setDirty();
     }
 
     private static StationRepairSavedData load(CompoundTag tag) {
         StationRepairSavedData data = new StationRepairSavedData();
         data.done = tag.getBoolean("done");
+        data.dockSealed = tag.getBoolean("dockSealed");
         return data;
     }
 
     @Override
     public CompoundTag save(CompoundTag tag) {
         tag.putBoolean("done", done);
+        tag.putBoolean("dockSealed", dockSealed);
         return tag;
     }
 }

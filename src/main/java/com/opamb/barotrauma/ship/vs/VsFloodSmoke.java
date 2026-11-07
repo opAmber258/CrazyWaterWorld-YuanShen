@@ -239,7 +239,7 @@ public final class VsFloodSmoke {
     }
 
     private static void finishFormal(ServerLevel deep) {
-        String dockResult = VsPilot.dock(deep);
+        String dockResult = VsPilot.dock(deep, true);
         BarotraumaMod.LOGGER.info("{} 阶段2 拆船：{}", TAG, dockResult);
         docked = countBox(deep);
         logMeasure("阶段2 拆回后（按原位量，船若漂移过以拆船报告位移为准）", docked);

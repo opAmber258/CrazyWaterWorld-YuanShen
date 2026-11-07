@@ -44,15 +44,15 @@ public final class OutpostBuilder {
     private OutpostBuilder() {
     }
 
-    public static boolean intersects(ChunkPos pos) {
-        return pos.getMaxBlockX() >= -HALF_X && pos.getMinBlockX() <= HALF_X
-                && pos.getMaxBlockZ() >= -HALF_Z && pos.getMinBlockZ() <= HALF_Z;
+    public static boolean intersects(ChunkPos pos, DockingBay.Site site) {
+        return pos.getMaxBlockX() >= site.x() - HALF_X && pos.getMinBlockX() <= site.x() + HALF_X
+                && pos.getMaxBlockZ() >= site.z() - HALF_Z && pos.getMinBlockZ() <= site.z() + HALF_Z;
     }
 
     /** 哨站水池的判定范围（比建筑本体大）。 */
-    public static boolean intersectsCavern(ChunkPos pos) {
-        return pos.getMaxBlockX() >= -36 && pos.getMinBlockX() <= 36
-                && pos.getMaxBlockZ() >= -36 && pos.getMinBlockZ() <= 36;
+    public static boolean intersectsCavern(ChunkPos pos, DockingBay.Site site) {
+        return pos.getMaxBlockX() >= site.x() - 36 && pos.getMinBlockX() <= site.x() + 36
+                && pos.getMaxBlockZ() >= site.z() - 36 && pos.getMinBlockZ() <= site.z() + 36;
     }
 
     /**
@@ -62,15 +62,15 @@ public final class OutpostBuilder {
      * 观感是哨站下半截挂在水腔顶部、上半截嵌在岩壁里；气闸门外、初始潜艇停的位置
      * 现在都是空气，水下感由客户端滤镜表现。
      */
-    public static void carveCavern(ChunkAccess chunk) {
+    public static void carveCavern(ChunkAccess chunk, DockingBay.Site site) {
         ChunkPos pos = chunk.getPos();
         BlockState air = Blocks.AIR.defaultBlockState();
         for (int x = pos.getMinBlockX(); x <= pos.getMaxBlockX(); x++) {
             for (int z = pos.getMinBlockZ(); z <= pos.getMaxBlockZ(); z++) {
                 for (int y = -98; y <= -46; y++) {
-                    double dx = x / 34.0D;
+                    double dx = (x - site.x()) / 34.0D;
                     double dy = (y + 72) / 26.0D;
-                    double dz = z / 34.0D;
+                    double dz = (z - site.z()) / 34.0D;
                     if (dx * dx + dy * dy + dz * dz < 1.0D) {
                         chunk.setBlockState(new BlockPos(x, y, z), air, false);
                     }
@@ -79,17 +79,48 @@ public final class OutpostBuilder {
         }
     }
 
-    public static void build(ChunkAccess chunk) {
+    /**
+     * 副本站不在大洞里：只在码头正下方挖一条矩形竖井（13×19），上端接舱口、下端接任务洞穴。
+     * 哨站本体挂在岩壁上，船在竖井里停靠/下潜。
+     */
+    public static boolean intersectsWell(ChunkPos pos, DockingBay.Site site) {
+        return pos.getMaxBlockX() >= site.x() - 7 && pos.getMinBlockX() <= site.x() + 7
+                && pos.getMaxBlockZ() >= site.z() - 10 && pos.getMinBlockZ() <= site.z() + 10;
+    }
+
+    public static void carveDockWell(ChunkAccess chunk, DockingBay.Site site) {
         ChunkPos pos = chunk.getPos();
-        int x0 = Math.max(pos.getMinBlockX(), -HALF_X);
-        int x1 = Math.min(pos.getMaxBlockX(), HALF_X);
-        int z0 = Math.max(pos.getMinBlockZ(), -HALF_Z);
-        int z1 = Math.min(pos.getMaxBlockZ(), HALF_Z);
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (int x = pos.getMinBlockX(); x <= pos.getMaxBlockX(); x++) {
+            if (Math.abs(x - site.x()) > 6) {
+                continue;
+            }
+            for (int z = pos.getMinBlockZ(); z <= pos.getMaxBlockZ(); z++) {
+                if (Math.abs(z - site.z()) > 9) {
+                    continue;
+                }
+                for (int y = -116; y <= -72; y++) {
+                    chunk.setBlockState(new BlockPos(x, y, z), air, false);
+                }
+            }
+        }
+    }
+
+    public static void build(ChunkAccess chunk, DockingBay.Site site) {
+        ChunkPos pos = chunk.getPos();
+        int minX = site.x() - HALF_X;
+        int maxX = site.x() + HALF_X;
+        int minZ = site.z() - HALF_Z;
+        int maxZ = site.z() + HALF_Z;
+        int x0 = Math.max(pos.getMinBlockX(), minX);
+        int x1 = Math.min(pos.getMaxBlockX(), maxX);
+        int z0 = Math.max(pos.getMinBlockZ(), minZ);
+        int z1 = Math.min(pos.getMaxBlockZ(), maxZ);
 
         for (int x = x0; x <= x1; x++) {
             for (int z = z0; z <= z1; z++) {
                 for (int y = MIN_Y; y <= MAX_Y; y++) {
-                    BlockState state = stateAt(x, y, z);
+                    BlockState state = stateAt(x - site.x(), y, z - site.z());
                     if (state != null) {
                         chunk.setBlockState(new BlockPos(x, y, z), state, false);
                     }
@@ -100,8 +131,10 @@ public final class OutpostBuilder {
         // 外部门口平台（在水里，出门就是海）
         BlockState plating = plating();
         int platformY = ModDimensions.OUTPOST_SPAWN_Y - 1;
-        for (int x = -3; x <= 3; x++) {
-            for (int z = HALF_Z + 1; z <= HALF_Z + 5; z++) {
+        for (int lx = -3; lx <= 3; lx++) {
+            for (int lz = HALF_Z + 1; lz <= HALF_Z + 5; lz++) {
+                int x = site.x() + lx;
+                int z = site.z() + lz;
                 if (inChunk(pos, x, z)) {
                     chunk.setBlockState(new BlockPos(x, platformY, z), plating, false);
                 }
@@ -109,21 +142,22 @@ public final class OutpostBuilder {
         }
 
         // 气闸门（两格高）
-        if (inChunk(pos, 0, HALF_Z)) {
-            placeDoor(chunk, 0, ModDimensions.OUTPOST_SPAWN_Y, HALF_Z);
+        if (inChunk(pos, site.x(), site.z() + HALF_Z)) {
+            placeDoor(chunk, site.x(), ModDimensions.OUTPOST_SPAWN_Y, site.z() + HALF_Z);
         }
 
         // 任务终端：前厅右侧（医疗间门口），接任务/交付/商店都在这里
-        if (inChunk(pos, 8, 0)) {
-            chunk.setBlockState(new BlockPos(8, ModDimensions.OUTPOST_SPAWN_Y - 1, 0),
+        if (inChunk(pos, site.x() + 8, site.z())) {
+            chunk.setBlockState(new BlockPos(site.x() + 8, ModDimensions.OUTPOST_SPAWN_Y - 1, site.z()),
                     com.opamb.barotrauma.registry.ModBlocks.MISSION_TERMINAL.get().defaultBlockState(),
                     false);
         }
 
-        // 对接通道：站内地板开洞、向下 10 格的垂直气密通道、底部水平对接舱口
-        DockingBay.buildStation(chunk);
+        // 对接通道：站内地板开洞、向下 3长×4宽×6高的垂直气密通道、底部水平对接舱口
+        DockingBay.buildStation(chunk, site);
     }
 
+    /** 局部坐标（相对站点中心）取方块；y 仍是绝对高度。 */
     private static BlockState stateAt(int x, int y, int z) {
         if (Math.abs(x) > HALF_X || Math.abs(z) > HALF_Z || y < MIN_Y || y > MAX_Y) {
             return null;

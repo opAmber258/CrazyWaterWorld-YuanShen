@@ -9,6 +9,7 @@
   "block.barotrauma.sonar": "Sonar Console",
   "block.barotrauma.station_plating": "Station Plating",
   "block.barotrauma.hatch": "Deck Hatch",
+  "block.barotrauma.hatch_ladder": "Deck Hatch with Ladder",
   "block.barotrauma.bulkhead_door": "Bulkhead Door",
   "tooltip.barotrauma.oxygen_tank": "Right-click to refill your air supply",
   "tooltip.barotrauma.diving_knife": "Standard issue for divers",
@@ -71,6 +72,8 @@
   "item.barotrauma.small_pump": "Small Pump",
   "block.barotrauma.drain_outlet": "Drain Duct",
   "item.barotrauma.drain_outlet": "Drain Duct",
+  "block.barotrauma.iron_ladder": "Iron Ladder",
+  "item.barotrauma.iron_ladder": "Iron Ladder",
   "item.barotrauma.diving_suit": "Diving suit",
   "item.barotrauma.deep_permit": "Deep diving permit",
   "key.barotrauma.toggle_natural_sink": "Toggle natural sinking",
@@ -86,5 +89,6 @@
   "item.barotrauma.saline": "Saline",
   "item.barotrauma.naloxone": "Naloxone",
   "item.barotrauma.fentanyl": "Fentanyl",
-  "item.barotrauma.67": "67"
+  "item.barotrauma.67": "67",
+  "subtitles.barotrauma.ladder_climb": "Climbing ladder"
 }
