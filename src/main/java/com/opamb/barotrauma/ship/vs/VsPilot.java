@@ -1761,6 +1761,7 @@ public final class VsPilot {
                     next.hullDamage().setHealth(entry.getKey().offset(dx, dy, dz), entry.getValue());
                 }
                 next.setHullHealthMultiplier(state.hullHealthMultiplier());
+                next.setEngineMultiplier(state.engineMultiplier());
                 core.setChanged();
             }
         }

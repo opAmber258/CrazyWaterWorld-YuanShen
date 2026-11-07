@@ -112,6 +112,11 @@ public final class ShipState {
     }
 
     public void setEngineMultiplier(float multiplier) {
+        // 存档里的 float 可能被写坏成 NaN；Mth.clamp 对 NaN 原样返回，
+        // 再传给推进器会让加速度整体变成 NaN。坏值按未升级处理。
+        if (Float.isNaN(multiplier)) {
+            multiplier = 1.0F;
+        }
         this.engineMultiplier = net.minecraft.util.Mth.clamp(multiplier,
                 1.0F, 1.0F + ENGINE_STEP * ENGINE_MAX_LEVEL);
     }

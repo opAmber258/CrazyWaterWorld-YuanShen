@@ -139,7 +139,7 @@ public final class VsThruster implements ShipPhysicsListener {
     }
 
     /** 引擎升级推力倍率（ShipState 推过来；1.0 = 未升级）。 */
-    private double engineMultiplier = 1.0D;
+    private volatile double engineMultiplier = 1.0D;
 
     public void setEngineMultiplier(double multiplier) {
         engineMultiplier = Math.max(1.0D, Math.min(multiplier, 2.0D));
