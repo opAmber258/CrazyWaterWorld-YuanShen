@@ -37,7 +37,6 @@ public final class MedicalProvider implements ICapabilitySerializable<CompoundTa
             list.add(StringTag.valueOf(row));
         }
         tag.put("afflictions", list);
-        tag.putDouble("downedDrain", container.downedDrainValue());
         tag.putBoolean("downed", container.downedState());
         return tag;
     }
@@ -49,9 +48,7 @@ public final class MedicalProvider implements ICapabilitySerializable<CompoundTa
         for (int i = 0; i < list.size(); i++) {
             container.loadRow(list.getString(i));
         }
-        if (tag.contains("downedDrain")) {
-            container.restoreDownedDrain(tag.getDouble("downedDrain"));
-        }
+        // 旧存档残留的 downedDrain 键直接忽略（机制已于 2026-11-08 移除：原版 0 以下无额外流失）
         if (tag.contains("downed")) {
             container.restoreDownedState(tag.getBoolean("downed"));
         }

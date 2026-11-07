@@ -30,17 +30,35 @@ public final class DamageConversions {
     public static final double BURN_PER_HP = 5.0;
     /** 爆炸：1 HP → 5 钝器伤 + 2.5 烧伤（胸为主）。 */
     public static final double EXPLOSION_BURN_PER_HP = 2.5;
-    /** 未映射近战（生物/玩家）：只有钝器伤（出血/失血暂无来源——用户指令 2026-11-07）。 */
+    /** 未映射近战（生物/玩家）：钝器伤按 3/HP 折算。 */
     public static final double GENERIC_BLUNT_PER_HP = 3.0;
-    /** 投射物（箭等）：1 HP → 1 钝器伤（出血/失血暂无来源）；命中部位按命中高度鉴定。 */
+    /** 近战附加出血：1 HP → 5 强度出血、50% 概率（原作咬击规律：出血强度≈主伤同级×0.5 概率，
+     * CrawlerDefaultRagdoll.xml:58/76、MudraptorDefaultRagdoll.xml:16/37、TigerthresherDefaultRagdoll.xml:12）。 */
+    public static final double GENERIC_BLEED_PER_HP = 5.0;
+    /** 近战出血概率（原作咬击 50%~100%，v1 统一取下限 50%，生物模块接入时逐只对表）。 */
+    public static final double GENERIC_BLEED_PROBABILITY = 0.5;
+    /** 投射物（箭等）：1 HP → 5 强度钝器伤；命中部位按命中高度鉴定。 */
     public static final double PROJECTILE_BLUNT_PER_HP = 5.0;
+    /** 投射物附加出血：1 HP → 2.5 强度、**100%**（原作穿刺武器必出血，
+     * 出血≈主伤 1.25~5 倍：weapons.xml 手枪 338 / 步枪 217 / 刀 896）。 */
+    public static final double PROJECTILE_BLEED_PER_HP = 2.5;
+    /** 爆炸附加出血：单次 ≥8 HP 时 5% 概率 40 强度（原作精确值 explosives.xml:33/78/124/170/403）。 */
+    public static final double EXPLOSION_BLEED_MIN_HP = 8.0;
+    public static final double EXPLOSION_BLEED_PROBABILITY = 0.05;
+    public static final double EXPLOSION_BLEEDING_STRENGTH = 40.0;
+    /** 摔落附加腿部出血：单次 ≥6 HP（≈原作断腿级）双腿各 10 强度（MC 适配，用户指令"重度才附加"）。 */
+    public static final double FALL_BLEED_THRESHOLD_HP = 6.0;
+    public static final double FALL_BLEED_PER_LEG = 10.0;
     /** 低于此 HP 的伤害不产生病症（防蚊子腿堆积）。 */
     public static final double MIN_DAMAGE_HP = 0.5;
 
     private DamageConversions() {
     }
 
-    /** 摔落伤 → **只伤双腿**（左右均分），只有钝器伤。 */
+    /**
+     * 摔落伤 → **只伤双腿**（左右均分）；单次 ≥ {@link #FALL_BLEED_THRESHOLD_HP} 的重度摔伤
+     * 双腿各附加 {@link #FALL_BLEED_PER_LEG} 强度出血（原作摔落无出血，此项是用户 MC 适配指令）。
+     */
     public static List<Application> fromFall(double damageHp) {
         List<Application> plan = new ArrayList<>();
         if (damageHp < MIN_DAMAGE_HP) {
@@ -49,6 +67,10 @@ public final class DamageConversions {
         double strength = damageHp * BLUNT_PER_HP;
         plan.add(new Application(AfflictionType.BLUNT_TRAUMA, Limb.LEFT_LEG, strength * 0.5));
         plan.add(new Application(AfflictionType.BLUNT_TRAUMA, Limb.RIGHT_LEG, strength * 0.5));
+        if (damageHp >= FALL_BLEED_THRESHOLD_HP) {
+            plan.add(new Application(AfflictionType.BLEEDING, Limb.LEFT_LEG, FALL_BLEED_PER_LEG));
+            plan.add(new Application(AfflictionType.BLEEDING, Limb.RIGHT_LEG, FALL_BLEED_PER_LEG));
+        }
         return plan;
     }
 
@@ -70,14 +92,21 @@ public final class DamageConversions {
         return new Application(AfflictionType.BURN, weighted[index], damageHp * BURN_PER_HP);
     }
 
-    /** 爆炸伤 → 胸部为主的钝器伤 + 烧伤。 */
-    public static List<Application> fromExplosion(double damageHp) {
+    /**
+     * 爆炸伤 → 胸部为主的钝器伤 + 烧伤；单次 ≥ {@link #EXPLOSION_BLEED_MIN_HP} 时
+     * {@link #EXPLOSION_BLEED_PROBABILITY} 概率附加 {@link #EXPLOSION_BLEEDING_STRENGTH} 强度出血
+     * （原作爆炸出血是固定强度不随伤害缩放——explosives.xml 各型炸弹统一 20~50 × 5%）。
+     */
+    public static List<Application> fromExplosion(double damageHp, double random01) {
         List<Application> plan = new ArrayList<>();
         if (damageHp < MIN_DAMAGE_HP) {
             return plan;
         }
         plan.add(new Application(AfflictionType.BLUNT_TRAUMA, Limb.TORSO, damageHp * BLUNT_PER_HP * 0.8));
         plan.add(new Application(AfflictionType.BURN, Limb.TORSO, damageHp * EXPLOSION_BURN_PER_HP));
+        if (damageHp >= EXPLOSION_BLEED_MIN_HP && clamp01(random01) < EXPLOSION_BLEED_PROBABILITY) {
+            plan.add(new Application(AfflictionType.BLEEDING, Limb.TORSO, EXPLOSION_BLEEDING_STRENGTH));
+        }
         return plan;
     }
 
@@ -90,7 +119,7 @@ public final class DamageConversions {
      * 投射物（箭/三叉戟/雪球等）：**按命中高度鉴定部位**（用户指令，参考硬核生存模组做法）。
      * heightRatio = 命中点在玩家包围盒里的相对高度（0=脚，1=头顶）：
      * ≤0.55 → 胸（**头部不做外伤**——用户指令）、≤0.70 手臂、其余腿。
-     * 只有钝器伤（出血/失血暂无来源——用户指令）。
+     * 穿刺必出血 {@link #PROJECTILE_BLEED_PER_HP}/HP（原作枪械/猎叉出血 100%，出血挂同一部位）。
      */
     public static List<Application> fromProjectile(double damageHp, double heightRatio, boolean hitFromLeft) {
         List<Application> plan = new ArrayList<>();
@@ -99,6 +128,7 @@ public final class DamageConversions {
         }
         Limb limb = limbByHeightRatio(heightRatio, hitFromLeft);
         plan.add(new Application(AfflictionType.BLUNT_TRAUMA, limb, damageHp * PROJECTILE_BLUNT_PER_HP));
+        plan.add(new Application(AfflictionType.BLEEDING, limb, damageHp * PROJECTILE_BLEED_PER_HP));
         return plan;
     }
 
@@ -115,15 +145,19 @@ public final class DamageConversions {
     }
 
     /**
-     * 未映射近战（生物/玩家）的过渡期折算：只有钝器伤（出血/失血暂无来源——用户指令）。
-     * 武器/生物模块接入后替换为按 Attack 的部位归属（设计指令：武器伤害延后）。
+     * 未映射近战（生物/玩家）的过渡期折算：钝器伤 + 概率出血（原作三件套的"失"由
+     * {@code AfflictionContainer.tickSecond} 的出血推失血自动承担，无需独立来源）。
+     * 武器/生物模块接入后替换为按 Attack 的逐只/逐武器数值（设计指令：武器伤害延后）。
      */
-    public static List<Application> fromGeneric(double damageHp) {
+    public static List<Application> fromGeneric(double damageHp, double random01) {
         List<Application> plan = new ArrayList<>();
         if (damageHp < MIN_DAMAGE_HP) {
             return plan;
         }
         plan.add(new Application(AfflictionType.BLUNT_TRAUMA, Limb.TORSO, damageHp * GENERIC_BLUNT_PER_HP));
+        if (clamp01(random01) < GENERIC_BLEED_PROBABILITY) {
+            plan.add(new Application(AfflictionType.BLEEDING, Limb.TORSO, damageHp * GENERIC_BLEED_PER_HP));
+        }
         return plan;
     }
 
