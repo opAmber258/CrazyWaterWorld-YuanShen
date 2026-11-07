@@ -25,8 +25,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -140,9 +140,12 @@ public final class MedicalEvents {
     /**
      * 取消原版 MC 对玩家的伤害，全部转成病症（叠加的"立即掉血"语义由
      * 病症强度本身承担：强度上去了，vitality 立刻按公式下降——原作同款）。
+     *
+     * <p>用 LivingDamageEvent 而不是 LivingHurtEvent：它在护甲/附魔/抗性减伤之后触发，
+     * 转换时拿到的就是最终伤害，潜水服等装备的减伤不会被绕过。</p>
      */
     @SubscribeEvent
-    public static void onLivingHurt(LivingHurtEvent event) {
+    public static void onLivingDamage(LivingDamageEvent event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) {
             return;
         }
