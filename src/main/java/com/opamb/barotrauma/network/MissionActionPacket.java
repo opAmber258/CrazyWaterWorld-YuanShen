@@ -7,6 +7,7 @@ import com.opamb.barotrauma.mission.MissionType;
 import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.world.ModDimensions;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -23,16 +24,19 @@ import java.util.function.Supplier;
  * 客户端 → 服务端：任务面板上的操作。
  *
  * <ul>
- *   <li>{@code ACCEPT}——接取任务（DELIVERY 同时发一批补给箱）；</li>
+ *   <li>{@code ACCEPT}——接取任务（DELIVERY/URGENT_DELIVERY 同时发一批补给箱）；</li>
  *   <li>{@code ABANDON}——放弃；</li>
- *   <li>{@code TURN_IN}——交付（READY 才允许，按类型扣货物）；</li>
+ *   <li>{@code TURN_IN}——交付（READY 才允许，按类型扣货物；运送类按终端位置
+ *       结算全额/部分奖励）；</li>
  *   <li>{@code BUY_*}——商店：修船 / 氧气瓶 / 焊枪 / 船体加固。</li>
  * </ul>
  *
  * <p>全部服务端权威：接取竞争、余额、货物、距离都在这里校验，
  * 处理完给操作者回发一包 {@link MissionStatePacket} 刷新界面。</p>
+ *
+ * @param terminalPos 交付时玩家所操作的终端位置（商店等操作传 {@code BlockPos.ZERO}）
  */
-public record MissionActionPacket(int action, int missionId) {
+public record MissionActionPacket(int action, int missionId, BlockPos terminalPos) {
 
     public static final int ACCEPT = 1;
     public static final int ABANDON = 2;
@@ -41,23 +45,38 @@ public record MissionActionPacket(int action, int missionId) {
     public static final int BUY_OXYGEN = 5;
     public static final int BUY_WELDER = 6;
     public static final int BUY_UPGRADE = 7;
+    public static final int BUY_ENGINE_UPGRADE = 8;
+    public static final int BUY_DEEP_PERMIT = 9;
+
+    /** 深潜许可售价。 */
+    private static final int COST_DEEP_PERMIT = 500;
 
     private static final int COST_OXYGEN = 40;
     private static final int COST_WELDER = 30;
     private static final int COST_REPAIR_PER_HP = 1;
     private static final int COST_UPGRADE_BASE = 150;
 
+    /** 交付终端判定半径（格²）：离 B 中继站终端 8 格内算送到终点。 */
+    private static final double DELIVERY_ENDPOINT_RADIUS_SQR = 64.0D;
+
+    /** 不带任务 id 的操作（商店购买）。 */
     public MissionActionPacket(int action) {
-        this(action, -1);
+        this(action, -1, BlockPos.ZERO);
+    }
+
+    /** 不关心交付终端位置的操作（接取/放弃；交付请用三参构造）。 */
+    public MissionActionPacket(int action, int missionId) {
+        this(action, missionId, BlockPos.ZERO);
     }
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeVarInt(action);
         buf.writeVarInt(missionId);
+        buf.writeBlockPos(terminalPos);
     }
 
     public static MissionActionPacket decode(FriendlyByteBuf buf) {
-        return new MissionActionPacket(buf.readVarInt(), buf.readVarInt());
+        return new MissionActionPacket(buf.readVarInt(), buf.readVarInt(), buf.readBlockPos());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {
@@ -79,29 +98,41 @@ public record MissionActionPacket(int action, int missionId) {
                     data.abandon(player.getUUID());
                     sendState(player, level);
                 }
-                case TURN_IN -> handleTurnIn(player, level, data, wallet);
+                case TURN_IN -> handleTurnIn(player, level, data, wallet, terminalPos);
                 case BUY_REPAIR -> handleRepair(player, level, wallet);
                 case BUY_OXYGEN -> handleBuyItem(player, level, wallet, COST_OXYGEN,
                         new ItemStack(ModItems.OXYGEN_TANK.get()));
                 case BUY_WELDER -> handleBuyItem(player, level, wallet, COST_WELDER,
                         new ItemStack(ModItems.WELDING_TOOL.get()));
                 case BUY_UPGRADE -> handleUpgrade(player, level, wallet);
+                case BUY_ENGINE_UPGRADE -> handleEngineUpgrade(player, level, wallet);
+                case BUY_DEEP_PERMIT -> handleBuyItem(player, level, wallet, COST_DEEP_PERMIT,
+                        new ItemStack(ModItems.DEEP_PERMIT.get()));
                 default -> { /* 未知操作忽略 */ }
             }
         });
         context.setPacketHandled(true);
     }
 
-    /** 接取任务；DELIVERY 同时发放补给箱。 */
+    /** 接取任务；DELIVERY 同时发放补给箱；深潜任务需要深潜许可。 */
     private static void handleAccept(ServerPlayer player, ServerLevel level, MissionSavedData data, int missionId) {
         Mission mission = data.missions().get(missionId);
         if (mission == null) {
             return;
         }
+        if (mission.requiresDeepPermit()
+                && player.getInventory().countItem(ModItems.DEEP_PERMIT.get().asItem()) == 0) {
+            player.sendSystemMessage(Component.literal(
+                    "该任务目标超过 " + Mission.DEEP_PERMIT_DEPTH + "m，需要「深潜许可」（商店有售）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         if (data.accept(player.getUUID(), missionId, level.getGameTime())) {
             player.sendSystemMessage(Component.literal("已接取任务：" + describe(mission))
                     .withStyle(ChatFormatting.GOLD));
-            if (mission.type == MissionType.DELIVERY) {
+            if (mission.type == MissionType.DELIVERY
+                    || mission.type == MissionType.URGENT_DELIVERY) {
                 player.getInventory().add(new ItemStack(ModItems.SUPPLY_CRATE.get()));
                 player.sendSystemMessage(Component.literal("补给箱已放进背包，送到 B 中继站的终端交付")
                         .withStyle(ChatFormatting.AQUA));
@@ -113,11 +144,18 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
-    /** 交付：校验 READY 与货物，奖励打进共享钱包。 */
+    /** 交付：校验 READY 与货物，按终点/部分完成比例结算，奖励打进共享钱包。 */
     private static void handleTurnIn(ServerPlayer player, ServerLevel level,
-                                     MissionSavedData data, CampaignState wallet) {
+                                     MissionSavedData data, CampaignState wallet,
+                                     BlockPos terminalPos) {
         Mission mission = data.activeMission(player.getUUID());
         if (mission == null) {
+            return;
+        }
+        if (mission.state() == Mission.State.FAILED) {
+            player.sendSystemMessage(Component.literal("任务已超时失败，抵达目的地后可再次接取")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
             return;
         }
         if (mission.state() != Mission.State.READY) {
@@ -131,7 +169,7 @@ public record MissionActionPacket(int action, int missionId) {
             case SALVAGE -> consumed = player.getInventory()
                     .clearOrCountMatchingItems(stack -> stack.is(ModItems.BLACK_BOX.get().asItem()),
                             1, player.getInventory()) > 0;
-            case DELIVERY -> consumed = player.getInventory()
+            case DELIVERY, URGENT_DELIVERY -> consumed = player.getInventory()
                     .clearOrCountMatchingItems(stack -> stack.is(ModItems.SUPPLY_CRATE.get().asItem()),
                             1, player.getInventory()) > 0;
             default -> { /* RECON 无货物 */ }
@@ -142,10 +180,21 @@ public record MissionActionPacket(int action, int missionId) {
             sendState(player, level);
             return;
         }
-        wallet.addCredits(mission.reward);
+        boolean atEndpoint = terminalPos != null
+                && terminalPos.distSqr(com.opamb.barotrauma.world.PoiNetwork.POST_B_TERMINAL)
+                        <= DELIVERY_ENDPOINT_RADIUS_SQR;
+        double fraction = mission.rewardFraction(atEndpoint);
+        int payout = (int) Math.round(mission.reward * fraction);
+        wallet.addCredits(payout);
         data.finish(player.getUUID(), mission);
-        player.sendSystemMessage(Component.literal("任务完成！+" + mission.reward + " credits")
-                .withStyle(ChatFormatting.GREEN));
+        if (fraction >= 1.0D) {
+            player.sendSystemMessage(Component.literal("任务完成！+" + payout + " credits")
+                    .withStyle(ChatFormatting.GREEN));
+        } else {
+            player.sendSystemMessage(Component.literal(
+                    "部分完成（未送到 B 中继站）：+" + payout + " / " + mission.reward + " credits")
+                    .withStyle(ChatFormatting.YELLOW));
+        }
         sendState(player, level);
     }
 
@@ -159,6 +208,12 @@ public record MissionActionPacket(int action, int missionId) {
             return;
         }
         ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         int missing = 0;
         for (var entry : state.hullDamage().sortedEntries()) {
             missing += Math.round((1.0F - entry.getValue()) * 200.0F);
@@ -221,6 +276,12 @@ public record MissionActionPacket(int action, int missionId) {
             return;
         }
         ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         int level1 = Math.round((state.hullHealthMultiplier() - 1.0F) / 0.2F);
         if (level1 >= 3) {
             player.sendSystemMessage(Component.literal("船体加固已满级（+60%）")
@@ -244,6 +305,57 @@ public record MissionActionPacket(int action, int missionId) {
         sendState(player, level);
     }
 
+    /** 引擎升级：每级 +20% 推力（上限 ×1.6），花费与船体加固同档。 */
+    private static void handleEngineUpgrade(ServerPlayer player, ServerLevel level,
+                                            CampaignState wallet) {
+        var core = ShipCores.nearestCore(level, player.blockPosition(), 24.0D);
+        if (core == null || core.state() == null) {
+            player.sendSystemMessage(Component.literal("附近 24 格内没有船（升级装在船上）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
+        ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
+        int current = ShipState.engineLevel(state.engineMultiplier());
+        if (current >= ShipState.ENGINE_MAX_LEVEL) {
+            player.sendSystemMessage(Component.literal("引擎已满级（×1.6）")
+                    .withStyle(ChatFormatting.GRAY));
+            sendState(player, level);
+            return;
+        }
+        int cost = COST_UPGRADE_BASE * (current + 1);
+        if (!wallet.spendCredits(cost)) {
+            player.sendSystemMessage(Component.literal(
+                    "升级需要 " + cost + " credits，余额不足（当前 " + wallet.credits() + "）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
+        state.setEngineMultiplier(ShipState.engineMultiplierForLevel(current + 1));
+        core.setChanged();
+        player.sendSystemMessage(Component.literal(String.format(
+                "引擎 +20%%（当前 ×%.1f，消耗 %d credits）",
+                state.engineMultiplier(), cost)).withStyle(ChatFormatting.GREEN));
+        sendState(player, level);
+    }
+
+    /**
+     * 24 格内最近的核心是否就是玩家当前的物理船。
+     *
+     * <p>没有物理船时按最近的方块船处理；有物理船时，附近另一艘方块船的核心
+     * 也可能是“最近”的，不能仅凭距离就扣钱/改状态。</p>
+     */
+    private static boolean isCurrentShip(ShipState state) {
+        ShipState physical = VsPilot.state();
+        return physical == null || state == physical;
+    }
+
     private static String describe(Mission mission) {
         return switch (mission.type) {
             case SALVAGE -> "打捞（" + mission.target.getX() + ", " + mission.target.getY()
@@ -251,6 +363,7 @@ public record MissionActionPacket(int action, int missionId) {
             case RECON -> "侦察（抵达 " + mission.target.getX() + ", " + mission.target.getY()
                     + ", " + mission.target.getZ() + " 半径 " + mission.radius + "m）";
             case DELIVERY -> "运输（把补给箱送到 B 中继站）";
+            case URGENT_DELIVERY -> "紧急运送（30 分钟内把补给箱送到 B 中继站，超时零报酬）";
         };
     }
 

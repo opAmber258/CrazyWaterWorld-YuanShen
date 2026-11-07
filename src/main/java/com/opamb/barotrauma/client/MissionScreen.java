@@ -30,6 +30,7 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
     private static final int DIM = 0xFF8B9184;
     private static final int ACCENT = 0xFFE0762F;
     private static final int GREEN = 0xFF7BE38B;
+    private static final int RED = 0xFFE06666;
     private static final int HOVER = 0xFF39483A;
 
     public MissionScreen(MissionMenu menu, Inventory inventory, Component title) {
@@ -83,24 +84,28 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         }
 
         // 商店行
-        int shopY = y + PANEL_H - 52;
+        int shopY = shopTop();
         graphics.fill(x + 8, shopY - 4, x + PANEL_W - 8, shopY - 3, EDGE);
         graphics.drawString(font, "商店", x + 10, shopY, ACCENT, false);
-        String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（30）", "船体加固 +20%（150 起）"};
+        String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（30）",
+                "船体加固（150 起）", "引擎（150 起）", "深潜许可（500）"};
         int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
-                MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE};
+                MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
+                MissionActionPacket.BUY_ENGINE_UPGRADE, MissionActionPacket.BUY_DEEP_PERMIT};
         for (int i = 0; i < labels.length; i++) {
-            int bx = x + 8 + i * 102;
-            boolean hover = mouseX >= bx && mouseX < bx + 100 && mouseY >= shopY + 12
-                    && mouseY < shopY + 26;
-            graphics.fill(bx, shopY + 12, bx + 100, shopY + 26, hover ? HOVER : BOX);
-            graphics.fill(bx, shopY + 12, bx + 100, shopY + 13, EDGE);
-            graphics.drawCenteredString(font, labels[i], bx + 50, shopY + 16, TEXT);
+            int bx = x + 8 + (i % 3) * 80;
+            int by = shopY + 12 + (i / 3) * 20;
+            boolean hover = mouseX >= bx && mouseX < bx + 76
+                    && mouseY >= by && mouseY < by + 14;
+            graphics.fill(bx, by, bx + 76, by + 14, hover ? HOVER : BOX);
+            graphics.fill(bx, by, bx + 76, by + 1, EDGE);
+            graphics.drawCenteredString(font, labels[i], bx + 38, by + 4, TEXT);
         }
-        graphics.drawString(font, "修船/加固需要对着一艘已靠泊的船（24 格内）",
-                x + 10, shopY + 30, DIM, false);
+        graphics.drawString(font, "修船/升级需要对着一艘已靠泊的船（24 格内）",
+                x + 10, shopY + 50, DIM, false);
     }
 
+    /** 画一条任务：类型/奖励/目标、状态与倒计时、操作按钮。 */
     private void drawMissionRow(GuiGraphics graphics, int x, int y, int mouseX, int mouseY,
                                 Mission mission) {
         graphics.fill(x + 8, y, x + PANEL_W - 8, y + ROW_H, BOX);
@@ -110,10 +115,13 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
             case SALVAGE -> "打捞";
             case RECON -> "侦察";
             case DELIVERY -> "运输";
+            case URGENT_DELIVERY -> "紧急运输";
         };
+        String timed = mission.deadlineTicks > 0 ? " · 限时" : "";
+        String gated = mission.requiresDeepPermit() ? " · 需许可" : "";
         int dist = (int) Math.sqrt(minecraft.player.blockPosition().distSqr(mission.target));
-        String title = String.format("#%d %s · 奖励 %d · 目标 %s %dm", mission.id, type,
-                mission.reward, coord(mission), dist);
+        String title = String.format("#%d %s%s%s · 奖励 %d · 目标 %s %dm", mission.id, type,
+                timed, gated, mission.reward, coord(mission), dist);
         graphics.drawString(font, title, x + 14, y + 4, TEXT, false);
 
         String stateLabel = switch (mission.state()) {
@@ -121,12 +129,25 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
             case ACTIVE -> "进行中";
             case READY -> "已达成！回终端交付";
             case DONE -> "已完成";
+            case FAILED -> "已超时失败";
         };
         graphics.drawString(font, stateLabel, x + 14, y + 15,
-                mission.state() == Mission.State.READY ? GREEN : DIM, false);
+                mission.state() == Mission.State.READY ? GREEN
+                        : mission.state() == Mission.State.FAILED ? RED : DIM, false);
 
         boolean mine = ClientMissionCache.active() != null
                 && ClientMissionCache.active().id == mission.id;
+        if (mine && mission.deadlineAtGameTime() > 0
+                && minecraft.level != null) {
+            // 用客户端世界时间实时递减，不用发包时的快照（CodeRabbit 审查意见）。
+            long left = mission.deadlineAtGameTime() - minecraft.level.getGameTime();
+            String leftLabel = left > 0
+                    ? String.format("剩余 %d:%02d", left / 1200L, (left / 20L) % 60L)
+                    : "已超时";
+            // 放在按钮左侧，避免被按钮盖住。
+            graphics.drawString(font, leftLabel, x + PANEL_W - 150, y + 15,
+                    left > 0 ? ACCENT : RED, false);
+        }
         String button = mine
                 ? (mission.state() == Mission.State.READY ? "交付" : "放弃")
                 : (mission.isTaken() ? "已被接走" : "接取");
@@ -139,20 +160,7 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
                 !enabled ? 0xFF1A211C : hover ? HOVER : 0xFF2F3A2F);
         graphics.drawCenteredString(font, button, bx + 31, y + 9,
                 enabled ? TEXT : 0xFF5A6256);
-        if (enabled && hover) {
-            int action = mine
-                    ? (mission.state() == Mission.State.READY
-                            ? MissionActionPacket.TURN_IN : MissionActionPacket.ABANDON)
-                    : MissionActionPacket.ACCEPT;
-            pendingAction = action;
-            pendingMissionId = mission.id;
-        } else if (hover) {
-            pendingAction = 0;
-        }
     }
-
-    private int pendingAction;
-    private int pendingMissionId = -1;
 
     private static String coord(Mission mission) {
         return mission.target.getX() + ", " + mission.target.getY() + ", " + mission.target.getZ();
@@ -160,25 +168,69 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && pendingAction != 0) {
-            ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(pendingAction, pendingMissionId));
-            pendingAction = 0;
-            return true;
-        }
-        // 商店按钮（无 missionId）
-        int shopY = topPos + PANEL_H - 52;
-        int localX = (int) mouseX - leftPos;
-        int localY = (int) mouseY - topPos;
-        if (button == 0 && localY >= shopY + 12 && localY < shopY + 26
-                && localX >= 8 && localX < PANEL_W - 8) {
-            int idx = (localX - 8) / 102;
-            int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
-                    MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE};
-            if (idx >= 0 && idx < actions.length) {
-                ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(actions[idx]));
-                return true;
+        // 任务按钮在点击时重新判定，不能用渲染时缓存的 hover——
+        // 鼠标移开后缓存不会清空，点商店按钮会被误判成上一个任务的「放弃」。
+        if (button == 0) {
+            int rowY = topPos + 20;
+            for (Mission mission : ClientMissionCache.offered()) {
+                if (mission.state() == Mission.State.DONE) {
+                    continue;
+                }
+                int bx = leftPos + PANEL_W - 78;
+                if (mouseX >= bx && mouseX < bx + 62
+                        && mouseY >= rowY + 5 && mouseY < rowY + 21) {
+                    boolean mine = ClientMissionCache.active() != null
+                            && ClientMissionCache.active().id == mission.id;
+                    boolean enabled = mission.state() != Mission.State.DONE
+                            && (!mission.isTaken() || mine);
+                    if (enabled) {
+                        int action = mine
+                                ? (mission.state() == Mission.State.READY
+                                        ? MissionActionPacket.TURN_IN : MissionActionPacket.ABANDON)
+                                : MissionActionPacket.ACCEPT;
+                        ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(action,
+                                mission.id, menu.terminalPos()));
+                    }
+                    return true;
+                }
+                rowY += ROW_H + 2;
             }
         }
+        // 商店按钮（无 missionId）：两行三列
+        int shopY = shopTop();
+        int localX = (int) mouseX - leftPos;
+        // shopY 用的是屏幕坐标（含 topPos），这里也必须用 mouseY 比较；
+        // 用 localY 会再减一次 topPos，面板居中偏移时整排商店按钮点不到。
+        if (button == 0 && mouseY >= shopY + 12 && mouseY < shopY + 52
+                && localX >= 8 && localX < PANEL_W - 8) {
+            int relX = localX - 8;
+            int col = relX / 80;
+            int offX = relX - col * 80;
+            int relY = (int) mouseY - (shopY + 12);
+            int row = relY / 20;
+            int offY = relY - row * 20;
+            int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
+                    MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
+                    MissionActionPacket.BUY_ENGINE_UPGRADE, MissionActionPacket.BUY_DEEP_PERMIT};
+            if (relX < 0 || col >= 3 || offX >= 76
+                    || relY < 0 || row >= 2 || offY >= 14) {
+                return super.mouseClicked(mouseX, mouseY, button);
+            }
+            int idx = row * 3 + col;
+            ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(actions[idx]));
+            return true;
+        }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /** 商店区顶部：任务行多时下移，避免和任务板重叠（6 个按钮排两行三列）。 */
+    private int shopTop() {
+        int rows = 0;
+        for (Mission mission : ClientMissionCache.offered()) {
+            if (mission.state() != Mission.State.DONE) {
+                rows++;
+            }
+        }
+        return topPos + Math.max(PANEL_H - 72, 20 + rows * (ROW_H + 2) + 6);
     }
 }

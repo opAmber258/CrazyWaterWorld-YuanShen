@@ -42,6 +42,8 @@ public final class ShipState {
      * T1 最多 2 级、T2 4 级、T3 6 级；现在是预留接口，默认 1.0。
      */
     private float hullHealthMultiplier = 1.0F;
+    /** 引擎升级推力倍率（1.0 基准，每级 +0.2，上限 3 级）。 */
+    private float engineMultiplier = 1.0F;
 
     /** 10% 伤害开始的小漏：2.1 格³/秒/处（约等于完整破口 35% 的流量）。 */
     private static final double SMALL_LEAK_UNITS_PER_SECOND = 210.0D;
@@ -98,6 +100,35 @@ public final class ShipState {
 
     public void setHullHealthMultiplier(float multiplier) {
         this.hullHealthMultiplier = net.minecraft.util.Mth.clamp(multiplier, 0.25F, 5.0F);
+    }
+
+    /** 引擎升级步长（每级 +20% 推力）。 */
+    public static final float ENGINE_STEP = 0.2F;
+    /** 引擎升级最大级数。 */
+    public static final int ENGINE_MAX_LEVEL = 3;
+
+    public float engineMultiplier() {
+        return engineMultiplier;
+    }
+
+    public void setEngineMultiplier(float multiplier) {
+        // 存档里的 float 可能被写坏成 NaN；Mth.clamp 对 NaN 原样返回，
+        // 再传给推进器会让加速度整体变成 NaN。坏值按未升级处理。
+        if (Float.isNaN(multiplier)) {
+            multiplier = 1.0F;
+        }
+        this.engineMultiplier = net.minecraft.util.Mth.clamp(multiplier,
+                1.0F, 1.0F + ENGINE_STEP * ENGINE_MAX_LEVEL);
+    }
+
+    /** 由倍率反推升级级数（0..{@link #ENGINE_MAX_LEVEL}）。 */
+    public static int engineLevel(float multiplier) {
+        return Math.round((multiplier - 1.0F) / ENGINE_STEP);
+    }
+
+    /** 由级数算倍率（1.0 + 0.2×级数）。 */
+    public static float engineMultiplierForLevel(int level) {
+        return 1.0F + ENGINE_STEP * net.minecraft.util.Mth.clamp(level, 0, ENGINE_MAX_LEVEL);
     }
 
     /** 这个方块是不是当前船体几何里的一格结构（用于拒绝空气/隔墙上的伤害）。 */
@@ -715,6 +746,7 @@ public final class ShipState {
         next.hullDamage.copyFrom(this.hullDamage);
         next.hullDamage.shift(dx, dy, dz);
         next.hullHealthMultiplier = this.hullHealthMultiplier;
+        next.engineMultiplier = this.engineMultiplier;
         // 速度/惯性必须跟着船走，否则每挪一格船就"停"一次
         next.physics = this.physics;
         next.throttleX = throttleX;

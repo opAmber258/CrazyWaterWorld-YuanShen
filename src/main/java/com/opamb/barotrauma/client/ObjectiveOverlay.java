@@ -66,16 +66,31 @@ public final class ObjectiveOverlay {
         return VsState.active() ? SAILING : ACCENT;
     }
 
+    /** 默认目标文案：活动任务 → 出航提示 → 首次引导。 */
     private static String defaultObjective() {
         Mission mission = ClientMissionCache.active();
         if (mission != null) {
             int dist = (int) Math.sqrt(minecraft().player.blockPosition().distSqr(mission.target));
-            String where = mission.type == com.opamb.barotrauma.mission.MissionType.DELIVERY
+            boolean delivery = mission.type == com.opamb.barotrauma.mission.MissionType.DELIVERY
+                    || mission.type == com.opamb.barotrauma.mission.MissionType.URGENT_DELIVERY;
+            String where = delivery
                     ? "B 中继站" : mission.target.getX() + ", " + mission.target.getY() + ", " + mission.target.getZ();
-            if (mission.state() == Mission.State.READY) {
-                return "任务达成！回哨站终端交付（+" + mission.reward + "）";
+            if (mission.state() == Mission.State.FAILED) {
+                // 失败任务单独提示，避免玩家以为还能去交付（CodeRabbit 审查意见）。
+                return "任务已超时失败：抵达目的地后可重新接取";
             }
-            return String.format("任务 #%d：前往 %s（%dm）", mission.id, where, dist);
+            if (mission.state() == Mission.State.READY) {
+                String base = "任务达成！回终端交付（+" + mission.reward + "）";
+                return delivery ? base + "：送到 B 中继站全额，其他终端半额" : base;
+            }
+            String deadline = "";
+            if (mission.deadlineAtGameTime() > 0 && minecraft().level != null) {
+                long left = mission.deadlineAtGameTime() - minecraft().level.getGameTime();
+                deadline = left > 0
+                        ? String.format(" · 剩余 %d:%02d", left / 1200L, (left / 20L) % 60L)
+                        : " · 已超时";
+            }
+            return String.format("任务 #%d：前往 %s（%dm）%s", mission.id, where, dist, deadline);
         }
         if (VsState.active()) {
             return "出航中：WASD/舵台操舵 · 返航后在声纳台点「靠泊」";

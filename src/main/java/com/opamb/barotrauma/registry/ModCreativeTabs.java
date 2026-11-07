@@ -23,6 +23,8 @@ public final class ModCreativeTabs {
                     .icon(() -> new ItemStack(ModItems.OXYGEN_TANK.get()))
                     .displayItems((params, output) -> {
                         output.accept(ModItems.OXYGEN_TANK.get());
+                        output.accept(ModItems.DIVING_SUIT.get());
+                        output.accept(ModItems.DEEP_PERMIT.get());
                         output.accept(ModItems.DIVING_KNIFE.get());
                         output.accept(ModItems.WELDING_TOOL.get());
                         output.accept(ModItems.SUBMARINE_PLATING.get());

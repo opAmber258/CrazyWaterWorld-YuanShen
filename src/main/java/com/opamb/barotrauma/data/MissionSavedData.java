@@ -87,14 +87,22 @@ public final class MissionSavedData extends SavedData {
         return true;
     }
 
-    /** 放弃：任务回到池里（已拿的货物不回收）。 */
+    /** 放弃：任务回到池里（已拿的货物不回收）。FAILED 任务只解除占用，状态留到本轮抵达时重置。 */
     public void abandon(UUID player) {
         Mission mission = activeMission(player);
-        if (mission != null) {
-            mission.abandon();
+        if (mission == null) {
+            return;
+        }
+        if (mission.state() == Mission.State.FAILED) {
+            // 超时失败的任务不提前回池：保留 FAILED 到本轮抵达时统一重置，
+            // 否则其他玩家会立刻接走一条马上又能超时的任务（CodeRabbit 审查意见）。
             active.remove(player);
             setDirty();
+            return;
         }
+        mission.abandon();
+        active.remove(player);
+        setDirty();
     }
 
     /** 达成（进 READY），由 {@code MissionProgress} 在条件满足时调用。 */
@@ -108,6 +116,39 @@ public final class MissionSavedData extends SavedData {
         mission.complete();
         active.remove(player);
         setDirty();
+    }
+
+    /** 运送类货物丢失：READY 退回 ACTIVE，保留认领人与时限（可放弃后重新接取补货）。 */
+    public void demoteToActive(Mission mission) {
+        mission.setState(Mission.State.ACTIVE);
+        setDirty();
+    }
+
+    /** 超时失败：零报酬，任务保留到本轮抵达目的地时重置。 */
+    public void failMission(Mission mission) {
+        mission.fail();
+        setDirty();
+    }
+
+    /** 本轮抵达目的地：所有 FAILED 回到 OFFERED 可再次接取。返回重置条数。 */
+    public int resetFailed() {
+        int reset = 0;
+        for (Mission mission : missions.values()) {
+            if (mission.resetIfFailed()) {
+                reset++;
+            }
+        }
+        if (reset > 0) {
+            // 清掉仍指向已重置任务的 active 条目：否则原玩家的 activeMission
+            // 会返回一条 OFFERED 任务，既接不了新任务也可能误伤他人（CodeRabbit 审查意见）。
+            active.values().removeIf(id -> {
+                Mission m = missions.get(id);
+                return m == null
+                        || (m.state() == Mission.State.OFFERED && m.assignedTo() == null);
+            });
+            setDirty();
+        }
+        return reset;
     }
 
     // ------------------------------------------------------------------ NBT

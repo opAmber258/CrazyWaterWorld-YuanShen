@@ -138,6 +138,17 @@ public final class VsThruster implements ShipPhysicsListener {
         return throttleZ;
     }
 
+    /** 引擎升级推力倍率（ShipState 推过来；1.0 = 未升级）。 */
+    private volatile double engineMultiplier = 1.0D;
+
+    public void setEngineMultiplier(double multiplier) {
+        engineMultiplier = Math.max(1.0D, Math.min(multiplier, 2.0D));
+    }
+
+    public double engineMultiplier() {
+        return engineMultiplier;
+    }
+
     public void setPower(int percent) {
         power = percent < 5 ? 5 : Math.min(percent, 100);
     }
@@ -216,6 +227,7 @@ public final class VsThruster implements ShipPhysicsListener {
             return;
         }
         double throttle = power / 100.0D;
+        double engineBoost = engineMultiplier;
 
         // 水平：八向推力归一化，斜着走不会比直着走快
         double hx = throttleX;
@@ -224,10 +236,10 @@ public final class VsThruster implements ShipPhysicsListener {
         double ax = 0.0D;
         double az = 0.0D;
         if (len > 0.0D) {
-            ax = hx / len * ACCEL * throttle;
-            az = hz / len * ACCEL * throttle;
+            ax = hx / len * ACCEL * throttle * engineBoost;
+            az = hz / len * ACCEL * throttle * engineBoost;
         }
-        double ay = throttleY * ACCEL_VERTICAL * throttle;
+        double ay = throttleY * ACCEL_VERTICAL * throttle * engineBoost;
         // 空气海域的浮力完全由数值计算：完整船体接近中性，压载/进水按比例扣掉浮力。
         // 不再依赖 VS2 的 liquidOverlap（它对我们的自定义方块恒为 0），也不依赖世界里的水。
         double ballastLoad = clamp01(ballast);

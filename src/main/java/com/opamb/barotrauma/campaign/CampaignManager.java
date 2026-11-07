@@ -183,6 +183,7 @@ public final class CampaignManager {
     public static void tick(MinecraftServer server) {}
 
     /** 管理员调试：直接推进到目的地并自动存档。 */
+    /** 管理员调试：直接推进到目的地并自动存档。 */
     public static boolean forceArrive(MinecraftServer server) {
         ServerLevel deep = server.getLevel(ModDimensions.THE_DEEP);
         if (deep == null) return false;
@@ -190,6 +191,11 @@ public final class CampaignManager {
         if (state.round().phase() != RoundPhase.DIVING) return false;
         // 调试推进，不结算未生成/未完成的任务，也不移动玩家到逻辑地图坐标。
         state.arrive();
+        // 本轮结束：超时失败的任务回到任务池，供下一轮再次接取。
+        int resetFailed = com.opamb.barotrauma.data.MissionSavedData.get(deep).resetFailed();
+        if (resetFailed > 0) {
+            BarotraumaMod.LOGGER.info("[campaign] 抵达目的地，重置 {} 条失败任务", resetFailed);
+        }
         syncAll(server);
         server.saveEverything(false, false, true);
         return true;
