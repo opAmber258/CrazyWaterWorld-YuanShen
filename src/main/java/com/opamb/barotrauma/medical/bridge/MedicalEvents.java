@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -173,6 +174,9 @@ public final class MedicalEvents {
             plan = DamageConversions.fromExplosion(amount);
         } else if (source.is(DamageTypeTags.IS_DROWNING)) {
             // 缺氧已由憋气管线按秒写入（onPlayerTick），溺水伤害本身不再重复折算
+        } else if (source.is(DamageTypes.CACTUS)) {
+            // 仙人掌没有攻击者，但被取消的原版伤害必须转成病症，否则碰仙人掌不掉血。
+            plan = DamageConversions.fromGeneric(amount);
         } else if (source.getEntity() != null) {
             // 有攻击者的近战伤害：原作三件套过渡版（武器模块接入后按部位归属替换）
             plan = DamageConversions.fromGeneric(amount);
