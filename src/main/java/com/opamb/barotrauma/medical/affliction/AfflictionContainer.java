@@ -137,11 +137,10 @@ public final class AfflictionContainer {
             List<TreatmentEntry> expired = new ArrayList<>();
             for (TreatmentEntry entry : treatments) {
                 if (entry.perSecond > 0) {
-                    reduce(entry.type, entry.limb, entry.perSecond);
-                    // 治疗同时抵消倒地自然流失；否则流失沉到 -100 以下后，
-                    // 即使病症全部治好，rawVitality 也回不到正值。
-                    if (downed) {
-                        downedDrain = Math.min(0.0, downedDrain + entry.perSecond);
+                    double healed = reduce(entry.type, entry.limb, entry.perSecond);
+                    // 只按实际治疗量抵消倒地自然流失；药不对症（healed=0）不能续命。
+                    if (downed && healed > 0) {
+                        downedDrain = Math.min(0.0, downedDrain + healed);
                     }
                 } else {
                     Limb sideLimb = entry.type.limbSpecific() && entry.limb == null ? Limb.TORSO : entry.limb;
@@ -183,6 +182,10 @@ public final class AfflictionContainer {
         }
         for (String key : dead) {
             byKey.remove(key);
+        }
+        // 病症全清 = 没有持续伤害来源：倒地流失不再保留，否则历史累计值会把救援卡死。
+        if (downed && byKey.isEmpty()) {
+            downedDrain = 0.0;
         }
     }
 
