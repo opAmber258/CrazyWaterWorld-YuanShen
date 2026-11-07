@@ -59,7 +59,8 @@ public final class CampaignManager {
         com.opamb.barotrauma.world.DockingBay.close(deep);
 
         // 2) 船还是方块就先在出发站装配成 VS2 刚体；已经物理化就跳过。
-        if (!VsState.active()) {
+        final boolean assembledHere = !VsState.active();
+        if (assembledHere) {
             String launch = launchStarter(deep, originSite);
             if (!VsState.active()) {
                 player.sendSystemMessage(Component.translatable("campaign.barotrauma.launch_failed", launch));
@@ -80,7 +81,7 @@ public final class CampaignManager {
         String moved = VsPilot.teleportShipTo(deep, anchor.spawn());
         if (moved != null) {
             BarotraumaMod.LOGGER.info("[campaign] 副本码头传送失败：{}", moved);
-            rollbackShip(deep, shipBefore);
+            rollbackShip(deep, shipBefore, assembledHere);
             player.sendSystemMessage(Component.translatable("campaign.barotrauma.instance_failed", moved));
             sync(player);
             return false;
@@ -96,7 +97,7 @@ public final class CampaignManager {
             BarotraumaMod.LOGGER.info("[campaign] 登船预检失败：support={} positions={}/{}",
                     VsSupport.available(), positions.size(), players.size());
             // 船已经传送过去了但没人能上船：把它送回出发站并拆回方块，别让船自己留在副本里。
-            rollbackShip(deep, shipBefore);
+            rollbackShip(deep, shipBefore, assembledHere);
             player.sendSystemMessage(Component.translatable("campaign.barotrauma.no_interior"));
             sync(player);
             return false;
@@ -140,8 +141,9 @@ public final class CampaignManager {
     }
 
     /** 下潜流程失败时把已经传过去的物理船送回出发站并拆回方块。 */
-    private static void rollbackShip(ServerLevel deep, Vec3 before) {
-        if (before == null || !VsState.active()) {
+    private static void rollbackShip(ServerLevel deep, Vec3 before, boolean assembledHere) {
+        // 只有"这次下潜刚装配出来"的船才能回滚；玩家原本就开着的船不能因为一次失败就被拆掉/挪走。
+        if (!assembledHere || before == null || !VsState.active()) {
             return;
         }
         VsPilot.teleportShipTo(deep, before);
@@ -225,9 +227,12 @@ public final class CampaignManager {
     }
 
     /** 物理船在实际哨站靠泊成功：正在出勤就当作抵达，推进一轮。 */
-    public static void onDocked(ServerLevel deep) {
+    public static void onDocked(ServerLevel deep, com.opamb.barotrauma.world.DockingBay.Site site) {
         CampaignState state = CampaignState.wallet(deep);
-        if (state.round().phase() != RoundPhase.DIVING) {
+        var round = state.round();
+        // 只有"本轮出勤的目标副本站"才算抵达；出发站/路上经过的站靠泊不能推进战役节点。
+        if (round.phase() != RoundPhase.DIVING || !round.hasInstance()
+                || site.x() != round.instanceX() || site.z() != round.instanceZ()) {
             return;
         }
         settleArrival(deep, state);

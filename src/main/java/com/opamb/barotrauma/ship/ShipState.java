@@ -408,7 +408,10 @@ public final class ShipState {
                 b.maxX() + 1, b.maxY() + 1, b.maxZ() + 1)) {
             if (com.opamb.barotrauma.registry.ModShipBlocks.isShipBlock(level.getBlockState(pos))
                     && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(pos)
-                    && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos)) {
+                    && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos)
+                    // 对接时 padUp=1 把扫描上界抬到 -68，再向外扩 1 会够到 -67 的站内梯子；
+                    // 那不是船体，收进去会让装配把站里的梯子一起带走。
+                    && !com.opamb.barotrauma.world.DockingBay.isStationLadder(pos)) {
                 out.add(pos.immutable());
             }
         }

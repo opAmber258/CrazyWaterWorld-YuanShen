@@ -210,6 +210,14 @@ public final class DockingBay {
                 && (pos.getY() == SIDE_DOOR_Y || pos.getY() == SIDE_DOOR_Y + 1);
     }
 
+    /** 站内竖井/地板洞口的铁梯：不属于潜艇，装配时不能被 collectBlocks 收走。 */
+    public static boolean isStationLadder(BlockPos pos) {
+        Site site = siteAt(pos.getX(), pos.getZ());
+        return site != null
+                && pos.getX() == site.x() && pos.getZ() == site.z()
+                && pos.getY() >= MID_HATCH_Y && pos.getY() <= STATION_FLOOR_UPPER_Y;
+    }
+
     /** 该位置是否算“通道干燥区”（含气闸室、竖井，给客户端滤镜用）。 */
     public static boolean inDryZone(double x, double z, double y) {
         if (y < SUB_HATCH_Y || y > STATION_FLOOR_UPPER_Y) {

@@ -1844,7 +1844,7 @@ public final class VsPilot {
         // 5) 靠泊成功：船已经回到方块形态，再打开该站舱口并结算本轮出勤。
         if (dockSite != null) {
             com.opamb.barotrauma.world.DockingBay.setHatchOpen(level, dockSite, true);
-            com.opamb.barotrauma.campaign.CampaignManager.onDocked(level);
+            com.opamb.barotrauma.campaign.CampaignManager.onDocked(level, dockSite);
         }
         String where = String.format(Locale.ROOT, "%+d,%+d,%+d", dx, dy, dz);
         return skipped == 0
@@ -2415,7 +2415,7 @@ public final class VsPilot {
                 + "｜物理回调次数=" + VsThruster.calls() + "｜" + VsThruster.probe();
         // 装配之后过了 10 秒，原地灌了多少海水——这就是用户看到的"船里全是水"
         line += "｜10s 后｜" + floodProbe(level, state) + "｜" + VsBridge.claim(live);
-        String docked = dock(level);
+        String docked = dock(level, true);
         int placed = countBlocks(level, pos);
         return line + " | " + docked + "，拆回后方块数=" + placed;
     }

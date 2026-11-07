@@ -99,7 +99,8 @@ public final class OutpostBuilder {
                 if (Math.abs(z - site.z()) > 9) {
                     continue;
                 }
-                for (int y = -116; y <= -72; y++) {
+                // 上界到中层舱口下方（-69）：-71..-69 是艇顶舱口/船体占的那几格，不能留岩石。
+                for (int y = -116; y <= DockingBay.MID_HATCH_Y - 1; y++) {
                     chunk.setBlockState(new BlockPos(x, y, z), air, false);
                 }
             }
