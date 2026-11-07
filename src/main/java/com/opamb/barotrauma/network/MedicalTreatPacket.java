@@ -48,6 +48,10 @@ public record MedicalTreatPacket(UUID target, String limb, String itemId, boolea
                 user.displayClientMessage(Component.literal("目标不在线"), true);
                 return;
             }
+            if (targetPlayer.isDeadOrDying()) {
+                user.displayClientMessage(Component.literal("目标已死亡"), true);
+                return;
+            }
             if (targetPlayer != user && (targetPlayer.level() != user.level()
                     || user.distanceToSqr(targetPlayer) > 36.0)) {
                 user.displayClientMessage(Component.literal("距离太远"), true);

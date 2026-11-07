@@ -22,6 +22,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -179,6 +180,16 @@ public final class MedicalEvents {
                 || source.is(DamageTypes.WITHER)) {
             // 这些来源没有攻击者，但被取消的原版伤害必须转成病症，否则完全不掉血。
             plan = DamageConversions.fromGeneric(amount);
+        } else if (source.is(MedicalDamageTypes.PRESSURE)) {
+            // 深海挤压是 UnderwaterSurvival 的持续伤害；取消原版结算后必须转成病症。
+            plan = DamageConversions.fromGeneric(amount);
+        } else if (source.getDirectEntity() instanceof Projectile projectile) {
+            // 投射物按命中高度分部位；左右按玩家本地左向量判断。
+            double heightRatio = (projectile.getY() - player.getY()) / player.getBbHeight();
+            var look = player.getLookAngle();
+            double leftDot = (projectile.getX() - player.getX()) * look.z
+                    - (projectile.getZ() - player.getZ()) * look.x;
+            plan = DamageConversions.fromProjectile(amount, heightRatio, leftDot > 0.0);
         } else if (source.getEntity() != null) {
             // 有攻击者的近战伤害：原作三件套过渡版（武器模块接入后按部位归属替换）
             plan = DamageConversions.fromGeneric(amount);

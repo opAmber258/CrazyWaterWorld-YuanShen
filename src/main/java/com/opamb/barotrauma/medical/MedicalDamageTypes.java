@@ -19,6 +19,11 @@ public final class MedicalDamageTypes {
             Registries.DAMAGE_TYPE,
             new ResourceLocation(BarotraumaMod.MOD_ID, "medical"));
 
+    /** 深海挤压：UnderwaterSurvival 的持续伤害，独立类型以便医疗层识别并转成病症。 */
+    public static final ResourceKey<DamageType> PRESSURE = ResourceKey.create(
+            Registries.DAMAGE_TYPE,
+            new ResourceLocation(BarotraumaMod.MOD_ID, "pressure"));
+
     private MedicalDamageTypes() {
     }
 }

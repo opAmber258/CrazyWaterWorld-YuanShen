@@ -78,6 +78,7 @@
   "message.barotrauma.natural_sink.off": "水中自然下沉：关",
   "death.attack.barotrauma.medical": "%1$s 死于伤病",
   "death.attack.barotrauma.medical.player": "%1$s 死于伤病（攻击者：%2$s）",
+  "death.attack.barotrauma.pressure": "%1$s 被深海压力压碎",
   "item.barotrauma.bandage": "绷带",
   "item.barotrauma.antibiotic_glue": "抗生素凝胶",
   "item.barotrauma.morphine": "吗啡",

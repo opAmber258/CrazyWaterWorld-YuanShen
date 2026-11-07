@@ -78,6 +78,7 @@
   "message.barotrauma.natural_sink.off": "Natural sinking: OFF",
   "death.attack.barotrauma.medical": "%1$s died of afflictions",
   "death.attack.barotrauma.medical.player": "%1$s died of afflictions while fighting %2$s",
+  "death.attack.barotrauma.pressure": "%1$s was crushed by the deep sea",
   "item.barotrauma.bandage": "绷带",
   "item.barotrauma.antibiotic_glue": "抗生素凝胶",
   "item.barotrauma.morphine": "吗啡",

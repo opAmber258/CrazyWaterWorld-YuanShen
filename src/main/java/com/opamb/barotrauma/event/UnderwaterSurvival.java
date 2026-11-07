@@ -1,7 +1,10 @@
 package com.opamb.barotrauma.event;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.medical.MedicalDamageTypes;
 import com.opamb.barotrauma.world.OceanEnvironment;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.TickEvent;
@@ -80,7 +83,10 @@ public final class UnderwaterSurvival {
             if (depth > com.opamb.barotrauma.ship.ShipPressure.playerSafeDepth(player)
                     && pressureAccumulator >= 60) {
                 pressureAccumulator = 0;
-                player.hurt(player.damageSources().generic(), 
+                var holder = player.level().registryAccess()
+                        .registryOrThrow(Registries.DAMAGE_TYPE)
+                        .getHolderOrThrow(MedicalDamageTypes.PRESSURE);
+                player.hurt(new DamageSource(holder),
                         com.opamb.barotrauma.ship.ShipPressure.PLAYER_DAMAGE_PER_SECOND * 3.0F);
             }
         } else {

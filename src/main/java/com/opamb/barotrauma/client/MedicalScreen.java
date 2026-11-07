@@ -97,6 +97,8 @@ public final class MedicalScreen extends Screen {
         g.drawString(this.font, Component.literal("医疗 · " + targetName), x + 6, y + 5, 0xFFFFC74A);
 
         if (targetDead()) {
+            // 目标死亡后旧图标不能再可点。
+            iconRects.clear();
             g.fill(x + 4, y + 18, x + PANEL_W - 4, y + 32, 0x80FF5A5A);
             g.drawString(this.font, Component.literal("目标已死亡"),
                     x + 7, y + 22, 0xFFFFE0E0);
