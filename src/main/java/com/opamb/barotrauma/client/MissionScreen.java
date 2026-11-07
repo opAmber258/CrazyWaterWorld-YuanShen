@@ -159,20 +159,7 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
                 !enabled ? 0xFF1A211C : hover ? HOVER : 0xFF2F3A2F);
         graphics.drawCenteredString(font, button, bx + 31, y + 9,
                 enabled ? TEXT : 0xFF5A6256);
-        if (enabled && hover) {
-            int action = mine
-                    ? (mission.state() == Mission.State.READY
-                            ? MissionActionPacket.TURN_IN : MissionActionPacket.ABANDON)
-                    : MissionActionPacket.ACCEPT;
-            pendingAction = action;
-            pendingMissionId = mission.id;
-        } else if (hover) {
-            pendingAction = 0;
-        }
     }
-
-    private int pendingAction;
-    private int pendingMissionId = -1;
 
     private static String coord(Mission mission) {
         return mission.target.getX() + ", " + mission.target.getY() + ", " + mission.target.getZ();
@@ -180,11 +167,33 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && pendingAction != 0) {
-            ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(pendingAction,
-                    pendingMissionId, menu.terminalPos()));
-            pendingAction = 0;
-            return true;
+        // 任务按钮在点击时重新判定，不能用渲染时缓存的 hover——
+        // 鼠标移开后缓存不会清空，点商店按钮会被误判成上一个任务的「放弃」。
+        if (button == 0) {
+            int rowY = topPos + 20;
+            for (Mission mission : ClientMissionCache.offered()) {
+                if (mission.state() == Mission.State.DONE) {
+                    continue;
+                }
+                int bx = leftPos + PANEL_W - 78;
+                if (mouseX >= bx && mouseX < bx + 62
+                        && mouseY >= rowY + 5 && mouseY < rowY + 21) {
+                    boolean mine = ClientMissionCache.active() != null
+                            && ClientMissionCache.active().id == mission.id;
+                    boolean enabled = mission.state() != Mission.State.DONE
+                            && (!mission.isTaken() || mine);
+                    if (enabled) {
+                        int action = mine
+                                ? (mission.state() == Mission.State.READY
+                                        ? MissionActionPacket.TURN_IN : MissionActionPacket.ABANDON)
+                                : MissionActionPacket.ACCEPT;
+                        ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(action,
+                                mission.id, menu.terminalPos()));
+                    }
+                    return true;
+                }
+                rowY += ROW_H + 2;
+            }
         }
         // 商店按钮（无 missionId）
         int shopY = topPos + PANEL_H - 52;
