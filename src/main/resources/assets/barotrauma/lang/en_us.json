@@ -73,5 +73,15 @@
   "item.barotrauma.drain_outlet": "Drain Duct",
   "key.barotrauma.toggle_natural_sink": "Toggle natural sinking",
   "message.barotrauma.natural_sink.on": "Natural sinking: ON",
-  "message.barotrauma.natural_sink.off": "Natural sinking: OFF"
+  "message.barotrauma.natural_sink.off": "Natural sinking: OFF",
+  "death.attack.barotrauma.medical": "%1$s died of afflictions",
+  "death.attack.barotrauma.medical.player": "%1$s died of afflictions while fighting %2$s",
+  "item.barotrauma.bandage": "绷带",
+  "item.barotrauma.antibiotic_glue": "抗生素凝胶",
+  "item.barotrauma.morphine": "吗啡",
+  "item.barotrauma.blood_pack": "血袋",
+  "item.barotrauma.saline": "生理盐水",
+  "item.barotrauma.naloxone": "纳洛酮",
+  "item.barotrauma.fentanyl": "芬太尼",
+  "item.barotrauma.67": "67"
 }

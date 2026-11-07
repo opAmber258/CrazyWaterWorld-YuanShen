@@ -352,7 +352,7 @@
 - 单人/多人死亡模型：本机同版本 `Barotrauma.dll` 反编译 `Barotrauma.SinglePlayerCampaign`、`Barotrauma.Networking.RespawnManager`。
 - 复活小艇规则：本机简体中文/英文 `Content/Texts/*/…Vanilla.xml` 服务器设置文本。
 - 地点类型：本机 `Content/Map/locationTypes.xml`。
-- 医疗数值：本机 `Content/Afflictions.xml`、`Content/Items/Medical/medical.xml`（已在 `PLAN.md` §10.57 记录）。
+- 医疗数值：本机 `Content/Afflictions.xml`、`Content/Items/Medical/medical.xml`（已逐条提取整理至 `docs/medical/vanilla-baseline.md`，含 vitality 分数语义的源码核对；原"PLAN.md §10.57"引用有误，该节实为进水渲染分析）。
 
 ---
 

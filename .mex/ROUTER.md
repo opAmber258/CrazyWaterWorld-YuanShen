@@ -24,7 +24,7 @@ edges:
     condition: when building or running the verification layers
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-04
+last_updated: 2026-11-07
 ---
 
 # Session Bootstrap
@@ -59,6 +59,7 @@ Then read this file fully before doing anything else in this session.
   left east/west doors clickable only at a 1px centre overlap. Toggle sounds are the original
   Barotrauma `Door1..4.ogg`.
 - L1 unit tests (46, including `HullDamageNbtTest`) pass; 3 GameTests and L3 `.smoketest-vs` passed earlier.
+- **医疗系统（feat/medical-system 分支，待合并）**：病症即血量模型（取消原版玩家伤害/回血，vitality=100−Σ病症消耗，原作 CalculateVitality 语义源码核对）；部位鉴定按伤害来源（摔=腿、投射物=命中高度、近战=躯干；头部不做外伤）；六药（绷带/凝胶/吗啡/血袋/盐水/纳洛酮）+芬太尼，数值对照原作 XML；双界面（E 背包=窄条辅助健康栏+拖拽/双击用药，右键药品=治疗面板点选部位+对症方框）；重伤倒地状态机（≤0 倒地可救、≤−100 真死、自然流失同伤势挂钩）；饱食度机制移除。M0 底表 `docs/medical/vanilla-baseline.md`（§8 vitality 语义源码核对）。L1 医疗测试 29 个全绿、L3 任务链冒烟 PASS。
 
 **Not yet built:**
 - Multi-ship support (one `VsPilot` singleton manages one physical ship).

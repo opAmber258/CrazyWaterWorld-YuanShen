@@ -73,5 +73,15 @@
   "item.barotrauma.drain_outlet": "排水口",
   "key.barotrauma.toggle_natural_sink": "切换水中自然下沉",
   "message.barotrauma.natural_sink.on": "水中自然下沉：开",
-  "message.barotrauma.natural_sink.off": "水中自然下沉：关"
+  "message.barotrauma.natural_sink.off": "水中自然下沉：关",
+  "death.attack.barotrauma.medical": "%1$s 死于伤病",
+  "death.attack.barotrauma.medical.player": "%1$s 死于伤病（攻击者：%2$s）",
+  "item.barotrauma.bandage": "绷带",
+  "item.barotrauma.antibiotic_glue": "抗生素凝胶",
+  "item.barotrauma.morphine": "吗啡",
+  "item.barotrauma.blood_pack": "血袋",
+  "item.barotrauma.saline": "生理盐水",
+  "item.barotrauma.naloxone": "纳洛酮",
+  "item.barotrauma.fentanyl": "芬太尼",
+  "item.barotrauma.67": "67"
 }
