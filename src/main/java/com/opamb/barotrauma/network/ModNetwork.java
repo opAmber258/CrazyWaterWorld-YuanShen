@@ -45,6 +45,15 @@ public final class ModNetwork {
                 PumpActionPacket::encode, PumpActionPacket::decode, PumpActionPacket::handle);
         CHANNEL.registerMessage(nextId++, ShipHullDamagePacket.class,
                 ShipHullDamagePacket::encode, ShipHullDamagePacket::decode, ShipHullDamagePacket::handle);
+        CHANNEL.messageBuilder(MedicalSyncPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(MedicalSyncPacket::encode).decoder(MedicalSyncPacket::decode)
+                .consumerNetworkThread(MedicalSyncPacket::handle).add();
+        CHANNEL.messageBuilder(MedicalRequestPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MedicalRequestPacket::encode).decoder(MedicalRequestPacket::decode)
+                .consumerNetworkThread(MedicalRequestPacket::handle).add();
+        CHANNEL.messageBuilder(MedicalTreatPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MedicalTreatPacket::encode).decoder(MedicalTreatPacket::decode)
+                .consumerNetworkThread(MedicalTreatPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {
@@ -53,6 +62,11 @@ public final class ModNetwork {
 
     public static <MSG> void sendToPlayer(net.minecraft.server.level.ServerPlayer player, MSG message) {
         CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    /** 客户端 → 服务端的通用发送（治疗面板的请求/用药都走它）。 */
+    public static <MSG> void sendToServer(MSG message) {
+        CHANNEL.sendToServer(message);
     }
 
     public static void send(com.opamb.barotrauma.network.ShipActionPacket packet) {

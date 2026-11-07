@@ -37,6 +37,14 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.DRAIN_PUMP.get());
                         output.accept(ModItems.SMALL_PUMP.get());
                         output.accept(ModItems.DRAIN_OUTLET.get());
+                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.BANDAGE.get());
+                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.ANTIBIOTIC_GLUE.get());
+                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.MORPHINE.get());
+                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.BLOOD_PACK.get());
+                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.SALINE.get());
+                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.NALOXONE.get());
+                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.FENTANYL.get());
+                        output.accept(ModItems.SIXTY_SEVEN.get());
                     })
                     .build());
 

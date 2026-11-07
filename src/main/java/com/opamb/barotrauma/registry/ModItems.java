@@ -74,6 +74,10 @@ public final class ModItems {
     public static final RegistryObject<Item> DEEP_PERMIT = ITEMS.register("deep_permit",
             () -> new Item(new Item.Properties()));
 
+    /** "67"：彩蛋物品。只能拿在手上，不能放置，没有任何作用（致敬仓库里的 676767）。 */
+    public static final RegistryObject<Item> SIXTY_SEVEN = ITEMS.register("67",
+            () -> new Item(new Item.Properties()));
+
     private ModItems() {
     }
 

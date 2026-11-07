@@ -337,6 +337,7 @@ public final class DeepSeaEvents {
                     return 1;
                 }))
                 .then(CampaignCommand.node())
+                .then(com.opamb.barotrauma.medical.MedicalCommand.node())
                 .then(Commands.literal("ship")
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();

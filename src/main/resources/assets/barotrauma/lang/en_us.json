@@ -75,5 +75,16 @@
   "item.barotrauma.deep_permit": "Deep diving permit",
   "key.barotrauma.toggle_natural_sink": "Toggle natural sinking",
   "message.barotrauma.natural_sink.on": "Natural sinking: ON",
-  "message.barotrauma.natural_sink.off": "Natural sinking: OFF"
+  "message.barotrauma.natural_sink.off": "Natural sinking: OFF",
+  "death.attack.barotrauma.medical": "%1$s died of afflictions",
+  "death.attack.barotrauma.medical.player": "%1$s died of afflictions while fighting %2$s",
+  "death.attack.barotrauma.pressure": "%1$s was crushed by the deep sea",
+  "item.barotrauma.bandage": "Bandage",
+  "item.barotrauma.antibiotic_glue": "Antibiotic Glue",
+  "item.barotrauma.morphine": "Morphine",
+  "item.barotrauma.blood_pack": "Blood Pack",
+  "item.barotrauma.saline": "Saline",
+  "item.barotrauma.naloxone": "Naloxone",
+  "item.barotrauma.fentanyl": "Fentanyl",
+  "item.barotrauma.67": "67"
 }
