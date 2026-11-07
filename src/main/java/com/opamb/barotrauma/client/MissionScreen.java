@@ -87,18 +87,20 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         int shopY = y + PANEL_H - 52;
         graphics.fill(x + 8, shopY - 4, x + PANEL_W - 8, shopY - 3, EDGE);
         graphics.drawString(font, "商店", x + 10, shopY, ACCENT, false);
-        String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（30）", "船体加固 +20%（150 起）"};
+        String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（30）",
+                "船体加固（150 起）", "引擎（150 起）"};
         int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
-                MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE};
+                MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
+                MissionActionPacket.BUY_ENGINE_UPGRADE};
         for (int i = 0; i < labels.length; i++) {
-            int bx = x + 8 + i * 102;
-            boolean hover = mouseX >= bx && mouseX < bx + 100 && mouseY >= shopY + 12
+            int bx = x + 8 + i * 80;
+            boolean hover = mouseX >= bx && mouseX < bx + 76 && mouseY >= shopY + 12
                     && mouseY < shopY + 26;
-            graphics.fill(bx, shopY + 12, bx + 100, shopY + 26, hover ? HOVER : BOX);
-            graphics.fill(bx, shopY + 12, bx + 100, shopY + 13, EDGE);
-            graphics.drawCenteredString(font, labels[i], bx + 50, shopY + 16, TEXT);
+            graphics.fill(bx, shopY + 12, bx + 76, shopY + 26, hover ? HOVER : BOX);
+            graphics.fill(bx, shopY + 12, bx + 76, shopY + 13, EDGE);
+            graphics.drawCenteredString(font, labels[i], bx + 38, shopY + 16, TEXT);
         }
-        graphics.drawString(font, "修船/加固需要对着一艘已靠泊的船（24 格内）",
+        graphics.drawString(font, "修船/升级需要对着一艘已靠泊的船（24 格内）",
                 x + 10, shopY + 30, DIM, false);
     }
 
@@ -189,9 +191,10 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         int localY = (int) mouseY - topPos;
         if (button == 0 && localY >= shopY + 12 && localY < shopY + 26
                 && localX >= 8 && localX < PANEL_W - 8) {
-            int idx = (localX - 8) / 102;
+            int idx = (localX - 8) / 80;
             int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
-                    MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE};
+                    MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
+                    MissionActionPacket.BUY_ENGINE_UPGRADE};
             if (idx >= 0 && idx < actions.length) {
                 ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(actions[idx]));
                 return true;

@@ -44,6 +44,7 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
     public static final int BUY_OXYGEN = 5;
     public static final int BUY_WELDER = 6;
     public static final int BUY_UPGRADE = 7;
+    public static final int BUY_ENGINE_UPGRADE = 8;
 
     private static final int COST_OXYGEN = 40;
     private static final int COST_WELDER = 30;
@@ -99,6 +100,7 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 case BUY_WELDER -> handleBuyItem(player, level, wallet, COST_WELDER,
                         new ItemStack(ModItems.WELDING_TOOL.get()));
                 case BUY_UPGRADE -> handleUpgrade(player, level, wallet);
+                case BUY_ENGINE_UPGRADE -> handleEngineUpgrade(player, level, wallet);
                 default -> { /* 未知操作忽略 */ }
             }
         });
@@ -273,6 +275,40 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
         player.sendSystemMessage(Component.literal(String.format(
                 "船体加固 +20%%（当前 ×%.1f，消耗 %d credits）",
                 state.hullHealthMultiplier(), cost)).withStyle(ChatFormatting.GREEN));
+        sendState(player, level);
+    }
+
+    /** 引擎升级：每级 +20% 推力（上限 ×1.6），花费与船体加固同档。 */
+    private static void handleEngineUpgrade(ServerPlayer player, ServerLevel level,
+                                            CampaignState wallet) {
+        var core = ShipCores.nearestCore(level, player.blockPosition(), 24.0D);
+        if (core == null || core.state() == null) {
+            player.sendSystemMessage(Component.literal("附近 24 格内没有船（升级装在船上）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
+        ShipState state = core.state();
+        int current = ShipState.engineLevel(state.engineMultiplier());
+        if (current >= ShipState.ENGINE_MAX_LEVEL) {
+            player.sendSystemMessage(Component.literal("引擎已满级（×1.6）")
+                    .withStyle(ChatFormatting.GRAY));
+            sendState(player, level);
+            return;
+        }
+        int cost = COST_UPGRADE_BASE * (current + 1);
+        if (!wallet.spendCredits(cost)) {
+            player.sendSystemMessage(Component.literal(
+                    "升级需要 " + cost + " credits，余额不足（当前 " + wallet.credits() + "）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
+        state.setEngineMultiplier(ShipState.engineMultiplierForLevel(current + 1));
+        core.setChanged();
+        player.sendSystemMessage(Component.literal(String.format(
+                "引擎 +20%%（当前 ×%.1f，消耗 %d credits）",
+                state.engineMultiplier(), cost)).withStyle(ChatFormatting.GREEN));
         sendState(player, level);
     }
 

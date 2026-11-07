@@ -90,6 +90,8 @@ public final class ShipSavedData extends SavedData {
         /** 声纳交互代理方块的世界坐标（跟船移动；认领时恢复用）。 */
         public BlockPos proxyPos = BlockPos.ZERO;
         public float hullMultiplier = 1.0F;
+        /** 装配时的引擎推力倍率（认领时恢复）。 */
+        public float engineMultiplier = 1.0F;
         /** 装配时的船体格数：认领后重算破口大小（destroyed 口径）的基准；0 = 旧存档未知，按当前快照大小兜底。 */
         public int initialBlocks;
         /** 最近一次同步时的刚体位置（仅用于认领的位置回退匹配；不是快照坐标空间，勿与 x/y/z 混用）。 */
@@ -118,6 +120,7 @@ public final class ShipSavedData extends SavedData {
             }
             if (shipState != null) {
                 ship.hullMultiplier = shipState.hullHealthMultiplier();
+                ship.engineMultiplier = shipState.engineMultiplier();
                 ship.hullDamage.copyFrom(shipState.hullDamage());
             }
             return ship;
@@ -136,6 +139,7 @@ public final class ShipSavedData extends SavedData {
             tag.putLong("core", corePos.asLong());
             tag.putLong("proxy", proxyPos.asLong());
             tag.putFloat("multiplier", hullMultiplier);
+            tag.putFloat("engineMultiplier", engineMultiplier);
             ListTag snap = new ListTag();
             for (Map.Entry<Long, BlockState> entry : snapshot.entrySet()) {
                 CompoundTag item = new CompoundTag();
@@ -163,6 +167,7 @@ public final class ShipSavedData extends SavedData {
             ship.corePos = BlockPos.of(tag.getLong("core"));
             ship.proxyPos = BlockPos.of(tag.getLong("proxy"));
             ship.hullMultiplier = tag.getFloat("multiplier");
+            ship.engineMultiplier = tag.contains("engineMultiplier") ? tag.getFloat("engineMultiplier") : 1.0F;
             ListTag snap = tag.getList("snapshot", Tag.TAG_COMPOUND);
             for (int i = 0; i < snap.size(); i++) {
                 CompoundTag item = snap.getCompound(i);
