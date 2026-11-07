@@ -189,8 +189,9 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         // 商店按钮（无 missionId）
         int shopY = topPos + PANEL_H - 52;
         int localX = (int) mouseX - leftPos;
-        int localY = (int) mouseY - topPos;
-        if (button == 0 && localY >= shopY + 12 && localY < shopY + 26
+        // shopY 用的是屏幕坐标（含 topPos），这里也必须用 mouseY 比较；
+        // 用 localY 会再减一次 topPos，面板居中偏移时整排商店按钮点不到。
+        if (button == 0 && mouseY >= shopY + 12 && mouseY < shopY + 26
                 && localX >= 8 && localX < PANEL_W - 8) {
             int rel = localX - 8;
             int idx = rel / 80;
