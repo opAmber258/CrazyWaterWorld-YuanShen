@@ -74,7 +74,8 @@ public final class MedicalCommand {
         double oxygen = container.strength(AfflictionType.OXYGEN_LOW, null);
         double bloodloss = container.strength(AfflictionType.BLOODLOSS, null);
         ctx.getSource().sendSuccess(() -> Component.literal(
-                String.format("失血=%.0f 缺氧=%.0f（缺氧>50、失血>5 才开始掉血）", bloodloss, oxygen))
+                String.format("失血=%.0f 缺氧=%.0f（失血>5、缺氧>50 各自开始扣活力；其他病症按各自阈值）",
+                        bloodloss, oxygen))
                 .withStyle(ChatFormatting.AQUA), false);
         return 1;
     }

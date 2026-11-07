@@ -189,23 +189,30 @@ public final class MedicalInventoryScreen extends InventoryScreen {
                     return true;
                 }
             }
-            // 2) 双击物品栏里的药品 = 快速用药（对选中部位；未选中则最强优先）
-            if (this.hoveredSlot != null
-                    && this.hoveredSlot.getItem().getItem() instanceof com.opamb.barotrauma.medical.MedicalItem) {
+            // 2) 双击药品 = 快速用药：第一次点击可能把药拿进光标，第二次槽位空时也要能进入
+            var carried = this.menu.getCarried();
+            boolean carriedMedical = carried.getItem() instanceof com.opamb.barotrauma.medical.MedicalItem;
+            boolean slotMedical = this.hoveredSlot != null
+                    && this.hoveredSlot.getItem().getItem() instanceof com.opamb.barotrauma.medical.MedicalItem;
+            if (carriedMedical || slotMedical) {
+                int clickKey = this.hoveredSlot != null ? this.hoveredSlot.index : -2;
                 long now = System.currentTimeMillis();
-                if (lastSlotClickIndex == this.hoveredSlot.index
-                        && now - lastSlotClickAt < 400) {
-                    var carried = this.menu.getCarried();
+                if (lastSlotClickIndex == clickKey && now - lastSlotClickAt < 400) {
                     boolean fromCarried = carried.getItem() instanceof com.opamb.barotrauma.medical.MedicalItem;
+                    ItemStack source = fromCarried ? carried
+                            : (this.hoveredSlot == null ? ItemStack.EMPTY : this.hoveredSlot.getItem());
+                    if (!(source.getItem() instanceof com.opamb.barotrauma.medical.MedicalItem)) {
+                        return super.mouseClicked(mouseX, mouseY, button);
+                    }
                     String itemId = String.valueOf(net.minecraftforge.registries.ForgeRegistries.ITEMS
-                            .getKey(fromCarried ? carried.getItem() : this.hoveredSlot.getItem().getItem()));
+                            .getKey(source.getItem()));
                     ModNetwork.sendToServer(new MedicalTreatPacket(target,
                             selectedLimb == null ? "-" : selectedLimb.name(), itemId, fromCarried));
                     lastSlotClickIndex = -1;
                     return true;
                 }
                 lastSlotClickAt = now;
-                lastSlotClickIndex = this.hoveredSlot.index;
+                lastSlotClickIndex = clickKey;
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);

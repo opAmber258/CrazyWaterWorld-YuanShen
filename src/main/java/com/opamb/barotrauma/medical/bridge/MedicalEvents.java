@@ -131,7 +131,8 @@ public final class MedicalEvents {
             container.add(AfflictionType.OXYGEN_LOW, null, DamageConversions.hypoxiaPerSecond());
         }
         container.tickSecond();
-        updateLifeState(player, container);
+        // 每秒 tick 才累加一次倒地流失；受伤事件只更新状态，不重复加。
+        updateLifeState(player, container, true);
     }
 
     /**
@@ -235,6 +236,11 @@ public final class MedicalEvents {
      * </ul>
      */
     private static void updateLifeState(Player player, AfflictionContainer container) {
+        updateLifeState(player, container, false);
+    }
+
+    private static void updateLifeState(Player player, AfflictionContainer container,
+                                        boolean accumulateDownedDrain) {
         if (player.isDeadOrDying()) {
             return; // 已死实体不做任何镜像（修复死亡循环/鞭尸）
         }
@@ -255,7 +261,9 @@ public final class MedicalEvents {
             // 每秒流失 = 当前伤势的活力消耗率（与原作出血推失血后的活力下降速率同构）
             container.enterDowned();
             DOWNED_APPLIED.add(player.getUUID());
-            container.addDownedDrain(-container.vitalityDecreaseTotal(MAX_VITALITY) / 100.0);
+            if (accumulateDownedDrain) {
+                container.addDownedDrain(-container.vitalityDecreaseTotal(MAX_VITALITY) / 100.0);
+            }
             player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 45, 4, true, false));
             player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 45, 2, true, false));
             player.addEffect(new MobEffectInstance(MobEffects.GLOWING, 45, 0, true, false));
@@ -313,10 +321,16 @@ public final class MedicalEvents {
             DOWNED_APPLIED.remove(event.getOriginal().getUUID());
             return;
         }
-        AfflictionContainer old = MedicalCapabilities.container(event.getOriginal());
-        AfflictionContainer fresh = MedicalCapabilities.container(event.getEntity());
-        if (old != null && fresh != null) {
-            fresh.copyFrom(old);
+        // Forge 在 Clone 前会失效旧实体的 capability，读取旧容器前必须临时恢复。
+        event.getOriginal().reviveCaps();
+        try {
+            AfflictionContainer old = MedicalCapabilities.container(event.getOriginal());
+            AfflictionContainer fresh = MedicalCapabilities.container(event.getEntity());
+            if (old != null && fresh != null) {
+                fresh.copyFrom(old);
+            }
+        } finally {
+            event.getOriginal().invalidateCaps();
         }
         if (DOWNED_APPLIED.remove(event.getOriginal().getUUID())) {
             DOWNED_APPLIED.add(event.getEntity().getUUID());
