@@ -71,6 +71,8 @@
   "item.barotrauma.small_pump": "小型泵",
   "block.barotrauma.drain_outlet": "排水口",
   "item.barotrauma.drain_outlet": "排水口",
+  "item.barotrauma.diving_suit": "潜水服",
+  "item.barotrauma.deep_permit": "深潜许可",
   "key.barotrauma.toggle_natural_sink": "切换水中自然下沉",
   "message.barotrauma.natural_sink.on": "水中自然下沉：开",
   "message.barotrauma.natural_sink.off": "水中自然下沉：关"
