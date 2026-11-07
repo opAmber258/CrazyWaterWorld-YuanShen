@@ -13,7 +13,7 @@
 
 **依据：`run-client/saves/新的世界 (15)/dimensions/barotrauma/the_deep` 里用户手改的对接舱 + 用户给的铁梯截图。**
 用户要求：铁梯要长成截图里的方形钢框（不是原版 MC 梯子）、有碰撞、整格宽、和水平舱口同柱、
-灰色金属；爬梯音效是自制金属敲击音（不再打包商业游戏素材）；对接开舱口不能进水。
+灰色金属；爬梯音效按用户要求用本机《潜渊症》的 `FootstepMetal*.ogg`（公开发布前需确认授权）；对接开舱口不能进水。
 
 1. **对接结构（`world/DockingBay` 重写）**
    - -63/-64 两层地板开 3×1 洞；-63 洞口围 5×3 平滑石半砖；-64 站侧 3×1 舱口。
@@ -59,9 +59,10 @@
    - 物品/创造栏/战利品表/方块状态/物品模型/中英文名都已注册；掉落自身。
    - **对接/哨站梯子转向**：`DockingBay.ironLadder()` 和 StarterSub 的梯子统一
      `FACING=EAST`（薄板沿 z）；站侧竖井不再额外放梯子。
-   - **爬梯音效**：最终包内用的是**自制的金属敲击音**（`tools` 外脚本合成 6 段 OGG，
-     路径仍是 `sounds/ladder/climb1..6.ogg`）。开发阶段曾参考本机 `FootstepMetal*.ogg`，
-     但那是商业游戏素材、公开再分发有授权风险（CodeRabbit 也提了），已全部替换。
+   - **爬梯音效**：按用户要求用本机 `D:/Steam/steamapps/common/Barotrauma/Content/Sounds/Footsteps/Metal/`
+     的 `FootstepMetal1..6.ogg`（原版 `footstep_metal` 就是爬梯时手脚撞梯级的声音），
+     路径 `sounds/ladder/climb1..6.ogg`。**注意：这是商业游戏素材，公开再分发需授权**
+     （CodeRabbit 曾提过；用户明确要求保留原版音效）。
      注册 `ModSounds.LADDER_CLIMB`，`LadderSoundEvents` 在玩家踩着铁梯/打开的舱口时每 7 tick
      检查一次**脚部高度差**，真的在上下移动才随机播一段；挂在梯子上不动不再连续响。
    - **分舱修正**：`ModShipBlocks.isSolidForShip` 把铁梯当空气——否则立在舱口正下方的
