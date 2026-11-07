@@ -195,10 +195,12 @@ public final class MedicalInventoryScreen extends InventoryScreen {
                 long now = System.currentTimeMillis();
                 if (lastSlotClickIndex == this.hoveredSlot.index
                         && now - lastSlotClickAt < 400) {
+                    var carried = this.menu.getCarried();
+                    boolean fromCarried = carried.getItem() instanceof com.opamb.barotrauma.medical.MedicalItem;
                     String itemId = String.valueOf(net.minecraftforge.registries.ForgeRegistries.ITEMS
-                            .getKey(this.hoveredSlot.getItem().getItem()));
+                            .getKey(fromCarried ? carried.getItem() : this.hoveredSlot.getItem().getItem()));
                     ModNetwork.sendToServer(new MedicalTreatPacket(target,
-                            selectedLimb == null ? "-" : selectedLimb.name(), itemId, false));
+                            selectedLimb == null ? "-" : selectedLimb.name(), itemId, fromCarried));
                     lastSlotClickIndex = -1;
                     return true;
                 }

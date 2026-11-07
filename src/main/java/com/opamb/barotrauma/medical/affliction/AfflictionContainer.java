@@ -25,8 +25,8 @@ public final class AfflictionContainer {
     /** 进行中的治疗（药品的"每秒治疗量×持续时间"），随病症一起持久化。 */
     private final List<TreatmentEntry> treatments = new ArrayList<>();
 
-    /** 倒地时置 false：buffer 里残留的药品不再生效（原作：倒地无法从药物获益）。 */
-    private boolean treatmentsEnabled = true;
+    /** 倒地时置 true：进入倒地只清一次残余治疗；倒地后队友新登记的治疗仍结算。 */
+    private boolean downed;
 
     /** 倒地期间的额外活力消耗（原作：倒地后伤势继续恶化，活力自然流失至 −100 真死）。 */
     private double downedDrain;
@@ -47,6 +47,10 @@ public final class AfflictionContainer {
     }
 
     private static final int MAX_TREATMENTS = 16;
+
+    /** 网络/存档行数上限：全部 (类型×部位) 实例 + 治疗槽。 */
+    public static final int MAX_ROWS =
+            AfflictionType.ALL.size() * Limb.values().length + MAX_TREATMENTS;
 
     /** key：全身病症用 id，部位病症用 id|LIMB。 */
     private static String key(AfflictionType type, Limb limb) {
@@ -128,8 +132,8 @@ public final class AfflictionContainer {
      * （原作没有"每秒持续扣血"——血量是随算的，见 {@link #vitality(double)}。）
      */
     public void tickSecond() {
-        // 1) 治疗 buffer（倒地时停用——倒地前打的药不能把人"隔空救活"）
-        if (treatmentsEnabled && !treatments.isEmpty()) {
+        // 1) 治疗 buffer（倒地前残留的治疗在进入倒地时已清空；倒地后队友打的药仍结算）
+        if (!treatments.isEmpty()) {
             List<TreatmentEntry> expired = new ArrayList<>();
             for (TreatmentEntry entry : treatments) {
                 if (entry.perSecond > 0) {
@@ -226,14 +230,50 @@ public final class AfflictionContainer {
         byKey.clear();
         treatments.clear();
         downedDrain = 0;
+        downed = false;
     }
 
-    /** 倒地时停用治疗 buffer；被救回后恢复。 */
-    public void setTreatmentsEnabled(boolean enabled) {
-        this.treatmentsEnabled = enabled;
-        if (!enabled) {
+    /** 进入倒地：只在状态切换时清空倒地前的残余治疗，之后登记的治疗继续结算。 */
+    public void enterDowned() {
+        if (!downed) {
+            downed = true;
             treatments.clear();
         }
+    }
+
+    /** 离开倒地/被救回。 */
+    public void exitDowned() {
+        downed = false;
+    }
+
+    /** 倒地流失量（持久化用）。 */
+    public double downedDrainValue() {
+        return downedDrain;
+    }
+
+    /** 从存档恢复倒地流失量；须在 clear() 之后调用。 */
+    public void restoreDownedDrain(double value) {
+        downedDrain = Double.isFinite(value) ? value : 0.0;
+    }
+
+    /** 非死亡克隆：把旧容器的全部医疗状态复制到新容器。 */
+    public void copyFrom(AfflictionContainer other) {
+        if (other == null || other == this) {
+            return;
+        }
+        clear();
+        for (AfflictionInstance instance : other.byKey.values()) {
+            add(instance.type(), instance.limb(), instance.strength());
+        }
+        for (TreatmentEntry entry : other.treatments) {
+            if (treatments.size() >= MAX_TREATMENTS) {
+                break;
+            }
+            treatments.add(new TreatmentEntry(entry.type, entry.limb,
+                    entry.perSecond, entry.secondsRemaining));
+        }
+        downedDrain = other.downedDrain;
+        downed = other.downed;
     }
 
     public boolean isEmpty() {
@@ -280,8 +320,13 @@ public final class AfflictionContainer {
             }
             try {
                 Limb limb = parts[2].equals("-") ? null : Limb.valueOf(parts[2]);
-                treatments.add(new TreatmentEntry(type, limb,
-                        Double.parseDouble(parts[3]), Double.parseDouble(parts[4])));
+                double perSecond = Double.parseDouble(parts[3]);
+                double seconds = Double.parseDouble(parts[4]);
+                if (!Double.isFinite(perSecond) || !Double.isFinite(seconds)
+                        || treatments.size() >= MAX_TREATMENTS) {
+                    return;
+                }
+                treatments.add(new TreatmentEntry(type, limb, perSecond, seconds));
             } catch (IllegalArgumentException ignored) {
                 // 坏行不致命
             }
@@ -296,13 +341,21 @@ public final class AfflictionContainer {
                 return;
             }
             try {
-                add(type, Limb.valueOf(parts[1]), Double.parseDouble(parts[2]));
+                double strength = Double.parseDouble(parts[2]);
+                if (!Double.isFinite(strength)) {
+                    return;
+                }
+                add(type, Limb.valueOf(parts[1]), strength);
             } catch (IllegalArgumentException ignored) {
                 // 坏行不致命
             }
         } else {
             try {
-                add(type, null, Double.parseDouble(parts[1]));
+                double strength = Double.parseDouble(parts[1]);
+                if (!Double.isFinite(strength)) {
+                    return;
+                }
+                add(type, null, strength);
             } catch (NumberFormatException ignored) {
                 // 坏行不致命
             }

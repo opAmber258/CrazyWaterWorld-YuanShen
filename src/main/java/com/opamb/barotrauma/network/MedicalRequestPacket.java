@@ -29,7 +29,9 @@ public record MedicalRequestPacket(UUID target) {
                 return;
             }
             ServerPlayer targetPlayer = requester.server.getPlayerList().getPlayer(target);
-            if (targetPlayer != null) {
+            if (targetPlayer != null
+                    && targetPlayer.level() == requester.level()
+                    && requester.distanceToSqr(targetPlayer) <= 36.0) {
                 MedicalSyncPacket.respondSnapshot(requester, targetPlayer);
             }
         });

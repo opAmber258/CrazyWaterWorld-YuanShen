@@ -42,7 +42,7 @@ public final class MedicalCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> node() {
         return Commands.literal("medical")
                 .executes(MedicalCommand::show)
-                .then(Commands.literal("clear").executes(MedicalCommand::clear))
+                .then(Commands.literal("clear").requires(source -> source.hasPermission(2)).executes(MedicalCommand::clear))
                 .then(Commands.literal("give").requires(source -> source.hasPermission(2))
                         .then(Commands.argument("affliction", StringArgumentType.word())
                                 .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(

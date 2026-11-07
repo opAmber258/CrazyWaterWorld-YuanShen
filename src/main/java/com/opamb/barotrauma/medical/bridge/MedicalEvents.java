@@ -3,6 +3,7 @@ package com.opamb.barotrauma.medical.bridge;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.medical.MedicalCapabilities;
 import com.opamb.barotrauma.medical.MedicalDamageTypes;
+import com.opamb.barotrauma.medical.MedicalItem;
 import com.opamb.barotrauma.medical.MedicalProvider;
 import com.opamb.barotrauma.medical.affliction.AfflictionContainer;
 import com.opamb.barotrauma.medical.affliction.AfflictionType;
@@ -25,6 +26,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -32,7 +34,9 @@ import net.minecraftforge.fml.common.Mod;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 医疗系统的 Forge 总线桥接——**病症即血量**（2026-11-07 设计指令）。
@@ -60,6 +64,9 @@ public final class MedicalEvents {
 
     /** 每个玩家上次同步的签名（行+活力），变化才发包。 */
     private static final Map<UUID, String> lastSyncSignatures = new HashMap<>();
+
+    /** 本模组确实施加过倒地效果的玩家；清理时只动自己加的效果。 */
+    private static final Set<UUID> DOWNED_APPLIED = ConcurrentHashMap.newKeySet();
 
     private MedicalEvents() {
     }
@@ -181,6 +188,20 @@ public final class MedicalEvents {
         updateLifeState(player, container);
     }
 
+    /** 服务端也要取消“手持药品左键玩家”：客户端取消只影响本地攻击，攻击包仍会到服务端。 */
+    @SubscribeEvent
+    public static void onAttackEntity(AttackEntityEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer attacker)) {
+            return;
+        }
+        if (!(event.getTarget() instanceof Player target) || target == attacker) {
+            return;
+        }
+        if (attacker.getMainHandItem().getItem() instanceof MedicalItem) {
+            event.setCanceled(true);
+        }
+    }
+
     /** 病症即血量：一切原版治疗（自然回血/药水）一律作废，治疗权归 M2 的医疗物品。 */
     @SubscribeEvent
     public static void onLivingHeal(LivingHealEvent event) {
@@ -195,6 +216,7 @@ public final class MedicalEvents {
     @SubscribeEvent
     public static void onLivingDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof Player player) {
+            DOWNED_APPLIED.remove(player.getUUID());
             AfflictionContainer container = MedicalCapabilities.container(player);
             if (container != null) {
                 container.clear();
@@ -228,10 +250,11 @@ public final class MedicalEvents {
             return;
         }
         if (raw <= 0) {
-            // 进入倒地：停用残留治疗 buffer + 开启自然流失
+            // 进入倒地：清掉倒地前的残余治疗（只清一次），开启自然流失
             // 流失速度**跟原版一样，同伤势挂钩**（用户指令 #1）：
             // 每秒流失 = 当前伤势的活力消耗率（与原作出血推失血后的活力下降速率同构）
-            container.setTreatmentsEnabled(false);
+            container.enterDowned();
+            DOWNED_APPLIED.add(player.getUUID());
             container.addDownedDrain(-container.vitalityDecreaseTotal(MAX_VITALITY) / 100.0);
             player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 45, 4, true, false));
             player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 45, 2, true, false));
@@ -247,7 +270,7 @@ public final class MedicalEvents {
             }
         } else {
             // 被救回（vitality 回到正数）：恢复治疗能力、流失归零并解除倒地效果
-            container.setTreatmentsEnabled(true);
+            container.exitDowned();
             container.resetDownedDrain();
             clearDownedEffects(player);
             // 心数无条件镜像 vitality：任何不被病症支撑的血量变化（漏网回血等）一秒内回正
@@ -259,8 +282,11 @@ public final class MedicalEvents {
         }
     }
 
-    /** 解除倒地效果（被救回/切创造时调用）。 */
+    /** 解除倒地效果（只清本模组确实施加过的那四种，避免误删药水/其他模组的同名效果）。 */
     private static void clearDownedEffects(Player player) {
+        if (!DOWNED_APPLIED.remove(player.getUUID())) {
+            return;
+        }
         player.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
         player.removeEffect(MobEffects.WEAKNESS);
         player.removeEffect(MobEffects.GLOWING);
@@ -277,6 +303,23 @@ public final class MedicalEvents {
             lastSyncSignatures.put(player.getUUID(), signature);
             ModNetwork.sendToPlayer(player, new MedicalSyncPacket(player.getUUID(),
                     container.rows().toArray(String[]::new), (float) raw, downed));
+        }
+    }
+
+    /** 非死亡克隆（换维度等）复制医疗状态；死亡克隆保持空容器。 */
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        if (event.isWasDeath()) {
+            DOWNED_APPLIED.remove(event.getOriginal().getUUID());
+            return;
+        }
+        AfflictionContainer old = MedicalCapabilities.container(event.getOriginal());
+        AfflictionContainer fresh = MedicalCapabilities.container(event.getEntity());
+        if (old != null && fresh != null) {
+            fresh.copyFrom(old);
+        }
+        if (DOWNED_APPLIED.remove(event.getOriginal().getUUID())) {
+            DOWNED_APPLIED.add(event.getEntity().getUUID());
         }
     }
 

@@ -18,8 +18,9 @@ import net.minecraftforge.fml.common.Mod;
  * {@link MedicalEvents} 在 AttachCapabilitiesEvent 时把 {@link MedicalProvider}
  * 挂到玩家实体上。</p>
  *
- * <p>生命周期决策：不实现 copyHandler——死亡时原版会克隆新实体，
- * 新实体天然是空容器，正好满足 REQUIREMENTS §5.5 的"死亡清空"验收点。</p>
+ * <p>生命周期：死亡时原版会克隆新实体，新实体天然是空容器（满足 REQUIREMENTS §5.5
+ * 的"死亡清空"验收点）；非死亡克隆（如换维度）由 {@link MedicalEvents} 监听
+ * {@code PlayerEvent.Clone} 复制旧容器的状态。</p>
  */
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class MedicalCapabilities {

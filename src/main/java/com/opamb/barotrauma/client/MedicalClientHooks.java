@@ -44,6 +44,12 @@ public final class MedicalClientHooks {
     private MedicalClientHooks() {
     }
 
+    /** 退出登录：清空所有玩家快照，避免下次进入世界读到上一局的旧数据。 */
+    @SubscribeEvent
+    public static void onLoggingOut(net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingOut event) {
+        ClientMedicalCache.clearAll();
+    }
+
     /** 倒地时加载原版模糊着色器（真屏幕模糊，替代恶心扭曲）；恢复时清除。 */
     @SubscribeEvent
     public static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {

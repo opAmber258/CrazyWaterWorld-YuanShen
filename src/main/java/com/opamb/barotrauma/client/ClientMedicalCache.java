@@ -33,4 +33,9 @@ public final class ClientMedicalCache {
     public static void clear(UUID player) {
         SNAPSHOTS.remove(player);
     }
+
+    /** 退出登录时清空全部快照，避免下次进入世界读到上一局的旧数据。 */
+    public static void clearAll() {
+        SNAPSHOTS.clear();
+    }
 }

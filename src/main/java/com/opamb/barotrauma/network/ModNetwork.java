@@ -45,12 +45,15 @@ public final class ModNetwork {
                 PumpActionPacket::encode, PumpActionPacket::decode, PumpActionPacket::handle);
         CHANNEL.registerMessage(nextId++, ShipHullDamagePacket.class,
                 ShipHullDamagePacket::encode, ShipHullDamagePacket::decode, ShipHullDamagePacket::handle);
-        CHANNEL.registerMessage(nextId++, MedicalSyncPacket.class,
-                MedicalSyncPacket::encode, MedicalSyncPacket::decode, MedicalSyncPacket::handle);
-        CHANNEL.registerMessage(nextId++, MedicalRequestPacket.class,
-                MedicalRequestPacket::encode, MedicalRequestPacket::decode, MedicalRequestPacket::handle);
-        CHANNEL.registerMessage(nextId++, MedicalTreatPacket.class,
-                MedicalTreatPacket::encode, MedicalTreatPacket::decode, MedicalTreatPacket::handle);
+        CHANNEL.messageBuilder(MedicalSyncPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(MedicalSyncPacket::encode).decoder(MedicalSyncPacket::decode)
+                .consumerNetworkThread(MedicalSyncPacket::handle).add();
+        CHANNEL.messageBuilder(MedicalRequestPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MedicalRequestPacket::encode).decoder(MedicalRequestPacket::decode)
+                .consumerNetworkThread(MedicalRequestPacket::handle).add();
+        CHANNEL.messageBuilder(MedicalTreatPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MedicalTreatPacket::encode).decoder(MedicalTreatPacket::decode)
+                .consumerNetworkThread(MedicalTreatPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

@@ -48,7 +48,8 @@ public record MedicalTreatPacket(UUID target, String limb, String itemId, boolea
                 user.displayClientMessage(Component.literal("目标不在线"), true);
                 return;
             }
-            if (targetPlayer != user && user.distanceToSqr(targetPlayer) > 36.0) {
+            if (targetPlayer != user && (targetPlayer.level() != user.level()
+                    || user.distanceToSqr(targetPlayer) > 36.0)) {
                 user.displayClientMessage(Component.literal("距离太远"), true);
                 return;
             }
@@ -89,7 +90,15 @@ public record MedicalTreatPacket(UUID target, String limb, String itemId, boolea
                 return;
             }
             TreatmentSpec spec = medicalItem.spec();
-            Limb chosenLimb = parseLimb(limb);
+            Limb chosenLimb = null;
+            if (!"-".equals(limb)) {
+                try {
+                    chosenLimb = Limb.valueOf(limb);
+                } catch (IllegalArgumentException e) {
+                    user.displayClientMessage(Component.literal("无效的部位"), true);
+                    return;
+                }
+            }
             for (TreatmentSpec.Effect effect : spec.effects()) {
                 targetContainer.applyTreatment(effect.type(),
                         effect.type().limbSpecific() ? chosenLimb : null,
@@ -125,14 +134,6 @@ public record MedicalTreatPacket(UUID target, String limb, String itemId, boolea
             }
         }
         return ItemStack.EMPTY;
-    }
-
-    private static Limb parseLimb(String name) {
-        try {
-            return Limb.valueOf(name);
-        } catch (IllegalArgumentException e) {
-            return Limb.TORSO;
-        }
     }
 
     private static String limbDisplayName(Limb limb) {

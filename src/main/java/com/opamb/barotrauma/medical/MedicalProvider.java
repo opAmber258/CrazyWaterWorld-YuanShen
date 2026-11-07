@@ -37,6 +37,7 @@ public final class MedicalProvider implements ICapabilitySerializable<CompoundTa
             list.add(StringTag.valueOf(row));
         }
         tag.put("afflictions", list);
+        tag.putDouble("downedDrain", container.downedDrainValue());
         return tag;
     }
 
@@ -46,6 +47,9 @@ public final class MedicalProvider implements ICapabilitySerializable<CompoundTa
         ListTag list = tag.getList("afflictions", Tag.TAG_STRING);
         for (int i = 0; i < list.size(); i++) {
             container.loadRow(list.getString(i));
+        }
+        if (tag.contains("downedDrain")) {
+            container.restoreDownedDrain(tag.getDouble("downedDrain"));
         }
     }
 

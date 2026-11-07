@@ -42,7 +42,7 @@ public class MedicalItem extends Item {
             com.opamb.barotrauma.client.MedicalClientHooks.openSelfTreatScreen();
             return InteractionResultHolder.sidedSuccess(stack, true);
         }
-        return InteractionResultHolder.consume(stack);
+        return InteractionResultHolder.pass(stack);
     }
 
     /** tooltip：按用户指令只留药物名，作用/副作用文字提示全部删除。 */

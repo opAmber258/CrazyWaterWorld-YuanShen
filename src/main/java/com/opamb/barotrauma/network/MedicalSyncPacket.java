@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.network;
 
 import com.opamb.barotrauma.client.ClientMedicalCache;
+import com.opamb.barotrauma.medical.affliction.AfflictionContainer;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
@@ -30,6 +31,9 @@ public record MedicalSyncPacket(UUID target, String[] rows, float vitality, bool
     public static MedicalSyncPacket decode(FriendlyByteBuf buf) {
         UUID target = buf.readUUID();
         int count = buf.readVarInt();
+        if (count < 0 || count > AfflictionContainer.MAX_ROWS) {
+            throw new IllegalArgumentException("MedicalSyncPacket row count out of range: " + count);
+        }
         String[] rows = new String[count];
         for (int i = 0; i < count; i++) {
             rows[i] = buf.readUtf(256);
