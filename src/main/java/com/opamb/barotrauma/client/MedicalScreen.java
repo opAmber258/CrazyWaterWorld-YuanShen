@@ -96,6 +96,13 @@ public final class MedicalScreen extends Screen {
         ClientMedicalCache.Snapshot snapshot = ClientMedicalCache.snapshot(target);
         g.drawString(this.font, Component.literal("医疗 · " + targetName), x + 6, y + 5, 0xFFFFC74A);
 
+        if (targetDead()) {
+            g.fill(x + 4, y + 18, x + PANEL_W - 4, y + 32, 0x80FF5A5A);
+            g.drawString(this.font, Component.literal("目标已死亡"),
+                    x + 7, y + 22, 0xFFFFE0E0);
+            return;
+        }
+
         if (snapshot == null) {
             g.drawString(this.font, Component.literal("正在同步队友数据…"), x + 6, y + 24, 0xFFAAAAAA);
             return;
@@ -226,6 +233,16 @@ public final class MedicalScreen extends Screen {
 
     /** 该部位对症药品的图标点击（缺省部位=null → 全身/最强优先）。 */
     private record IconClick(Item item, Limb limb) {
+    }
+
+    /** 目标死亡后容器会被清空，快照变成“活力 100”；用客户端实体状态覆盖这段空窗。 */
+    private boolean targetDead() {
+        if (minecraft == null || minecraft.level == null) {
+            return false;
+        }
+        var targetPlayer = minecraft.level.getPlayerByUUID(target);
+        return targetPlayer != null
+                && (targetPlayer.isDeadOrDying() || targetPlayer.getHealth() <= 0.0F);
     }
 
     @Override
