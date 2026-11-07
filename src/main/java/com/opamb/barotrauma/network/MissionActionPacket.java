@@ -7,6 +7,7 @@ import com.opamb.barotrauma.mission.MissionType;
 import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.world.ModDimensions;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -45,6 +46,10 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
     public static final int BUY_WELDER = 6;
     public static final int BUY_UPGRADE = 7;
     public static final int BUY_ENGINE_UPGRADE = 8;
+    public static final int BUY_DEEP_PERMIT = 9;
+
+    /** 深潜许可售价。 */
+    private static final int COST_DEEP_PERMIT = 500;
 
     private static final int COST_OXYGEN = 40;
     private static final int COST_WELDER = 30;
@@ -101,16 +106,26 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                         new ItemStack(ModItems.WELDING_TOOL.get()));
                 case BUY_UPGRADE -> handleUpgrade(player, level, wallet);
                 case BUY_ENGINE_UPGRADE -> handleEngineUpgrade(player, level, wallet);
+                case BUY_DEEP_PERMIT -> handleBuyItem(player, level, wallet, COST_DEEP_PERMIT,
+                        new ItemStack(ModItems.DEEP_PERMIT.get()));
                 default -> { /* 未知操作忽略 */ }
             }
         });
         context.setPacketHandled(true);
     }
 
-    /** 接取任务；DELIVERY 同时发放补给箱。 */
+    /** 接取任务；DELIVERY 同时发放补给箱；深潜任务需要深潜许可。 */
     private static void handleAccept(ServerPlayer player, ServerLevel level, MissionSavedData data, int missionId) {
         Mission mission = data.missions().get(missionId);
         if (mission == null) {
+            return;
+        }
+        if (mission.requiresDeepPermit()
+                && player.getInventory().countItem(ModItems.DEEP_PERMIT.get().asItem()) == 0) {
+            player.sendSystemMessage(Component.literal(
+                    "该任务目标超过 " + Mission.DEEP_PERMIT_DEPTH + "m，需要「深潜许可」（商店有售）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
             return;
         }
         if (data.accept(player.getUUID(), missionId, level.getGameTime())) {
@@ -193,6 +208,12 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             return;
         }
         ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         int missing = 0;
         for (var entry : state.hullDamage().sortedEntries()) {
             missing += Math.round((1.0F - entry.getValue()) * 200.0F);
@@ -255,6 +276,12 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             return;
         }
         ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         int level1 = Math.round((state.hullHealthMultiplier() - 1.0F) / 0.2F);
         if (level1 >= 3) {
             player.sendSystemMessage(Component.literal("船体加固已满级（+60%）")
@@ -289,6 +316,12 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             return;
         }
         ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         int current = ShipState.engineLevel(state.engineMultiplier());
         if (current >= ShipState.ENGINE_MAX_LEVEL) {
             player.sendSystemMessage(Component.literal("引擎已满级（×1.6）")
@@ -310,6 +343,17 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 "引擎 +20%%（当前 ×%.1f，消耗 %d credits）",
                 state.engineMultiplier(), cost)).withStyle(ChatFormatting.GREEN));
         sendState(player, level);
+    }
+
+    /**
+     * 24 格内最近的核心是否就是玩家当前的物理船。
+     *
+     * <p>没有物理船时按最近的方块船处理；有物理船时，附近另一艘方块船的核心
+     * 也可能是“最近”的，不能仅凭距离就扣钱/改状态。</p>
+     */
+    private static boolean isCurrentShip(ShipState state) {
+        ShipState physical = VsPilot.state();
+        return physical == null || state == physical;
     }
 
     private static String describe(Mission mission) {

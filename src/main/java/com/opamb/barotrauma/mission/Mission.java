@@ -82,6 +82,14 @@ public final class Mission {
         return deadlineAtGameTime > 0L && gameTime >= deadlineAtGameTime;
     }
 
+    /** 深潜许可门槛：目标深度（米）超过该值需要「深潜许可」（B 中继站 301m 不受影响）。 */
+    public static final int DEEP_PERMIT_DEPTH = 320;
+
+    /** 目标深度超过许可门槛时，接取需要「深潜许可」（商店有售，不消耗）。 */
+    public boolean requiresDeepPermit() {
+        return -target.getY() > DEEP_PERMIT_DEPTH;
+    }
+
     /**
      * 交付结算比例：1.0 全额；&lt;1 部分完成。
      *
