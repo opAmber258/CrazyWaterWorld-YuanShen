@@ -138,6 +138,11 @@ public final class AfflictionContainer {
             for (TreatmentEntry entry : treatments) {
                 if (entry.perSecond > 0) {
                     reduce(entry.type, entry.limb, entry.perSecond);
+                    // 治疗同时抵消倒地自然流失；否则流失沉到 -100 以下后，
+                    // 即使病症全部治好，rawVitality 也回不到正值。
+                    if (downed) {
+                        downedDrain = Math.min(0.0, downedDrain + entry.perSecond);
+                    }
                 } else {
                     Limb sideLimb = entry.type.limbSpecific() && entry.limb == null ? Limb.TORSO : entry.limb;
                     add(entry.type, sideLimb, -entry.perSecond);

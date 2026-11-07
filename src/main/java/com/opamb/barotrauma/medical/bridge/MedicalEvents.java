@@ -193,9 +193,12 @@ public final class MedicalEvents {
         } else if (source.getEntity() != null) {
             // 有攻击者的近战伤害：原作三件套过渡版（武器模块接入后按部位归属替换）
             plan = DamageConversions.fromGeneric(amount);
+        } else if (source.is(DamageTypes.STARVE) || source.is(DamageTypes.FREEZE)) {
+            // 饥饿/冻伤：原版持续伤害，保持只取消、不转病症。
         } else {
-            // 无攻击者的环境杂项（浆果丛/仙人掌/饥饿/窒息等）：只取消原版伤害，不乱加病症
-            BarotraumaMod.LOGGER.debug("[medical] 未映射的无主伤害 {} 已取消（不产生病症）",
+            // 其余无主伤害（中毒/魔法等）兜底转成钝器伤，避免取消后完全不掉血。
+            plan = DamageConversions.fromGeneric(amount);
+            BarotraumaMod.LOGGER.debug("[medical] 未映射的无主伤害 {} 兜底转为钝器伤",
                     source.getMsgId());
         }
         if (plan != null) {
