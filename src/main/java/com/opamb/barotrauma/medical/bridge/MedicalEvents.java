@@ -184,8 +184,8 @@ public final class MedicalEvents {
             // 深海挤压是 UnderwaterSurvival 的持续伤害；取消原版结算后必须转成病症。
             plan = DamageConversions.fromGeneric(amount);
         } else if (source.getDirectEntity() instanceof Projectile projectile) {
-            // 投射物按命中高度分部位；左右按玩家本地左向量判断。
-            double heightRatio = (projectile.getY() - player.getY()) / player.getBbHeight();
+            // limbByHeightRatio 的 0 = 头顶、1 = 脚底；实体高度比例是 0=脚、1=头，先反转。
+            double heightRatio = 1.0 - (projectile.getY() - player.getY()) / player.getBbHeight();
             var look = player.getLookAngle();
             double leftDot = (projectile.getX() - player.getX()) * look.z
                     - (projectile.getZ() - player.getZ()) * look.x;
