@@ -446,6 +446,7 @@ public final class VsPilot {
         }
         target.setThrottle(control.throttleX(), control.throttleY(), control.throttleZ());
         target.setPower(control.power());
+        target.setEngineMultiplier(control.engineMultiplier());
         ShipSimulation.Report report = control.simulation().report();
         target.setBallast(report.ballastPercent(), control.floodRatio());
     }
@@ -1760,6 +1761,7 @@ public final class VsPilot {
                     next.hullDamage().setHealth(entry.getKey().offset(dx, dy, dz), entry.getValue());
                 }
                 next.setHullHealthMultiplier(state.hullHealthMultiplier());
+                next.setEngineMultiplier(state.engineMultiplier());
                 core.setChanged();
             }
         }
@@ -1848,6 +1850,7 @@ public final class VsPilot {
             }
             record.hullDamage.copyFrom(state.hullDamage());
             record.hullMultiplier = state.hullHealthMultiplier();
+            record.engineMultiplier = state.engineMultiplier();
             if (proxyPos != null) {
                 record.proxyPos = proxyPos;
             }
@@ -2093,6 +2096,7 @@ public final class VsPilot {
         ShipState rebuilt = new ShipState(geometry,
                 new MachineCount(0, 0, 0, 0, 0, 0, sonar));
         rebuilt.setHullHealthMultiplier(record.hullMultiplier);
+        rebuilt.setEngineMultiplier(record.engineMultiplier);
         rebuilt.hullDamage().copyFrom(record.hullDamage);
         // 注意键类型：snap 是 Map<BlockPos,...>，containsKey(long) 会装箱成 Long 恒为 false，
         // 曾把重建出的耐久/几何全部清空。

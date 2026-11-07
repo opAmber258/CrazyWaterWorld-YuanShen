@@ -54,6 +54,8 @@ public class ShipCoreBlockEntity extends BlockEntity {
     private HullDamage pendingDamage;
     @Nullable
     private Float pendingMultiplier;
+    @Nullable
+    private Float pendingEngineMultiplier;
     private long lastTickGameTime = Long.MIN_VALUE;
     /** 方块船的水面同步计时。 */
     private long lastWaterSyncGameTime = Long.MIN_VALUE;
@@ -410,6 +412,9 @@ public class ShipCoreBlockEntity extends BlockEntity {
         if (previous != null) {
             state.hullDamage().copyFrom(previous.hullDamage());
             state.setHullHealthMultiplier(previous.hullHealthMultiplier());
+            // 重扫会换一个新的 ShipState 对象；不迁走引擎倍率的话，
+            // 开关一次门或拆一次船，买过的引擎升级就回到 1.0。
+            state.setEngineMultiplier(previous.engineMultiplier());
             state.hullDamage().retain(pos -> ModShipBlocks.isRepairableHull(level.getBlockState(pos)));
             // 开合门也会重扫：水量必须按格子搬过来，否则一关门水就全跑到漏水侧。
             state.inheritWaterFrom(previous);
@@ -418,10 +423,12 @@ public class ShipCoreBlockEntity extends BlockEntity {
             // 否则 10%~90% 的部分损伤会全部凭空满血。
             state.hullDamage().copyFrom(pendingDamage);
             state.setHullHealthMultiplier(pendingMultiplier != null ? pendingMultiplier : 1.0F);
+            state.setEngineMultiplier(pendingEngineMultiplier != null ? pendingEngineMultiplier : 1.0F);
             state.hullDamage().retain(pos -> ModShipBlocks.isRepairableHull(level.getBlockState(pos)));
         }
         pendingDamage = null;
         pendingMultiplier = null;
+        pendingEngineMultiplier = null;
         // breached 方块仍然是 ship block（hull 集合里有它），但不再实心；
         // 重新加载后耐久表是空的，必须按 blockstate 补回 0%，否则焊不回去。
         List<BlockPos> breached = new ArrayList<>();
@@ -464,6 +471,7 @@ public class ShipCoreBlockEntity extends BlockEntity {
         if (state != null) {
             tag.put("BarotraumaHullDamage", state.hullDamage().saveNbt());
             tag.putFloat("BarotraumaHullMultiplier", state.hullHealthMultiplier());
+            tag.putFloat("BarotraumaEngineMultiplier", state.engineMultiplier());
         }
     }
 
@@ -477,5 +485,7 @@ public class ShipCoreBlockEntity extends BlockEntity {
         }
         pendingMultiplier = tag.contains("BarotraumaHullMultiplier")
                 ? tag.getFloat("BarotraumaHullMultiplier") : null;
+        pendingEngineMultiplier = tag.contains("BarotraumaEngineMultiplier")
+                ? tag.getFloat("BarotraumaEngineMultiplier") : null;
     }
 }

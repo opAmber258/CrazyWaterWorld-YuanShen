@@ -84,24 +84,25 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         }
 
         // 商店行
-        int shopY = y + PANEL_H - 52;
+        int shopY = shopTop();
         graphics.fill(x + 8, shopY - 4, x + PANEL_W - 8, shopY - 3, EDGE);
         graphics.drawString(font, "商店", x + 10, shopY, ACCENT, false);
         String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（30）",
-                "船体加固（150 起）", "深潜许可（500）"};
+                "船体加固（150 起）", "引擎（150 起）", "深潜许可（500）"};
         int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
                 MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
-                MissionActionPacket.BUY_DEEP_PERMIT};
+                MissionActionPacket.BUY_ENGINE_UPGRADE, MissionActionPacket.BUY_DEEP_PERMIT};
         for (int i = 0; i < labels.length; i++) {
-            int bx = x + 8 + i * 80;
-            boolean hover = mouseX >= bx && mouseX < bx + 76 && mouseY >= shopY + 12
-                    && mouseY < shopY + 26;
-            graphics.fill(bx, shopY + 12, bx + 76, shopY + 26, hover ? HOVER : BOX);
-            graphics.fill(bx, shopY + 12, bx + 76, shopY + 13, EDGE);
-            graphics.drawCenteredString(font, labels[i], bx + 38, shopY + 16, TEXT);
+            int bx = x + 8 + (i % 3) * 80;
+            int by = shopY + 12 + (i / 3) * 20;
+            boolean hover = mouseX >= bx && mouseX < bx + 76
+                    && mouseY >= by && mouseY < by + 14;
+            graphics.fill(bx, by, bx + 76, by + 14, hover ? HOVER : BOX);
+            graphics.fill(bx, by, bx + 76, by + 1, EDGE);
+            graphics.drawCenteredString(font, labels[i], bx + 38, by + 4, TEXT);
         }
-        graphics.drawString(font, "修船/加固需要对着一艘已靠泊的船（24 格内）",
-                x + 10, shopY + 30, DIM, false);
+        graphics.drawString(font, "修船/升级需要对着一艘已靠泊的船（24 格内）",
+                x + 10, shopY + 50, DIM, false);
     }
 
     /** 画一条任务：类型/奖励/目标、状态与倒计时、操作按钮。 */
@@ -195,25 +196,41 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
                 rowY += ROW_H + 2;
             }
         }
-        // 商店按钮（无 missionId）
-        int shopY = topPos + PANEL_H - 52;
+        // 商店按钮（无 missionId）：两行三列
+        int shopY = shopTop();
         int localX = (int) mouseX - leftPos;
         // shopY 用的是屏幕坐标（含 topPos），这里也必须用 mouseY 比较；
         // 用 localY 会再减一次 topPos，面板居中偏移时整排商店按钮点不到。
-        if (button == 0 && mouseY >= shopY + 12 && mouseY < shopY + 26
+        if (button == 0 && mouseY >= shopY + 12 && mouseY < shopY + 52
                 && localX >= 8 && localX < PANEL_W - 8) {
-            int rel = localX - 8;
-            int idx = rel / 80;
-            int off = rel - idx * 80;
+            int relX = localX - 8;
+            int col = relX / 80;
+            int offX = relX - col * 80;
+            int relY = (int) mouseY - (shopY + 12);
+            int row = relY / 20;
+            int offY = relY - row * 20;
             int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
                     MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
-                    MissionActionPacket.BUY_DEEP_PERMIT};
-            if (idx < 0 || idx >= actions.length || off >= 76) {
+                    MissionActionPacket.BUY_ENGINE_UPGRADE, MissionActionPacket.BUY_DEEP_PERMIT};
+            if (relX < 0 || col >= 3 || offX >= 76
+                    || relY < 0 || row >= 2 || offY >= 14) {
                 return super.mouseClicked(mouseX, mouseY, button);
             }
+            int idx = row * 3 + col;
             ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(actions[idx]));
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /** 商店区顶部：任务行多时下移，避免和任务板重叠（6 个按钮排两行三列）。 */
+    private int shopTop() {
+        int rows = 0;
+        for (Mission mission : ClientMissionCache.offered()) {
+            if (mission.state() != Mission.State.DONE) {
+                rows++;
+            }
+        }
+        return topPos + Math.max(PANEL_H - 72, 20 + rows * (ROW_H + 2) + 6);
     }
 }

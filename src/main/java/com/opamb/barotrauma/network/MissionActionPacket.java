@@ -7,6 +7,7 @@ import com.opamb.barotrauma.mission.MissionType;
 import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.world.ModDimensions;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -44,6 +45,7 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
     public static final int BUY_OXYGEN = 5;
     public static final int BUY_WELDER = 6;
     public static final int BUY_UPGRADE = 7;
+    public static final int BUY_ENGINE_UPGRADE = 8;
     public static final int BUY_DEEP_PERMIT = 9;
 
     /** 深潜许可售价。 */
@@ -103,6 +105,7 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 case BUY_WELDER -> handleBuyItem(player, level, wallet, COST_WELDER,
                         new ItemStack(ModItems.WELDING_TOOL.get()));
                 case BUY_UPGRADE -> handleUpgrade(player, level, wallet);
+                case BUY_ENGINE_UPGRADE -> handleEngineUpgrade(player, level, wallet);
                 case BUY_DEEP_PERMIT -> handleBuyItem(player, level, wallet, COST_DEEP_PERMIT,
                         new ItemStack(ModItems.DEEP_PERMIT.get()));
                 default -> { /* 未知操作忽略 */ }
@@ -205,6 +208,12 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             return;
         }
         ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         int missing = 0;
         for (var entry : state.hullDamage().sortedEntries()) {
             missing += Math.round((1.0F - entry.getValue()) * 200.0F);
@@ -267,6 +276,12 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             return;
         }
         ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
         int level1 = Math.round((state.hullHealthMultiplier() - 1.0F) / 0.2F);
         if (level1 >= 3) {
             player.sendSystemMessage(Component.literal("船体加固已满级（+60%）")
@@ -288,6 +303,57 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 "船体加固 +20%%（当前 ×%.1f，消耗 %d credits）",
                 state.hullHealthMultiplier(), cost)).withStyle(ChatFormatting.GREEN));
         sendState(player, level);
+    }
+
+    /** 引擎升级：每级 +20% 推力（上限 ×1.6），花费与船体加固同档。 */
+    private static void handleEngineUpgrade(ServerPlayer player, ServerLevel level,
+                                            CampaignState wallet) {
+        var core = ShipCores.nearestCore(level, player.blockPosition(), 24.0D);
+        if (core == null || core.state() == null) {
+            player.sendSystemMessage(Component.literal("附近 24 格内没有船（升级装在船上）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
+        ShipState state = core.state();
+        if (!isCurrentShip(state)) {
+            player.sendSystemMessage(Component.literal("这个核心不属于你当前的船")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
+        int current = ShipState.engineLevel(state.engineMultiplier());
+        if (current >= ShipState.ENGINE_MAX_LEVEL) {
+            player.sendSystemMessage(Component.literal("引擎已满级（×1.6）")
+                    .withStyle(ChatFormatting.GRAY));
+            sendState(player, level);
+            return;
+        }
+        int cost = COST_UPGRADE_BASE * (current + 1);
+        if (!wallet.spendCredits(cost)) {
+            player.sendSystemMessage(Component.literal(
+                    "升级需要 " + cost + " credits，余额不足（当前 " + wallet.credits() + "）")
+                    .withStyle(ChatFormatting.RED));
+            sendState(player, level);
+            return;
+        }
+        state.setEngineMultiplier(ShipState.engineMultiplierForLevel(current + 1));
+        core.setChanged();
+        player.sendSystemMessage(Component.literal(String.format(
+                "引擎 +20%%（当前 ×%.1f，消耗 %d credits）",
+                state.engineMultiplier(), cost)).withStyle(ChatFormatting.GREEN));
+        sendState(player, level);
+    }
+
+    /**
+     * 24 格内最近的核心是否就是玩家当前的物理船。
+     *
+     * <p>没有物理船时按最近的方块船处理；有物理船时，附近另一艘方块船的核心
+     * 也可能是“最近”的，不能仅凭距离就扣钱/改状态。</p>
+     */
+    private static boolean isCurrentShip(ShipState state) {
+        ShipState physical = VsPilot.state();
+        return physical == null || state == physical;
     }
 
     private static String describe(Mission mission) {
