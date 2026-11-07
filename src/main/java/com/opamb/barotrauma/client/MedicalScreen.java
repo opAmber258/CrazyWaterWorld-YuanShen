@@ -43,7 +43,7 @@ public final class MedicalScreen extends Screen {
         map.put(AfflictionType.BLEEDING, List.of(ModMedicalItems.ANTIBIOTIC_GLUE, ModMedicalItems.BANDAGE));
         map.put(AfflictionType.BURN, List.of(ModMedicalItems.BANDAGE, ModMedicalItems.ANTIBIOTIC_GLUE));
         map.put(AfflictionType.BLOODLOSS, List.of(ModMedicalItems.BLOOD_PACK, ModMedicalItems.SALINE));
-        map.put(AfflictionType.BLUNT_TRAUMA, List.of(ModMedicalItems.MORPHINE));
+        map.put(AfflictionType.BLUNT_TRAUMA, List.of(ModMedicalItems.MORPHINE, ModMedicalItems.FENTANYL));
         map.put(AfflictionType.OPIATE_OVERDOSE, List.of(ModMedicalItems.NALOXONE));
         return map;
     }
