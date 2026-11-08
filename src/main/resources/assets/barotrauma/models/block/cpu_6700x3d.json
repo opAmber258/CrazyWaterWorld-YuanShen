@@ -2,7 +2,8 @@
   "credit": "Made with Blockbench",
   "textures": {
     "0": "barotrauma:block/cpu_6700x3d_substrate",
-    "1": "barotrauma:block/cpu_6700x3d_ihs"
+    "1": "barotrauma:block/cpu_6700x3d_ihs",
+    "particle": "barotrauma:block/cpu_6700x3d_substrate"
   },
   "elements": [
     {

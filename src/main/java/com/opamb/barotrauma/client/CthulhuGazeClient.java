@@ -16,6 +16,7 @@ import net.minecraftforge.client.event.ViewportEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.util.ObfuscationReflectionHelper;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -53,6 +54,8 @@ public final class CthulhuGazeClient {
     private static PostChain ourChain;
 
     private static Field passesField;
+    /** 反射失败只警告一次，避免刷屏。 */
+    private static boolean reflectionWarned;
 
     private CthulhuGazeClient() {
     }
@@ -157,7 +160,12 @@ public final class CthulhuGazeClient {
         }
         try {
             if (passesField == null) {
-                passesField = PostChain.class.getDeclaredField("passes");
+                // 生产环境里字段是 SRG 名 f_110009_（= passes），必须走 Forge 的映射助手，
+                // 否则 getDeclaredField("passes") 在正式包中直接失败（CodeRabbit 审查意见）。
+                passesField = ObfuscationReflectionHelper.findField(PostChain.class, "f_110009_");
+                if (passesField == null) {
+                    throw new IllegalStateException("找不到 PostChain.passes 字段");
+                }
                 passesField.setAccessible(true);
             }
             Object raw = passesField.get(chain);
@@ -172,8 +180,12 @@ public final class CthulhuGazeClient {
                 setUniform(effect, "Strength", value);
                 setUniform(effect, "Mode", mode);
             }
-        } catch (Throwable ignored) {
-            // 拿不到就保持默认值（Strength=0 时着色器直接输出原画面，不会花屏）
+        } catch (Throwable error) {
+            if (!reflectionWarned) {
+                reflectionWarned = true;
+                BarotraumaMod.LOGGER.warn(
+                        "[cthulhu] 无法访问 PostChain.passes，注视的后处理强度将保持默认值", error);
+            }
         }
     }
 
