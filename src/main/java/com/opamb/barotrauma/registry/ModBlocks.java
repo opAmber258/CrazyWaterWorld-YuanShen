@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.registry;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.block.Cpu6700X3DBlock;
 import com.opamb.barotrauma.block.DrainPumpBlock;
 import com.opamb.barotrauma.block.HullBlock;
 import com.opamb.barotrauma.block.IronLadderBlock;
@@ -91,6 +92,15 @@ public final class ModBlocks {
                     .mapColor(MapColor.COLOR_ORANGE)
                     .strength(3.0F, 6.0F)
                     .sound(SoundType.METAL)));
+
+    /** 6700X3D 处理器（彩蛋方块）：12×12×3 像素的小摆件，纯装饰、无功能。 */
+    public static final RegistryObject<Block> CPU_6700X3D = BLOCKS.register("cpu_6700x3d",
+            () -> new Cpu6700X3DBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(0.5F, 6.0F)
+                    .sound(SoundType.METAL)
+                    // 不是整格方块：关掉遮挡剔除，避免相邻面被误剔
+                    .noOcclusion()));
 
     private ModBlocks() {
     }
