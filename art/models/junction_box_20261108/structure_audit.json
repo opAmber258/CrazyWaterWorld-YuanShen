@@ -1,0 +1,43 @@
+{
+  "path": "F:\\BarotraumaMinecraft\\CrazyWaterWorld-YuanShen\\art\\models\\junction_box_20261108\\junction_box.bbmodel",
+  "profile": "generic",
+  "kind": "bbmodel",
+  "structural_errors_absent": true,
+  "dependencies_complete": true,
+  "counts": {
+    "elements": 12,
+    "plane_elements": 0,
+    "inverted_elements": 0,
+    "rotated_elements": 0,
+    "declared_export_faces": 72
+  },
+  "textures": {
+    "0": {
+      "size": [
+        512,
+        512
+      ],
+      "pixels": 262144,
+      "rgba_base_bytes": 1048576,
+      "transparent_pixels": 242480,
+      "partial_alpha_pixels": 0,
+      "frame_size": [
+        512,
+        512
+      ],
+      "frame_count": 1,
+      "animation_metadata_checked": false,
+      "uv_size": [
+        128,
+        128
+      ]
+    }
+  },
+  "texture_pixels": 262144,
+  "errors": [],
+  "warnings": [],
+  "notes": [
+    "transparent_pixels are intentionally unpainted atlas areas (RGBA alpha 0); all face UV rects point at painted regions only.",
+    "texture uv_size (128x128) matches the project UV space, so unlike navigation_terminal_20261108 no uv_outside_texture warnings are expected."
+  ]
+}

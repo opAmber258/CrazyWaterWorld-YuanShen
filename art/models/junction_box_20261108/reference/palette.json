@@ -1,0 +1,147 @@
+{
+  "size": [
+    512,
+    512
+  ],
+  "mode": "RGBA",
+  "uv_space": [
+    128,
+    128
+  ],
+  "density": "4x (1 UV px = 1 BB = 4 bitmap px)",
+  "style": "cool aged steel housing, charcoal functional strip, saturated amber hazard marks; deterministic hard-edge bands; no noise, no gradients; few fixed wear marks",
+  "colors": {
+    "steel_hi": "#c7c6c7",
+    "steel_light": "#a4a6a8",
+    "steel_mid": "#949596",
+    "steel_warm": "#a8a39b",
+    "steel_shade": "#77787a",
+    "steel_dark": "#4a4a4e",
+    "steel_back": "#8e8f91",
+    "steel_side_d": "#55565a",
+    "steel_side_w": "#777874",
+    "steel_side_wd": "#55524e",
+    "steel_back_d": "#6f7072",
+    "silhouette": "#17181a",
+    "seam": "#0a0a0a",
+    "strip_bg_u": "#26251f",
+    "strip_bg_l": "#171716",
+    "strip_deep": "#121211",
+    "olive": "#6b6630",
+    "warn_yellow": "#e9b002",
+    "warn_black": "#0c0c0c",
+    "hazard_frame": "#141414",
+    "label_base": "#b9bbbd",
+    "label_red": "#a83a32",
+    "label_text": "#3a3a3c",
+    "rust_a": "#49402f",
+    "rust_b": "#371e0c",
+    "skirt": "#050505",
+    "skirt_edge": "#3f3f41",
+    "cable_dark": "#202020",
+    "cable_ring": "#454545",
+    "conduit_ring": "#3a3b3d",
+    "micro_dark": "#26262a",
+    "recess_shadow": "#1f1f22",
+    "recess_deep": "#17181a",
+    "bolt": "#3a3b3d",
+    "bolt_hi": "#c7c6c7",
+    "hinge_hi": "#b9babd",
+    "hinge_mid": "#97989a",
+    "hinge_knuckle": "#a8a9ab",
+    "hinge_waist": "#6a6b6d",
+    "hinge_shadow": "#5f6062"
+  },
+  "regions_uv128": {
+    "panel_front": [
+      0,
+      0,
+      8,
+      10
+    ],
+    "base_front": [
+      10,
+      0,
+      20,
+      4
+    ],
+    "frame_top_front": [
+      10,
+      5,
+      20,
+      6
+    ],
+    "frame_bottom_front": [
+      10,
+      7,
+      20,
+      9
+    ],
+    "frame_left_front": [
+      22,
+      0,
+      23,
+      10
+    ],
+    "frame_right_front": [
+      24,
+      0,
+      25,
+      10
+    ],
+    "barrel_front": [
+      26,
+      0,
+      27,
+      10
+    ],
+    "knuckle_a_front": [
+      28,
+      0,
+      29,
+      3
+    ],
+    "knuckle_b_front": [
+      30,
+      0,
+      31,
+      3
+    ],
+    "plate_back": [
+      32,
+      0,
+      41,
+      12
+    ],
+    "cable_end": [
+      10,
+      11,
+      13,
+      14
+    ],
+    "conduit_end": [
+      14,
+      11,
+      16,
+      13
+    ],
+    "panel_back": [
+      44,
+      12,
+      52,
+      22
+    ],
+    "micro_dark": [
+      64,
+      44,
+      68,
+      48
+    ],
+    "steel_strip": [
+      124,
+      0,
+      125,
+      10
+    ]
+  }
+}
