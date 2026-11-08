@@ -22,9 +22,11 @@ edges:
     condition: when hull durability, damage bars, welding, or breach-on-zero-HP behavior looks wrong
   - target: patterns/run-tests.md
     condition: when building or running the verification layers
+  - target: patterns/publish.md
+    condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 ---
 
 # Session Bootstrap
@@ -98,6 +100,7 @@ Load the relevant file based on the current task. Always load `context/architect
 | Setting up or running the project | `context/setup.md` |
 | Changing dev scripts, textures, or GameTest templates | `context/tools.md` |
 | Debugging hull damage, durability bars, or welding | `patterns/debug-hull-damage.md` |
+| Publishing changes (走流程 / `/publish`) | `patterns/publish.md` |
 | Any specific task | Check `patterns/INDEX.md` for a matching pattern |
 
 ## Behavioural Contract
@@ -114,3 +117,5 @@ For every task, follow this loop:
    - **Connect:** Link section entities to their enclosing knowledge with `refines` using existing ids. Preview missing structural links with `mex wiki link-sections`, then apply explicitly. Review semantic relationships from evidence; do not connect records just because they share keywords or code groundings.
    - **Orient:** If this task can recur and no pattern exists, create one in `patterns/` using `patterns/README.md`, then add it to `patterns/INDEX.md`. If a pattern exists but you learned a gotcha, update it.
    - **Write:** Bump `last_updated` in every scaffold file you changed. Read `mex logging --json` before optional `mex log` notes: `significant` records material rationale, `checkpoints` batches useful notes at task/session boundaries, and `manual` avoids unsolicited notes. Honor explicit user log requests in every mode; mandatory workflow Activity and recovery audits remain required.
+
+发布时走 `.zcode/commands/publish.md`（`/publish`，或用户说「走流程」）：MEX 记账是流程的第 2 步，不是可选项。PR 阶段的兜底是 `.github/workflows/mex-guard.yml`——改代码不补文档会让检查变红，除非该 PR 带 `mex-skip` 标签并写明原因。`mex check` 需要 CLI 在 PATH 里；若提示 `command not found`，先按 `AGENTS.md` 的"新机器"一节处理。
