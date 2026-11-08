@@ -35,9 +35,6 @@ public final class UnderwaterMovement {
 
     private static boolean naturalSink;
 
-    /** 当前客户端游泳标志是否由本模组设置（离开海域时只清理自己设置的）。 */
-    private static boolean modSwimming;
-
     private UnderwaterMovement() {
     }
 
@@ -50,7 +47,6 @@ public final class UnderwaterMovement {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null || mc.level == null) {
-            modSwimming = false;
             return;
         }
         if (player.isSpectator()) {
@@ -71,31 +67,17 @@ public final class UnderwaterMovement {
                     ? "message.barotrauma.natural_sink.on"
                     : "message.barotrauma.natural_sink.off"), true);
         }
-        // 判定点取"脚上方 0.4 格"而不是眼睛，也不是脚底：
-        //  - 用眼睛：水淹到胸口时还算干燥，沉不下去；
-        //  - 用脚底：干燥舱室的水面就是舱底 y，脚正好等于它，会被判成"在水里"，
-        //    于是干舱里也有粘滞的游泳感（用户实测"船内还没开就有漏水游泳的感觉"）。
-        Vec3 sample = player.position().add(0.0D, 0.4D, 0.0D);
-        // 保留局部变量：下面自由泳分支要复用同一个浸没判定（上游曾把它内联掉）。
-        boolean submergedFeet = OceanEnvironment.isSubmerged(mc.level, sample);
-        // 疾跑 + 浸没 = 原版自由泳：swimming 标志 + SWIMMING 姿态（本地即时生效，
-        // 服务端 handler 负责同步给其他客户端）。
-        boolean sprintSwim = submergedFeet && player.isSprinting()
-                && !player.getAbilities().flying;
-        if (sprintSwim) {
-            player.setSwimming(true);
-            player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
-            modSwimming = true;
-        } else if (modSwimming) {
-            // 只清理本模组设置的游泳标志，保留原版真实水中的游泳状态。
-            if (player.isSwimming()) {
-                player.setSwimming(false);
-            }
-            modSwimming = false;
-        }
-        if (!submergedFeet) {
+        // 水中移动入口用服务端权威的「脚部浸没」状态（issue #31 审查意见）：
+        // 泳姿标志（isSwimming）会被医疗钩子设置，且停疾跑就被清除，不能当干湿用。
+        // 没收到过包（刚进世界）时回退到客户端本地判定。
+        boolean submerged = ClientSwimState.known()
+                ? ClientSwimState.waterAtFeet()
+                : OceanEnvironment.isOceanWaterAt(mc.level,
+                        player.position().add(0.0D, 0.4D, 0.0D));
+        if (!submerged) {
             return;
         }
+        boolean sprintSwim = player.isSprinting() && !player.getAbilities().flying;
         Vec3 motion = player.getDeltaMovement();
         // 开 GUI（声纳台）时原版会 releaseAll 键位，KeyMapping.isDown() 恒为 false；
         // 这里直接读物理键盘，保证开着声纳按 Shift 也能下潜。
