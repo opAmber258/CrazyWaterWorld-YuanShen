@@ -54,6 +54,9 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(MedicalTreatPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(MedicalTreatPacket::encode).decoder(MedicalTreatPacket::decode)
                 .consumerNetworkThread(MedicalTreatPacket::handle).add();
+        CHANNEL.messageBuilder(SwimStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SwimStatePacket::encode).decoder(SwimStatePacket::decode)
+                .consumerNetworkThread(SwimStatePacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

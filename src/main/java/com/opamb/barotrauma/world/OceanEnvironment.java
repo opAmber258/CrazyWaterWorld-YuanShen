@@ -186,13 +186,15 @@ public final class OceanEnvironment {
         if (!isInOcean(level, pos)) {
             return false;
         }
-        if (isInOutpostDryZone(pos)) {
-            return false;
-        }
+        // 物理船的进水舱室先于哨站干燥区：进水的船哪怕停在哨站里也是浸没
+        // （CodeRabbit 审查意见：先判哨站会让水下玩家无法游泳、氧气反而恢复）。
         Boolean inDry = com.opamb.barotrauma.ship.vs.VsState
                 .queryPlayerInDryCompartment(level, pos);
         if (inDry != null) {
             return !inDry;
+        }
+        if (isInOutpostDryZone(pos)) {
+            return false;
         }
         if (isInsideBlockShipDryZone(level, pos)) {
             return false;

@@ -466,14 +466,26 @@ public final class VsPilot {
             float maxY = boxes[i + 4] + 1.0F;
             float maxZ = boxes[i + 5] + 1.0F;
             float surface = boxes[i + 6];
-            if (lx < minX || lx > maxX || ly < minY || ly > maxY + 1.0F
-                    || lz < minZ || lz > maxZ) {
+            if (lx < minX || lx > maxX || lz < minZ || lz > maxZ) {
                 continue;
             }
-            inAny = true;
             boolean dryBox = surface <= minY + 0.01F;
-            if (!dryBox && ly <= surface + 0.01F) {
-                wet = true;
+            if (dryBox) {
+                // 干舱：给跳跃顶点留 1 格余量
+                if (ly >= minY && ly <= maxY + 1.0F) {
+                    inAny = true;
+                }
+            } else {
+                // 湿舱：水面以下都算湿（水面可能高于棱柱顶格，CodeRabbit 审查意见）；
+                // 水面之上、棱柱顶 +1 余量内仍是舱内干燥
+                if (ly <= surface + 0.01F) {
+                    if (ly >= minY) {
+                        inAny = true;
+                        wet = true;
+                    }
+                } else if (ly >= minY && ly <= maxY + 1.0F) {
+                    inAny = true;
+                }
             }
         }
         if (!inAny) {

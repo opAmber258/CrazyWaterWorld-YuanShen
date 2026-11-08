@@ -67,13 +67,14 @@ public final class UnderwaterMovement {
                     ? "message.barotrauma.natural_sink.on"
                     : "message.barotrauma.natural_sink.off"), true);
         }
-        // 泳姿/水中移动全部以服务端判定的 swimming 标志为准（issue #31）：
-        // 客户端自己的 isSubmerged 在船被传送到实例锚点后会把干舱判成浸没，
-        // 导致船内疾跑误触发自由泳。服务端（UnderwaterSurvival）用
-        // isOceanWaterAt + 物理船舱内干湿询问做了权威判定，姿态会同步回来。
-        boolean swimming = player.isSwimming()
-                && OceanEnvironment.isInOcean(mc.level, player.position());
-        if (!swimming) {
+        // 水中移动入口用服务端权威的「脚部浸没」状态（issue #31 审查意见）：
+        // 泳姿标志（isSwimming）会被医疗钩子设置，且停疾跑就被清除，不能当干湿用。
+        // 没收到过包（刚进世界）时回退到客户端本地判定。
+        boolean submerged = ClientSwimState.known()
+                ? ClientSwimState.waterAtFeet()
+                : OceanEnvironment.isOceanWaterAt(mc.level,
+                        player.position().add(0.0D, 0.4D, 0.0D));
+        if (!submerged) {
             return;
         }
         boolean sprintSwim = player.isSprinting() && !player.getAbilities().flying;

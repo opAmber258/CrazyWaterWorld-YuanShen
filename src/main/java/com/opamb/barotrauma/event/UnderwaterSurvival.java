@@ -5,6 +5,7 @@ import com.opamb.barotrauma.medical.MedicalDamageTypes;
 import com.opamb.barotrauma.world.OceanEnvironment;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.TickEvent;
@@ -33,6 +34,8 @@ public final class UnderwaterSurvival {
 
     /** 本模组设置过游泳标志的玩家，避免清掉原版真实水中的游泳状态。 */
     private static final Set<UUID> modSwimming = new HashSet<>();
+    /** 每个玩家上一次同步给客户端的“脚部浸没”状态（变化才发包）。 */
+    private static final java.util.Map<UUID, Boolean> lastSwimSync = new java.util.HashMap<>();
 
     /** 服务端每 tick：同步游泳姿态、消耗氧气并处理深水挤压。 */
     @SubscribeEvent
@@ -49,6 +52,13 @@ public final class UnderwaterSurvival {
         // 判定用脚上方 0.4 格，和 UnderwaterMovement 保持一致。
         boolean submergedBody = OceanEnvironment.isOceanWaterAt(player.level(),
                 player.position().add(0.0D, 0.4D, 0.0D));
+        // 权威脚部浸没状态同步（issue #31 审查意见）：变化才发包，客户端的水中
+        // 移动入口用它，而不是泳姿标志（医疗钩子也会设置 swimming）。
+        Boolean previous = lastSwimSync.put(player.getUUID(), submergedBody);
+        if (previous == null || previous != submergedBody) {
+            com.opamb.barotrauma.network.ModNetwork.sendToPlayer((ServerPlayer) player,
+                    new com.opamb.barotrauma.network.SwimStatePacket(submergedBody));
+        }
         boolean sprintSwim = submergedBody && player.isSprinting()
                 && !player.isPassenger() && !player.getAbilities().flying
                 && !player.isSpectator();
