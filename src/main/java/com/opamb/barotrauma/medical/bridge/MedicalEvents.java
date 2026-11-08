@@ -129,6 +129,12 @@ public final class MedicalEvents {
         if (container == null) {
             return;
         }
+        // 调试器安全阀：生存玩家（且无权限 2）已经无法再打开调试面板，
+        // 残留的活力覆盖会把血条永远钉在调试值上，这里自动取消。
+        if (container.vitalityOverride() != null
+                && !player.isCreative() && !player.hasPermissions(2)) {
+            container.clearVitalityOverride();
+        }
         // 缺氧写入：憋气到 0 之后（原版溺水节奏）每秒注入 12 强度（底表 §2.5 量级）。
         // 氧气模块（舱内 O2）将来通过同一条路径写；届时这里只保留溺水分支。
         if (player.getAirSupply() <= 0) {
