@@ -35,6 +35,9 @@ public final class UnderwaterMovement {
 
     private static boolean naturalSink;
 
+    /** 当前客户端泳姿是否由本模组设置（只清理自己设置的，保留原版真实水中的游泳）。 */
+    private static boolean modSwimming;
+
     private UnderwaterMovement() {
     }
 
@@ -75,9 +78,23 @@ public final class UnderwaterMovement {
                 : OceanEnvironment.isOceanWaterAt(mc.level,
                         player.position().add(0.0D, 0.4D, 0.0D));
         if (!submerged) {
+            modSwimming = false;
             return;
         }
         boolean sprintSwim = player.isSprinting() && !player.getAbilities().flying;
+        // 客户端本地维持泳姿（issue #31 后续）：原版 updateSwimming/updatePlayerPose
+        // 每 tick 在空气海域会把 swimming 清掉，只等服务端同步会频繁闪回直立姿态；
+        // 入口仍以服务端权威浸没状态（ClientSwimState）为准，所以不会误触发。
+        if (sprintSwim) {
+            player.setSwimming(true);
+            player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
+            modSwimming = true;
+        } else if (modSwimming) {
+            if (player.isSwimming()) {
+                player.setSwimming(false);
+            }
+            modSwimming = false;
+        }
         Vec3 motion = player.getDeltaMovement();
         // 开 GUI（声纳台）时原版会 releaseAll 键位，KeyMapping.isDown() 恒为 false；
         // 这里直接读物理键盘，保证开着声纳按 Shift 也能下潜。
