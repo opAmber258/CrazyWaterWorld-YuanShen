@@ -133,8 +133,7 @@ public final class MedicalEvents {
             container.add(AfflictionType.OXYGEN_LOW, null, DamageConversions.hypoxiaPerSecond());
         }
         container.tickSecond();
-        // 每秒 tick 才累加一次倒地流失；受伤事件只更新状态，不重复加。
-        updateLifeState(player, container, true);
+        updateLifeState(player, container);
     }
 
     /**
@@ -175,17 +174,22 @@ public final class MedicalEvents {
                     DamageConversions.fromFire(amount, player.getRandom().nextDouble());
             container.add(AfflictionType.BURN, application.limb(), application.strength());
         } else if (source.is(DamageTypeTags.IS_EXPLOSION)) {
-            plan = DamageConversions.fromExplosion(amount);
+            plan = DamageConversions.fromExplosion(amount, player.getRandom().nextDouble());
         } else if (source.is(DamageTypeTags.IS_DROWNING)) {
             // 缺氧已由憋气管线按秒写入（onPlayerTick），溺水伤害本身不再重复折算
         } else if (source.is(DamageTypes.CACTUS)
                 || source.is(DamageTypes.IN_WALL)
                 || source.is(DamageTypes.WITHER)) {
             // 这些来源没有攻击者，但被取消的原版伤害必须转成病症，否则完全不掉血。
-            plan = DamageConversions.fromGeneric(amount);
+            // 非近战来源不出血（压力/凋零类原作无出血；持续伤害每秒掷骰会滚雪球）。
+            plan = DamageConversions.fromBluntOnly(amount);
         } else if (source.is(MedicalDamageTypes.PRESSURE)) {
             // 深海挤压是 UnderwaterSurvival 的持续伤害；取消原版结算后必须转成病症。
-            plan = DamageConversions.fromGeneric(amount);
+            plan = DamageConversions.fromBluntOnly(amount);
+        } else if (source.is(DamageTypes.INDIRECT_MAGIC)) {
+            // 瞬间伤害药水（ThrownPotion）和唤魔者尖牙是魔法伤害，不是穿刺/咬击：
+            // 必须先于投射物/攻击者分支拦下，否则会被当成箭或近战附加出血。
+            plan = DamageConversions.fromBluntOnly(amount);
         } else if (source.getDirectEntity() instanceof Projectile projectile) {
             // limbByHeightRatio 的 0 = 头顶、1 = 脚底；实体高度比例是 0=脚、1=头，先反转。
             double heightRatio = 1.0 - (projectile.getY() - player.getY()) / player.getBbHeight();
@@ -194,13 +198,14 @@ public final class MedicalEvents {
                     - (projectile.getZ() - player.getZ()) * look.x;
             plan = DamageConversions.fromProjectile(amount, heightRatio, leftDot > 0.0);
         } else if (source.getEntity() != null) {
-            // 有攻击者的近战伤害：原作三件套过渡版（武器模块接入后按部位归属替换）
-            plan = DamageConversions.fromGeneric(amount);
+            // 有攻击者的近战伤害：原作三件套过渡版（钝 + 概率出血；失血由出血推进自动产生；
+            // 武器模块接入后按部位归属替换）
+            plan = DamageConversions.fromGeneric(amount, player.getRandom().nextDouble());
         } else if (source.is(DamageTypes.STARVE) || source.is(DamageTypes.FREEZE)) {
             // 饥饿/冻伤：原版持续伤害，保持只取消、不转病症。
         } else {
             // 其余无主伤害（中毒/魔法等）兜底转成钝器伤，避免取消后完全不掉血。
-            plan = DamageConversions.fromGeneric(amount);
+            plan = DamageConversions.fromBluntOnly(amount);
             BarotraumaMod.LOGGER.debug("[medical] 未映射的无主伤害 {} 兜底转为钝器伤",
                     source.getMsgId());
         }
@@ -253,17 +258,17 @@ public final class MedicalEvents {
      * <ul>
      *   <li>raw &gt; 0：正常，心数镜像 vitality；被救回时清掉倒地效果。</li>
      *   <li>0 ≥ raw &gt; −100：**重伤倒地**——缓慢爬行（缓慢Ⅴ）+ 虚弱 + 发光轮廓（队友能找到），
-     *       心数压到半颗心；此状态下仍会因失血继续恶化，队友把伤口治到 vitality &gt; 0 即起死回生。</li>
+     *       心数压到半颗心；此状态下活力随伤口 dynamics 继续下坠（原版同款：出血按强度/60 推失血、
+     *       失血再扣活力），队友把伤口治到 vitality &gt; 0 即起死回生。</li>
      *   <li>raw ≤ −100：**真死**——{@code die()} 直调（0 血状态下 hurt() 会被
      *       isDeadOrDying 拒绝——上一版"躺地无法恢复"卡死 bug 的根因）。</li>
      * </ul>
+     *
+     * <p>原版 0 以下**没有**额外流失机制（CharacterHealth.Update → RecalculateVitality →
+     * KillIfOutOfVitality 只判 ≤ MinVitality）；2026-11-08 按用户指令"以原版数值为准"移除了
+     * v1 自加的 downedDrain，倒地后的活力变化完全由病症强度决定。</p>
      */
     private static void updateLifeState(Player player, AfflictionContainer container) {
-        updateLifeState(player, container, false);
-    }
-
-    private static void updateLifeState(Player player, AfflictionContainer container,
-                                        boolean accumulateDownedDrain) {
         if (player.isDeadOrDying()) {
             return; // 已死实体不做任何镜像（修复死亡循环/鞭尸）
         }
@@ -279,14 +284,9 @@ public final class MedicalEvents {
             return;
         }
         if (raw <= 0) {
-            // 进入倒地：清掉倒地前的残余治疗（只清一次），开启自然流失
-            // 流失速度**跟原版一样，同伤势挂钩**（用户指令 #1）：
-            // 每秒流失 = 当前伤势的活力消耗率（与原作出血推失血后的活力下降速率同构）
+            // 进入倒地：清掉倒地前的残余治疗（只清一次）
             container.enterDowned();
             DOWNED_APPLIED.add(player.getUUID());
-            if (accumulateDownedDrain) {
-                container.addDownedDrain(-container.vitalityDecreaseTotal(MAX_VITALITY) / 100.0);
-            }
             player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 45, 4, true, false));
             player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 45, 2, true, false));
             player.addEffect(new MobEffectInstance(MobEffects.GLOWING, 45, 0, true, false));
@@ -300,9 +300,8 @@ public final class MedicalEvents {
                 player.setHealth(1.0F);
             }
         } else {
-            // 被救回（vitality 回到正数）：恢复治疗能力、流失归零并解除倒地效果
+            // 被救回（vitality 回到正数）：恢复治疗能力并解除倒地效果
             container.exitDowned();
-            container.resetDownedDrain();
             clearDownedEffects(player);
             // 心数无条件镜像 vitality：任何不被病症支撑的血量变化（漏网回血等）一秒内回正
             player.setHealth((float) Math.max(1.0F,

@@ -28,9 +28,6 @@ public final class AfflictionContainer {
     /** 倒地时置 true：进入倒地只清一次残余治疗；倒地后队友新登记的治疗仍结算。 */
     private boolean downed;
 
-    /** 倒地期间的额外活力消耗（原作：倒地后伤势继续恶化，活力自然流失至 −100 真死）。 */
-    private double downedDrain;
-
     /** 一条进行中的治疗；perSecond &gt; 0 = 治疗，&lt; 0 = 副作用（按秒施加）。 */
     static final class TreatmentEntry {
         final AfflictionType type;
@@ -137,11 +134,7 @@ public final class AfflictionContainer {
             List<TreatmentEntry> expired = new ArrayList<>();
             for (TreatmentEntry entry : treatments) {
                 if (entry.perSecond > 0) {
-                    double healed = reduce(entry.type, entry.limb, entry.perSecond);
-                    // 只按实际治疗量抵消倒地自然流失；药不对症（healed=0）不能续命。
-                    if (downed && healed > 0) {
-                        downedDrain = Math.min(0.0, downedDrain + healed);
-                    }
+                    reduce(entry.type, entry.limb, entry.perSecond);
                 } else {
                     Limb sideLimb = entry.type.limbSpecific() && entry.limb == null ? Limb.TORSO : entry.limb;
                     add(entry.type, sideLimb, -entry.perSecond);
@@ -183,10 +176,6 @@ public final class AfflictionContainer {
         for (String key : dead) {
             byKey.remove(key);
         }
-        // 病症全清 = 没有持续伤害来源：倒地流失不再保留，否则历史累计值会把救援卡死。
-        if (downed && byKey.isEmpty()) {
-            downedDrain = 0.0;
-        }
     }
 
     /**
@@ -205,24 +194,16 @@ public final class AfflictionContainer {
     public static final double MIN_VITALITY = -100.0;
 
     /**
-     * **未钳制**的实时血量（可为负）。语义（原作源码 + MinVitality）：
+     * **未钳制**的实时血量（可为负）。语义（原作源码 CharacterHealth.Update →
+     * RecalculateVitality → KillIfOutOfVitality，2026-11-08 复核）：
      * &gt; 0 正常；∈ (MIN_VITALITY, 0] = 重伤倒地（可被队友治疗救回）；
      * ≤ MIN_VITALITY = 真死。下限钳到 MIN_VITALITY。
-     * 倒地期间的 downedDrain 让活力像原作一样持续自然流失（用户指令）。
+     * 原版 0 以下**没有**额外流失——活力随伤口 dynamics（出血推失血、强度自然变化）变化；
+     * v1 曾自加 downedDrain，已按用户"以原版数值为准"指令移除。
      */
     public double rawVitality(double maxVitality) {
         return Math.max(MIN_VITALITY,
-                Math.min(maxVitality, maxVitality - vitalityDecreaseTotal(maxVitality) + downedDrain));
-    }
-
-    /** 倒地期间的额外活力流失（负值/秒）。被救回时归零。 */
-    public void addDownedDrain(double perSecond) {
-        downedDrain += perSecond;
-    }
-
-    /** 倒地流失归零（被救回/死亡清空时）。 */
-    public void resetDownedDrain() {
-        downedDrain = 0;
+                Math.min(maxVitality, maxVitality - vitalityDecreaseTotal(maxVitality)));
     }
 
     /**
@@ -237,7 +218,6 @@ public final class AfflictionContainer {
     public void clear() {
         byKey.clear();
         treatments.clear();
-        downedDrain = 0;
         downed = false;
     }
 
@@ -252,16 +232,6 @@ public final class AfflictionContainer {
     /** 离开倒地/被救回。 */
     public void exitDowned() {
         downed = false;
-    }
-
-    /** 倒地流失量（持久化用）。 */
-    public double downedDrainValue() {
-        return downedDrain;
-    }
-
-    /** 从存档恢复倒地流失量；须在 clear() 之后调用。 */
-    public void restoreDownedDrain(double value) {
-        downedDrain = Double.isFinite(value) ? value : 0.0;
     }
 
     /** 倒地标志（持久化用）。 */
@@ -290,7 +260,6 @@ public final class AfflictionContainer {
             treatments.add(new TreatmentEntry(entry.type, entry.limb,
                     entry.perSecond, entry.secondsRemaining));
         }
-        downedDrain = other.downedDrain;
         downed = other.downed;
     }
 
