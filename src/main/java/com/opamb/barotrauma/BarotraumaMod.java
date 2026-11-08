@@ -47,6 +47,7 @@ public final class BarotraumaMod {
         ModEntities.register(modBus);
         ModParticles.register(modBus);
         com.opamb.barotrauma.registry.ModSounds.register(modBus);
+        com.opamb.barotrauma.registry.ModEffects.register(modBus);
         com.opamb.barotrauma.medical.ModMedicalItems.register(modBus);
         com.opamb.barotrauma.network.ModNetwork.register();
 

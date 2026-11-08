@@ -46,7 +46,6 @@ public final class ModCreativeTabs {
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.SALINE.get());
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.NALOXONE.get());
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.FENTANYL.get());
-                        output.accept(ModItems.SIXTY_SEVEN.get());
                     })
                     .build());
 
@@ -57,6 +56,11 @@ public final class ModCreativeTabs {
                     .icon(() -> new ItemStack(ModItems.MEDICAL_DEBUGGER.get()))
                     .displayItems((params, output) -> {
                         output.accept(ModItems.MEDICAL_DEBUGGER.get());
+                        // 彩蛋物品从主页签挪到开发者页签（用户指令 2026-11-08）
+                        output.accept(ModItems.SIXTY_SEVEN.get());
+                        output.accept(ModItems.CPU_6700X3D.get());
+                        // 克苏鲁的注视：只有一个触发器，预设与弱/中/强档位在面板里选
+                        output.accept(ModItems.CTHULHU_TRIGGER.get());
                     })
                     .build());
 
