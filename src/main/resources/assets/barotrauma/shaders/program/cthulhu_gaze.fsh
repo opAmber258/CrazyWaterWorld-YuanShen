@@ -42,14 +42,14 @@ void main() {
     vec3 col = orig;
 
     if (Mode < 0.5) {
-        // 0 鱼眼：桶形畸变 + 色散 + 紫黑边缘
-        float k = (0.20 + 0.08 * sin(Time * 1.3)) * s;
+        // 0 鱼眼：更强的桶形畸变 + RGB 色散 + 紫黑边缘（FOV 收得比早先浅）
+        float k = (0.30 + 0.10 * sin(Time * 1.3)) * s;
         vec2 p = barrel(uv, k);
         if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0) {
             fragColor = vec4(vec3(0.03, 0.0, 0.05) * s, 1.0);
             return;
         }
-        float ca = 0.0035 * s * (0.7 + 0.3 * sin(Time * 2.1));
+        float ca = 0.0045 * s * (0.7 + 0.3 * sin(Time * 2.1));
         float r = texture(DiffuseSampler, barrel(vec2(p.x + ca, p.y), k)).r;
         float g = texture(DiffuseSampler, p).g;
         float b = texture(DiffuseSampler, barrel(vec2(p.x - ca, p.y), k)).b;
@@ -83,38 +83,70 @@ void main() {
         tinted = floor(tinted * levels + 0.5) / levels;
         col = mix(col, tinted, s);
     } else if (Mode < 3.5) {
-        // 3 时间涟漪：从画面中心向外扩散的同心波纹
+        // 3 时间涟漪：更强的同心波纹 + 波纹色散
         vec2 c = uv - 0.5;
         float r = length(c);
-        float wave = sin(r * 60.0 - Time * 6.0) * 0.0025 * s / (1.0 + r * 4.0);
+        float wave = sin(r * 44.0 - Time * 5.5) * 0.008 * s / (1.0 + r * 2.2);
         vec2 p = uv + normalize(c + vec2(1.0E-5)) * wave;
         vec3 base = texture(DiffuseSampler, p).rgb;
-        col = base * (1.0 + 0.15 * s * sin(r * 20.0 - Time * 4.0));
+        float ring = 0.5 + 0.5 * sin(r * 44.0 - Time * 5.5);
+        // 波纹亮带 + 轻微 RGB 分离
+        float ca = 0.004 * s * ring;
+        float rr = texture(DiffuseSampler, p + vec2(ca, 0.0)).r;
+        float bb = texture(DiffuseSampler, p - vec2(ca, 0.0)).b;
+        col = vec3(rr, base.g, bb);
+        col *= 1.0 + 0.22 * s * (ring - 0.5);
         float lum = dot(col, vec3(0.299, 0.587, 0.114));
-        col = mix(col, vec3(lum), 0.25 * s);
+        col = mix(col, vec3(lum), 0.20 * s);
         uv = p;
     } else if (Mode < 4.5) {
-        // 4 静电噪点：扫描线 + 电视雪花 + 偶发水平撕裂
-        vec2 p = uv + vec2((hash(uv * InSize + Time) - 0.5) * 0.002 * s, 0.0);
-        col = texture(DiffuseSampler, p).rgb * (0.85 + 0.15 * sin(uv.y * InSize.y * 1.6 + Time * 8.0));
+        // 4 静电噪点：2-3 像素高的细行带撕裂 + 扫描线 + 雪花
+        float band = floor(uv.y * InSize.y / 3.0);          // 每 3 像素一条行带
+        float tick = floor(Time * 16.0);                    // 每 1/16 秒重掷一次，单条持续时间更短
+        float tearSeed = hash(vec2(band, tick));
+        float tear = step(0.97, tearSeed);                  // 约 3% 的细行带被撕开
+        // 少数行带跳得更远
+        float mag = 0.020 + 0.060 * step(0.90, hash(vec2(band, tick + 17.0)));
+        float tearAmt = (hash(vec2(band, tick + 3.0)) - 0.5) * mag * 2.0 * s;
+        vec2 p = uv + vec2(tear * tearAmt, 0.0);
+        // 未被撕裂的行也有细小横向抖动
+        p.x += (hash(uv * InSize + Time) - 0.5) * 0.002 * s;
+
+        // 被撕的细行带做 RGB 分离，错位越远分离越大
+        float split = tear * (0.003 + abs(tearAmt) * 0.20);
+        float rr = texture(DiffuseSampler, p + vec2(split, 0.0)).r;
+        float gg = texture(DiffuseSampler, p).g;
+        float bb = texture(DiffuseSampler, p - vec2(split, 0.0)).b;
+        col = vec3(rr, gg, bb);
+
+        // 扫描线 + 雪花
+        col *= 0.85 + 0.15 * sin(uv.y * InSize.y * 1.6 + Time * 8.0);
         float n = hash(floor(uv * InSize * 0.5) + floor(Time * 12.0));
         col += (n - 0.5) * 0.22 * s;
-        float glitch = step(0.985, hash(vec2(floor(uv.y * 24.0), floor(Time * 8.0))));
-        col = mix(col, col.rbg, glitch * 0.6 * s);
         uv = p;
     } else {
-        // 5 梦境漂移：五向柔化 + 色相缓慢循环 + 柔和摆动
-        vec2 p = uv + vec2(sin(uv.y * 6.0 + Time * 0.7),
-                           cos(uv.x * 5.0 + Time * 0.9)) * 0.004 * s;
-        vec3 acc = vec3(0.0);
-        for (int i = 0; i < 5; i++) {
-            float a = float(i) * 1.256637;
-            acc += texture(DiffuseSampler, p + vec2(cos(a), sin(a)) * 0.0035 * s).rgb;
-        }
-        col = acc / 5.0;
-        col = mix(col, hueRotate(col, Time * 0.10), 0.50 * s);
-        col = mix(col, col * vec3(1.05, 0.95, 1.10), 0.30 * s);
-        uv = p;
+        // 5 梦境漂移：规则的网格错位 + 每格独立透视缩放 + 接缝压暗。
+        // 与正弦波动类不同：位移在格子内部是常量，边界出现明显的透视错位。
+        vec2 gridSize = vec2(6.0, 4.0);
+        vec2 cell = floor(uv * gridSize);
+        vec2 local = fract(uv * gridSize);
+        float t = Time * 0.35;
+        // 每格一个缓慢变化的偏移（规律、不随机）
+        vec2 shift = vec2(sin(cell.y * 1.7 + t), cos(cell.x * 1.9 - t)) * (0.06 + 0.03 * s) * s;
+        // 每格以自身中心做轻微透视缩放，制造“透视错位”
+        float zoom = 1.0 + 0.14 * s * sin(cell.x * 0.9 + cell.y * 1.3 + t);
+        vec2 centered = (local - 0.5) * zoom;
+        vec2 sampleUv = (cell + 0.5 + centered + shift) / gridSize;
+        sampleUv = clamp(sampleUv, vec2(0.001), vec2(0.999));
+        col = texture(DiffuseSampler, sampleUv).rgb;
+        // 接缝：格子边界压暗，像拼接错位的墙面
+        float edge = min(min(local.x, 1.0 - local.x), min(local.y, 1.0 - local.y));
+        float seam = 1.0 - smoothstep(0.0, 0.055, edge);
+        col *= mix(1.0, 0.70, seam * 0.85 * s);
+        // 阈限空间的低饱和暖调
+        float lum = dot(col, vec3(0.299, 0.587, 0.114));
+        col = mix(col, vec3(lum) * vec3(1.06, 1.00, 0.94), 0.35 * s);
+        uv = sampleUv;
     }
 
     // 全模式暗角呼吸

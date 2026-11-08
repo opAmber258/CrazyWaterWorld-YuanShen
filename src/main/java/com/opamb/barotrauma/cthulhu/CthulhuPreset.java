@@ -14,7 +14,7 @@ import net.minecraftforge.registries.RegistryObject;
 public enum CthulhuPreset {
 
     /** 鱼眼：桶形畸变 + RGB 色散 + 紫黑边缘 + 颗粒。 */
-    FISHEYE("cthulhu_fisheye", ModEffects.CTHULHU_FISHEYE, 0, 0.62f, 0.4f,
+    FISHEYE("cthulhu_fisheye", ModEffects.CTHULHU_FISHEYE, 0, 0.76f, 0.4f,
             "鱼眼凝视", "画面鼓成鱼眼，边缘泛紫黑并带色散"),
 
     /** 深渊低语：多层波动 + 色相漂移。 */
@@ -26,16 +26,16 @@ public enum CthulhuPreset {
             "星之彩", "颜色被扭成不属于这个世界的组合，并压成色块"),
 
     /** 时间涟漪：从中心向外扩散的同心波纹。 */
-    RIPPLE("cthulhu_ripple", ModEffects.CTHULHU_RIPPLE, 3, 0.90f, 0.5f,
+    RIPPLE("cthulhu_ripple", ModEffects.CTHULHU_RIPPLE, 3, 0.92f, 0.5f,
             "时间涟漪", "同心波纹从画面中心扩散，时间像被搅动"),
 
     /** 静电噪点：扫描线 + 雪花 + 偶发撕裂。 */
     STATIC("cthulhu_static", ModEffects.CTHULHU_STATIC, 4, 1.00f, 0.6f,
             "静电噪点", "扫描线与雪花噪点，偶尔整行画面撕裂"),
 
-    /** 梦境漂移：柔化 + 色相循环 + 柔和摆动。 */
-    DREAM("cthulhu_dream", ModEffects.CTHULHU_DREAM, 5, 0.88f, 0.8f,
-            "梦境漂移", "画面柔和化开，颜色缓缓循环，像沉进一场梦");
+    /** 梦境漂移：规则网格错位 + 每格透视缩放 + 接缝压暗（阈限空间）。 */
+    DREAM("cthulhu_dream", ModEffects.CTHULHU_DREAM, 5, 0.94f, 0.6f,
+            "梦境漂移", "空间被切成规则的格子，每格透视错位，像走不出去的阈限空间");
 
     /** 效果注册名（同时是 lang key 的后缀）。 */
     private final String id;
