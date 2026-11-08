@@ -20,7 +20,7 @@ import java.util.List;
  */
 public final class MedicalDebugScreen extends Screen {
 
-    private static final int PANEL_W = 320;
+    private static final int PANEL_W = 360;
     private static final int PANEL_H = 236;
 
     private static final int BG = 0xF01B2320;
@@ -51,6 +51,11 @@ public final class MedicalDebugScreen extends Screen {
     };
 
     private static final double[] STEPS = {-100, -10, -1, 1, 10, 100};
+
+    /** 病症行的步进按钮布局（6 档，宽 24 + 间距 2）。绘制与点击命中共用同一套坐标。 */
+    private static final int STEP_BTN_W = 24;
+    private static final int STEP_BTN_STRIDE = 26;
+    private static final int STEP_BTNS_W = STEPS.length * STEP_BTN_STRIDE - (STEP_BTN_STRIDE - STEP_BTN_W);
 
     /** 当前选中页签下标（TABS 索引，6 = 全身）。 */
     private int tab = 1;
@@ -144,23 +149,26 @@ public final class MedicalDebugScreen extends Screen {
             double strength = MedicalBodyRenderer.strengthOf(rows, type, TABS[tab]);
             int ry = rowY(y, i, rowH);
             int right = x + PANEL_W - 8;
+            int btnsLeft = right - STEP_BTNS_W;
             g.fill(x + 92, ry, right, ry + rowH - 2, BOX);
             g.fill(x + 92, ry, right, ry + 1, EDGE);
             int color = strength > 0
                     ? MedicalBodyRenderer.severityColor(
                             MedicalBodyRenderer.severityRatio(type, strength))
                     : DIM;
-            // 只取病名（去掉 label() 的百分比后缀），百分比由右侧数值体现，避免长名压住按钮
+            // 只取病名（去掉 label() 的百分比后缀），百分比由右侧数值体现；
+            // 超长病名按可用宽度截断，保证不压到数值和按钮（CodeRabbit 审查意见）。
             String full = MedicalBodyRenderer.label(type, strength);
             int cut = full.lastIndexOf(' ');
             String name = cut > 0 ? full.substring(0, cut) : full;
+            name = font.plainSubstrByWidth(name, btnsLeft - 2 - (x + 96));
             g.drawString(font, name, x + 96, ry + 4, color, false);
             String value = String.format("%.0f", strength);
-            g.drawString(font, value, right - 106 - font.width(value), ry + 4, TEXT, false);
+            g.drawString(font, value, btnsLeft - 4 - font.width(value), ry + 4, TEXT, false);
             for (int j = 0; j < STEPS.length; j++) {
-                int bxi = right - 104 + j * 26;
-                boolean hover = in(mouseX, mouseY, bxi, ry + 3, 24, 14);
-                drawButton(g, bxi, ry + 3, 24, 14, stepLabel(STEPS[j]), hover, true);
+                int bxi = btnsLeft + j * STEP_BTN_STRIDE;
+                boolean hover = in(mouseX, mouseY, bxi, ry + 3, STEP_BTN_W, 14);
+                drawButton(g, bxi, ry + 3, STEP_BTN_W, 14, stepLabel(STEPS[j]), hover, true);
             }
         }
     }
@@ -209,11 +217,12 @@ public final class MedicalDebugScreen extends Screen {
         AfflictionType[] types = TABS[tab] == null ? GLOBAL_TYPES : LIMB_TYPES;
         int rowH = TABS[tab] == null ? 20 : 28;
         int right = x + PANEL_W - 8;
+        int btnsLeft = right - STEP_BTNS_W;
         for (int i = 0; i < types.length; i++) {
             int ry = rowY(y, i, rowH);
             for (int j = 0; j < STEPS.length; j++) {
-                int bxi = right - 104 + j * 26;
-                if (in(mouseX, mouseY, bxi, ry + 3, 24, 14)) {
+                int bxi = btnsLeft + j * STEP_BTN_STRIDE;
+                if (in(mouseX, mouseY, bxi, ry + 3, STEP_BTN_W, 14)) {
                     send(MedicalDebugPacket.ADD_AFFLICTION, types[i].id(),
                             TABS[tab] == null ? "-" : TABS[tab].name(), STEPS[j]);
                     return true;
