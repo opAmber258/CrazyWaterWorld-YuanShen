@@ -119,6 +119,7 @@ public final class VsPilot {
                 VsPilot::tryRepair, VsPilot::damageExplosion);
         VsState.installBoardingResolver(VsPilot::boardingPositions);
         VsState.installGeometryRefresh(VsPilot::refreshPhysicalGeometry);
+        VsState.installCompartmentQuery(VsPilot::isPlayerInDryCompartment);
         // 只注册服务端干燥区：单人存档里客户端和集成服务端同进程，
         // 客户端渲染用的 ShipWaterRenderer 不能被这里覆盖（否则方块船舱内会漏滤镜）。
         OceanEnvironment.setServerDryZone(new OceanEnvironment.DryZone() {
@@ -412,6 +413,73 @@ public final class VsPilot {
             }
         }
         return false;
+    }
+
+    /**
+     * 物理船舱内干湿询问（issue #31）：用实时 transform 把玩家世界坐标换算回
+     * 装配坐标，再看所在舱室 bbox 的水面。
+     *
+     * <p>旧实现用 {@code VsState.offset} 平移——船被传送到任务海域实例锚点、
+     * 或与哨站重叠后，这个平移不再等于“装配坐标↔世界坐标”，干舱会被判成浸没，
+     * 疾跑游泳就误触发。这里直接取 {@code shipToWorld} 的逆变换，不受传送影响。</p>
+     *
+     * @return {@code null} = 不在任何舱室 bbox 内（调用方继续走原判定链）。
+     */
+    public static Boolean isPlayerInDryCompartment(Level level, Vec3 pos) {
+        if (ship == null || state == null
+                || !(level instanceof ServerLevel server) || pos == null) {
+            return null;
+        }
+        org.valkyrienskies.core.api.ships.ServerShip live = view(server);
+        org.valkyrienskies.core.api.ships.ServerShip target = live != null ? live : ship;
+        if (target == null) {
+            return null;
+        }
+        var transform = target.getTransform();
+        var origin = new org.joml.Vector3d(
+                transform.getPositionInShip().x() - assembledPos.x,
+                transform.getPositionInShip().y() - assembledPos.y,
+                transform.getPositionInShip().z() - assembledPos.z);
+        org.joml.Matrix4dc shipToWorld = transform.getShipToWorld();
+        org.joml.Vector3d shipSpace;
+        try {
+            shipSpace = shipToWorld.invert(new org.joml.Matrix4d())
+                    .transformPosition(new org.joml.Vector3d(pos.x, pos.y, pos.z),
+                            new org.joml.Vector3d());
+        } catch (Throwable error) {
+            return null;
+        }
+        double lx = shipSpace.x - origin.x;
+        double ly = shipSpace.y - origin.y;
+        double lz = shipSpace.z - origin.z;
+        float[] boxes = lastWaterPacket.boxes();
+        if (boxes.length < 7) {
+            return null;
+        }
+        boolean inAny = false;
+        boolean wet = false;
+        for (int i = 0; i + 6 < boxes.length; i += 7) {
+            float minX = boxes[i];
+            float minY = boxes[i + 1];
+            float minZ = boxes[i + 2];
+            float maxX = boxes[i + 3] + 1.0F;
+            float maxY = boxes[i + 4] + 1.0F;
+            float maxZ = boxes[i + 5] + 1.0F;
+            float surface = boxes[i + 6];
+            if (lx < minX || lx > maxX || ly < minY || ly > maxY + 1.0F
+                    || lz < minZ || lz > maxZ) {
+                continue;
+            }
+            inAny = true;
+            boolean dryBox = surface <= minY + 0.01F;
+            if (!dryBox && ly <= surface + 0.01F) {
+                wet = true;
+            }
+        }
+        if (!inAny) {
+            return null;
+        }
+        return !wet;
     }
 
     /**

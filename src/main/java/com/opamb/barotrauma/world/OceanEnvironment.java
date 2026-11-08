@@ -163,10 +163,7 @@ public final class OceanEnvironment {
         if (!isInOcean(level, pos)) {
             return false;
         }
-        // 按 side 选干燥区：单人存档里渲染线程和集成服务端在同一进程，
-        // 不能用同一份注册状态。
         DryZone zone = level.isClientSide() ? clientDryZone : serverDryZone;
-        // 船舱内部只听船的：进了水的舱哪怕停在哨站里也是浸没。
         if (zone != null && zone.isInsideCompartment(level, pos)) {
             return !zone.isDry(level, pos);
         }
@@ -175,4 +172,33 @@ public final class OceanEnvironment {
         }
         return zone == null || !zone.isDry(level, pos);
     }
+
+    /**
+     * 游泳/溺水的权威浸没判定（issue #31）：在 {@link #isSubmerged} 之上追加
+     * 方块船干舱兜底与物理船舱内干湿询问。
+     *
+     * <p>{@code isSubmerged} 的 zone 链在船被传送到任务海域实例锚点后会失真
+     * （船坞偏移不再等于装配↔世界变换），干舱会被判成浸没。这里优先问
+     * {@code VsPilot} 的实时 transform 逆变换；方块船走干舱兜底；
+     * 不在舱内才回落到 {@link #isSubmerged}。</p>
+     */
+    public static boolean isOceanWaterAt(Level level, Vec3 pos) {
+        if (!isInOcean(level, pos)) {
+            return false;
+        }
+        if (isInOutpostDryZone(pos)) {
+            return false;
+        }
+        Boolean inDry = com.opamb.barotrauma.ship.vs.VsState
+                .queryPlayerInDryCompartment(level, pos);
+        if (inDry != null) {
+            return !inDry;
+        }
+        if (isInsideBlockShipDryZone(level, pos)) {
+            return false;
+        }
+        return isSubmerged(level, pos);
+    }
+
+
 }
