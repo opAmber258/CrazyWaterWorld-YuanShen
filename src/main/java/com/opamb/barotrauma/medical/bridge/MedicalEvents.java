@@ -109,9 +109,11 @@ public final class MedicalEvents {
         if (player.tickCount % 20 != 0) {
             return;
         }
-        if (player.isCreative() || player.isSpectator()) {
+        if (player.isSpectator()
+                || (player.isCreative() && !carriesMedicalDebugger(player))) {
             // 切创造/旁观 = 上帝模式：清空医疗状态并解除倒地效果，并回发快照
             //（修复“切创造无法恢复”：不清签名的话客户端缓存一直是倒地态）
+            // 例外：身上带着医疗调试器（开发者工具）时不清理，否则调试面板每秒被重置一次。
             clearDownedEffects(player);
             AfflictionContainer c = MedicalCapabilities.container(player);
             if (c != null) {
@@ -311,6 +313,18 @@ public final class MedicalEvents {
         if (player instanceof ServerPlayer serverPlayer) {
             syncIfChanged(serverPlayer, container);
         }
+    }
+
+    /** 背包里是否带着医疗调试器（开发者工具）——带着就保留创造模式下的医疗状态。 */
+    private static boolean carriesMedicalDebugger(Player player) {
+        var expected = com.opamb.barotrauma.registry.ModItems.MEDICAL_DEBUGGER.get();
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            if (inventory.getItem(i).is(expected)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 解除倒地效果（只清本模组确实施加过的那四种，避免误删药水/其他模组的同名效果）。 */
