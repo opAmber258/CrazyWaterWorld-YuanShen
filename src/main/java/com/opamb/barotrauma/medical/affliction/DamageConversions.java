@@ -161,6 +161,22 @@ public final class DamageConversions {
         return plan;
     }
 
+    /**
+     * 非近战的无主伤害（深海压力、仙人掌、卡墙、凋零、中毒/魔法兜底）→ **只有钝器伤，不出血**。
+     *
+     * <p>这些来源不是咬击/穿刺/爆炸：原版压力、凋零类不出血（见
+     * {@code docs/medical/bleeding-sources.md} §1.4/§2）。尤其深海压力是每秒持续伤害，
+     * 若走 {@link #fromGeneric} 会每秒掷一次 50% 出血，出血量随持续时间无限叠加。</p>
+     */
+    public static List<Application> fromBluntOnly(double damageHp) {
+        List<Application> plan = new ArrayList<>();
+        if (damageHp < MIN_DAMAGE_HP) {
+            return plan;
+        }
+        plan.add(new Application(AfflictionType.BLUNT_TRAUMA, Limb.TORSO, damageHp * GENERIC_BLUNT_PER_HP));
+        return plan;
+    }
+
     private static double clamp01(double value) {
         return Math.max(0.0, Math.min(1.0, value));
     }

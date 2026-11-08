@@ -181,10 +181,11 @@ public final class MedicalEvents {
                 || source.is(DamageTypes.IN_WALL)
                 || source.is(DamageTypes.WITHER)) {
             // 这些来源没有攻击者，但被取消的原版伤害必须转成病症，否则完全不掉血。
-            plan = DamageConversions.fromGeneric(amount, player.getRandom().nextDouble());
+            // 非近战来源不出血（压力/凋零类原作无出血；持续伤害每秒掷骰会滚雪球）。
+            plan = DamageConversions.fromBluntOnly(amount);
         } else if (source.is(MedicalDamageTypes.PRESSURE)) {
             // 深海挤压是 UnderwaterSurvival 的持续伤害；取消原版结算后必须转成病症。
-            plan = DamageConversions.fromGeneric(amount, player.getRandom().nextDouble());
+            plan = DamageConversions.fromBluntOnly(amount);
         } else if (source.getDirectEntity() instanceof Projectile projectile) {
             // limbByHeightRatio 的 0 = 头顶、1 = 脚底；实体高度比例是 0=脚、1=头，先反转。
             double heightRatio = 1.0 - (projectile.getY() - player.getY()) / player.getBbHeight();
@@ -200,7 +201,7 @@ public final class MedicalEvents {
             // 饥饿/冻伤：原版持续伤害，保持只取消、不转病症。
         } else {
             // 其余无主伤害（中毒/魔法等）兜底转成钝器伤，避免取消后完全不掉血。
-            plan = DamageConversions.fromGeneric(amount, player.getRandom().nextDouble());
+            plan = DamageConversions.fromBluntOnly(amount);
             BarotraumaMod.LOGGER.debug("[medical] 未映射的无主伤害 {} 兜底转为钝器伤",
                     source.getMsgId());
         }

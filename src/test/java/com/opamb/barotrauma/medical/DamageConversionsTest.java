@@ -157,4 +157,17 @@ class DamageConversionsTest {
         // 任何转化都不直接产生失血（失血只由出血推进产生——原作 AfflictionBleeding）
         assertTrue(bleeding.stream().noneMatch(a -> a.type() == AfflictionType.BLOODLOSS));
     }
+
+    @Test
+    void nonMeleeFallbackNeverBleeds() {
+        // 压力/仙人掌/卡墙/凋零/无主伤害走 fromBluntOnly：只有钝器伤，任何随机数都不出血
+        List<DamageConversions.Application> plan = DamageConversions.fromBluntOnly(3.0);
+        assertEquals(1, plan.size());
+        assertEquals(AfflictionType.BLUNT_TRAUMA, plan.get(0).type());
+        assertEquals(9.0, plan.get(0).strength(), 1.0E-6);
+        assertEquals(Limb.TORSO, plan.get(0).limb());
+        assertTrue(plan.stream().noneMatch(a -> a.type() == AfflictionType.BLEEDING),
+                "持续压力/无主伤害不能附加出血，否则每秒掷骰会滚雪球");
+        assertTrue(DamageConversions.fromBluntOnly(0.2).isEmpty(), "低于最小伤害不产生病症");
+    }
 }
