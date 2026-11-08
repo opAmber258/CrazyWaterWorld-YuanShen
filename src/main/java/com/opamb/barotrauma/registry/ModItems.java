@@ -3,6 +3,7 @@ package com.opamb.barotrauma.registry;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.item.DivingKnifeItem;
 import com.opamb.barotrauma.item.DivingSuitItem;
+import com.opamb.barotrauma.item.MedicalDebuggerItem;
 import com.opamb.barotrauma.item.OxygenTankItem;
 import com.opamb.barotrauma.item.WeldingToolItem;
 import net.minecraft.world.item.BlockItem;
@@ -81,6 +82,10 @@ public final class ModItems {
     /** "67"：彩蛋物品。只能拿在手上，不能放置，没有任何作用（致敬仓库里的 676767）。 */
     public static final RegistryObject<Item> SIXTY_SEVEN = ITEMS.register("67",
             () -> new Item(new Item.Properties()));
+
+    /** 医疗调试器（开发者工具）：右键打开面板，自由改六部位/全身病症与活力。 */
+    public static final RegistryObject<Item> MEDICAL_DEBUGGER = ITEMS.register("medical_debugger",
+            () -> new MedicalDebuggerItem(new Item.Properties().stacksTo(1)));
 
     private ModItems() {
     }

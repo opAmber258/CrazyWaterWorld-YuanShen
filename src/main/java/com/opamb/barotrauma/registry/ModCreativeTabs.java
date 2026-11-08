@@ -50,6 +50,16 @@ public final class ModCreativeTabs {
                     })
                     .build());
 
+    /** 开发者工具页签：只在创造模式出现，给调试/制作流程用。 */
+    public static final RegistryObject<CreativeModeTab> DEV = TABS.register("dev",
+            () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.barotrauma.dev"))
+                    .icon(() -> new ItemStack(ModItems.MEDICAL_DEBUGGER.get()))
+                    .displayItems((params, output) -> {
+                        output.accept(ModItems.MEDICAL_DEBUGGER.get());
+                    })
+                    .build());
+
     private ModCreativeTabs() {
     }
 

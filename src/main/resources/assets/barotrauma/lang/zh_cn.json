@@ -1,5 +1,6 @@
 {
   "itemGroup.barotrauma": "潜渊症",
+  "itemGroup.barotrauma.dev": "潜渊症·开发者工具",
   "item.barotrauma.oxygen_tank": "氧气瓶",
   "item.barotrauma.diving_knife": "潜水刀",
   "item.barotrauma.welding_tool": "焊接工具",
@@ -76,6 +77,7 @@
   "item.barotrauma.iron_ladder": "铁梯",
   "item.barotrauma.diving_suit": "潜水服",
   "item.barotrauma.deep_permit": "深潜许可",
+  "item.barotrauma.medical_debugger": "医疗调试器",
   "key.barotrauma.toggle_natural_sink": "切换水中自然下沉",
   "message.barotrauma.natural_sink.on": "水中自然下沉：开",
   "message.barotrauma.natural_sink.off": "水中自然下沉：关",

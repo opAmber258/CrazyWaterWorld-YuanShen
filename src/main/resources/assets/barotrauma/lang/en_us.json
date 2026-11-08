@@ -1,5 +1,6 @@
 {
   "itemGroup.barotrauma": "Barotrauma",
+  "itemGroup.barotrauma.dev": "Barotrauma: Developer Tools",
   "item.barotrauma.oxygen_tank": "Oxygen Tank",
   "item.barotrauma.diving_knife": "Diving Knife",
   "item.barotrauma.welding_tool": "Welding Tool",
@@ -76,6 +77,7 @@
   "item.barotrauma.iron_ladder": "Iron Ladder",
   "item.barotrauma.diving_suit": "Diving suit",
   "item.barotrauma.deep_permit": "Deep diving permit",
+  "item.barotrauma.medical_debugger": "Medical Debugger",
   "key.barotrauma.toggle_natural_sink": "Toggle natural sinking",
   "message.barotrauma.natural_sink.on": "Natural sinking: ON",
   "message.barotrauma.natural_sink.off": "Natural sinking: OFF",

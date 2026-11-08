@@ -28,6 +28,12 @@ public final class AfflictionContainer {
     /** 倒地时置 true：进入倒地只清一次残余治疗；倒地后队友新登记的治疗仍结算。 */
     private boolean downed;
 
+    /**
+     * 调试器的活力覆盖（开发者工具）：非 null 时 {@link #rawVitality(double)} 直接返回它，
+     * 不再按病症实时计算。用于自由摆布血量（含倒地/真死边界）而不用造一堆假病症。
+     */
+    private Double vitalityOverride;
+
     /** 一条进行中的治疗；perSecond &gt; 0 = 治疗，&lt; 0 = 副作用（按秒施加）。 */
     static final class TreatmentEntry {
         final AfflictionType type;
@@ -45,9 +51,9 @@ public final class AfflictionContainer {
 
     private static final int MAX_TREATMENTS = 16;
 
-    /** 网络/存档行数上限：全部 (类型×部位) 实例 + 治疗槽。 */
+    /** 网络/存档行数上限：全部 (类型×部位) 实例 + 治疗槽 + 1 条调试活力覆盖行。 */
     public static final int MAX_ROWS =
-            AfflictionType.ALL.size() * Limb.values().length + MAX_TREATMENTS;
+            AfflictionType.ALL.size() * Limb.values().length + MAX_TREATMENTS + 1;
 
     /** key：全身病症用 id，部位病症用 id|LIMB。 */
     private static String key(AfflictionType type, Limb limb) {
@@ -95,6 +101,36 @@ public final class AfflictionContainer {
     /** 查单实例强度（全身类型忽略 limb）。 */
     public double strength(AfflictionType type, Limb limb) {
         return existingStrength(type, type.limbSpecific() ? limb : null);
+    }
+
+    /**
+     * 直接把某实例的强度设成指定值（调试器用）：钳制到 [0, maxStrength]，
+     * 部位类型必须给 limb（否则无处可设），非有限值按 0 处理。
+     *
+     * @return 实际写入后的强度
+     */
+    public double setStrength(AfflictionType type, Limb limb, double value) {
+        if (type.limbSpecific() && limb == null) {
+            return 0.0;
+        }
+        double target = Double.isFinite(value)
+                ? Math.max(0.0, Math.min(type.maxStrength(), value))
+                : 0.0;
+        double current = strength(type, limb);
+        if (target > current) {
+            add(type, limb, target - current);
+        } else if (target < current) {
+            reduce(type, limb, current - target);
+        }
+        return target;
+    }
+
+    /** 在现有强度上加减（调试器用，结果同样钳制到 [0, maxStrength]）。 */
+    public double addStrength(AfflictionType type, Limb limb, double delta) {
+        if (!Double.isFinite(delta) || delta == 0.0) {
+            return strength(type, limb);
+        }
+        return setStrength(type, limb, strength(type, limb) + delta);
     }
 
     /** 某类型的总强度（部位类型 = 各部位之和；给 HUD 摘要用）。 */
@@ -202,6 +238,9 @@ public final class AfflictionContainer {
      * v1 曾自加 downedDrain，已按用户"以原版数值为准"指令移除。
      */
     public double rawVitality(double maxVitality) {
+        if (vitalityOverride != null) {
+            return Math.max(MIN_VITALITY, Math.min(maxVitality, vitalityOverride));
+        }
         return Math.max(MIN_VITALITY,
                 Math.min(maxVitality, maxVitality - vitalityDecreaseTotal(maxVitality)));
     }
@@ -211,14 +250,33 @@ public final class AfflictionContainer {
      * 结果钳制到 [0, maxVitality]（心数镜像用；倒地/死亡判定用 {@link #rawVitality}）。
      */
     public double vitality(double maxVitality) {
+        if (vitalityOverride != null) {
+            return Math.max(0.0, Math.min(maxVitality, vitalityOverride));
+        }
         return Math.max(0.0, Math.min(maxVitality, maxVitality - vitalityDecreaseTotal(maxVitality)));
     }
 
-    /** 全部清空（死亡时调用；REQUIREMENTS §5.5 验收点）。治疗也一并中止。 */
+    /** 当前活力覆盖值（null = 按病症计算）。 */
+    public Double vitalityOverride() {
+        return vitalityOverride;
+    }
+
+    /** 设置活力覆盖（调试器）；非有限值等价于取消覆盖。 */
+    public void setVitalityOverride(double value) {
+        vitalityOverride = Double.isFinite(value) ? value : null;
+    }
+
+    /** 取消活力覆盖，回到按病症实时计算。 */
+    public void clearVitalityOverride() {
+        vitalityOverride = null;
+    }
+
+    /** 全部清空（死亡时调用；REQUIREMENTS §5.5 验收点）。治疗与调试覆盖也一并清空。 */
     public void clear() {
         byKey.clear();
         treatments.clear();
         downed = false;
+        vitalityOverride = null;
     }
 
     /** 进入倒地：只在状态切换时清空倒地前的残余治疗，之后登记的治疗继续结算。 */
@@ -261,15 +319,19 @@ public final class AfflictionContainer {
                     entry.perSecond, entry.secondsRemaining));
         }
         downed = other.downed;
+        vitalityOverride = other.vitalityOverride;
     }
 
     public boolean isEmpty() {
         return byKey.isEmpty() && treatments.isEmpty();
     }
 
-    /** 序列化行：病症 id|LIMB|strength，治疗 t|id|LIMB|rate|secs（全身 limb 段为 -），顺序稳定。 */
+    /** 序列化行：病症 id|LIMB|strength，治疗 t|id|LIMB|rate|secs，调试覆盖 v|value（全身 limb 段为 -）。 */
     public List<String> rows() {
         List<String> rows = new ArrayList<>();
+        if (vitalityOverride != null) {
+            rows.add("v|" + round(vitalityOverride));
+        }
         for (AfflictionInstance instance : byKey.values()) {
             StringJoiner joiner = new StringJoiner("|");
             joiner.add(instance.type().id());
@@ -297,11 +359,24 @@ public final class AfflictionContainer {
         if (parts.length < 2) {
             return;
         }
+        if (parts[0].equals("v")) {
+            if (parts.length < 2) {
+                return;
+            }
+            try {
+                double value = Double.parseDouble(parts[1]);
+                if (Double.isFinite(value)) {
+                    vitalityOverride = value;
+                }
+            } catch (NumberFormatException ignored) {
+                // 坏行不致命
+            }
+            return;
+        }
         if (parts[0].equals("t")) {
             if (parts.length < 5) {
                 return;
-            }
-            AfflictionType type = AfflictionType.byId(parts[1]);
+            }            AfflictionType type = AfflictionType.byId(parts[1]);
             if (type == null) {
                 return;
             }
