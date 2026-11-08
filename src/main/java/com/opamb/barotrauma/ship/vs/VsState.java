@@ -42,6 +42,18 @@ public final class VsState {
         void observe(ServerLevel level, BlockPos shipyardPos);
     }
 
+    /**
+     * 物理船舱内干湿询问：把玩家世界坐标换算回装配坐标后按舱室水位判定。
+     *
+     * <p>返回 {@code null} = 位置不在任何舱室 bbox 内（调用方继续走原判定链）；
+     * 返回 {@code true} = 在舱内且干燥；{@code false} = 在舱内且被水覆盖。
+     * 由 {@link VsPilot} 注册（要读 VS2 transform，所以走回调）。</p>
+     */
+    public interface CompartmentQuery {
+        Boolean isPlayerInDryCompartment(net.minecraft.world.level.Level level,
+                                          net.minecraft.world.phys.Vec3 pos);
+    }
+
     /** 物理船上砸方块：把玩家看到的世界坐标映射成船坞方块并扣耐久。由 {@link VsPilot} 提供。 */
     public interface Damager {
         boolean tryDamage(ServerLevel level, ServerPlayer player, BlockPos pos, float amount);
@@ -88,6 +100,24 @@ public final class VsState {
     private static volatile BlockPos corePos;
     private static volatile ShipState activeState;
     /** 船中心相对装配时刻的整数偏移（格）——拆船时按它把方块铺回世界。 */
+    private static volatile CompartmentQuery compartmentQuery;
+
+    /** 注册舱内干湿询问（VsPilot 静态初始化时调用）。 */
+    public static void installCompartmentQuery(CompartmentQuery query) {
+        compartmentQuery = query;
+    }
+
+    /**
+     * 查询玩家位置是否在物理船舱内/舱内是否干燥。
+     *
+     * @return {@code null} = 没有物理船或不在舱内，调用方继续走原判定链。
+     */
+    public static Boolean queryPlayerInDryCompartment(net.minecraft.world.level.Level level,
+                                                      net.minecraft.world.phys.Vec3 pos) {
+        CompartmentQuery query = compartmentQuery;
+        return query == null ? null : query.isPlayerInDryCompartment(level, pos);
+    }
+
     private static volatile int offsetX;
     private static volatile int offsetY;
     private static volatile int offsetZ;

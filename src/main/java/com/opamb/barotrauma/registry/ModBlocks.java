@@ -3,6 +3,7 @@ package com.opamb.barotrauma.registry;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.DrainPumpBlock;
 import com.opamb.barotrauma.block.HullBlock;
+import com.opamb.barotrauma.block.IronLadderBlock;
 import com.opamb.barotrauma.block.MissionTerminalBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -53,7 +54,24 @@ public final class ModBlocks {
             () -> new com.opamb.barotrauma.block.SmallPumpBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
                     .strength(6.0F, 300.0F)
-                    .sound(SoundType.METAL)));
+                    .sound(SoundType.METAL)
+                    // 方块本身是 INVISIBLE、靠 GeckoLib 渲染；不关遮挡的话相邻方块
+                    // 朝向它的面会被剔除，模型没遮住的地方就会露出“洞”（用户实测）。
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /** 免支撑铁梯：整格宽、2px 厚的钢板梯，立在对接井中央，可攀爬、有碰撞。 */
+    public static final RegistryObject<Block> IRON_LADDER = BLOCKS.register("iron_ladder",
+            () -> new IronLadderBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(4.0F, 200.0F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops()
+                    // 透明（cutout）薄板模型：不关遮挡会让相邻方块朝它的面被剔除。
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
 
     /**
      * 排水口：对照原版 duct block（地板通水格栅）。

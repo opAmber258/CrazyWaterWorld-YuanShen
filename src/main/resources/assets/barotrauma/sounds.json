@@ -7,5 +7,16 @@
       "barotrauma:door/door3",
       "barotrauma:door/door4"
     ]
+  },
+  "ladder_climb": {
+    "subtitle": "subtitles.barotrauma.ladder_climb",
+    "sounds": [
+      "barotrauma:ladder/climb1",
+      "barotrauma:ladder/climb2",
+      "barotrauma:ladder/climb3",
+      "barotrauma:ladder/climb4",
+      "barotrauma:ladder/climb5",
+      "barotrauma:ladder/climb6"
+    ]
   }
 }

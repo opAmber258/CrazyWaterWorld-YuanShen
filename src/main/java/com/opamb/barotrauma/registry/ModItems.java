@@ -45,6 +45,8 @@ public final class ModItems {
     public static final RegistryObject<Item> SONAR = blockItem("sonar", ModShipBlocks.SONAR);
     public static final RegistryObject<Item> STATION_PLATING = blockItem("station_plating", ModShipBlocks.STATION_PLATING);
     public static final RegistryObject<Item> HATCH = blockItem("hatch", ModShipBlocks.HATCH);
+    /** 带梯舱口：舱口 + 铁梯做进同一个方块，梯子不随开合消失。 */
+    public static final RegistryObject<Item> HATCH_LADDER = blockItem("hatch_ladder", ModShipBlocks.HATCH_LADDER);
     public static final RegistryObject<Item> BULKHEAD_DOOR =
             blockItem("bulkhead_door", ModShipBlocks.BULKHEAD_DOOR);
 
@@ -54,6 +56,8 @@ public final class ModItems {
     public static final RegistryObject<Item> SMALL_PUMP = blockItem("small_pump", ModBlocks.SMALL_PUMP);
 
     public static final RegistryObject<Item> DRAIN_OUTLET = blockItem("drain_outlet", ModBlocks.DRAIN_OUTLET);
+
+    public static final RegistryObject<Item> IRON_LADDER = blockItem("iron_ladder", ModBlocks.IRON_LADDER);
 
 
     // ---- 任务/经济 ----

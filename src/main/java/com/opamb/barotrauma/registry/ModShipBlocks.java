@@ -106,6 +106,17 @@ public final class ModShipBlocks {
                     .isViewBlocking((state, level, pos) -> !state.getValue(HatchBlock.OPEN))
                     .isSuffocating((state, level, pos) -> !state.getValue(HatchBlock.OPEN))));
 
+    /** 带梯舱口：舱口 + 铁梯做进同一个方块；梯子常驻，不受开合状态影响。 */
+    public static final RegistryObject<Block> HATCH_LADDER = BLOCKS.register("hatch_ladder",
+            () -> new com.opamb.barotrauma.block.HatchLadderBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.COLOR_GRAY)
+                    .strength(8.0F, 400.0F)
+                    .sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops()
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> !state.getValue(com.opamb.barotrauma.block.HatchBlock.OPEN))
+                    .isSuffocating((state, level, pos) -> !state.getValue(com.opamb.barotrauma.block.HatchBlock.OPEN))));
+
     /** 竖向舱壁门：墙上的双滑板金属门，右键开合。 */
     public static final RegistryObject<Block> BULKHEAD_DOOR = BLOCKS.register("bulkhead_door",
             () -> new BulkheadDoorBlock(BlockBehaviour.Properties.of()
@@ -136,6 +147,17 @@ public final class ModShipBlocks {
     /** 对"分舱"而言是否算墙：breached 的船壳是洞，必须让扫描把它当空气。 */
     public static boolean isSolidForShip(BlockState state) {
         if (state.getBlock() instanceof HullBlock && HullBlock.isBreached(state)) {
+            return false;
+        }
+        // 铁梯是 2px 薄板，水/空气都应该能绕过去。如果把它当墙，立在舱口正下方
+        // 的那一列梯子会把中间那块舱口格从主舱室里隔出来（单格"舱室"，客户端
+        // 会多画一个水面盒；用户实测的对接舱口异常就来自这里）。
+        if (state.getBlock() == ModBlocks.IRON_LADDER.get()) {
+            return false;
+        }
+        // 小型泵是贴在甲板上的小设备（碰撞只有 12px 高），分舱/进水时不该占整格：
+        // 让它算可进水格，水位才能漫过泵体（用户实测泵格永远不淹）。
+        if (state.getBlock() == ModBlocks.SMALL_PUMP.get()) {
             return false;
         }
         // 门/舱口永远算"水密"：门板只有 1px 厚，但按格子算隔断。开着的门不靠
@@ -177,6 +199,9 @@ public final class ModShipBlocks {
                 || block == ModBlocks.SMALL_PUMP.get()
                 || block == ModBlocks.DRAIN_OUTLET.get()
                 || block == HATCH.get()
+                || block == HATCH_LADDER.get()
+                // 铁梯是船内结构：不收集的话装配时会留在原地，副本里的船就没有梯子。
+                || block == ModBlocks.IRON_LADDER.get()
                 || block == BULKHEAD_DOOR.get();
     }
 

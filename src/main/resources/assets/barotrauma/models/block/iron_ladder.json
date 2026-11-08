@@ -1,0 +1,23 @@
+{
+  "render_type": "minecraft:cutout",
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "barotrauma:block/iron_ladder",
+    "all": "barotrauma:block/iron_ladder",
+    "edge": "barotrauma:block/iron_ladder_edge"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 7],
+      "to": [16, 16, 9],
+      "faces": {
+        "north": {"uv": [0, 0, 16, 16], "texture": "#all"},
+        "south": {"uv": [0, 0, 16, 16], "texture": "#all"},
+        "east": {"uv": [0, 0, 16, 16], "texture": "#edge"},
+        "west": {"uv": [0, 0, 16, 16], "texture": "#edge"},
+        "up": {"uv": [0, 0, 16, 16], "texture": "#edge"},
+        "down": {"uv": [0, 0, 16, 16], "texture": "#edge"}
+      }
+    }
+  ]
+}
