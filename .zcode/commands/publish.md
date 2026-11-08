@@ -35,7 +35,7 @@ $ARGUMENTS
 
 ## 4. 推送与 PR
 
-- 推送分支。**创建或复用 PR**：同一分支已有未合并 PR 时，`gh pr create` 会失败——先 `gh pr view <branch> --json number` 确认，复用该 PR 并用 `gh pr edit` 更新说明；没有 PR 时才 `gh pr create`。
+- 推送分支。**创建或复用 PR**：先 `gh pr list --head <branch> --state open --json number` 查是否已有开放 PR——有则复用并用 `gh pr edit` 更新说明；结果为空才 `gh pr create`。不要用 `gh pr view` 探测：无 PR 时它会返回非零，和"失败即停"冲突，也分不清已关闭/已合并。
 - PR 正文按 `.github/pull_request_template.md` 填写，明确 MEX 结论：
   - 更新了哪些文档文件；
   - 或为何标记 `mex-skip`。
