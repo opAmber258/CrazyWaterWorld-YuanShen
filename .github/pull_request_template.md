@@ -6,7 +6,7 @@
 
 ## MEX / 文档
 
-- [ ] 已更新 `.mex/ROUTER.md` 的项目状态，并补充了对应的 `context/`、`patterns/` 或 `docs/`
+- [ ] 已更新本轮适用的文档（`.mex/ROUTER.md` 项目状态 / `context/` / `patterns/` / `docs/`，至少一项）
 - [ ] 无需文档：给本 PR 加上 `mex-skip` 标签，并在这里写一行原因
 
 涉及模块：<!-- 医疗 / 船体 / 声纳 / 开发工具 / ... -->

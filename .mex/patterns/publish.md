@@ -31,18 +31,18 @@ mex:
 
 ## 步骤
 
-1. `git status` + `git fetch`；本地 `main` 落后 `origin/main` 就停下，提醒需要 pull 授权。
+1. `git status` + `git fetch`；比较**本地 `main`** 与 `origin/main`（不能用 `HEAD`，任务分支可能已经领先），落后就停下，提醒需要 pull 授权。
 2. **MEX 记账（必做）**：更新 `ROUTER.md` 的 Current Project State；可复用的踩坑写进 `patterns/` 并登记 `INDEX.md`；长期约定写进 `context/`；设计依据写进 `docs/`。确实无需文档时，发布时给 PR 加 `mex-skip` 标签并写明原因。
-3. 从最新 `main` 建 `<type>/<slug>` 分支；代码与文档改动一起提交（中文信息，写动机与影响面）。
+3. 从最新 `main` 建 `<type>/<slug>` 分支；若当前已在任务分支且有未发布提交，**复用当前分支**，不要重开分支丢提交。代码与文档改动一起提交（中文信息，写动机与影响面）。
 4. 推送分支 → `gh pr create`，正文按 `.github/pull_request_template.md` 填写，明确 MEX 结论。
-5. 等 CodeRabbit 与 `mex-guard` 检查；未解决线程清零前不合并。
+5. 等 CodeRabbit 与 `mex-guard` 检查；每修完意见推送新提交后，重新等最新提交上的检查结果；未解决线程清零前不合并。
 6. 合并 PR，删除本地和远端任务分支。
 7. 报告：合并 hash、L1/实机验证、文档改动清单、遗留风险。
 
 ## 门禁与豁免
 
-- `.github/workflows/mex-guard.yml`：`src/` 或 `tools/` 有改动、但 `.mex/` 与 `docs/` 都没有 → 检查变红。
-- 唯一豁免：给 PR 加 `mex-skip` 标签，并在说明里写一行原因。
+- `.github/workflows/mex-guard.yml`：只统计 `src/` 与 `tools/`——这两处有改动、但 `.mex/` 与 `docs/` 都没有 → 检查变红。其他路径（如 `build.gradle`）不会触发。
+- 唯一豁免：给 PR 加 `mex-skip` 标签。门禁只校验标签本身，不校验说明里的原因；原因靠 reviewer 把关。
 - 仓库尚未开启分支保护，所以红叉**不会**阻止合并；看到红叉必须人工确认，不能当没看见。
 
 ## 已知坑
