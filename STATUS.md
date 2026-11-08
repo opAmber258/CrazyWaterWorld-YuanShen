@@ -25,11 +25,11 @@
 2. **移除 downedDrain**（原版源码复核：`CharacterHealth.Update → RecalculateVitality →
    KillIfOutOfVitality` 只判 ≤ MinVitality(−100)，0 以下无额外流失；vitality 是纯函数）：
    - 删除 `downedDrain` 字段/addDownedDrain/治疗抵消分支/NBT 键；旧存档残留键读取时忽略
-   - 倒地后活力变化完全由病症 dynamics 决定：出血 60 的倒地者约 50 秒滑向 −100（原版数值自然涌现）；
-     伤口稳定则停在原值等救援（原版昏迷语义）
+   - 倒地后活力变化完全由病症 dynamics 决定：病症强度上升（如出血推失血）会让 `rawVitality`
+     的下扣随之增大、继续滑向 −100；伤口稳定则停在原值等救援（原版昏迷语义）
    - 顺带消灭原实现 `vitalityDecreaseTotal/100` 的单位 bug（实际流失率比设计慢两个数量级）
-3. 测试：`DamageConversionsTest` 重写为 9 用例（近战概率、投射物必出血、爆炸 5% 门槛、摔落阈值、
-   无直接失血断言）；L1 全绿。ROUTER 医疗段同步更新。
+3. 测试：`DamageConversionsTest` 重写为 10 用例（近战概率、投射物必出血、爆炸 5% 门槛、摔落阈值、
+   非近战兜底不出血、无直接失血断言）；L1 全绿。ROUTER 医疗段同步更新。
 
 **未决**：L2 医疗用例缺 gameteststructures 模板（环境基建）；缺氧第二来源等氧气模块 issue #24；
 出血四来源的实机验收（摔断腿→包扎、箭伤→血袋、爆炸→绷带优先级）。

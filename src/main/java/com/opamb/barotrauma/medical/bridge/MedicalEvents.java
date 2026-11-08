@@ -186,6 +186,10 @@ public final class MedicalEvents {
         } else if (source.is(MedicalDamageTypes.PRESSURE)) {
             // 深海挤压是 UnderwaterSurvival 的持续伤害；取消原版结算后必须转成病症。
             plan = DamageConversions.fromBluntOnly(amount);
+        } else if (source.is(DamageTypes.INDIRECT_MAGIC)) {
+            // 瞬间伤害药水（ThrownPotion）和唤魔者尖牙是魔法伤害，不是穿刺/咬击：
+            // 必须先于投射物/攻击者分支拦下，否则会被当成箭或近战附加出血。
+            plan = DamageConversions.fromBluntOnly(amount);
         } else if (source.getDirectEntity() instanceof Projectile projectile) {
             // limbByHeightRatio 的 0 = 头顶、1 = 脚底；实体高度比例是 0=脚、1=头，先反转。
             double heightRatio = 1.0 - (projectile.getY() - player.getY()) / player.getBbHeight();

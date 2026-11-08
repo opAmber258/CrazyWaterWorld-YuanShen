@@ -90,7 +90,7 @@ Explosion structuredamage 90~300 →
 
 - **移除 v1 自加的 `downedDrain` 附加流失**（顺带消灭其 `/100` 单位错误——原实现把每秒点数又除以 100，实际流失率比设计值慢两个数量级）。
 - 倒地（raw ∈ (−100, 0]）后的活力变化完全由病症强度决定，与原版一致：
-  - 带伤倒地且伤口在恶化（如出血 60 → 失血 +1/s → 活力 −2/s）→ 约 50 秒内滑向 −100 真死（原版数值自然涌现，非外加系数）；
+  - 带伤倒地且伤口在恶化（如出血持续推高失血）→ 病症强度上升，`rawVitality` 的下扣随之增大、继续滑向 −100 真死（原版数值自然涌现，非外加系数）；
   - 伤口稳定/已治住 → 活力停在原值，等待队友治疗救援（原版昏迷语义）。
 - `AfflictionContainer` 的 `downedDrain` 字段、`addDownedDrain/resetDownedDrain/downedDrainValue/restoreDownedDrain`、治疗抵消流失分支与 NBT 键一并移除；旧存档残留的 `downedDrain` NBT 键读取时忽略。
 
