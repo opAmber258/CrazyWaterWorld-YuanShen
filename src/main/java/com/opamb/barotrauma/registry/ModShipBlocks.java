@@ -88,6 +88,28 @@ public final class ModShipBlocks {
                     .isViewBlocking((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)));
 
+    /** 物理船反应堆的交互锚点；18 格机器被 VS2 收走后靠它打开反应堆面板。 */
+    public static final RegistryObject<Block> REACTOR_PROXY = BLOCKS.register("reactor_proxy",
+            () -> new com.opamb.barotrauma.block.ReactorProxyBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.NONE)
+                    .strength(-1.0F, 3600000.0F)
+                    .noLootTable()
+                    .noOcclusion()
+                    .noCollission()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /** 物理船引擎的交互锚点；3×2×3 机器被 VS2 收走后靠它打开只读引擎面板。 */
+    public static final RegistryObject<Block> ENGINE_PROXY = BLOCKS.register("engine_proxy",
+            () -> new com.opamb.barotrauma.block.EngineProxyBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.NONE)
+                    .strength(-1.0F, 3600000.0F)
+                    .noLootTable()
+                    .noOcclusion()
+                    .noCollission()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
     public static final RegistryObject<Block> STATION_PLATING = BLOCKS.register("station_plating",
             () -> new Block(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.COLOR_BLACK)
@@ -197,12 +219,18 @@ public final class ModShipBlocks {
                 // 留在世界原地不跟船走（用户实测"水泵不会受到物理效果影响"）。
                 || block == ModBlocks.DRAIN_PUMP.get()
                 || block == ModBlocks.SMALL_PUMP.get()
+                || block == ModBlocks.BALLAST_PUMP.get()
+                || block == ModBlocks.REACTOR.get()
+                || block == ModBlocks.ENGINE.get()
                 || block == ModBlocks.DRAIN_OUTLET.get()
                 || block == HATCH.get()
                 || block == HATCH_LADDER.get()
                 // 铁梯是船内结构：不收集的话装配时会留在原地，副本里的船就没有梯子。
                 || block == ModBlocks.IRON_LADDER.get()
-                || block == BULKHEAD_DOOR.get();
+                || block == BULKHEAD_DOOR.get()
+                // 床是船舱里的家具：儒艮号舱内有床，不收集的话装船后床会留在码头原地
+                // （实测：451 格刚体 = 459 格模板减去 8 格床）。
+                || block instanceof net.minecraft.world.level.block.BedBlock;
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.ship;
 
 import net.minecraft.core.BlockPos;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -60,10 +61,32 @@ public final class ShipGeometry {
     public record DoorLink(BlockPos cell, int body, int other, boolean open) {
     }
 
+    /**
+     * "外海"作为门连线的另一侧：门格直接开在船壳外表面（包围盒边界、外面没有方块）
+     * 时用它。船体模拟把这一侧当成无限大的水源，开门就往舱里灌。
+     */
+    public static final int SEA_BODY = -1;
+
     /** 一个封闭舱室。 */
-    public record Compartment(Set<BlockPos> cells, int waterBlocks) {
+    public record Compartment(Set<BlockPos> cells, int waterBlocks, Set<BlockPos> interiorCells) {
+        /** 默认封闭舱室：整间都在船壳以内。 */
+        public Compartment(Set<BlockPos> cells, int waterBlocks) {
+            this(cells, waterBlocks, cells);
+        }
+
         public int volume() {
             return cells.size();
+        }
+
+        /**
+         * 落在船壳以内的格数。
+         *
+         * <p>连海空腔会把"包围盒里但在船壳外"的海水也算进同一片空腔（圆角船体
+         * 的包围盒四角就是外海）。进水比例和水面渲染只能按船壳内的那部分算，
+         * 否则一艘内部全干的船会被算成 60% 进水，物理上直接沉底。</p>
+         */
+        public int interiorVolume() {
+            return interiorCells.size();
         }
 
         public double waterRatio() {
@@ -136,7 +159,14 @@ public final class ShipGeometry {
                 for (BlockPos pos : compartment.cells()) {
                     cells.add(pos.offset(dx, dy, dz));
                 }
-                out.add(new Compartment(cells, compartment.waterBlocks()));
+                Set<BlockPos> interior = compartment.interiorCells() == compartment.cells()
+                        ? cells : new HashSet<>(compartment.interiorVolume());
+                if (interior != cells) {
+                    for (BlockPos pos : compartment.interiorCells()) {
+                        interior.add(pos.offset(dx, dy, dz));
+                    }
+                }
+                out.add(new Compartment(cells, compartment.waterBlocks(), interior));
             }
             return out;
         }
@@ -155,7 +185,7 @@ public final class ShipGeometry {
      * @param probe       实心/水判定
      */
     public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock, Probe probe) {
-        return scanShip(core, radius, isShipBlock, probe, 0);
+        return scanShip(core, radius, isShipBlock, probe, 0, null);
     }
 
     /**
@@ -164,6 +194,16 @@ public final class ShipGeometry {
      */
     public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock,
                                   Probe probe, int padUp) {
+        return scanShip(core, radius, isShipBlock, probe, padUp, null);
+    }
+
+    /**
+     * @param isShell 船壳格判定（船壳板/舷窗/门/舱口，破口也算），用来区分
+     *                "船壳包住的舱内空气"和"包围盒四角的外海空气"。传 null 表示
+     *                不做区分（旧行为，整片连海空腔都算船内进水）。
+     */
+    public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock,
+                                  Probe probe, int padUp, @Nullable Predicate<BlockPos> isShell) {
         Set<BlockPos> hull = collectHull(core, radius, isShipBlock);
         if (hull.isEmpty()) {
             return new Result(List.of(), List.of(), 0, 0, new Bounds(core.getX(), core.getY(), core.getZ(),
@@ -216,7 +256,25 @@ public final class ShipGeometry {
         }
         // 门格优先归"密闭舱室"：贴着门站的那一侧得算干燥区，不能归到进水空腔里。
         preferSealedDoorOwners(compartments, openPockets, doorways);
-        List<DoorLink> doorLinks = collectDoorLinks(doorways, compartments, openPockets, probe);
+        // 船壳包住的空气才算船内：圆角船体的包围盒四角是外海，连海空腔会把
+        // 那些海水一起吞进去。先用"船壳当墙"从包围盒边界灌一遍标出船外空气，
+        // 再从每个连海空腔里扣掉这部分。
+        if (isShell != null) {
+            Set<BlockPos> exterior = exteriorCells(minX, minY, minZ, maxX, maxY, maxZ, isShell);
+            List<Compartment> clipped = new ArrayList<>(openPockets.size());
+            for (Compartment pocket : openPockets) {
+                Set<BlockPos> interior = new HashSet<>();
+                for (BlockPos cell : pocket.cells()) {
+                    if (!exterior.contains(cell)) {
+                        interior.add(cell);
+                    }
+                }
+                clipped.add(new Compartment(pocket.cells(), pocket.waterBlocks(), interior));
+            }
+            openPockets = clipped;
+        }
+        List<DoorLink> doorLinks = collectDoorLinks(doorways, compartments, openPockets, probe,
+                minX, minY, minZ, maxX, maxY, maxZ);
         return new Result(compartments, openPockets, hull.size(), scanned,
                 new Bounds(minX, minY, minZ, maxX, maxY, maxZ), hull, doorLinks);
     }
@@ -263,7 +321,9 @@ public final class ShipGeometry {
     /** 门格两侧的水体连线；关着的门也记下来（open=false），开合只改这一位。 */
     private static List<DoorLink> collectDoorLinks(Set<BlockPos> doorways,
                                                    List<Compartment> compartments,
-                                                   List<Compartment> pockets, Probe probe) {
+                                                   List<Compartment> pockets, Probe probe,
+                                                   int minX, int minY, int minZ,
+                                                   int maxX, int maxY, int maxZ) {
         if (doorways.isEmpty()) {
             return List.of();
         }
@@ -287,7 +347,19 @@ public final class ShipGeometry {
             }
             // 一个门格可能同时贴着两个水体（三个格子宽的舱口下方是两个舱），都要连。
             Set<Integer> others = new java.util.LinkedHashSet<>();
+            boolean sea = false;
             for (BlockPos next : neighbours(door)) {
+                boolean outside = next.getX() < minX || next.getX() > maxX
+                        || next.getY() < minY || next.getY() > maxY
+                        || next.getZ() < minZ || next.getZ() > maxZ;
+                if (outside) {
+                    // 门格直接开在船壳外表面上：包围盒外那一格就是海。
+                    // 外面还有实心方块（例如对接时站侧平台）就不算海——船还是密封的。
+                    if (!probe.isSolid(next)) {
+                        sea = true;
+                    }
+                    continue;
+                }
                 Integer other = bodyOf.get(next);
                 if (other != null && !other.equals(owner)) {
                     others.add(other);
@@ -296,6 +368,10 @@ public final class ShipGeometry {
             boolean open = probe.isOpenDoorway(door);
             for (Integer other : others) {
                 links.add(new DoorLink(door, owner, other, open));
+            }
+            if (sea) {
+                // 顶舱口/底舱口开在海里时，必须有这条"通向海"的连线，否则开门不进水。
+                links.add(new DoorLink(door, owner, SEA_BODY, open));
             }
         }
         return links;
@@ -433,6 +509,57 @@ public final class ShipGeometry {
             }
         }
         return new Flood(cells, water, touches);
+    }
+
+    /**
+     * 从包围盒边界灌一遍，标出船壳**外面**的空气（含圆角船体包围盒四角的空隙）。
+     *
+     * <p>{@code isShell} 把船壳板/门/舱口（破口也算）当墙：这样有破洞的舱室
+     * 仍然留在"船内"这一侧，进水才会算进进水比例；而包围盒四角那种直接连着
+     * 外海的空气会被标成船外。</p>
+     */
+    private static Set<BlockPos> exteriorCells(int minX, int minY, int minZ, int maxX, int maxY, int maxZ,
+                                               Predicate<BlockPos> isShell) {
+        Set<BlockPos> exterior = new HashSet<>();
+        Deque<BlockPos> queue = new ArrayDeque<>();
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        // 种子：包围盒六个面上的空气格
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    boolean onBoundary = x == minX || x == maxX
+                            || y == minY || y == maxY || z == minZ || z == maxZ;
+                    if (!onBoundary) {
+                        continue;
+                    }
+                    cursor.set(x, y, z);
+                    BlockPos pos = cursor.immutable();
+                    if (isShell.test(pos)) {
+                        continue;
+                    }
+                    if (exterior.add(pos)) {
+                        queue.add(pos);
+                    }
+                }
+            }
+        }
+        while (!queue.isEmpty()) {
+            BlockPos pos = queue.poll();
+            for (BlockPos next : neighbours(pos)) {
+                if (next.getX() < minX || next.getX() > maxX
+                        || next.getY() < minY || next.getY() > maxY
+                        || next.getZ() < minZ || next.getZ() > maxZ) {
+                    continue;
+                }
+                if (isShell.test(next)) {
+                    continue;
+                }
+                if (exterior.add(next)) {
+                    queue.add(next);
+                }
+            }
+        }
+        return exterior;
     }
 
     private static BlockPos[] neighbours(BlockPos pos) {

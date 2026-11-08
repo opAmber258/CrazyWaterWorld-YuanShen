@@ -80,11 +80,13 @@ public final class OutpostBuilder {
     }
 
     /**
-     * 副本站不在大洞里：只在码头正下方挖一条矩形竖井（13×19），上端接舱口、下端接任务洞穴。
+     * 副本站不在大洞里：只在码头正下方挖一条矩形竖井，上端接舱口、下端接任务洞穴。
      * 哨站本体挂在岩壁上，船在竖井里停靠/下潜。
+     *
+     * <p>21×19：儒艮号放置时转 90°，长轴沿 x（17 格），旧船 9×15 也装得下。</p>
      */
     public static boolean intersectsWell(ChunkPos pos, DockingBay.Site site) {
-        return pos.getMaxBlockX() >= site.x() - 7 && pos.getMinBlockX() <= site.x() + 7
+        return pos.getMaxBlockX() >= site.x() - 11 && pos.getMinBlockX() <= site.x() + 11
                 && pos.getMaxBlockZ() >= site.z() - 10 && pos.getMinBlockZ() <= site.z() + 10;
     }
 
@@ -92,7 +94,7 @@ public final class OutpostBuilder {
         ChunkPos pos = chunk.getPos();
         BlockState air = Blocks.AIR.defaultBlockState();
         for (int x = pos.getMinBlockX(); x <= pos.getMaxBlockX(); x++) {
-            if (Math.abs(x - site.x()) > 6) {
+            if (Math.abs(x - site.x()) > 10) {
                 continue;
             }
             for (int z = pos.getMinBlockZ(); z <= pos.getMaxBlockZ(); z++) {

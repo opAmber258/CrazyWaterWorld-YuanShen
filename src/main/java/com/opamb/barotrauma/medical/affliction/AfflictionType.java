@@ -79,6 +79,16 @@ public final class AfflictionType {
             "organdamage", false, 200.0, 0.0,
             List.of(new Tier(0, 200, 0, 2, 0)));
 
+    /** 辐射病。原作：全身/躯干指示，0–25 无伤害、-0.07/s 自衰；25–200 每段 -0.2/s 自衰，
+     * 伤害由持续附加的烧伤/内脏损伤结算（熔毁时一次性给足）。 */
+    public static final AfflictionType RADIATION = new AfflictionType(
+            "radiationsickness", false, 200.0, 0.0,
+            List.of(new Tier(0, 25, 0, 0, -0.07),
+                    new Tier(25, 50, 0, 0, -0.2),
+                    new Tier(50, 75, 0, 0, -0.2),
+                    new Tier(75, 100, 0, 0, -0.2),
+                    new Tier(100, 200, 0, 0, -0.2)), true, false, 25.0);
+
     /** 阿片类药物成瘾。原作：全身/头部指示，max 100，80+ 段有 0→20 原始点数消耗，
      * 分段自衰 −0.05/−0.1/s，并按段位推高戒断（0.15/0.25/0.5 每秒），图标阈值 20。 */
     public static final AfflictionType OPIATE_ADDICTION = new AfflictionType(
@@ -100,7 +110,8 @@ public final class AfflictionType {
     /** v1 全部病症，顺序即文档顺序。 */
     public static final List<AfflictionType> ALL =
             List.of(BLUNT_TRAUMA, BLEEDING, BURN, BLOODLOSS, OXYGEN_LOW, STUN,
-                    OPIATE_OVERDOSE, OPIATE_ADDICTION, OPIATE_WITHDRAWAL, ORGAN_DAMAGE);
+                    OPIATE_OVERDOSE, OPIATE_ADDICTION, OPIATE_WITHDRAWAL, ORGAN_DAMAGE,
+                    RADIATION);
 
     private static final Map<String, AfflictionType> BY_ID =
             ALL.stream().collect(Collectors.toMap(t -> t.id, Function.identity()));
@@ -132,7 +143,10 @@ public final class AfflictionType {
                     new DescRange(0, 50, "泪眼朦胧，汗流浃背，焦躁不安，渴望愈发强烈。"),
                     new DescRange(50, 100, "患者呼吸无力，肢体不自主震颤，有明显恶心症状。")),
             "organdamage", List.of(
-                    new DescRange(0, 200, "你感到腹部一阵剧痛。没有看到任何伤口。")));
+                    new DescRange(0, 200, "你感到腹部一阵剧痛。没有看到任何伤口。")),
+            "radiationsickness", List.of(
+                    new DescRange(0, 75, "皮肤上能看到烧伤和溃疡，似乎正在扩散。"),
+                    new DescRange(75, 200, "烧伤和溃疡遍布全身，情况已经非常严重。")));
 
     /** 当前强度对应的原作阶段文案（无文案的类型返回空串）。 */
     public String descriptionAt(double strength) {

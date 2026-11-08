@@ -54,8 +54,18 @@ class ShipDrainPumpTest {
     }
 
     @Test
-    void 按速率抽密闭舱室的水() {
+    @org.junit.jupiter.api.DisplayName("自动泵按水量判断积水（不能用绝对 Y 和 0.05 比）")
+    void autoPumpWetCheckUsesWaterUnits() {
         ShipSimulation sim = simulation(sealedCube());
+        assertTrue(!sim.bodyIsWet(0), "空舱不该算有水");
+        sim.flood(0, 100.0D);
+        assertTrue(sim.bodyIsWet(0), "有 1 格水时自动泵应该启动");
+        // bodyLevel 是绝对 Y（深海为负），旧写法 bodyLevel >= 0.05 永远为 false
+        assertTrue(sim.bodyLevel(0) < 0.05D, "深海里的水位是负的绝对 Y");
+    }
+
+    @Test
+    void 按速率抽密闭舱室的水() {        ShipSimulation sim = simulation(sealedCube());
         // 水泵只抽自己所在的那个水体，必须给泵格（装配坐标）。
         sim.flood(0, 1000.0D);
         assertEquals(1000.0D, sim.waterUnits(), 1.0E-6);
@@ -145,6 +155,38 @@ class ShipDrainPumpTest {
     }
 
     @Test
+    void 压载泵所在舱计入压载水量与容量() {
+        ShipSimulation sim = simulation(sealedCube());
+        // 停车（0 流量）也要登记压载舱，否则水位不变时浮力会突然归零
+        sim.reportPump(new BlockPos(0, 0, 0), 0.0D, true);
+        sim.tick(1.0D);
+        assertEquals(0.0D, sim.ballastPercent(), 1.0E-6);
+        assertTrue(sim.ballastCapacityUnits() > 0.0D, "压载舱容量应来自泵所在舱室");
+
+        // 负流量泵入 1 秒：100 单位进压载舱
+        sim.reportPump(new BlockPos(0, 0, 0), -100.0D, true);
+        sim.tick(1.0D);
+        assertEquals(100.0D, sim.ballastUnits(), 1.0E-6);
+        assertEquals(100.0D / sim.ballastCapacityUnits(), sim.ballastPercent(), 1.0E-6);
+
+        // 正流量泵出：压载水回落
+        sim.reportPump(new BlockPos(0, 0, 0), 100.0D, true);
+        sim.tick(1.0D);
+        assertEquals(0.0D, sim.ballastUnits(), 1.0E-6);
+    }
+
+    @Test
+    void 普通泵不登记压载舱() {
+        ShipSimulation sim = simulation(sealedCube());
+        sim.reportPump(new BlockPos(0, 0, 0), -100.0D);
+        sim.tick(1.0D);
+        assertEquals(0.0D, sim.ballastCapacityUnits(), 1.0E-6);
+        assertEquals(0.0D, sim.ballastPercent(), 1.0E-6);
+        // 水还是进了舱室，只是不算压载——排水泵/小泵原有行为不变
+        assertEquals(100.0D, sim.waterUnits(), 1.0E-6);
+    }
+
+    @Test
     void 速率被夹紧到合法范围() {
         ShipGeometry.Probe emptyProbe = new ShipGeometry.Probe() {
             @Override
@@ -160,10 +202,84 @@ class ShipDrainPumpTest {
         ShipSimulation sim = new ShipSimulation(
                 ShipGeometry.scanShip(BlockPos.ZERO, 8, p -> false, emptyProbe),
                 new MachineCount(0, 0, 0, 0, 0, 0, 0));
-        // 带符号流量：正值泵出、负值泵入，两个方向都夹在 3000 以内
+        // 带符号流量：正值泵出、负值泵入，两个方向都夹在 30000 以内
+        // （单台普通泵按原作换算后约 14062，旧上限 3000 会把泵削到 1/5）。
         sim.reportPump(new BlockPos(0, 0, 0), -99999.0D);
-        assertEquals(3000.0D, sim.pumpTotalRate(), 1.0E-6);
+        assertEquals(30000.0D, sim.pumpTotalRate(), 1.0E-6);
         sim.reportPump(new BlockPos(0, 0, 0), 99999.0D);
-        assertEquals(3000.0D, sim.pumpTotalRate(), 1.0E-6);
+        assertEquals(30000.0D, sim.pumpTotalRate(), 1.0E-6);
+    }
+
+    @Test
+    void 压载舱注水停在舱门下方那一格() {
+        // 5×7×5 船壳，中间 y=0 有一层地板，只留 (0,0,0) 一格舱门。
+        // 下层舱 y=-2..0（含门格）是压载舱，上层 y=1..3 是驾驶室。
+        Set<BlockPos> solid = new HashSet<>();
+        for (int x = -2; x <= 2; x++) {
+            for (int y = -3; y <= 3; y++) {
+                for (int z = -2; z <= 2; z++) {
+                    boolean shell = Math.abs(x) == 2 || Math.abs(z) == 2 || y == -3 || y == 3;
+                    boolean deck = y == 0 && Math.abs(x) <= 1 && Math.abs(z) <= 1;
+                    if (shell || deck) {
+                        solid.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        BlockPos door = new BlockPos(0, 0, 0);
+        ShipGeometry.Probe probe = new ShipGeometry.Probe() {
+            @Override
+            public boolean isSolid(BlockPos pos) {
+                return solid.contains(pos);
+            }
+
+            @Override
+            public boolean isWater(BlockPos pos) {
+                return false;
+            }
+
+            @Override
+            public boolean isDoorway(BlockPos pos) {
+                return pos.equals(door);
+            }
+
+            @Override
+            public boolean isOpenDoorway(BlockPos pos) {
+                return pos.equals(door);
+            }
+        };
+        Set<BlockPos> shipBlocks = new HashSet<>(solid);
+        shipBlocks.add(door);
+        ShipGeometry.Result geometry = ShipGeometry.scanShip(
+                BlockPos.ZERO, 8, shipBlocks::contains, probe);
+        ShipSimulation sim = new ShipSimulation(geometry, new MachineCount(0, 0, 0, 0, 0, 0, 1));
+
+        BlockPos pumpCell = new BlockPos(0, -1, 0);
+        int body = sim.pumpBody(pumpCell);
+        assertTrue(body >= 0, "泵格应落在下层压载舱里");
+        double full = sim.bodyVolume(body) * ShipSimulation.UNITS_PER_BLOCK;
+        assertTrue(full > 0.0D);
+
+        // 带 door 上限的压载泵一直泵入：水面只能到门格下沿（y=0），门格本身保持干。
+        sim.reportPump(pumpCell, -600.0D, true, -600.0D, true);
+        for (int i = 0; i < 200; i++) {
+            sim.tick(1.0D);
+        }
+        assertEquals(0.0D, sim.bodyLevel(body), 1.0E-6, "水面应停在舱门下方那一格");
+        assertTrue(sim.bodyWater(body) < full, "注水上限必须小于整舱容量");
+    }
+
+    @Test
+    @org.junit.jupiter.api.DisplayName("泵流量按原作换算：普通泵 ≈140 格³/秒，小泵 ≈23 格³/秒")
+    void pumpFlowMatchesOriginalUnits() {
+        // 原作 Pump.Update: WaterVolume += MaxFlow * deltaTime * 60（1/60 秒一帧），
+        // 原版一格 256 水体单位，我们一格 100 单位 → 600×60×100/256。
+        assertEquals(14_062, com.opamb.barotrauma.blockentity.DrainPumpBlockEntity.MAX_FLOW);
+        assertEquals(2_344, com.opamb.barotrauma.blockentity.DrainPumpBlockEntity.SMALL_MAX_FLOW);
+        // 普通泵 : 小型泵仍是原版的 6 : 1
+        assertEquals(6.0D, com.opamb.barotrauma.blockentity.DrainPumpBlockEntity.MAX_FLOW
+                / (double) com.opamb.barotrauma.blockentity.DrainPumpBlockEntity.SMALL_MAX_FLOW, 0.01D);
+        // 33 格的压载舱（3300 单位）满流量 1 秒内能灌满——不再有"等泵"的延迟
+        assertTrue(com.opamb.barotrauma.blockentity.DrainPumpBlockEntity.MAX_FLOW > 3_300);
     }
 }

@@ -74,6 +74,7 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
         boolean auto = menu.data().get(PumpMenu.DATA_AUTO) != 0;
         int flow = menu.data().get(PumpMenu.DATA_FLOW);
         boolean powered = menu.data().get(PumpMenu.DATA_POWER) != 0;
+        boolean ballast = menu.data().get(PumpMenu.DATA_BALLAST) != 0;
 
         // 能源灯（原版左上角那颗）
         graphics.drawString(font, "能源", x + 10, y + 24, TEXT, false);
@@ -110,6 +111,10 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
         String state;
         if (!powered) {
             state = "无电力，泵无法运行";
+        } else if (auto && ballast) {
+            state = flow > 0 ? "跟随舵台：下潜，泵入压载舱"
+                    : flow < 0 ? "跟随舵台：上浮，泵出压载舱"
+                    : "跟随舵台：停车，保持压载水位";
         } else if (auto) {
             state = flow < 0 ? "自动：检测到积水，全速泵出" : "自动：舱内干燥，待机";
         } else if (flow == 0) {

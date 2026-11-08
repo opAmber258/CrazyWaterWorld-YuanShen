@@ -43,6 +43,8 @@ public final class ModNetwork {
                 MissionActionPacket::encode, MissionActionPacket::decode, MissionActionPacket::handle);
         CHANNEL.registerMessage(nextId++, PumpActionPacket.class,
                 PumpActionPacket::encode, PumpActionPacket::decode, PumpActionPacket::handle);
+        CHANNEL.registerMessage(nextId++, ReactorActionPacket.class,
+                ReactorActionPacket::encode, ReactorActionPacket::decode, ReactorActionPacket::handle);
         CHANNEL.registerMessage(nextId++, ShipHullDamagePacket.class,
                 ShipHullDamagePacket::encode, ShipHullDamagePacket::decode, ShipHullDamagePacket::handle);
         CHANNEL.messageBuilder(MedicalSyncPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)

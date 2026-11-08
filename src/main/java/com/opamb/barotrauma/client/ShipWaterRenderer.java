@@ -334,10 +334,16 @@ public final class ShipWaterRenderer {
             float minZ = boxes[i + 2];
             float maxZ = boxes[i + 5];
             // 盒子和初始潜艇内腔在 XZ 上有重叠，就认为它描述的是这艘船。
-            if (maxX + 1.0F < StarterSub.ORIGIN_X + 1
+            // 旧出生潜艇（码头内）或儒艮号（站外侧，新世界布局）都算。
+            boolean oldStarter = !(maxX + 1.0F < StarterSub.ORIGIN_X + 1
                     || minX > StarterSub.ORIGIN_X + StarterSub.SIZE_X - 1
                     || maxZ + 1.0F < StarterSub.ORIGIN_Z + 1
-                    || minZ > StarterSub.ORIGIN_Z + StarterSub.SIZE_Z - 1) {
+                    || minZ > StarterSub.ORIGIN_Z + StarterSub.SIZE_Z - 1);
+            boolean newStarter = !(maxX + 1.0F < StarterSub.NEW_ORIGIN_X + 1
+                    || minX > StarterSub.NEW_ORIGIN_X + StarterSub.NEW_SIZE_X - 1
+                    || maxZ + 1.0F < StarterSub.NEW_ORIGIN_Z + 1
+                    || minZ > StarterSub.NEW_ORIGIN_Z + StarterSub.NEW_SIZE_Z - 1);
+            if (!oldStarter && !newStarter) {
                 continue;
             }
             // 干燥盒子（水面=舱底）不算进水，别把站在舱底的人判成湿的。

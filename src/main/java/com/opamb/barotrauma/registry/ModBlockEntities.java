@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.registry;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.blockentity.BallastPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity;
 import com.opamb.barotrauma.blockentity.DrainPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.HatchBlockEntity;
@@ -35,6 +36,24 @@ public final class ModBlockEntities {
     public static final RegistryObject<BlockEntityType<SmallPumpBlockEntity>> SMALL_PUMP =
             BLOCK_ENTITIES.register("small_pump", () -> BlockEntityType.Builder
                     .of(SmallPumpBlockEntity::new, ModBlocks.SMALL_PUMP.get())
+                    .build(null));
+
+    /** 压载泵：六格多块，只有下排中段有方块实体（渲染 + 压载上报）。 */
+    public static final RegistryObject<BlockEntityType<BallastPumpBlockEntity>> BALLAST_PUMP =
+            BLOCK_ENTITIES.register("ballast_pump", () -> BlockEntityType.Builder
+                    .of(BallastPumpBlockEntity::new, ModBlocks.BALLAST_PUMP.get())
+                    .build(null));
+
+    /** 反应堆：18 格多块，只有前层下排中段有方块实体（渲染 + 燃料/温度/发电）。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.ReactorBlockEntity>> REACTOR =
+            BLOCK_ENTITIES.register("reactor", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.ReactorBlockEntity::new, ModBlocks.REACTOR.get())
+                    .build(null));
+
+    /** 引擎：18 格多块（3×2×3），只有前层下排中段有方块实体。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.EngineBlockEntity>> ENGINE =
+            BLOCK_ENTITIES.register("engine", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.EngineBlockEntity::new, ModBlocks.ENGINE.get())
                     .build(null));
 
     /** 3 格宽舱口（普通舱口和带梯变种共用）；只有中间段有方块实体，渲染整扇模型。 */

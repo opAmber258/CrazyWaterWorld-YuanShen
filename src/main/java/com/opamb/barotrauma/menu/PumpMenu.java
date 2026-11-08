@@ -32,8 +32,10 @@ public class PumpMenu extends AbstractContainerMenu {
     public static final int DATA_FLOW = 1;
     /** 数据位 2：能源（0/1，船上电力是否供得上）。 */
     public static final int DATA_POWER = 2;
+    /** 数据位 3：是否是压载泵（自动模式跟随舵台，而不是水传感器）。 */
+    public static final int DATA_BALLAST = 3;
 
-    public static final int DATA_COUNT = 3;
+    public static final int DATA_COUNT = 4;
 
     private final BlockPos pumpPos;
     private final ContainerData data;
@@ -53,8 +55,8 @@ public class PumpMenu extends AbstractContainerMenu {
                 resolved = direct;
             } else if (VsState.active()
                     && serverLevel.getBlockState(pumpPos).is(ModShipBlocks.PUMP_PROXY.get())) {
-                // 物理船：泵方块实体在船坞里，菜单用代理位置做距离校验，数据仍读真实泵。
-                resolved = VsPilot.pumpBlockEntity(serverLevel);
+                // 物理船：按被右键的代理位置找回对应的那台泵（每台泵各有一个代理）。
+                resolved = VsPilot.pumpBlockEntity(serverLevel, pumpPos);
             }
             ship = DrainPumpBlockEntity.resolveShip(serverLevel, pumpPos);
         }
@@ -68,6 +70,7 @@ public class PumpMenu extends AbstractContainerMenu {
                         case DATA_AUTO -> pump.auto() ? 1 : 0;
                         case DATA_FLOW -> pump.effectiveFlow();
                         case DATA_POWER -> powered(shipState) ? 1 : 0;
+                        case DATA_BALLAST -> pump.ballast() ? 1 : 0;
                         default -> 0;
                     };
                 }

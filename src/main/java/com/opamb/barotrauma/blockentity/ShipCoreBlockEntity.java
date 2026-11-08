@@ -406,7 +406,18 @@ public class ShipCoreBlockEntity extends BlockEntity {
                 pos -> ModShipBlocks.isShipBlock(level.getBlockState(pos))
                         && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(pos)
                         && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos),
-                probe, docked ? 1 : 0);
+                probe, docked ? 1 : 0,
+                // 船壳当墙：区分舱内空气和包围盒四角的船外海水（圆角船体）。
+                pos -> {
+                    if (pos.equals(corePos)) {
+                        return false;
+                    }
+                    if (docked && com.opamb.barotrauma.world.DockingBay.isDockCapRow(pos)) {
+                        return true;
+                    }
+                    BlockState shell = level.getBlockState(pos);
+                    return ModShipBlocks.isRepairableHull(shell) || ModShipBlocks.isDoorway(shell);
+                });
 
         int sonar = 0;
         if (geometry.hullBlocks() > 0) {

@@ -94,9 +94,25 @@ public final class VsPilot {
     private static BlockPos sonarAnchor;
     /** 当前交互锚点实际所在的位置。 */
     private static BlockPos proxyPos;
-    /** 排水泵的交互锚点（泵方块同样会被 VS2 收走，右键不到）。 */
-    private static BlockPos pumpAnchor;
-    private static BlockPos pumpProxyPos;
+    /** 每台泵的交互锚点（装配坐标）。泵方块同样会被 VS2 收走，右键不到。 */
+    private static java.util.List<BlockPos> pumpAnchors = java.util.List.of();
+    /** 泵锚点（装配坐标）→ 当前代理方块位置；每台泵各有一个代理。 */
+    private static java.util.Map<BlockPos, BlockPos> pumpProxyByAnchor = java.util.Map.of();
+    /**
+     * 装配前抄下来的方块实体 NBT，等船坞偏移确定后装回船坞里对应的方块。
+     *
+     * <p>VS2 装配只搬方块状态，方块实体是新建的默认实例——反应堆燃料、泵的自动/流量、
+     * 储物箱内容都会丢（用户实测"下潜后我放的燃料没了"）。装配前先存 NBT，
+     * 船坞偏移一确定就 load 回去。</p>
+     */
+    private static java.util.Map<BlockPos, net.minecraft.nbt.CompoundTag> pendingBlockEntityTags =
+            java.util.Map.of();
+    /** 反应堆的交互锚点（18 格机器的主方块）。 */
+    private static BlockPos reactorAnchor;
+    private static BlockPos reactorProxyPos;
+    /** 引擎的交互锚点（3×2×3 机器的主方块）。 */
+    private static BlockPos engineAnchor;
+    private static BlockPos engineProxyPos;
     /** 上一次 launch 用的维度。 */
     private static ServerLevel lastLevel;
     /**
@@ -355,8 +371,13 @@ public final class VsPilot {
         interiorOffsetZ = Integer.MIN_VALUE;
         sonarAnchor = null;
         proxyPos = null;
-        pumpAnchor = null;
-        pumpProxyPos = null;
+        pumpAnchors = java.util.List.of();
+        pumpProxyByAnchor = java.util.Map.of();
+        pendingBlockEntityTags = java.util.Map.of();
+        reactorAnchor = null;
+        reactorProxyPos = null;
+        engineAnchor = null;
+        engineProxyPos = null;
         lastLevel = null;
         yardOffsetX = Integer.MIN_VALUE;
         yardOffsetY = Integer.MIN_VALUE;
@@ -369,6 +390,7 @@ public final class VsPilot {
         unstaticTicks = 0;
         simTickCounter = 0;
         waterStateLogCounter = 0;
+        lastRecordFlushGameTime = Long.MIN_VALUE;
         lastWaterPacket = ShipWaterStatePacket.empty();
         VsState.deactivate();
         if (hadShip) {
@@ -541,6 +563,8 @@ public final class VsPilot {
         }
         target.setThrottle(control.throttleX(), control.throttleY(), control.throttleZ());
         target.setPower(control.power());
+        target.setSupply(control.simulation().powerRatio());
+        target.setEngineCount(control.simulation().engineCount());
         target.setEngineMultiplier(control.engineMultiplier());
         ShipSimulation.Report report = control.simulation().report();
         target.setBallast(report.ballastPercent(), control.floodRatio());
@@ -852,6 +876,7 @@ public final class VsPilot {
             yardOffsetZ = found.getZ() - corePos.getZ();
             LOGGER.info("[vs] 船坞偏移（扫 claim 中心）：({},{},{})｜声纳 {} → {}｜claim 中心 {}",
                     yardOffsetX, yardOffsetY, yardOffsetZ, corePos, found, center);
+            applyPendingBlockEntityTags(level);
             return true;
         } catch (Throwable error) {
             LOGGER.warn("[vs] 船坞偏移探测失败：{}", error.toString());
@@ -889,6 +914,7 @@ public final class VsPilot {
         lastLevel = level;
         LOGGER.info("[vs] 船坞坐标对账：偏移 ({},{},{})｜原核心 {} → 船坞 {}",
                 dx, dy, dz, original, shipyardPos);
+        applyPendingBlockEntityTags(level);
     }
 
     /**
@@ -914,43 +940,145 @@ public final class VsPilot {
     }
 
     /**
-     * 装配快照里优先挑普通泵当锚点；没有普通泵时退回小型泵。
+     * 装配快照里所有泵的锚点：压载泵只取六格机器的主方块，普通泵/小型泵各占一格。
      *
-     * <p>物理船收进刚体后方块右键不到，泵菜单只能靠这一个锚点找真实方块实体，
-     * 所以只装小型泵的船也得能打开面板。</p>
+     * <p>物理船收进刚体后方块右键不到，每台泵都要有自己的交互代理；
+     * 只用一个锚点的话，右键小泵打开的会是压载泵菜单（玩家实测"小水泵没法用"）。</p>
      */
-    @Nullable
-    private static BlockPos findPumpAnchor(Map<BlockPos, BlockState> blocks) {
+    private static java.util.List<BlockPos> findPumpAnchors(Map<BlockPos, BlockState> blocks) {
+        java.util.List<BlockPos> anchors = new java.util.ArrayList<>();
         for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
-            if (entry.getValue().is(ModBlocks.DRAIN_PUMP.get())) {
-                return entry.getKey().immutable();
+            if (entry.getValue().is(ModBlocks.BALLAST_PUMP.get())
+                    && entry.getValue().getValue(com.opamb.barotrauma.block.BallastPumpBlock.PART)
+                    == com.opamb.barotrauma.block.BallastPumpBlock.Part.LOWER_MIDDLE) {
+                anchors.add(entry.getKey().immutable());
             }
         }
         for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
-            if (entry.getValue().is(ModBlocks.SMALL_PUMP.get())) {
+            if (entry.getValue().is(ModBlocks.DRAIN_PUMP.get())
+                    || entry.getValue().is(ModBlocks.SMALL_PUMP.get())) {
+                anchors.add(entry.getKey().immutable());
+            }
+        }
+        // 固定顺序，代理位置不会在每 tick 之间跳来跳去
+        anchors.sort(java.util.Comparator
+                .<BlockPos>comparingInt(BlockPos::getY)
+                .thenComparingInt(BlockPos::getX)
+                .thenComparingInt(BlockPos::getZ));
+        return java.util.List.copyOf(anchors);
+    }
+
+    /** 装配快照里的反应堆主方块（前层下排中列）。 */
+    @Nullable
+    private static BlockPos findReactorAnchor(Map<BlockPos, BlockState> blocks) {
+        for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
+            if (entry.getValue().is(ModBlocks.REACTOR.get())
+                    && entry.getValue().getValue(com.opamb.barotrauma.block.ReactorBlock.PART)
+                    == com.opamb.barotrauma.block.ReactorBlock.Part.FRONT_LOWER_MIDDLE) {
                 return entry.getKey().immutable();
             }
         }
         return null;
     }
 
-    /** 物理船排水泵在船坞里的坐标；偏移未知或没有泵时返回 null。 */
+    /** 装配快照里的引擎主方块（前层下排中列）。 */
     @Nullable
-    public static BlockPos pumpYardPos() {
-        if (pumpAnchor == null || yardOffsetX == Integer.MIN_VALUE) {
-            return null;
+    private static BlockPos findEngineAnchor(Map<BlockPos, BlockState> blocks) {
+        for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
+            if (entry.getValue().is(ModBlocks.ENGINE.get())
+                    && entry.getValue().getValue(com.opamb.barotrauma.block.EngineBlock.PART)
+                    == com.opamb.barotrauma.block.EngineBlock.Part.FRONT_LOWER_MIDDLE) {
+                return entry.getKey().immutable();
+            }
         }
-        return pumpAnchor.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+        return null;
     }
 
-    /** 物理船的排水泵方块实体（泵菜单/操作走它，而不是右键不到的船坞方块）。 */
+    /** 物理船排水泵在船坞里的坐标（第一台，兼容旧调用）；偏移未知或没有泵时返回 null。 */
+    @Nullable
+    public static BlockPos pumpYardPos() {
+        if (pumpAnchors.isEmpty() || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        return pumpAnchors.get(0).offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+    }
+
+    /** 物理船反应堆在船坞里的坐标；偏移未知或没有堆时返回 null。 */
+    @Nullable
+    public static BlockPos reactorYardPos() {
+        if (reactorAnchor == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        return reactorAnchor.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+    }
+
+    /**
+     * 物理船某台泵的方块实体。{@code proxyPos} 是玩家右键的那个不可见代理方块：
+     * 先按"代理位置 → 装配锚点"找回是哪台泵，再加船坞偏移定位船坞里的真实方块实体。
+     *
+     * <p>之前所有泵共用一个锚点（压载泵优先），右键小泵/排水泵的代理时打开的
+     * 都是压载泵菜单——玩家实测"小水泵没法用"。现在每台泵都有自己的代理。</p>
+     */
+    @Nullable
+    public static DrainPumpBlockEntity pumpBlockEntity(ServerLevel level, BlockPos proxyPos) {
+        if (level == null) {
+            return null;
+        }
+        BlockPos anchor = null;
+        if (proxyPos != null) {
+            for (Map.Entry<BlockPos, BlockPos> entry : pumpProxyByAnchor.entrySet()) {
+                if (proxyPos.equals(entry.getValue())) {
+                    anchor = entry.getKey();
+                    break;
+                }
+            }
+        }
+        if (anchor == null && pumpAnchors.size() == 1) {
+            // 只有一个代理时允许兜底（装配后的头几 tick 映射可能还没建好）
+            anchor = pumpAnchors.get(0);
+        }
+        if (anchor == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        BlockPos yard = anchor.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+        return level.getBlockEntity(yard) instanceof DrainPumpBlockEntity pump ? pump : null;
+    }
+
+    /** 兼容旧调用：没有代理位置时退回第一台泵。 */
     @Nullable
     public static DrainPumpBlockEntity pumpBlockEntity(ServerLevel level) {
-        BlockPos pos = pumpYardPos();
+        return pumpBlockEntity(level, null);
+    }
+
+    /** 物理船反应堆方块实体（面板/操作走它）。 */
+    @Nullable
+    public static com.opamb.barotrauma.blockentity.ReactorBlockEntity reactorBlockEntity(ServerLevel level) {
+        BlockPos pos = reactorYardPos();
         if (level == null || pos == null) {
             return null;
         }
-        return level.getBlockEntity(pos) instanceof DrainPumpBlockEntity pump ? pump : null;
+        return level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.ReactorBlockEntity reactor
+                ? reactor : null;
+    }
+
+    /** 物理船引擎在船坞里的坐标。 */
+    @Nullable
+    public static BlockPos engineYardPos() {
+        if (engineAnchor == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        return engineAnchor.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+    }
+
+    /** 物理船引擎方块实体（面板走它）。 */
+    @Nullable
+    public static com.opamb.barotrauma.blockentity.EngineBlockEntity engineBlockEntity(ServerLevel level) {
+        BlockPos pos = engineYardPos();
+        if (level == null || pos == null) {
+            return null;
+        }
+        return level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.EngineBlockEntity engine
+                ? engine : null;
     }
 
     private static void refreshHull(ServerLevel level) {
@@ -1022,7 +1150,15 @@ public final class VsPilot {
         ShipGeometry.Result geometry = ShipGeometry.scanShip(core, ShipCoreBlockEntity.RADIUS,
                 pos -> ModShipBlocks.isShipBlock(level.getBlockState(pos.offset(ox, oy, oz)))
                         && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(pos)
-                        && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos), probe);
+                        && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos), probe, 0,
+                // 船壳当墙：船坞里的船也是圆角外壳，包围盒四角的海水不算船内进水。
+                pos -> {
+                    if (pos.equals(core)) {
+                        return false;
+                    }
+                    BlockState shell = level.getBlockState(pos.offset(ox, oy, oz));
+                    return ModShipBlocks.isRepairableHull(shell) || ModShipBlocks.isDoorway(shell);
+                });
         current.replaceGeometry(geometry);
         // breached 方块仍是 ship block，重新装配/重扫后耐久表可能是空的：按 blockstate 补 0%。
         List<BlockPos> breached = new ArrayList<>();
@@ -1304,6 +1440,19 @@ public final class VsPilot {
         return new Vec3(world.x, world.y, world.z);
     }
 
+    /** 给反应堆熔毁/起火用：装配坐标 → 当前世界坐标；没有物理船返回 null。 */
+    @Nullable
+    public static Vec3 assemblyToWorld(BlockPos assemblyPos) {
+        if (ship == null || assemblyPos == null) {
+            return null;
+        }
+        try {
+            return toWorld(assemblyPos);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     /**
      * 耐久到 0：把船坞方块切成 {@code breached}（无碰撞、不可见、保留数据），不删除、不掉落。
      * 修回 >0 时 {@link #tryRepair} 会恢复实体并重扫封口。
@@ -1450,12 +1599,28 @@ public final class VsPilot {
      */
     private static void moveProxy(ServerLevel level, int dx, int dy, int dz) {
         BlockPos sonarTarget = sonarAnchor == null ? null : sonarAnchor.offset(dx, dy, dz);
-        BlockPos pumpTarget = pumpAnchor == null ? null : pumpAnchor.offset(dx, dy, dz);
+        BlockPos reactorTarget = reactorAnchor == null ? null : reactorAnchor.offset(dx, dy, dz);
+        BlockPos engineTarget = engineAnchor == null ? null : engineAnchor.offset(dx, dy, dz);
         boolean sonarSame = sonarTarget != null && sonarTarget.equals(proxyPos)
                 && proxyPos != null && level.getBlockState(proxyPos).is(ModShipBlocks.SONAR_PROXY.get());
-        boolean pumpSame = pumpTarget != null && pumpTarget.equals(pumpProxyPos)
-                && pumpProxyPos != null && level.getBlockState(pumpProxyPos).is(ModShipBlocks.PUMP_PROXY.get());
-        if (sonarSame && pumpSame) {
+        // 每台泵各一个代理：全部都已经在目标位置才算没变。
+        java.util.Map<BlockPos, BlockPos> nextPumpProxies = new java.util.HashMap<>();
+        for (BlockPos anchor : pumpAnchors) {
+            BlockPos target = anchor.offset(dx, dy, dz);
+            BlockPos current = pumpProxyByAnchor.get(anchor);
+            if (target.equals(current) && current != null
+                    && level.getBlockState(current).is(ModShipBlocks.PUMP_PROXY.get())) {
+                nextPumpProxies.put(anchor, current);
+            }
+        }
+        boolean pumpSame = nextPumpProxies.size() == pumpAnchors.size();
+        boolean reactorSame = reactorTarget != null && reactorTarget.equals(reactorProxyPos)
+                && reactorProxyPos != null
+                && level.getBlockState(reactorProxyPos).is(ModShipBlocks.REACTOR_PROXY.get());
+        boolean engineSame = engineTarget != null && engineTarget.equals(engineProxyPos)
+                && engineProxyPos != null
+                && level.getBlockState(engineProxyPos).is(ModShipBlocks.ENGINE_PROXY.get());
+        if (sonarSame && pumpSame && reactorSame && engineSame) {
             return;
         }
         // 两阶段：先撤所有要移动的旧代理，再放新代理。声纳和泵可能相邻，
@@ -1464,10 +1629,32 @@ public final class VsPilot {
             clearProxy(level, proxyPos, ModShipBlocks.SONAR_PROXY.get());
         }
         if (!pumpSame) {
-            clearProxy(level, pumpProxyPos, ModShipBlocks.PUMP_PROXY.get());
+            for (BlockPos old : pumpProxyByAnchor.values()) {
+                clearProxy(level, old, ModShipBlocks.PUMP_PROXY.get());
+            }
+        }
+        if (!reactorSame) {
+            clearProxy(level, reactorProxyPos, ModShipBlocks.REACTOR_PROXY.get());
+        }
+        if (!engineSame) {
+            clearProxy(level, engineProxyPos, ModShipBlocks.ENGINE_PROXY.get());
         }
         proxyPos = sonarSame ? proxyPos : placeProxy(level, sonarTarget, ModShipBlocks.SONAR_PROXY.get());
-        pumpProxyPos = pumpSame ? pumpProxyPos : placeProxy(level, pumpTarget, ModShipBlocks.PUMP_PROXY.get());
+        if (!pumpSame) {
+            nextPumpProxies = new java.util.HashMap<>();
+            for (BlockPos anchor : pumpAnchors) {
+                BlockPos placed = placeProxy(level, anchor.offset(dx, dy, dz),
+                        ModShipBlocks.PUMP_PROXY.get());
+                if (placed != null) {
+                    nextPumpProxies.put(anchor, placed);
+                }
+            }
+        }
+        pumpProxyByAnchor = nextPumpProxies;
+        reactorProxyPos = reactorSame ? reactorProxyPos
+                : placeProxy(level, reactorTarget, ModShipBlocks.REACTOR_PROXY.get());
+        engineProxyPos = engineSame ? engineProxyPos
+                : placeProxy(level, engineTarget, ModShipBlocks.ENGINE_PROXY.get());
     }
 
     private static void clearProxy(ServerLevel level, BlockPos current, Block proxy) {
@@ -1498,15 +1685,32 @@ public final class VsPilot {
             if (proxyPos != null && level.getBlockState(proxyPos).is(ModShipBlocks.SONAR_PROXY.get())) {
                 level.setBlock(proxyPos, Blocks.AIR.defaultBlockState(), 2);
             }
-            if (pumpProxyPos != null
-                    && level.getBlockState(pumpProxyPos).is(ModShipBlocks.PUMP_PROXY.get())) {
-                level.setBlock(pumpProxyPos, Blocks.AIR.defaultBlockState(), 2);
+            if (pumpProxyByAnchor != null) {
+                for (BlockPos pumpProxy : pumpProxyByAnchor.values()) {
+                    if (pumpProxy != null
+                            && level.getBlockState(pumpProxy).is(ModShipBlocks.PUMP_PROXY.get())) {
+                        level.setBlock(pumpProxy, Blocks.AIR.defaultBlockState(), 2);
+                    }
+                }
+            }
+            if (reactorProxyPos != null
+                    && level.getBlockState(reactorProxyPos).is(ModShipBlocks.REACTOR_PROXY.get())) {
+                level.setBlock(reactorProxyPos, Blocks.AIR.defaultBlockState(), 2);
+            }
+            if (engineProxyPos != null
+                    && level.getBlockState(engineProxyPos).is(ModShipBlocks.ENGINE_PROXY.get())) {
+                level.setBlock(engineProxyPos, Blocks.AIR.defaultBlockState(), 2);
             }
         }
         proxyPos = null;
         sonarAnchor = null;
-        pumpProxyPos = null;
-        pumpAnchor = null;
+        pumpAnchors = java.util.List.of();
+        pumpProxyByAnchor = java.util.Map.of();
+        pendingBlockEntityTags = java.util.Map.of();
+        reactorAnchor = null;
+        reactorProxyPos = null;
+        engineAnchor = null;
+        engineProxyPos = null;
     }
 
     /** 水面同步日志节流。 */
@@ -1596,6 +1800,11 @@ public final class VsPilot {
         if (captured.isEmpty()) {
             return "没有船体方块可收";
         }
+        // 方块实体的 NBT（燃料、泵设置、储物）在装配失败回滚时要一起放回去。
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> capturedTags =
+                captureBlockEntityTags(level, captured.keySet());
+        // 装配成功后船坞偏移一确定就装回这些 NBT（VS2 只搬方块状态）。
+        pendingBlockEntityTags = capturedTags;
         // 1b) 这艘船"应该"多重：VS2 自己给每个方块定的质量加起来。
         //     装配后必须拿它对账，否则会出现"船壳被删掉、刚体里只有声纳一格"却报成功。
         double expected = 0.0D;
@@ -1651,19 +1860,20 @@ public final class VsPilot {
             } catch (Throwable error) {
                 trail.append("（删不掉：").append(error).append("）");
             }
-            restoreBlocks(level, captured, 0, 0, 0);
+            restoreBlocks(level, captured, 0, 0, 0, capturedTags);
             if (shipState != null) {
                 shipState.clearWater(level);
             }
         }
         if (assembled == null) {
             // 全部失败：方块已经在每次尝试后铺回原位了，这里再兜一次，确保一格不丢
-            int back = restoreBlocks(level, captured, 0, 0, 0);
+            int back = restoreBlocks(level, captured, 0, 0, 0, capturedTags);
             if (shipState != null) {
                 shipState.clearWater(level);
             }
             String msg = "VS2 装配失败（" + trail + "）。已按快照把 " + back
                     + " 格船体放回原位，船没丢、没进水。重试一次 /barotrauma ship vs launch 通常就好了";
+            pendingBlockEntityTags = java.util.Map.of();
             LOGGER.warn("[vs] {}", msg);
             return msg;
         }
@@ -1716,12 +1926,28 @@ public final class VsPilot {
             proxyPos = sonarAnchor;
             level.setBlock(sonarAnchor, ModShipBlocks.SONAR_PROXY.get().defaultBlockState(), 3);
         }
-        // 4c) 排水泵同理：泵方块被收进刚体后右键不到，放一个不可见锚点。
-        pumpAnchor = findPumpAnchor(captured);
-        pumpProxyPos = null;
-        if (pumpAnchor != null) {
-            pumpProxyPos = pumpAnchor;
+        // 4c) 每台泵各放一个不可见代理：泵方块被收进刚体后右键不到，
+        //     共用一个代理会让小泵/排水泵打开压载泵菜单。
+        pumpAnchors = findPumpAnchors(captured);
+        java.util.Map<BlockPos, BlockPos> pumpProxies = new java.util.HashMap<>();
+        for (BlockPos pumpAnchor : pumpAnchors) {
             level.setBlock(pumpAnchor, ModShipBlocks.PUMP_PROXY.get().defaultBlockState(), 3);
+            pumpProxies.put(pumpAnchor, pumpAnchor);
+        }
+        pumpProxyByAnchor = pumpProxies;
+        // 反应堆同理：18 格机器的主方块位置上放一个不可见锚点。
+        reactorAnchor = findReactorAnchor(captured);
+        reactorProxyPos = null;
+        if (reactorAnchor != null) {
+            reactorProxyPos = reactorAnchor;
+            level.setBlock(reactorAnchor, ModShipBlocks.REACTOR_PROXY.get().defaultBlockState(), 3);
+        }
+        // 引擎：3×2×3 机器的主方块位置放一个不可见锚点。
+        engineAnchor = findEngineAnchor(captured);
+        engineProxyPos = null;
+        if (engineAnchor != null) {
+            engineProxyPos = engineAnchor;
+            level.setBlock(engineAnchor, ModShipBlocks.ENGINE_PROXY.get().defaultBlockState(), 3);
         }
         // 见 unstaticTicks 的注释：装配出来的船默认是静态体，要连推几 tick 才动得起来
         unstaticTicks = 20;
@@ -1770,6 +1996,20 @@ public final class VsPilot {
      */
     static int restoreBlocks(ServerLevel level, Map<BlockPos, BlockState> snapshot,
                              int dx, int dy, int dz) {
+        return restoreBlocks(level, snapshot, dx, dy, dz, Map.of());
+    }
+
+    /**
+     * 同 {@link #restoreBlocks(ServerLevel, Map, int, int, int)}，并把装配快照里的
+     * 方块实体 NBT 一起装回去。
+     *
+     * <p>只铺 BlockState 会新建一个**空的**方块实体：反应堆燃料、泵的自动/流量、
+     * 炉子里的东西、床的主人全没了。用户实测"下潜/靠泊后我放的燃料没了"。
+     * 装配时先把 NBT 存下来，靠泊（或在船坞里读当前 BE）再 load 回去。</p>
+     */
+    static int restoreBlocks(ServerLevel level, Map<BlockPos, BlockState> snapshot,
+                             int dx, int dy, int dz,
+                             Map<BlockPos, net.minecraft.nbt.CompoundTag> blockEntityTags) {
         int placed = 0;
         for (Map.Entry<BlockPos, BlockState> entry : snapshot.entrySet()) {
             BlockPos target = entry.getKey().offset(dx, dy, dz);
@@ -1779,9 +2019,69 @@ public final class VsPilot {
                 continue;
             }
             level.setBlock(target, entry.getValue(), 3);
+            if (blockEntityTags != null && !blockEntityTags.isEmpty()) {
+                net.minecraft.nbt.CompoundTag tag = blockEntityTags.get(entry.getKey());
+                net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(target);
+                if (tag != null && be != null) {
+                    try {
+                        be.load(tag.copy());
+                        be.setChanged();
+                    } catch (Throwable ignored) {
+                        // 单个 BE 读不回来不能让整艘船的还原失败
+                    }
+                }
+            }
             placed++;
         }
         return placed;
+    }
+
+    /** 捕获一组方块位置上的方块实体 NBT（装配前/靠泊前调用）。 */
+    static Map<BlockPos, net.minecraft.nbt.CompoundTag> captureBlockEntityTags(
+            ServerLevel level, java.util.Collection<BlockPos> positions) {
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> tags = new java.util.HashMap<>();
+        for (BlockPos pos : positions) {
+            net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(pos);
+            if (be == null) {
+                continue;
+            }
+            try {
+                tags.put(pos.immutable(), be.saveWithoutMetadata());
+            } catch (Throwable ignored) {
+                // 读不出来就跳过这一格
+            }
+        }
+        return tags;
+    }
+
+    /**
+     * 船坞偏移确定后，把装配前抄的方块实体 NBT 装回船坞里的方块。
+     *
+     * <p>只在第一次得到偏移时执行；装完就清空，避免之后重新装配串数据。</p>
+     */
+    private static void applyPendingBlockEntityTags(ServerLevel level) {
+        if (level == null || pendingBlockEntityTags.isEmpty()
+                || yardOffsetX == Integer.MIN_VALUE) {
+            return;
+        }
+        int applied = 0;
+        for (Map.Entry<BlockPos, net.minecraft.nbt.CompoundTag> entry : pendingBlockEntityTags.entrySet()) {
+            BlockPos yard = entry.getKey().offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+            level.getChunkAt(yard);
+            net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(yard);
+            if (be == null) {
+                continue;
+            }
+            try {
+                be.load(entry.getValue().copy());
+                be.setChanged();
+                applied++;
+            } catch (Throwable ignored) {
+                // 单个 BE 读不回来不能让整船装配失败
+            }
+        }
+        LOGGER.info("[vs] 方块实体 NBT 已装回船坞：{} 格（反应堆燃料/泵设置/储物）", applied);
+        pendingBlockEntityTags = java.util.Map.of();
     }
 
     public static final org.slf4j.Logger LOGGER =
@@ -1842,18 +2142,19 @@ public final class VsPilot {
             if (dockSite == null) {
                 return "离哨站太远：把船开到哨站对接口附近再靠泊";
             }
-            int dockCoreX = dockSite.x() + 1;
-            int dockCoreZ = dockSite.z() - 3;
-            double horizontal = Math.hypot(currentCore.getX() - dockCoreX, currentCore.getZ() - dockCoreZ);
-            if (horizontal > 16.0D || Math.abs(currentCore.getY() - (StarterSub.ORIGIN_Y + 1)) > 6) {
+            boolean newLayout = StarterSub.newLayout(level);
+            BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(dockSite, newLayout);
+            double horizontal = Math.hypot(currentCore.getX() - dockCore.getX(),
+                    currentCore.getZ() - dockCore.getZ());
+            if (horizontal > 16.0D || Math.abs(currentCore.getY() - dockCore.getY()) > 6) {
                 return String.format(Locale.ROOT,
                         "离对接口太远（水平 %.1f 格 / 高度差 %d 格），开到对接口 16 格内再靠泊",
-                        horizontal, Math.abs(currentCore.getY() - (StarterSub.ORIGIN_Y + 1)));
+                        horizontal, Math.abs(currentCore.getY() - dockCore.getY()));
             }
             // 吸附：把核心拉到该站的标准码头核心位
-            int snapX = dockCoreX - currentCore.getX();
-            int snapY = (StarterSub.ORIGIN_Y + 1) - currentCore.getY();
-            int snapZ = dockCoreZ - currentCore.getZ();
+            int snapX = dockCore.getX() - currentCore.getX();
+            int snapY = dockCore.getY() - currentCore.getY();
+            int snapZ = dockCore.getZ() - currentCore.getZ();
             dx += snapX;
             dy += snapY;
             dz += snapZ;
@@ -1861,6 +2162,24 @@ public final class VsPilot {
         }
 
         // 1) 先把刚体从船世界里删掉，但不碰世界方块（VS2 的 deleteShip 参数不是"铺回方块"）
+        // 1b) 删船之前把船坞里方块实体的 NBT 抄下来：只铺 BlockState 会新建空实体，
+        //     反应堆燃料、泵的自动/流量、储物全都会丢（用户实测"我放的燃料没了"）。
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> dockedTags = new java.util.HashMap<>();
+        if (yardOffsetX != Integer.MIN_VALUE) {
+            for (BlockPos original : restore.keySet()) {
+                BlockPos yard = original.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+                level.getChunkAt(yard);
+                net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(yard);
+                if (be == null) {
+                    continue;
+                }
+                try {
+                    dockedTags.put(original.immutable(), be.saveWithoutMetadata());
+                } catch (Throwable ignored) {
+                    // 单格失败不影响其它格
+                }
+            }
+        }
         try {
             VsBridge.discard(level, live);
         } catch (Throwable error) {
@@ -1869,7 +2188,8 @@ public final class VsPilot {
         // 2) 按快照铺回世界。
         com.opamb.barotrauma.ship.water.ShipVolumeGuard.deactivate();
                 removeProxy(level);
-        int placed = restoreBlocks(level, restore, dx, dy, dz);
+        int placed = restoreBlocks(level, restore, dx, dy, dz, dockedTags);
+        pendingBlockEntityTags = java.util.Map.of();
         // 3) 拆回来时那片体积早就被海水灌满了，方块铺回会把水封在舱里——
         //    不排掉的话拆回来的就是"满水的沉船"（隔离自检实测舱内 26 格全是水）
         if (state != null) {
@@ -1960,8 +2280,29 @@ public final class VsPilot {
             Vec3 pos = VsBridge.position(assembled);
             ShipSavedData.get(level).setAssembled(ShipSavedData.AssembledShip.of(
                     assembled.getId(), core, proxyPos, pos, captured, shipState));
+            // 立刻落盘：只在正常存世界时写的话，退出世界时若被 VS2 的区块卸载 bug
+            // 打断（实测 NoSuchElementException），认领记录会丢，物理船变永久孤儿。
+            level.getDataStorage().save();
+            lastRecordFlushGameTime = level.getGameTime();
         } catch (Throwable error) {
             LOGGER.warn("[vs] 写装配认领记录失败：{}", error.toString());
+        }
+    }
+
+    /** 认领记录落盘节流（装配时立即写，之后每 30 秒补写一次位置/耐久）。 */
+    private static long lastRecordFlushGameTime = Long.MIN_VALUE;
+
+    /** 立刻把当前物理船的认领记录落盘（退出世界前调用；只写数据，不碰方块）。 */
+    public static void flushShipRecord(@Nullable ServerLevel level) {
+        if (level == null || ship == null || state == null || corePos == null) {
+            return;
+        }
+        try {
+            syncAssembledRecord(level);
+            level.getDataStorage().save();
+            lastRecordFlushGameTime = level.getGameTime();
+        } catch (Throwable error) {
+            LOGGER.warn("[vs] 认领记录落盘失败：{}", error.toString());
         }
     }
 
@@ -2003,6 +2344,13 @@ public final class VsPilot {
                 // 读不到就保留上一次的已知位置
             }
             data.setDirty();
+            // 每 30 秒补写一次盘：位置/耐久只靠退出时的世界保存，遇到客户端崩溃
+            // 或 VS2 卸载区块异常就会退回装配那一刻的状态。
+            long now = level.getGameTime();
+            if (now - lastRecordFlushGameTime >= 600L) {
+                lastRecordFlushGameTime = now;
+                level.getDataStorage().save();
+            }
         } catch (Throwable error) {
             LOGGER.warn("[vs] 同步装配记录失败：{}", error.toString());
         }
@@ -2257,8 +2605,12 @@ public final class VsPilot {
         sonarAnchor = core;
         proxyPos = record.proxyPos;
         // 泵锚点从装配快照里恢复；实际代理方块由 moveProxy 按当前偏移补放。
-        pumpAnchor = findPumpAnchor(snap);
-        pumpProxyPos = null;
+        pumpAnchors = findPumpAnchors(snap);
+        pumpProxyByAnchor = java.util.Map.of();
+        reactorAnchor = findReactorAnchor(snap);
+        reactorProxyPos = null;
+        engineAnchor = findEngineAnchor(snap);
+        engineProxyPos = null;
         assembledPos = new Vec3(record.x, record.y, record.z);
         lastLevel = level;
         yardOffsetX = Integer.MIN_VALUE;

@@ -33,6 +33,16 @@ public final class ModMenus {
                     (id, inv, buf) -> new com.opamb.barotrauma.menu.PumpMenu(id, inv,
                             buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
 
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.ReactorMenu>> REACTOR =
+            MENUS.register("reactor", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> new com.opamb.barotrauma.menu.ReactorMenu(id, inv,
+                            buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
+
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.EngineMenu>> ENGINE =
+            MENUS.register("engine", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> new com.opamb.barotrauma.menu.EngineMenu(id, inv,
+                            buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
+
     private ModMenus() {
     }
 

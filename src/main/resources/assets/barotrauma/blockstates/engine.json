@@ -1,0 +1,220 @@
+{
+  "variants": {
+    "facing=north,part=front_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=front_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=front_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=front_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=front_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=front_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=middle_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=middle_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=middle_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=middle_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=middle_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=middle_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=back_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=back_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=back_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=back_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=back_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=back_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=front_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=front_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=front_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=front_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=front_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=front_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=middle_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=middle_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=middle_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=middle_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=middle_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=middle_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=back_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=back_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=back_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=back_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=back_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=back_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=front_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=front_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=front_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=front_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=front_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=front_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=middle_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=middle_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=middle_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=middle_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=middle_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=middle_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=back_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=back_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=back_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=back_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=back_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=back_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=front_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=front_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=front_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=front_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=front_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=front_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=middle_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=middle_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=middle_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=middle_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=middle_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=middle_upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=back_lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=back_lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=back_lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=back_upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=back_upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=back_upper_right": {
+      "model": "barotrauma:block/invisible"
+    }
+  }
+}

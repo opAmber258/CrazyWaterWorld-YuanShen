@@ -11,11 +11,14 @@ import java.util.List;
  * 大约 45 秒，和《潜渊症》的手感接近。所有数值都来自 wiki：</p>
  *
  * <ul>
- *   <li>反应堆：最大 5 000 kW；温度阈值 过热 6482 / 熔毁 7965；燃料棒热势 80</li>
+ *   <li>反应堆：5 000 kW，输出/温度由反应堆方块实体每 tick 上报；</li>
  *   <li>制氧机：700 氧/s 供养 1 人；每人 700/s 消耗</li>
  *   <li>水泵：300 kW，最大 600/s；压载舱容量 600/个</li>
- *   <li>引擎：2 000 kW，力 300</li>
+ *   <li>引擎：2 000 kW，推力按供电比例缩放</li>
  * </ul>
+ *
+ * <p><b>硬核供电</b>：船上没有反应堆或反应堆没开机时 {@link #powerRatio()} 为 0，
+ * 推进器和泵都停；有反应堆时按 输出/负载 比例降效。</p>
  *
  * <p>固定步长由调用方给（命令里用 0.1 s），与帧率无关。</p>
  */
@@ -23,7 +26,6 @@ public final class ShipSimulation {
 
     public static final double UNITS_PER_BLOCK = 100.0D;
 
-    private static final double REACTOR_MAX_KW = 5000.0D;
     private static final double O2_PER_GENERATOR = 700.0D;
     private static final double CREW_OXYGEN = 700.0D;
     private static final double PUMP_RATE = 600.0D;
@@ -32,11 +34,7 @@ public final class ShipSimulation {
     /** 声纳台耗电：wiki 的 Navigation Terminal / Sonar Monitor 都是 100。 */
     private static final double SONAR_POWER = 100.0D;
     /** 驾驶台（Nav Terminal 本体）也吃 100；我们把它和声纳合在一台机器上，所以只算一份。 */
-    private static final double ENGINE_POWER = 2000.0D;
     private static final double BALLAST_PER_TANK = 600.0D;
-
-    private static final double OVERHEAT = 6482.0D;
-    private static final double MELTDOWN = 7965.0D;
 
     private final int[] volumes;
     private final double[] water;
@@ -55,13 +53,29 @@ public final class ShipSimulation {
      */
     private static final double SEA_INFLOW_PER_SECOND = 6.0D;
 
-    private double temperature = 3000.0D;
-    private double fission = 0.5D;
-    private double turbine = 0.5D;
-    private int fuelRods = 1;
     private double ballast;
     private double ballastCapacity;
     private boolean pumpOut = true;
+    /** 反应堆上报表：格子 → (输出 kW, 额定 kW, 温度, 过热, 熔毁, 最后上报 tick)。 */
+    private final java.util.Map<net.minecraft.core.BlockPos, ReactorReport> reactors =
+            new java.util.HashMap<>();
+    private long reactorTick;
+    private static final int REACTOR_STALE_TICKS = 40;
+    /** 引擎上报表：格子 → (目标力%, 耗电 kW, 最大推力, 最后上报 tick)。 */
+    private final java.util.Map<net.minecraft.core.BlockPos, EngineReport> engines =
+            new java.util.HashMap<>();
+    private long engineTick;
+    private static final int ENGINE_STALE_TICKS = 40;
+    private int lastEngineCount;
+    private double lastEngineDemand;
+    private double lastEngineMaxForce;
+
+    private record EngineReport(double force, double demandKw, double maxForce, long lastSeen) {
+    }
+
+    private record ReactorReport(double output, double capacity, double temperature,
+                                 boolean overheated, boolean meltingDown, long lastSeen) {
+    }
     /**
      * 排水泵上报表：格子 → (速率, 最后上报 tick)。
      *
@@ -73,8 +87,12 @@ public final class ShipSimulation {
     private long pumpTick;
     private static final int PUMP_STALE_TICKS = 40;
 
-    private record PumpReport(double rate, long lastSeen) {
+    private record PumpReport(double rate, double requestedRate, long lastSeen, boolean ballast,
+                              boolean keepBelowDoor) {
     }
+
+    /** 上一 tick 由压载泵登记为压载舱的水体下标（用于浮力/进水比例）。 */
+    private final java.util.Set<Integer> ballastBodies = new java.util.HashSet<>();
     /** 格子 → 水体下标的缓存；换几何时整个 simulated 对象会重建，缓存自然失效。 */
     private java.util.Map<net.minecraft.core.BlockPos, Integer> bodyIndexOfCell;
     /**
@@ -85,7 +103,10 @@ public final class ShipSimulation {
 
     private double lastOutput;
     private double lastDemand;
-    private double lastRatio = 1.0D;
+    private double lastRatio;
+    private double reactorTemperature;
+    private boolean reactorOverheated;
+    private boolean reactorMeltingDown;
 
     /** 气闸舱室容积（27 格 = 2700 单位）。 */
     private static final double AIRLOCK_VOLUME = 2700.0D;
@@ -140,17 +161,13 @@ public final class ShipSimulation {
     }
 
     /**
-     * 船体破损后重新分舱：保留反应堆/压载/气闸这些"玩家调过的设置"，
-     * 只重建舱室水量数组。否则砸一个洞就会把压载和反应堆输出全部清零。
+     * 船体破损后重新分舱：保留压载/气闸这些"玩家调过的设置"，
+     * 只重建舱室水量数组。反应堆状态在方块实体里，不跟着 ShipSimulation 重建丢失。
      */
     public void copySettingsFrom(ShipSimulation old) {
         if (old == null) {
             return;
         }
-        this.temperature = old.temperature;
-        this.fission = old.fission;
-        this.turbine = old.turbine;
-        this.fuelRods = old.fuelRods;
         this.ballast = old.ballast;
         this.ballastCapacity = old.ballastCapacity;
         this.pumpOut = old.pumpOut;
@@ -229,23 +246,71 @@ public final class ShipSimulation {
 
     /** 推进一个时间步（秒）。 */
     public void tick(double dt) {
-        double output = machines.reactor() * REACTOR_MAX_KW * turbine;
-        double demand = machines.pump() * PUMP_POWER
+        // 反应堆：方块实体每 tick 上报；超过 40 tick 没上报视为已经拆掉。
+        reactorTick++;
+        double reactorOutput = 0.0D;
+        double reactorCapacity = 0.0D;
+        double temperature = 0.0D;
+        boolean overheated = false;
+        boolean meltingDown = false;
+        var reactorIterator = reactors.entrySet().iterator();
+        while (reactorIterator.hasNext()) {
+            var entry = reactorIterator.next();
+            ReactorReport report = entry.getValue();
+            if (reactorTick - report.lastSeen() > REACTOR_STALE_TICKS) {
+                reactorIterator.remove();
+                continue;
+            }
+            reactorOutput += report.output();
+            reactorCapacity += report.capacity();
+            temperature = Math.max(temperature, report.temperature());
+            overheated |= report.overheated();
+            meltingDown |= report.meltingDown();
+        }
+        reactorTemperature = temperature;
+        reactorOverheated = overheated;
+        reactorMeltingDown = meltingDown;
+
+        // 引擎：方块实体每 tick 上报；多台相加。没有引擎时 engineCount=0，推进由 VsThruster 关掉。
+        engineTick++;
+        int engineCount = 0;
+        double engineDemand = 0.0D;
+        double engineMaxForce = 0.0D;
+        var engineIterator = engines.entrySet().iterator();
+        while (engineIterator.hasNext()) {
+            var entry = engineIterator.next();
+            EngineReport report = entry.getValue();
+            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS) {
+                engineIterator.remove();
+                continue;
+            }
+            engineCount++;
+            engineDemand += report.demandKw();
+            engineMaxForce += report.maxForce();
+        }
+        lastEngineCount = engineCount;
+        lastEngineDemand = engineDemand;
+        lastEngineMaxForce = engineMaxForce;
+
+        // 只在真正抽/注水的泵算负载；停机待命的泵不吃电。
+        int activePumps = 0;
+        for (PumpReport pump : pumps.values()) {
+            if (Math.abs(pump.requestedRate()) > 1.0E-6D) {
+                activePumps++;
+            }
+        }
+        double demand = activePumps * PUMP_POWER
                 + machines.oxygen() * O2_POWER
                 + machines.sonar() * SONAR_POWER
                 + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER)
-                + machines.engine() * ENGINE_POWER * 0.5D;
-        double ratio = demand <= 0.0D ? 1.0D : Math.min(1.0D, output / demand);
-        lastOutput = output;
+                + engineDemand;
+        // 硬核：没堆 / 没开机 / 输出为 0 → 全船没电，推进和泵都停。
+        boolean hasReactor = reactorCapacity > 0.0D;
+        double ratio = !hasReactor || reactorOutput <= 0.0D ? 0.0D
+                : demand <= 0.0D ? 1.0D : Math.min(1.0D, reactorOutput / demand);
+        lastOutput = reactorOutput;
         lastDemand = demand;
         lastRatio = ratio;
-
-        // 温度：裂变产热 - 涡轮带走的热 - 自然散热
-        double heatIn = fission * 80.0D * fuelRods * 2.0D * machines.reactor();
-        double heatOut = turbine * REACTOR_MAX_KW * 0.02D * machines.reactor();
-        temperature += (heatIn - heatOut) * dt;
-        temperature -= Math.max(0.0D, temperature - 2000.0D) * 0.0015D * dt;
-        temperature = Mth.clamp(temperature, 0.0D, 12000.0D);
 
         // 制氧：按舱室体积分配
         int totalVolume = 0;
@@ -286,10 +351,12 @@ public final class ShipSimulation {
         // 的水泵不归它管）。旧实现是把全船的水按顺序抽一遍，用户实测"门关着水还能
         // 被泵出去"。水泵位置由方块实体每 tick 报上来（物理船是装配坐标）。
         pumpTick++;
-        // 原版泵的 FlowPercentage：负值泵出、正值泵入、0 停机。同舱多台泵分别汇总后
-        // 再结算，避免"一台泵入一台泵出"互相抵消成不动作。
+        // 带符号流量：**正值泵出、负值泵入、0 停机**（和 ShipDrainPumpTest 一致）。
+        // 同舱多台泵分别汇总后再结算，避免"一台泵入一台泵出"互相抵消成不动作。
         java.util.Map<Integer, Double> pumpOutRates = new java.util.HashMap<>();
         java.util.Map<Integer, Double> pumpInRates = new java.util.HashMap<>();
+        java.util.Set<Integer> ballastBodies = new java.util.HashSet<>();
+        java.util.Set<Integer> keepBelowDoorBodies = new java.util.HashSet<>();
         var pumpIterator = pumps.entrySet().iterator();
         while (pumpIterator.hasNext()) {
             var entry = pumpIterator.next();
@@ -298,11 +365,15 @@ public final class ShipSimulation {
                 pumpIterator.remove();
                 continue;
             }
-            if (report.rate() == 0.0D) {
-                continue;
-            }
             int body = pumpBody(entry.getKey());
-            if (body < 0) {
+            // 压载泵停机时也要登记舱室，否则水位不变时浮力会突然归零。
+            if (report.ballast() && body >= 0) {
+                ballastBodies.add(body);
+            }
+            if (report.keepBelowDoor() && body >= 0) {
+                keepBelowDoorBodies.add(body);
+            }
+            if (report.rate() == 0.0D || body < 0) {
                 continue;
             }
             if (report.rate() > 0.0D) {
@@ -318,12 +389,36 @@ public final class ShipSimulation {
             }
         }
         for (var entry : pumpInRates.entrySet()) {
-            double room = Math.max(0.0D, bodyCapacity(entry.getKey()) - bodyWater(entry.getKey()));
+            int body = entry.getKey();
+            double room = Math.max(0.0D, bodyCapacity(body) - bodyWater(body));
             double add = Math.min(room, entry.getValue() * dt);
+            if (keepBelowDoorBodies.contains(body)) {
+                // 压载舱注水上限：水面到最近的舱门/舱口下方那一格为止。
+                double limit = doorBottomLevel(body);
+                if (bodyLevel(body) >= limit) {
+                    continue;
+                }
+                double capUnits = unitsBelowLevel(body, limit);
+                add = Math.min(add, Math.max(0.0D, capUnits - bodyWater(body)));
+            }
             if (add > 0.0D) {
-                addBodyWater(entry.getKey(), add);
+                addBodyWater(body, add);
             }
         }
+
+        // 压载舱 = 压载泵所在舱；水量/容量直接喂给 VsThruster 的浮力因子。
+        // 旧版 machines.pump() 的全局压载分支已经没人计数（MachineCount 恒 0），
+        // 这里以实际压载舱为准覆盖它。
+        this.ballastBodies.clear();
+        this.ballastBodies.addAll(ballastBodies);
+        double ballastWater = 0.0D;
+        double ballastCapacity = 0.0D;
+        for (int body : ballastBodies) {
+            ballastWater += bodyWater(body);
+            ballastCapacity += bodyCapacity(body);
+        }
+        this.ballast = ballastWater;
+        this.ballastCapacity = ballastCapacity;
 
         // 气闸：抽干 / 注水，完成后自动回到 CLOSED（此时另一侧门才允许开）
         if (airlockPhase == AirlockPhase.DRAINING) {
@@ -422,6 +517,45 @@ public final class ShipSimulation {
         return 0;
     }
 
+    /**
+     * 这个水体里最低的舱门/舱口格的下沿 Y（水面不能高过它）。
+     *
+     * <p>压载舱注水上限：水面到"舱门下方那一格"的顶面为止，也就是舱门所在格
+     * 的底面 Y。没有门就返回 {@link Double#MAX_VALUE}（不限制）。</p>
+     */
+    private double doorBottomLevel(int body) {
+        double limit = Double.MAX_VALUE;
+        for (ShipGeometry.DoorLink link : geometry.doorLinks()) {
+            if (link.body() == body || link.other() == body) {
+                limit = Math.min(limit, link.cell().getY());
+            }
+        }
+        return limit;
+    }
+
+    /** 水面到 {@code surfaceY} 时需要多少单位水（只累计该水位以下的整格）。 */
+    private double unitsBelowLevel(int body, double surfaceY) {
+        List<ShipGeometry.Compartment> sealed = geometry.compartments();
+        java.util.Collection<net.minecraft.core.BlockPos> cells;
+        if (body >= 0 && body < sealed.size()) {
+            cells = sealed.get(body).cells();
+        } else {
+            int pocket = body - sealed.size();
+            List<ShipGeometry.Compartment> pockets = geometry.openPockets();
+            if (pocket < 0 || pocket >= pockets.size()) {
+                return 0.0D;
+            }
+            cells = pockets.get(pocket).cells();
+        }
+        double units = 0.0D;
+        for (net.minecraft.core.BlockPos cell : cells) {
+            if (cell.getY() < surfaceY) {
+                units += UNITS_PER_BLOCK;
+            }
+        }
+        return units;
+    }
+
     /** 第 body 个水体现在的水量（单位）。 */
     public double bodyWater(int body) {
         if (body >= 0 && body < water.length) {
@@ -432,6 +566,17 @@ public final class ShipSimulation {
             return pocketWater[pocket];
         }
         return 0.0D;
+    }
+
+    /**
+     * 自动泵的水传感器语义：这个水体里有没有积水。
+     *
+     * <p>不能拿 {@link #bodyLevel(int)} 和 0.05 比——它返回的是**绝对 Y 坐标**
+     * （深海是 -70 以下），永远小于 0.05，自动泵就永远不会启动。用"水量 &gt; 5 单位
+     * （0.05 格）"判断才和"舱里有水"一致。</p>
+     */
+    public boolean bodyIsWet(int body) {
+        return body >= 0 && bodyWater(body) >= UNITS_PER_BLOCK * 0.05D;
     }
 
     /**
@@ -453,6 +598,12 @@ public final class ShipSimulation {
             }
             int a = link.body();
             int b = link.other();
+            // 门格开在船壳外表面上：另一侧是外海，按无限水源往舱里灌。
+            // 之前没有这条连线，打开顶舱口/底舱口完全不进水（用户实测）。
+            if (a == ShipGeometry.SEA_BODY || b == ShipGeometry.SEA_BODY) {
+                floodFromSea(a == ShipGeometry.SEA_BODY ? b : a, dt);
+                continue;
+            }
             double la = levels.computeIfAbsent(a, this::bodyLevel);
             double lb = levels.computeIfAbsent(b, this::bodyLevel);
             double diff = la - lb;
@@ -475,6 +626,22 @@ public final class ShipSimulation {
             addBodyWater(low, units);
             levels.put(high, bodyLevel(high));
             levels.put(low, bodyLevel(low));
+        }
+    }
+
+    /**
+     * 外海 → 舱室：门开在船壳外表面时，按门流量往舱里灌，直到灌满。
+     * 外海是无限水源，不需要从任何水体里扣水。
+     */
+    private void floodFromSea(int body, double dt) {
+        double capacity = bodyCapacity(body);
+        double current = bodyWater(body);
+        if (capacity <= 0.0D || current >= capacity - 0.05D) {
+            return;
+        }
+        double units = Math.min(capacity - current, DOOR_FLOW_PER_CELL * dt);
+        if (units > 0.05D) {
+            addBodyWater(body, units);
         }
     }
 
@@ -558,11 +725,41 @@ public final class ShipSimulation {
      * （往本舱注水），0 停机。</p>
      */
     public void reportPump(net.minecraft.core.BlockPos cell, double rate) {
+        reportPump(cell, rate, false);
+    }
+
+    /**
+     * 同上；{@code ballast=true} 时把这台泵所在的舱室登记成压载舱，
+     * 舱内水量进 {@link #ballastPercent()}（浮力因子），并从进水比例里扣除。
+     */
+    public void reportPump(net.minecraft.core.BlockPos cell, double rate, boolean ballast) {
+        reportPump(cell, rate, ballast, rate);
+    }
+
+    /**
+     * 带"请求流量"的版本：{@code rate} 是供电降效后的实际流量，{@code requestedRate}
+     * 是泵想跑的流量——电力负载按请求值算，避免"没电 → 泵不转 → 负载归零 → 又有电"
+     * 的循环抖动。
+     */
+    public void reportPump(net.minecraft.core.BlockPos cell, double rate, boolean ballast,
+                           double requestedRate) {
+        reportPump(cell, rate, ballast, requestedRate, false);
+    }
+
+    /**
+     * @param keepBelowDoor 注水时最多注到最近的舱门/舱口下方那一格（压载舱用，
+     *                      避免水漫过舱门灌进上层舱室）
+     */
+    public void reportPump(net.minecraft.core.BlockPos cell, double rate, boolean ballast,
+                           double requestedRate, boolean keepBelowDoor) {
         if (cell == null) {
             return;
         }
-        pumps.put(cell.immutable(),
-                new PumpReport(Mth.clamp(rate, -3000.0D, 3000.0D), pumpTick));
+        pumps.put(cell.immutable(), new PumpReport(
+                // 单台普通泵按原版换算后是 ~14062 单位/秒，旧上限 3000 会把它削到 1/5
+                Mth.clamp(rate, -30000.0D, 30000.0D),
+                Mth.clamp(requestedRate, -30000.0D, 30000.0D),
+                pumpTick, ballast, keepBelowDoor));
     }
 
     /**
@@ -627,21 +824,53 @@ public final class ShipSimulation {
         return total;
     }
 
-    /** 设置裂变率 / 涡轮输出（0..1）。 */
-    public void setFission(double fission) {
-        this.fission = Mth.clamp(fission, 0.0D, 1.0D);
+    /** 反应堆方块实体每 tick 上报一次。 */
+    public void reportReactor(net.minecraft.core.BlockPos cell, double outputKw, double capacityKw,
+                              double temperature, boolean overheated, boolean meltingDown) {
+        if (cell == null) {
+            return;
+        }
+        reactors.put(cell.immutable(), new ReactorReport(
+                Math.max(0.0D, outputKw), Math.max(0.0D, capacityKw),
+                Math.max(0.0D, temperature), overheated, meltingDown, reactorTick));
     }
 
-    public void setTurbine(double turbine) {
-        this.turbine = Mth.clamp(turbine, 0.0D, 1.0D);
+    /** 引擎方块实体每 tick 上报一次：目标力（0..100%）、耗电、最大推力。 */
+    public void reportEngine(net.minecraft.core.BlockPos cell, double force,
+                             double demandKw, double maxForce) {
+        if (cell == null) {
+            return;
+        }
+        engines.put(cell.immutable(), new EngineReport(
+                Mth.clamp(force, 0.0D, 100.0D),
+                Math.max(0.0D, demandKw),
+                Math.max(0.0D, maxForce),
+                engineTick));
     }
 
-    public double fission() {
-        return fission;
+    /** 上一 tick 登记的引擎数量（诊断/推进倍率用）。 */
+    public int engineCount() {
+        return lastEngineCount;
     }
 
-    public double turbine() {
-        return turbine;
+    /** 上一 tick 的引擎总耗电（kW）。 */
+    public double engineDemandKw() {
+        return lastEngineDemand;
+    }
+
+    /** 上一 tick 的引擎总最大推力（诊断用）。 */
+    public double engineMaxForce() {
+        return lastEngineMaxForce;
+    }
+
+    /** 全船供电比例（0..1）：0 = 没堆/没开机，泵和推进器都不动。 */
+    public double powerRatio() {
+        return lastRatio;
+    }
+
+    /** 当前登记的反应堆数量（诊断/测试用）。 */
+    public int reactorCount() {
+        return reactors.size();
     }
 
     public boolean pumpOut() {
@@ -694,11 +923,21 @@ public final class ShipSimulation {
         return ballastCapacity <= 0.0D ? 0.0D : ballast / ballastCapacity;
     }
 
+    /** 压载舱当前水量（单位）。 */
+    public double ballastUnits() {
+        return ballast;
+    }
+
+    /** 压载舱总容量（单位）。 */
+    public double ballastCapacityUnits() {
+        return ballastCapacity;
+    }
+
     public Report report() {
-        return new Report(temperature, lastOutput, lastDemand, lastRatio,
+        return new Report(reactorTemperature, lastOutput, lastDemand, lastRatio,
                 oxygenPercent(), waterUnits(), ballastPercent(), ballast, ballastCapacity,
                 airlockPhase, airlockWater / AIRLOCK_VOLUME, airlockCycles,
-                temperature >= OVERHEAT, temperature >= MELTDOWN);
+                reactorOverheated, reactorMeltingDown);
     }
 
     /** 一次模拟快照。 */

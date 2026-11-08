@@ -167,11 +167,36 @@ public final class DockingBay {
         ensureHatchRow(level, Site.MAIN, MID_HATCH_Y);
     }
 
+    /**
+     * 某个站点「靠泊标准位」的核心坐标。
+     *
+     * <p>旧布局（9×5×15 小艇）核心在站原点 (+1, -72, −3)；新布局「儒艮号」
+     * 旋转 90° 后核心在 (+6, −72, 0)。靠泊吸附、声纳对接判定必须用同一套坐标，
+     * 否则新船会被吸到旧船的码头位上，舱口对不上、看起来就是「对接对歪了」。</p>
+     */
+    public static BlockPos dockCore(Site site, boolean newLayout) {
+        if (newLayout) {
+            return new BlockPos(site.x() + StarterSub.NEW_CORE_OFFSET_X,
+                    StarterSub.NEW_CORE_OFFSET_Y,
+                    site.z() + StarterSub.NEW_CORE_OFFSET_Z);
+        }
+        return new BlockPos(site.x() + StarterSub.ORIGIN_X + 5,
+                StarterSub.ORIGIN_Y + 1,
+                site.z() + StarterSub.ORIGIN_Z + 4);
+    }
+
     /** 是不是初始潜艇在码头的位置（核心 x/z 相对站点固定，y 覆盖新旧几版）。 */
     public static boolean isDockedCore(BlockPos core) {
         Site site = siteAt(core.getX(), core.getZ());
-        return site != null
-                && core.getX() == site.x() + 1
+        if (site == null) {
+            return false;
+        }
+        // 新世界：儒艮号挂在站下方，核心在 (site,-72,-6)。
+        if (core.equals(StarterSub.newCorePos(site.x(), site.z()))) {
+            return true;
+        }
+        // 旧出生潜艇在码头里的几版位置。
+        return core.getX() == site.x() + 1
                 && core.getZ() == site.z() - 3
                 && core.getY() >= StarterSub.LEGACY_ORIGIN_Y + 1
                 && core.getY() <= StarterSub.ORIGIN_Y + 1;
