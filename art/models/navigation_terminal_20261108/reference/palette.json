@@ -1,0 +1,146 @@
+{
+  "size": [
+    128,
+    128
+  ],
+  "mode": "RGBA",
+  "style": "neutral aged grey-green housing around #5F6058 with charcoal functional parts; restrained wear; deterministic one-pixel details; no noise or gradients",
+  "colors": {
+    "case_dark": "#454842",
+    "case_mid": "#5f6058",
+    "case_light": "#74766d",
+    "edge": "#85877b",
+    "seam": "#2e332f",
+    "steel": "#4c514b",
+    "steel_light": "#696d65",
+    "screen": "#182223",
+    "screen_hi": "#2b3836",
+    "screen_grid": "#2c3d38",
+    "screen_line": "#43594e",
+    "phosphor": "#7f9682",
+    "phosphor_dim": "#566d5e",
+    "amber": "#aa9c70",
+    "amber_dark": "#6c684f",
+    "cable": "#202522",
+    "key": "#686a60",
+    "key_light": "#808278",
+    "key_dark": "#424640",
+    "wear": "#696b60"
+  },
+  "regions": {
+    "main_sonar": [
+      0,
+      0,
+      56,
+      36
+    ],
+    "aux_screen": [
+      60,
+      0,
+      88,
+      20
+    ],
+    "meter": [
+      92,
+      0,
+      108,
+      10
+    ],
+    "dial": [
+      112,
+      0,
+      128,
+      16
+    ],
+    "top_cap": [
+      0,
+      36,
+      96,
+      48
+    ],
+    "keyboard_front_lip": [
+      0,
+      48,
+      96,
+      60
+    ],
+    "rear_service_panel": [
+      0,
+      60,
+      80,
+      104
+    ],
+    "keyboard_deck": [
+      0,
+      108,
+      80,
+      128
+    ],
+    "vent": [
+      80,
+      16,
+      96,
+      32
+    ],
+    "side_console_front": [
+      96,
+      16,
+      112,
+      32
+    ],
+    "neutral_metal": [
+      112,
+      16,
+      128,
+      40
+    ],
+    "dark_steel": [
+      80,
+      32,
+      96,
+      56
+    ],
+    "bright_trim": [
+      96,
+      32,
+      112,
+      56
+    ],
+    "deep_metal": [
+      112,
+      40,
+      128,
+      64
+    ],
+    "cable": [
+      80,
+      56,
+      96,
+      80
+    ],
+    "aux_backplate": [
+      96,
+      56,
+      112,
+      80
+    ],
+    "secondary_metal": [
+      112,
+      64,
+      128,
+      88
+    ],
+    "side_console_top": [
+      80,
+      80,
+      96,
+      104
+    ],
+    "key_controls": [
+      96,
+      80,
+      112,
+      104
+    ]
+  }
+}

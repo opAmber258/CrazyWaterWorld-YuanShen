@@ -1,0 +1,152 @@
+{
+ "asset": "navigation_terminal",
+ "date": "2026-11-08",
+ "status": "blockbench_checked_and_exported",
+ "minecraft_client_tested": false,
+ "game_code_modified": false,
+ "source": {
+  "game": "Barotrauma",
+  "item_id": "navterminal",
+  "xml": "F:/SteamLibrary/steamapps/common/Barotrauma/Content/Items/Command/command.xml",
+  "sprite_sheet": "CommandDevices.png",
+  "source_rect": [
+   0,
+   0,
+   384,
+   304
+  ],
+  "item_scale": 0.5,
+  "conversion": "K = 0.5 * 28.8 / 242.25 = 0.0594427 BB/px"
+ },
+ "dimensions": {
+  "units": "Blockbench units (16 BB = 1 block)",
+  "width_bb": 48.0,
+  "height_bb": 38.0009,
+  "depth_bb": 16.1921,
+  "width_blocks": 3.0,
+  "height_blocks": 2.3751,
+  "depth_blocks": 1.012,
+  "bbox": {
+   "min": [
+    -24.0,
+    0.0,
+    -8.0961
+   ],
+   "max": [
+    24.0,
+    38.0008,
+    8.0961
+   ]
+  },
+  "front": "+Z",
+  "ground_y": 0,
+  "centered_xz": true,
+  "depth_status": "artistic_inference"
+ },
+ "model": {
+  "format": "Bedrock Entity",
+  "format_version": "1.12.0",
+  "identifier": "geometry.navigation_terminal",
+  "cubes": 40,
+  "bones": 8,
+  "declared_faces": 240,
+  "rotated_cubes": 0,
+  "texture": {
+   "file": "navigation_terminal_tex.png",
+   "width": 128,
+   "height": 128,
+   "mode": "RGBA"
+  },
+  "uv": "per-face",
+  "animations": 0,
+  "particles": 0,
+  "emissive": false,
+  "groups": [
+   "navigation_terminal",
+   "housing",
+   "main_display",
+   "auxiliary_panel",
+   "keyboard",
+   "side_controls",
+   "cable_harness",
+   "mounting_brackets"
+  ]
+ },
+ "checks": {
+  "visual": {
+   "views": [
+    "front",
+    "side",
+    "oblique",
+    "back"
+   ],
+   "files": [
+    "preview_front.png",
+    "preview_side.png",
+    "preview_oblique.png",
+    "preview_back.png"
+   ],
+   "result": "No obvious missing faces, abnormal occlusion, or grounding issues observed in Blockbench."
+  },
+  "export": {
+   "geometry_count": 1,
+   "identifier_exact": true,
+   "geometry_geometry_prefix_present": false,
+   "cube_count": 40,
+   "bone_count": 8,
+   "animation_files": [],
+   "per_face_uv_rectangles_checked": 240,
+   "uv_range": [
+    0,
+    128
+   ],
+   "uv_out_of_range": 0
+  },
+  "generic_structure_audit": {
+   "file": "structure_audit.json",
+   "profile": "generic",
+   "structural_errors_absent": true,
+   "dependencies_complete": true,
+   "errors": 0,
+   "warnings": 240,
+   "warning_code": "uv_outside_texture",
+   "note": "The generic audit reads bbmodel texture uv_width/uv_height metadata as 16. Project and Bedrock export resolution are 128x128; all 240 exported per-face UV rectangles were separately checked against 0..128. Warnings are preserved."
+  }
+ },
+ "faithful_features": [
+  "main sonar display",
+  "auxiliary display",
+  "dual gauges",
+  "switch area",
+  "wide keyboard",
+  "side consoles",
+  "cable harness",
+  "mounting brackets",
+  "low-saturation grey-green aged metal housing near #5F6058, dark functional components, restrained wear, and sparse warm gauge accents"
+ ],
+ "inferred_features": [
+  "7.7 BB depth",
+  "side surfaces",
+  "rear service covers, ventilation, fasteners and lower cable channel",
+  "occluded regions",
+  "rear cable and bracket connections"
+ ],
+ "not_verified": [
+  "Minecraft / GeckoLib in-game rendering",
+  "resource-pack integration",
+  "collision and interaction",
+  "client performance"
+ ],
+ "revision": {
+  "scope": "texture_only",
+  "geometry_changed": false,
+  "uv_changed": false,
+  "keyboard_length_changed": false,
+  "rear_structure_changed": false,
+  "housing_palette": "low-saturation grey-green aged metal near #5F6058",
+  "dark_components_retained": true,
+  "warm_accents": "sparse gauge details only",
+  "coarse_noise_restored": false
+ },
+ "scale_note": "2026-11-08 终态：等比放大至三格宽（X=48.0，相对原始版 x2.102863），X 居中 -24..24、Z 居中、Y 贴地；UV/贴图/细节未改动。检测到 bbmodel 曾被外部 Z 向移动 -2.0，已随居中要求修正。存档链：原始版 _archive/navigation_terminal_x1_pre_scale_20261108；两格版 _archive/navigation_terminal_x2_pre_scale_20261108"
+}

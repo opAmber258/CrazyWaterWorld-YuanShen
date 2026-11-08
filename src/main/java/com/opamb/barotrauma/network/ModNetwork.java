@@ -62,6 +62,9 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(MedicalDebugPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(MedicalDebugPacket::encode).decoder(MedicalDebugPacket::decode)
                 .consumerNetworkThread(MedicalDebugPacket::handle).add();
+        CHANNEL.messageBuilder(CthulhuGazePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(CthulhuGazePacket::encode).decoder(CthulhuGazePacket::decode)
+                .consumerNetworkThread(CthulhuGazePacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

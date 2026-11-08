@@ -1,0 +1,3886 @@
+{
+  "path": "F:\\BarotraumaMinecraft\\CrazyWaterWorld-YuanShen\\art\\models\\navigation_terminal_20261108\\navigation_terminal.bbmodel",
+  "profile": "generic",
+  "kind": "bbmodel",
+  "structural_errors_absent": true,
+  "dependencies_complete": true,
+  "counts": {
+    "elements": 40,
+    "plane_elements": 0,
+    "inverted_elements": 0,
+    "rotated_elements": 0,
+    "declared_export_faces": 240
+  },
+  "textures": {
+    "0": {
+      "size": [
+        128,
+        128
+      ],
+      "pixels": 16384,
+      "rgba_base_bytes": 65536,
+      "transparent_pixels": 0,
+      "partial_alpha_pixels": 0,
+      "frame_size": [
+        128,
+        128
+      ],
+      "frame_count": 1,
+      "animation_metadata_checked": false,
+      "uv_size": [
+        16,
+        16
+      ]
+    }
+  },
+  "texture_pixels": 16384,
+  "errors": [],
+  "warnings": [
+    {
+      "code": "uv_outside_texture",
+      "where": "0:main_shell/north",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "0:main_shell/east",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "0:main_shell/south",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "0:main_shell/west",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "0:main_shell/up",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "0:main_shell/down",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "1:rear_service_panel/north",
+      "detail": {
+        "uv": [
+          56,
+          104,
+          72,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "1:rear_service_panel/east",
+      "detail": {
+        "uv": [
+          56,
+          104,
+          72,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "1:rear_service_panel/south",
+      "detail": {
+        "uv": [
+          56,
+          104,
+          72,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "1:rear_service_panel/west",
+      "detail": {
+        "uv": [
+          56,
+          104,
+          72,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "1:rear_service_panel/up",
+      "detail": {
+        "uv": [
+          56,
+          104,
+          72,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "1:rear_service_panel/down",
+      "detail": {
+        "uv": [
+          56,
+          104,
+          72,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "2:top_cap/north",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "2:top_cap/east",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "2:top_cap/south",
+      "detail": {
+        "uv": [
+          0,
+          40,
+          96,
+          52
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "2:top_cap/west",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "2:top_cap/up",
+      "detail": {
+        "uv": [
+          0,
+          40,
+          96,
+          52
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "2:top_cap/down",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "3:bottom_rail/north",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "3:bottom_rail/east",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "3:bottom_rail/south",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "3:bottom_rail/west",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "3:bottom_rail/up",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "3:bottom_rail/down",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "4:top_vent/north",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "4:top_vent/east",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "4:top_vent/south",
+      "detail": {
+        "uv": [
+          88,
+          56,
+          104,
+          72
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "4:top_vent/west",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "4:top_vent/up",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "4:top_vent/down",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "5:sonar_screen/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "5:sonar_screen/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "5:sonar_screen/south",
+      "detail": {
+        "uv": [
+          0,
+          0,
+          56,
+          36
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "5:sonar_screen/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "5:sonar_screen/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "5:sonar_screen/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "6:screen_bezel_left/north",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "6:screen_bezel_left/east",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "6:screen_bezel_left/south",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "6:screen_bezel_left/west",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "6:screen_bezel_left/up",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "6:screen_bezel_left/down",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "7:screen_bezel_right/north",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "7:screen_bezel_right/east",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "7:screen_bezel_right/south",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "7:screen_bezel_right/west",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "7:screen_bezel_right/up",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "7:screen_bezel_right/down",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "8:screen_bezel_top/north",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "8:screen_bezel_top/east",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "8:screen_bezel_top/south",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "8:screen_bezel_top/west",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "8:screen_bezel_top/up",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "8:screen_bezel_top/down",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "9:screen_bezel_bottom/north",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "9:screen_bezel_bottom/east",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "9:screen_bezel_bottom/south",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "9:screen_bezel_bottom/west",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "9:screen_bezel_bottom/up",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "9:screen_bezel_bottom/down",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "10:aux_backplate/north",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "10:aux_backplate/east",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "10:aux_backplate/south",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "10:aux_backplate/west",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "10:aux_backplate/up",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "10:aux_backplate/down",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "11:aux_screen/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "11:aux_screen/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "11:aux_screen/south",
+      "detail": {
+        "uv": [
+          60,
+          0,
+          88,
+          20
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "11:aux_screen/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "11:aux_screen/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "11:aux_screen/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "12:meter_upper/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "12:meter_upper/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "12:meter_upper/south",
+      "detail": {
+        "uv": [
+          92,
+          0,
+          108,
+          10
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "12:meter_upper/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "12:meter_upper/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "12:meter_upper/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "13:meter_lower/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "13:meter_lower/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "13:meter_lower/south",
+      "detail": {
+        "uv": [
+          92,
+          0,
+          108,
+          10
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "13:meter_lower/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "13:meter_lower/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "13:meter_lower/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "14:aux_vent_panel/north",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "14:aux_vent_panel/east",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "14:aux_vent_panel/south",
+      "detail": {
+        "uv": [
+          88,
+          56,
+          104,
+          72
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "14:aux_vent_panel/west",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "14:aux_vent_panel/up",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "14:aux_vent_panel/down",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "15:dial_base/north",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "15:dial_base/east",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "15:dial_base/south",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "15:dial_base/west",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "15:dial_base/up",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "15:dial_base/down",
+      "detail": {
+        "uv": [
+          88,
+          104,
+          104,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "16:dial_step_horizontal/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "16:dial_step_horizontal/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "16:dial_step_horizontal/south",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "16:dial_step_horizontal/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "16:dial_step_horizontal/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "16:dial_step_horizontal/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "17:dial_step_vertical/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "17:dial_step_vertical/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "17:dial_step_vertical/south",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "17:dial_step_vertical/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "17:dial_step_vertical/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "17:dial_step_vertical/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "18:dial_grip/north",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "18:dial_grip/east",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "18:dial_grip/south",
+      "detail": {
+        "uv": [
+          112,
+          0,
+          128,
+          16
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "18:dial_grip/west",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "18:dial_grip/up",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "18:dial_grip/down",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "19:keyboard_deck/north",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "19:keyboard_deck/east",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "19:keyboard_deck/south",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "19:keyboard_deck/west",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "19:keyboard_deck/up",
+      "detail": {
+        "uv": [
+          0,
+          68,
+          80,
+          84
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "19:keyboard_deck/down",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "20:keyboard_front_lip/north",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "20:keyboard_front_lip/east",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "20:keyboard_front_lip/south",
+      "detail": {
+        "uv": [
+          0,
+          88,
+          96,
+          100
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "20:keyboard_front_lip/west",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "20:keyboard_front_lip/up",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "20:keyboard_front_lip/down",
+      "detail": {
+        "uv": [
+          40,
+          104,
+          56,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "21:left_key_field/north",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "21:left_key_field/east",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "21:left_key_field/south",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "21:left_key_field/west",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "21:left_key_field/up",
+      "detail": {
+        "uv": [
+          0,
+          68,
+          32,
+          84
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "21:left_key_field/down",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "22:right_key_field/north",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "22:right_key_field/east",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "22:right_key_field/south",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "22:right_key_field/west",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "22:right_key_field/up",
+      "detail": {
+        "uv": [
+          48,
+          68,
+          80,
+          84
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "22:right_key_field/down",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "23:center_control_strip/north",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "23:center_control_strip/east",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "23:center_control_strip/south",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "23:center_control_strip/west",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "23:center_control_strip/up",
+      "detail": {
+        "uv": [
+          32,
+          68,
+          48,
+          84
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "23:center_control_strip/down",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "24:keyboard_support_left/north",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "24:keyboard_support_left/east",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "24:keyboard_support_left/south",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "24:keyboard_support_left/west",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "24:keyboard_support_left/up",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "24:keyboard_support_left/down",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "25:keyboard_support_right/north",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "25:keyboard_support_right/east",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "25:keyboard_support_right/south",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "25:keyboard_support_right/west",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "25:keyboard_support_right/up",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "25:keyboard_support_right/down",
+      "detail": {
+        "uv": [
+          0,
+          104,
+          24,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "26:left_console/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "26:left_console/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "26:left_console/south",
+      "detail": {
+        "uv": [
+          104,
+          56,
+          120,
+          72
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "26:left_console/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "26:left_console/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "26:left_console/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "27:right_console/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "27:right_console/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "27:right_console/south",
+      "detail": {
+        "uv": [
+          104,
+          56,
+          120,
+          72
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "27:right_console/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "27:right_console/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "27:right_console/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "28:left_console_top/north",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "28:left_console_top/east",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "28:left_console_top/south",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "28:left_console_top/west",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "28:left_console_top/up",
+      "detail": {
+        "uv": [
+          80,
+          68,
+          96,
+          84
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "28:left_console_top/down",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "29:right_console_top/north",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "29:right_console_top/east",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "29:right_console_top/south",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "29:right_console_top/west",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "29:right_console_top/up",
+      "detail": {
+        "uv": [
+          80,
+          68,
+          96,
+          84
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "29:right_console_top/down",
+      "detail": {
+        "uv": [
+          104,
+          104,
+          128,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "30:left_cable_drop/north",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "30:left_cable_drop/east",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "30:left_cable_drop/south",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "30:left_cable_drop/west",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "30:left_cable_drop/up",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "30:left_cable_drop/down",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "31:left_cable_return/north",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "31:left_cable_return/east",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "31:left_cable_return/south",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "31:left_cable_return/west",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "31:left_cable_return/up",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "31:left_cable_return/down",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "32:center_cable_drop/north",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "32:center_cable_drop/east",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "32:center_cable_drop/south",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "32:center_cable_drop/west",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "32:center_cable_drop/up",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "32:center_cable_drop/down",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "33:center_cable_loop/north",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "33:center_cable_loop/east",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "33:center_cable_loop/south",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "33:center_cable_loop/west",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "33:center_cable_loop/up",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "33:center_cable_loop/down",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "34:right_cable_drop/north",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "34:right_cable_drop/east",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "34:right_cable_drop/south",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "34:right_cable_drop/west",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "34:right_cable_drop/up",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "34:right_cable_drop/down",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "35:right_cable_return/north",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "35:right_cable_return/east",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "35:right_cable_return/south",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "35:right_cable_return/west",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "35:right_cable_return/up",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "35:right_cable_return/down",
+      "detail": {
+        "uv": [
+          72,
+          104,
+          88,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "36:rear_mount_left/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "36:rear_mount_left/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "36:rear_mount_left/south",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "36:rear_mount_left/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "36:rear_mount_left/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "36:rear_mount_left/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "37:rear_mount_right/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "37:rear_mount_right/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "37:rear_mount_right/south",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "37:rear_mount_right/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "37:rear_mount_right/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "37:rear_mount_right/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "38:lower_standoff_left/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "38:lower_standoff_left/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "38:lower_standoff_left/south",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "38:lower_standoff_left/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "38:lower_standoff_left/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "38:lower_standoff_left/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "39:lower_standoff_right/north",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "39:lower_standoff_right/east",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "39:lower_standoff_right/south",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "39:lower_standoff_right/west",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "39:lower_standoff_right/up",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "code": "uv_outside_texture",
+      "where": "39:lower_standoff_right/down",
+      "detail": {
+        "uv": [
+          24,
+          104,
+          40,
+          128
+        ],
+        "logical_size": [
+          16,
+          16
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "No Minecraft client render or FPS measurement",
+    "No full schema validation or arbitrary overlap/hidden-face proof",
+    "No custom animation expansion, bone transform baking or outline pairing verification",
+    "Pack version, item definitions and display contexts require separate checks"
+  ]
+}

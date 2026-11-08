@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.registry;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.item.CthulhuTriggerItem;
 import com.opamb.barotrauma.item.DivingKnifeItem;
 import com.opamb.barotrauma.item.DivingSuitItem;
 import com.opamb.barotrauma.item.MedicalDebuggerItem;
@@ -80,6 +81,9 @@ public final class ModItems {
 
     public static final RegistryObject<Item> IRON_LADDER = blockItem("iron_ladder", ModBlocks.IRON_LADDER);
 
+    /** 6700X3D 处理器彩蛋方块。 */
+    public static final RegistryObject<Item> CPU_6700X3D = blockItem("cpu_6700x3d", ModBlocks.CPU_6700X3D);
+
 
     // ---- 任务/经济 ----
     public static final RegistryObject<Item> MISSION_TERMINAL =
@@ -106,6 +110,10 @@ public final class ModItems {
     /** 医疗调试器（开发者工具）：右键打开面板，自由改六部位/全身病症与活力。 */
     public static final RegistryObject<Item> MEDICAL_DEBUGGER = ITEMS.register("medical_debugger",
             () -> new MedicalDebuggerItem(new Item.Properties().stacksTo(1)));
+
+    /** 克苏鲁的注视触发器（开发者工具）：右键打开面板，选预设 / 三档 / 时长。 */
+    public static final RegistryObject<Item> CTHULHU_TRIGGER = ITEMS.register("cthulhu_trigger",
+            () -> new CthulhuTriggerItem(new Item.Properties().stacksTo(1)));
 
     private ModItems() {
     }
