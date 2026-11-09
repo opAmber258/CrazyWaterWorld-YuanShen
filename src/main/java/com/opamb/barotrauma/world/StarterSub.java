@@ -6,14 +6,19 @@ import com.opamb.barotrauma.registry.ModBlocks;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.block.BulkheadDoorBlock;
+import com.opamb.barotrauma.block.NavigationTerminalBlock;
+import com.opamb.barotrauma.block.NavigationTerminalLayout;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -21,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 初始潜艇：停在新手哨站门口那艘。
@@ -100,12 +106,26 @@ public final class StarterSub {
         if (!newLayout(level)) {
             return false;
         }
-        BlockPos core = newCorePos();
-        level.getChunk(core.getX() >> 4, core.getZ() >> 4);
-        if (level.getBlockState(core).is(ModShipBlocks.SONAR.get())) {
+        if (starterCore(level) != null) {
             return true;
         }
-        return VsState.active() && core.equals(VsState.corePos());
+        BlockPos core = newCorePos();
+        return VsState.active() && VsState.corePos() != null
+                && VsState.corePos().distSqr(core) <= 16.0D;
+    }
+
+    /**
+     * 儒艮号的船核心：正常在 {@link #newCorePos()}，驾驶室改过、导航终端整体
+     * 下移一格后会在下面一格；附近 4 格内找最近的 {@link ShipCoreBlockEntity}。
+     */
+    @Nullable
+    public static ShipCoreBlockEntity starterCore(ServerLevel level) {
+        BlockPos nominal = newCorePos();
+        level.getChunk(nominal.getX() >> 4, nominal.getZ() >> 4);
+        if (level.getBlockEntity(nominal) instanceof ShipCoreBlockEntity core) {
+            return core;
+        }
+        return com.opamb.barotrauma.ship.ShipCores.nearestCore(level, nominal, 4.0D);
     }
 
     /** 有儒艮号时出生在它床边，否则沿用旧出生潜艇。 */
@@ -147,12 +167,16 @@ public final class StarterSub {
     @Nullable
     public static ShipCoreBlockEntity ensure(ServerLevel level) {
         DockingBay.ensureStationHatch(level);
+        // 旧存档里的儒艮号：驾驶舱还是旧声纳台时，登录时就地换成导航终端。
+        if (newLayout(level)) {
+            convertStarterConsole(level);
+            ensureConsoleTopRow(level);
+        }
         // 用户在新存档里搭的儒艮号：已经在世界里（或已收成物理船）就优先认它，
         // 不再走旧出生潜艇的建造/认领逻辑；旧船在码头里保留，不主动删除。
         if (newStarterActive(level)) {
-            BlockPos newCore = newCorePos();
-            level.getChunk(newCore.getX() >> 4, newCore.getZ() >> 4);
-            if (level.getBlockEntity(newCore) instanceof ShipCoreBlockEntity core) {
+            ShipCoreBlockEntity core = starterCore(level);
+            if (core != null) {
                 if (core.state() == null) {
                     core.rescan(level);
                 }
@@ -233,7 +257,143 @@ public final class StarterSub {
      * 模板 = 原始 5×9×17（长轴沿 z），放置时整艘顺时针转 90°，
      * 船顶 3×1 舱口（局部 z=7）正好落在站点正下方，和 -68 中层舱口对齐。
      */
-    @Nullable
+    /**
+     * 把儒艮号驾驶舱里的旧声纳台就地换成导航终端。
+     *
+     * <p>模板是顺时针 90° 放置的，局部 +Z（驾驶舱方向）对应世界 −X，所以终端朝西。
+     * 下两层（声纳/小泵/船壳）必须能替换；顶层只有在已经是空气时才铺——原版
+     * 2 格高驾驶室的顶层是舱顶装甲板，硬拆会破壳，这种旧船只铺 2 层。</p>
+     */
+    private static void convertStarterConsole(ServerLevel level) {
+        BlockPos core = newCorePos();
+        level.getChunk(core.getX() >> 4, core.getZ() >> 4);
+        if (!level.getBlockState(core).is(ModShipBlocks.SONAR.get())) {
+            return;
+        }
+        Direction facing = Direction.WEST;
+        Map<NavigationTerminalLayout.Part, BlockPos> full =
+                NavigationTerminalLayout.footprint(core, facing);
+        Map<NavigationTerminalLayout.Part, BlockPos> footprint = new java.util.LinkedHashMap<>();
+        for (Map.Entry<NavigationTerminalLayout.Part, BlockPos> entry : full.entrySet()) {
+            BlockState state = level.getBlockState(entry.getValue());
+            if (entry.getKey().row() == 2) {
+                // 顶层：只在空气/可替换时铺；舱顶装甲板保持原样（不破壳）
+                if (state.isAir() || state.canBeReplaced()) {
+                    footprint.put(entry.getKey(), entry.getValue());
+                }
+                continue;
+            }
+            boolean allowed = state.isAir() || state.canBeReplaced()
+                    || state.is(ModShipBlocks.SONAR.get())
+                    || state.is(ModBlocks.SMALL_PUMP.get())
+                    || state.is(ModBlocks.SUBMARINE_PLATING.get());
+            if (!allowed) {
+                BarotraumaMod.LOGGER.warn("[Barotrauma] 儒艮号导航终端迁移跳过：{} 处是 {}",
+                        entry.getValue(), state);
+                return;
+            }
+            footprint.put(entry.getKey(), entry.getValue());
+        }
+        CompoundTag coreTag = null;
+        if (level.getBlockEntity(core) instanceof ShipCoreBlockEntity oldCore) {
+            coreTag = oldCore.saveWithoutMetadata();
+        }
+        BlockPos pumpPos = footprint.get(NavigationTerminalLayout.Part.LOWER_RIGHT);
+        BlockState pumpState = level.getBlockState(pumpPos);
+        CompoundTag pumpTag = null;
+        BlockEntity pumpBe = level.getBlockEntity(pumpPos);
+        if (pumpState.is(ModBlocks.SMALL_PUMP.get()) && pumpBe != null) {
+            pumpTag = pumpBe.saveWithoutMetadata();
+        }
+        for (BlockPos pos : footprint.values()) {
+            level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
+        }
+        for (Map.Entry<NavigationTerminalLayout.Part, BlockPos> entry : footprint.entrySet()) {
+            if (entry.getKey() == NavigationTerminalLayout.Part.LOWER_MIDDLE) {
+                continue;
+            }
+            level.setBlock(entry.getValue(), navTerminalState(facing, entry.getKey()), 2);
+        }
+        level.setBlock(core, navTerminalState(facing, NavigationTerminalLayout.Part.LOWER_MIDDLE), 3);
+        BlockEntity navBe = level.getBlockEntity(core);
+        if (coreTag != null && navBe != null) {
+            stripBlockEntityPos(coreTag);
+            navBe.load(coreTag);
+            navBe.setChanged();
+            if (navBe instanceof ShipCoreBlockEntity navCore) {
+                navCore.rescan(level);
+            }
+        }
+        // 小泵原本在终端左下角那格，挪到驾驶舱角落；没有位置就掉一个物品。
+        if (pumpState.is(ModBlocks.SMALL_PUMP.get())) {
+            BlockPos pumpTarget = core.west().south();
+            if (level.getBlockState(pumpTarget).canBeReplaced()
+                    && level.getBlockState(pumpTarget.below()).isFaceSturdy(
+                            level, pumpTarget.below(), Direction.UP)) {
+                level.setBlock(pumpTarget, pumpState, 3);
+                BlockEntity movedPump = level.getBlockEntity(pumpTarget);
+                if (pumpTag != null && movedPump != null) {
+                    stripBlockEntityPos(pumpTag);
+                    movedPump.load(pumpTag);
+                    movedPump.setChanged();
+                }
+            } else {
+                Block.popResource(level, core,
+                        new ItemStack(ModBlocks.SMALL_PUMP.get().asItem()));
+            }
+        }
+        BarotraumaMod.LOGGER.info("[Barotrauma] 儒艮号声纳台已替换为导航终端 core={}", core);
+    }
+
+    /**
+     * 3 格高驾驶室（用户改过的船）：给已有 2 层终端补上第三层。
+     * 只有顶层三格都可替换（空气）时才补——原版 2 格高船会被舱顶挡住，不动。
+     */
+    private static void ensureConsoleTopRow(ServerLevel level) {
+        ShipCoreBlockEntity core = starterCore(level);
+        if (core == null) {
+            return;
+        }
+        BlockPos master = core.getBlockPos();
+        BlockState state = level.getBlockState(master);
+        if (!state.is(ModShipBlocks.NAVIGATION_TERMINAL.get())
+                || state.getValue(NavigationTerminalBlock.PART) != NavigationTerminalLayout.Part.LOWER_MIDDLE) {
+            return;
+        }
+        Direction facing = state.getValue(NavigationTerminalBlock.FACING);
+        java.util.List<NavigationTerminalLayout.Part> top = java.util.List.of(
+                NavigationTerminalLayout.Part.TOP_LEFT,
+                NavigationTerminalLayout.Part.TOP_MIDDLE,
+                NavigationTerminalLayout.Part.TOP_RIGHT);
+        for (NavigationTerminalLayout.Part part : top) {
+            BlockPos pos = NavigationTerminalLayout.partPos(master, facing, part);
+            if (!level.getBlockState(pos).canBeReplaced()) {
+                return;
+            }
+        }
+        for (NavigationTerminalLayout.Part part : top) {
+            level.setBlock(NavigationTerminalLayout.partPos(master, facing, part),
+                    navTerminalState(facing, part), 2);
+        }
+        if (level.getBlockEntity(master) instanceof ShipCoreBlockEntity navCore) {
+            navCore.rescan(level);
+        }
+        BarotraumaMod.LOGGER.info("[Barotrauma] 导航终端补齐顶层 3 格 core={}", master);
+    }
+
+    private static BlockState navTerminalState(Direction facing, NavigationTerminalLayout.Part part) {
+        return ModShipBlocks.NAVIGATION_TERMINAL.get().defaultBlockState()
+                .setValue(NavigationTerminalBlock.FACING, facing)
+                .setValue(NavigationTerminalBlock.PART, part);
+    }
+
+    private static void stripBlockEntityPos(CompoundTag tag) {
+        tag.remove("id");
+        tag.remove("x");
+        tag.remove("y");
+        tag.remove("z");
+    }
+
     private static ShipCoreBlockEntity placeNewStarter(ServerLevel level) {
         StructureTemplateManager manager = level.getStructureManager();
         var template = manager.get(new ResourceLocation(BarotraumaMod.MOD_ID, "starter_sub"));
@@ -255,6 +415,9 @@ public final class StarterSub {
         // 把放置点放在包围盒 +x 边，船顶舱口（局部 z=7）才会落在 site.x 正下方。
         BlockPos placePos = new BlockPos(origin.getX() + NEW_SIZE_X - 1, origin.getY(), origin.getZ());
         template.get().placeInWorld(level, placePos, placePos, settings, level.random, 3);
+        // 旧模板里可能还是声纳台；放完立刻换成导航终端，并补齐 3 格高驾驶室的顶层。
+        convertStarterConsole(level);
+        ensureConsoleTopRow(level);
 
         com.opamb.barotrauma.data.ShipSavedData data =
                 com.opamb.barotrauma.data.ShipSavedData.get(level);

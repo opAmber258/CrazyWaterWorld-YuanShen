@@ -199,6 +199,11 @@ public final class CampaignManager {
     /** 找到这个站停靠的初始潜艇核心；新布局找站外侧的儒艮号，旧存档兼容 -75/-77。 */
     private static BlockPos starterCorePos(ServerLevel deep, com.opamb.barotrauma.world.DockingBay.Site site) {
         if (StarterSub.newLayout(deep)) {
+            // 儒艮号只在主站；驾驶室改过后核心可能比标称位置低一格。
+            if (com.opamb.barotrauma.world.DockingBay.Site.MAIN.equals(site)) {
+                ShipCoreBlockEntity core = StarterSub.starterCore(deep);
+                return core == null ? null : core.getBlockPos();
+            }
             BlockPos pos = StarterSub.newCorePos(site.x(), site.z());
             deep.getChunkAt(pos);
             return deep.getBlockEntity(pos) instanceof ShipCoreBlockEntity ? pos : null;

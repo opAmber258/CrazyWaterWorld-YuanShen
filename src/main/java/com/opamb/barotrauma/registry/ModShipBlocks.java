@@ -4,6 +4,7 @@ import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.BulkheadDoorBlock;
 import com.opamb.barotrauma.block.HatchBlock;
 import com.opamb.barotrauma.block.HullBlock;
+import com.opamb.barotrauma.block.NavigationTerminalBlock;
 import com.opamb.barotrauma.block.PumpProxyBlock;
 import com.opamb.barotrauma.block.SonarBlock;
 import com.opamb.barotrauma.block.SonarProxyBlock;
@@ -59,6 +60,23 @@ public final class ModShipBlocks {
     /** 声纳：带 3D 全息投影的方块实体。**同时兼任船核心**（见 SonarBlockEntity）。 */
     public static final RegistryObject<SonarBlock> SONAR = BLOCKS.register("sonar",
             () -> new SonarBlock(machine()));
+
+    /**
+     * 导航终端：按三格宽 Blockbench 资产实现的新驾驶台（3×3×1 多方块）。
+     *
+     * <p>和声纳台一样自带 3D 点云全息，方块实体继承船核心；旧 {@code sonar}
+     * 方块保留不动，给旧存档和儒艮号模板用。</p>
+     */
+    public static final RegistryObject<NavigationTerminalBlock> NAVIGATION_TERMINAL =
+            BLOCKS.register("navigation_terminal", () -> new NavigationTerminalBlock(
+                    BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_GRAY)
+                            .strength(12.0F, 600.0F)
+                            .sound(SoundType.METAL)
+                            .requiresCorrectToolForDrops()
+                            .noOcclusion()
+                            .isViewBlocking((state, level, pos) -> false)
+                            .isSuffocating((state, level, pos) -> false)));
 
     /**
      * 物理船声纳的交互锚点（不可见 / 不碰撞 / 不可破坏）。
@@ -153,14 +171,14 @@ public final class ModShipBlocks {
     private ModShipBlocks() {
     }
 
-    /** 机器类型，用于船体扫描统计（现在只剩声纳）。 */
+    /** 机器类型，用于船体扫描统计（声纳台/导航终端都算声纳）。 */
     public enum Machine {
         NONE, SONAR
     }
 
     public static Machine machineOf(BlockState state) {
         Block block = state.getBlock();
-        if (block == SONAR.get()) {
+        if (block == SONAR.get() || block == NAVIGATION_TERMINAL.get()) {
             return Machine.SONAR;
         }
         return Machine.NONE;
@@ -214,6 +232,7 @@ public final class ModShipBlocks {
         return block == HULL_GLASS.get()
                 || block == TEST_HULL.get()
                 || block == SONAR.get()
+                || block == NAVIGATION_TERMINAL.get()
                 || block == ModBlocks.SUBMARINE_PLATING.get()
                 // 排水泵是船上设备：必须被扫描当作船体方块收进刚体，否则装船后泵会
                 // 留在世界原地不跟船走（用户实测"水泵不会受到物理效果影响"）。

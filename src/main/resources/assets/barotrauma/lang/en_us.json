@@ -112,5 +112,8 @@
   "item.barotrauma.naloxone": "Naloxone",
   "item.barotrauma.fentanyl": "Fentanyl",
   "item.barotrauma.67": "67",
-  "subtitles.barotrauma.ladder_climb": "Climbing ladder"
+  "subtitles.barotrauma.ladder_climb": "Climbing ladder",
+  "block.barotrauma.navigation_terminal": "Navigation Terminal",
+  "message.barotrauma.navigation_terminal.core_exists": "A ship core is already nearby (old sonar console); clear it first (e.g. /setblock in creative) before placing the navigation terminal",
+  "message.barotrauma.navigation_terminal.protected": "The navigation terminal is the ship core - it can't be removed"
 }

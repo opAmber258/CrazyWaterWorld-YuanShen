@@ -890,11 +890,27 @@ public final class VsPilot {
         for (BlockPos pos : BlockPos.betweenClosed(
                 center.x - radiusXZ, center.y - radiusY, center.z - radiusXZ,
                 center.x + radiusXZ, center.y + radiusY, center.z + radiusXZ)) {
-            if (level.getBlockState(pos).is(ModShipBlocks.SONAR.get())) {
+            if (isConsoleMaster(level.getBlockState(pos))) {
                 return pos.immutable();
             }
         }
         return null;
+    }
+
+    /** 声纳台/导航终端的主方块（导航终端只有下排中列才是核心+交互点）。 */
+    private static boolean isConsoleMaster(BlockState state) {
+        if (state.is(ModShipBlocks.SONAR.get())) {
+            return true;
+        }
+        return state.is(ModShipBlocks.NAVIGATION_TERMINAL.get())
+                && state.getValue(com.opamb.barotrauma.block.NavigationTerminalBlock.PART)
+                == com.opamb.barotrauma.block.NavigationTerminalLayout.Part.LOWER_MIDDLE;
+    }
+
+    /** 声纳台/导航终端的任意一段：不参与船壳耐久、爆炸破壳和焊接。 */
+    private static boolean isConsolePart(BlockState state) {
+        return state.is(ModShipBlocks.SONAR.get())
+                || state.is(ModShipBlocks.NAVIGATION_TERMINAL.get());
     }
 
     private static void observeCore(ServerLevel level, BlockPos shipyardPos) {
@@ -1295,7 +1311,7 @@ public final class VsPilot {
         if (block == null) {
             return false;
         }
-        if (block.is(ModShipBlocks.SONAR.get())) {
+        if (isConsolePart(block)) {
             player.displayClientMessage(Component.translatable("message.barotrauma.hull_sonar")
                     .withStyle(ChatFormatting.GOLD), true);
             return true;
@@ -1358,7 +1374,7 @@ public final class VsPilot {
             return false;
         }
         BlockState block = snapshot.get(best);
-        if (block == null || block.is(ModShipBlocks.SONAR.get())) {
+        if (block == null || isConsolePart(block)) {
             return false;
         }
         float max = state.hullMaxHealth(block);
@@ -1520,7 +1536,7 @@ public final class VsPilot {
         for (Map.Entry<BlockPos, BlockState> entry : snapshot.entrySet()) {
             BlockPos pos = entry.getKey();
             BlockState block = entry.getValue();
-            if (block.is(ModShipBlocks.SONAR.get())) {
+            if (isConsolePart(block)) {
                 continue;
             }
             float max = state.hullMaxHealth(block);
@@ -1914,11 +1930,23 @@ public final class VsPilot {
 
         // 4b) 交互锚点：VS2 船上右键不到方块，把一块不可见的声纳代理放到声纳原位，
         //     玩家右键它就能打开声纳（跟船整格移动，见 tick / moveProxy）。
+        //     导航终端是 3×3×1 多方块，只有主方块（下排中列）放代理。
         sonarAnchor = null;
         for (Map.Entry<BlockPos, BlockState> entry : captured.entrySet()) {
-            if (entry.getValue().is(ModShipBlocks.SONAR.get())) {
+            BlockState state = entry.getValue();
+            if (state.is(ModShipBlocks.NAVIGATION_TERMINAL.get())
+                    && state.getValue(com.opamb.barotrauma.block.NavigationTerminalBlock.PART)
+                    == com.opamb.barotrauma.block.NavigationTerminalLayout.Part.LOWER_MIDDLE) {
                 sonarAnchor = entry.getKey().immutable();
                 break;
+            }
+        }
+        if (sonarAnchor == null) {
+            for (Map.Entry<BlockPos, BlockState> entry : captured.entrySet()) {
+                if (entry.getValue().is(ModShipBlocks.SONAR.get())) {
+                    sonarAnchor = entry.getKey().immutable();
+                    break;
+                }
             }
         }
         proxyPos = null;
@@ -2539,7 +2567,7 @@ public final class VsPilot {
         }
         int sonar = 0;
         for (BlockState blockState : snap.values()) {
-            if (blockState.is(ModShipBlocks.SONAR.get())) {
+            if (isConsolePart(blockState)) {
                 sonar++;
             }
         }

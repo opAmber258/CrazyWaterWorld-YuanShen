@@ -191,8 +191,9 @@ public final class DockingBay {
         if (site == null) {
             return false;
         }
-        // 新世界：儒艮号挂在站下方，核心在 (site,-72,-6)。
-        if (core.equals(StarterSub.newCorePos(site.x(), site.z()))) {
+        // 新世界：儒艮号挂在站下方，核心在 (site,-72,-6)；驾驶室改过后可能低一格。
+        BlockPos nominal = StarterSub.newCorePos(site.x(), site.z());
+        if (core.distSqr(nominal) <= 4.0D) {
             return true;
         }
         // 旧出生潜艇在码头里的几版位置。
