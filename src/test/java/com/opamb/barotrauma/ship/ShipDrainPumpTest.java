@@ -176,6 +176,19 @@ class ShipDrainPumpTest {
     }
 
     @Test
+    @org.junit.jupiter.api.DisplayName("压载启动标定：注到全船 7% 水量的中性相对水位")
+    void 压载启动标定到中性水位() {
+        ShipSimulation sim = simulation(sealedCube());
+        sim.reportPump(new BlockPos(0, 0, 0), 0.0D, true);
+        sim.requestBallastPrime();
+        sim.tick(1.0D);
+        // 5×5×5 壳内 27 格 = 2700 单位；7% = 189 单位，刚好是压载舱容量的 7%
+        assertEquals(ShipSimulation.NEUTRAL_WATER_RATIO, sim.ballastPercent(), 1.0E-6);
+        assertEquals(ShipSimulation.NEUTRAL_WATER_RATIO, sim.ballastNeutral(), 1.0E-6);
+        assertTrue(sim.ballastPrimed(), "标定后压载泵才允许自动动作");
+    }
+
+    @Test
     void 普通泵不登记压载舱() {
         ShipSimulation sim = simulation(sealedCube());
         sim.reportPump(new BlockPos(0, 0, 0), -100.0D);

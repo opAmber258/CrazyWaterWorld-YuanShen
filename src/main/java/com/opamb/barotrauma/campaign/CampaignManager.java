@@ -90,9 +90,14 @@ public final class CampaignManager {
             BarotraumaMod.LOGGER.warn("[campaign] 出发站未生成（旧存档）：退回目的站正下方");
         }
         // 船放在出发站正下方的水里；无人航路点出发时这里就是开阔水域。
-        Vec3 start = hasStartStation
-                ? new Vec3(startSite.x() + 0.5D, anchor.y(), startSite.z() + 0.5D)
-                : anchor.spawn();
+        // 注意：目的也是无人航路点时不能落在目的坐标上，否则靠近判定会立刻结算，
+        // 玩家不用航行就完成本轮（审查意见）。这种组合仍放在出发位置。
+        Vec3 start;
+        if (hasStartStation || !endHasOutpost) {
+            start = new Vec3(startSite.x() + 0.5D, anchor.y(), startSite.z() + 0.5D);
+        } else {
+            start = anchor.spawn();
+        }
         int preloaded = MissionInstance.preloadNear(deep,
                 new BlockPos(startSite.x(), anchor.y(), startSite.z()), 2);
         MissionInstance.preload(deep, anchor, 1);
