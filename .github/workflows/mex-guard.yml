@@ -1,0 +1,57 @@
+name: mex-guard
+
+# 改动 src/ 或 tools/ 却没有更新 .mex/ 或 docs/ 的 PR 会失败。
+# 例外：给 PR 加上 mex-skip 标签，并在说明里写一行原因。
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  docs-required:
+    name: MEX / docs updated
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check docs coverage
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ]; then
+            echo "::error::缺少 base/head SHA，无法比较改动。"
+            exit 1
+          fi
+
+          base=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
+          echo "merge-base: $base"
+          changed=$(git diff --name-only "$base" "$HEAD_SHA")
+          echo "changed files:"
+          printf '%s\n' "$changed"
+
+          code=$(printf '%s\n' "$changed" | grep -cE '^(src|tools)/' || true)
+          docs=$(printf '%s\n' "$changed" | grep -cE '^(\.mex|docs)/' || true)
+          echo "code=$code docs=$docs labels=${LABELS:-<none>}"
+
+          if [ "$code" -gt 0 ] && [ "$docs" -eq 0 ]; then
+            if printf '%s' "${LABELS:-}" | tr ',' '\n' | grep -qx 'mex-skip'; then
+              echo "::notice::PR 已标记 mex-skip，跳过文档检查（请在说明中保留原因）。"
+              exit 0
+            fi
+            echo "::error::本 PR 修改了 src/ 或 tools/ 下的代码，但没有更新 .mex/ 或 docs/。"
+            echo "请补充文档（ROUTER 项目状态 / context / patterns / docs），"
+            echo "或给 PR 加上 mex-skip 标签并在说明里写一行原因。"
+            exit 1
+          fi
+
+          echo "OK"

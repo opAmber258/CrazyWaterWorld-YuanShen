@@ -26,5 +26,6 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [add-ship-block.md](add-ship-block.md) | Adding a new submarine hull block, including registration, resources, and `isShipBlock` coverage |
 | [debug-hull-damage.md](debug-hull-damage.md) | Diagnosing missing hull durability, damage bars, welding, or “block won’t break” |
 | [debug-ship-water.md](debug-ship-water.md) | Diagnosing dry ships, missing flooding, or missing water visuals |
+| [publish.md](publish.md) | Publishing changes (走流程 / `/publish`): branch → PR → merge, with required MEX bookkeeping |
 | [run-tests.md](run-tests.md) | Building and running the L1/L2/L3 verification layers |
 | [vs2-physical-ship.md](vs2-physical-ship.md) | Launching, docking, controlling, or debugging a VS2 physical ship |

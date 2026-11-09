@@ -1,0 +1,63 @@
+---
+description: "标准发布流程：MEX 记账 → 任务分支 → 提交 → 推送 → PR → 审查 → 合并 → 删分支"
+argument-hint: "[一句话变更说明]"
+---
+
+用户已授权本轮完整发布：任务分支 → 提交 → 推送 → 创建 PR → 等待审查并处理意见 → 合并 → 删除本地和远端分支。仅当用户明确调用本命令，或说出「走流程 / 发布 / 推到仓库」时执行。
+
+```text
+$ARGUMENTS
+```
+
+按顺序执行；任何一步失败就停下报告，不跳步、不强推。
+
+## 1. 准备
+
+- `git status`：确认当前分支与工作区；有未预期改动先问清楚。
+- `git fetch` 后比较**本地 `main`** 与 `origin/main`（不要用 `HEAD`——检出的任务分支可能已经领先，会掩盖本地 `main` 过期）：若 `origin/main` 领先，停下并提醒用户 pull 需要单独授权。
+
+## 2. MEX 记账（必做，不是可选项）
+
+- 读 `.mex/ROUTER.md` 的 "Current Project State" 与 `.mex/patterns/INDEX.md`。
+- 列出本轮应更新的文档，并逐项落地：
+  - `ROUTER.md`：新能力、已知问题、状态变化；
+  - `context/`：长期有效的架构/约定变化；
+  - `patterns/`：可复现的踩坑或操作流程（新文件要登记进 `INDEX.md`）；
+  - `docs/`：设计文档、数值依据。
+- 确实无需文档时，给出可审查的理由（发布时给 PR 加 `mex-skip` 标签并写进说明）。
+- `mex check` 可用时跑一次，确认脚手架完好。
+
+## 3. 分支与提交
+
+- 从最新 `main` 建任务分支：`<feat|fix|chore|tweak|docs>/<slug>`。
+- 如果当前已经在任务分支、且上面有尚未发布的提交：**复用当前分支**，不要重新从 `main` 开分支（否则 PR 只含文档，代码提交被丢掉）。
+- 代码与文档改动**一起**提交；提交信息用中文，说明动机与影响面。
+
+## 4. 推送与 PR
+
+- 推送分支。**创建或复用 PR**：先 `gh pr list --head "<branch>" --state open --json number,headRepository`，再核对 `headRepository.nameWithOwner` 等于本仓库；有匹配则复用并 `gh pr edit` 更新说明，为空才 `gh pr create`。注意 `--head` 只按分支名匹配、不支持 `owner:branch`（实测返回空），会命中其他 fork 的同名分支；也不要用 `gh pr view` 探测——无 PR 时它返回非零。
+- PR 正文按 `.github/pull_request_template.md` 填写，明确 MEX 结论：
+  - 更新了哪些文档文件；
+  - 或为何标记 `mex-skip`。
+- 不自行扩大授权范围（例如顺手 pull 别人的分支）。
+
+## 5. 审查
+
+- 等 CodeRabbit check 与 `mex-guard` 都通过。
+- 逐条修复意见，或在对应 thread 回复保留理由；未解决线程清零前不合并。
+- 每次修复后推送新提交，都要重新等**最新提交**上的检查与审查结果；旧提交的绿色不能当放行依据（仓库没有分支保护，CI 不会替你拦住）。
+
+## 6. 合并
+
+- 审查通过后按仓库默认方式合并 PR。
+- 删除任务分支：本地与 `origin` 各一次。
+
+## 7. 报告
+
+输出：合并提交 hash、L1/实机验证结果、文档改动清单、遗留风险（含 `mex-skip` 的原因）。
+
+## 红线
+
+- 不 `push --force`；不直推 `main`（除非用户明确要求）。
+- 审查未过、有冲突、或 CI 红 → 停下报告，不硬合。
+- pull 仍需单独明确授权；本命令不包含 pull。
