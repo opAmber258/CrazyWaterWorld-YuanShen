@@ -6,13 +6,26 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** 程序绘制的 M1 海图：等比首群系裁剪，右侧任务滚动区，非原作贴图复刻。 */
+/** M1 海图：原作首群系底图 + 虚线航路 + 站点图标，右侧任务滚动区。 */
 public final class CampaignMapScreen extends Screen {
+    private static final ResourceLocation MAP_PIECES =
+            new ResourceLocation("barotrauma", "textures/gui/map_pieces.png");
+    private static final ResourceLocation MAP_ICONS =
+            new ResourceLocation("barotrauma", "textures/gui/map_icons.png");
+    /** map_icons.png 里的图标槽位（见生成脚本）。 */
+    private static final int ICON_OUTPOST_U = 0;
+    private static final int ICON_CITY_U = 128;
+    private static final int ICON_WAYPOINT_U = 256;
+    private static final int ICON_CURRENT_U = 384;
+    private static final int ICON_SELECTED_V = 128;
+    private static final int ICON_MISSION_U = 200;
+
     private int selected = -1, origin = -1, scroll, maxScroll;
     private final Set<String> checked = new LinkedHashSet<>();
     private int mapX, mapY, mapW, mapH, panelX, panelW, bodyY, bodyBottom;
@@ -70,41 +83,60 @@ public final class CampaignMapScreen extends Screen {
     private int x(MapNode n) { return mapX + (int) Math.round(n.mapX() * scale); }
     private int y(MapNode n) { return mapY + (int) Math.round(n.mapY() * scale); }
     private MapNode hit(double mx, double my) {
-        for (MapNode n : CampaignMap.nodes()) if (Math.abs(mx - x(n)) <= 8 && Math.abs(my - y(n)) <= 8) return n;
+        for (MapNode n : CampaignMap.nodes()) if (Math.abs(mx - x(n)) <= 12 && Math.abs(my - y(n)) <= 12) return n;
         return null;
     }
 
     @Override public void render(GuiGraphics g, int mx, int my, float partialTick) {
         renderBackground(g);
-        g.fill(5, 5, width - 5, height - 5, 0xF0101D26);
+        g.fill(5, 5, width - 5, height - 5, 0xF0081116);
         g.drawString(font, title, 12, 12, 0xFFC1E8D9);
         g.drawString(font, tr("biome"), 12, 28, 0xFF80CEAF);
         g.drawString(font, tr("wallet", CampaignClient.state() == null ? 0 : CampaignClient.state().credits()), panelX, 28, 0xFFE3D78D);
-        g.fill(mapX - 2, mapY - 2, mapX + mapW + 2, mapY + mapH + 2, 0xFF07151E);
-        for (int i = 0; i <= CampaignMap.VIEW_WIDTH; i += 100) {
-            int gx = mapX + (int) (i * scale); g.fill(gx, mapY, gx + 1, mapY + mapH, 0xFF18313D);
+        g.drawCenteredString(font, tr("biome"), mapX + mapW / 2, Math.max(46, mapY - 12), 0xAA9FBDB4);
+        g.fill(mapX - 2, mapY - 2, mapX + mapW + 2, mapY + mapH + 2, 0xFF02070A);
+
+        g.enableScissor(mapX, mapY, mapX + mapW, mapY + mapH);
+        drawBackground(g);
+        // 极淡的坐标网格，只为参照距离
+        for (int i = 0; i <= CampaignMap.VIEW_WIDTH; i += 200) {
+            int gx = mapX + (int) (i * scale);
+            g.fill(gx, mapY, gx + 1, mapY + mapH, 0x1680CEAF);
         }
-        for (int i = 0; i <= CampaignMap.MAP_HEIGHT; i += 100) {
-            int gy = mapY + (int) (i * scale); g.fill(mapX, gy, mapX + mapW, gy + 1, 0xFF18313D);
+        for (int i = 0; i <= CampaignMap.MAP_HEIGHT; i += 200) {
+            int gy = mapY + (int) (i * scale);
+            g.fill(mapX, gy, mapX + mapW, gy + 1, 0x1680CEAF);
         }
+        // 航线：原作是虚线，不是树状实线
         for (MapNode n : CampaignMap.nodes()) {
             for (int other : n.neighbors()) if (n.id() < other) {
-                int color = (n.id() == origin && other == selected || n.id() == selected && other == origin)
-                        ? 0xFFFFDD80 : 0xFF527C79;
-                line(g, x(n), y(n), x(CampaignMap.node(other)), y(CampaignMap.node(other)), color);
+                boolean highlight = (n.id() == origin && other == selected)
+                        || (n.id() == selected && other == origin);
+                dashedLine(g, x(n), y(n), x(CampaignMap.node(other)), y(CampaignMap.node(other)),
+                        highlight ? 0xFFFFDD80 : 0x99A9C4BC);
             }
         }
+        // 站点：方形图标按类型区分，当前站盖潜艇罗盘
         for (MapNode n : CampaignMap.nodes()) {
-            int color = n.id() == origin ? 0xFFFFDD80 : n.id() == selected ? 0xFFFFFFFF : 0xFF80CEAF;
-            int r = n.type() == NodeType.OUTPOST ? 5 : 3;
-            g.fill(x(n) - r, y(n) - r, x(n) + r + 1, y(n) + r + 1, color);
-            if (n.id() == origin || n.id() == selected) {
-                g.fill(x(n) - 8, y(n) - 9, x(n) + 9, y(n) - 8, color);
-                g.fill(x(n) - 8, y(n) + 8, x(n) + 9, y(n) + 9, color);
+            int cx = x(n), cy = y(n);
+            if (n.id() == selected) {
+                g.blit(MAP_ICONS, cx - 23, cy - 25, 46, 50, 0, ICON_SELECTED_V, 186, 205, 512, 512);
             }
-            // Narrow maps keep station labels in the hover card instead of overlapping.
-            if (mapW >= 290) g.drawCenteredString(font, nodeName(n), x(n), y(n) + 12, color);
+            if (n.id() == origin) {
+                g.blit(MAP_ICONS, cx - 17, cy - 17, 34, 34, ICON_CURRENT_U, 0, 128, 128, 512, 512);
+            } else {
+                int u = n.locationType().equals("city") ? ICON_CITY_U
+                        : n.type() == NodeType.OUTPOST ? ICON_OUTPOST_U : ICON_WAYPOINT_U;
+                int size = n.type() == NodeType.OUTPOST ? 30 : 20;
+                g.blit(MAP_ICONS, cx - size / 2, cy - size / 2, size, size, u, 0, 128, 128, 512, 512);
+            }
+            // 可接任务的相邻站：角标感叹号
+            if (n.id() != origin && CampaignMap.connects(origin, n.id())) {
+                g.blit(MAP_ICONS, cx + 9, cy - 19, 12, 12, ICON_MISSION_U, 128, 30, 30, 512, 512);
+            }
         }
+        g.disableScissor();
+
         g.fill(panelX, 44, width - 10, height - 49, 0xFF172B35);
         g.enableScissor(panelX + 4, bodyY, width - 14, bodyBottom);
         if (!CampaignMap.isValid(selected)) {
@@ -134,6 +166,37 @@ public final class CampaignMapScreen extends Screen {
             else text.add(tr("services.outpost"));
             text.add(hover.faction().equals("none") ? tr("faction.none") : tr("faction.coalition", hover.reputation()));
             g.renderComponentTooltip(font, text, mx, my);
+        }
+    }
+
+    /** 用原作寒冷洞穴的地形切片平铺；三个变体轮着来，避免一眼重复。 */
+    private void drawBackground(GuiGraphics g) {
+        int tile = Math.max(48, Math.min(mapW / 3, mapH / 2));
+        int cols = (mapW + tile - 1) / tile;
+        int rows = (mapH + tile - 1) / tile;
+        for (int ix = 0; ix < cols; ix++) {
+            for (int iy = 0; iy < rows; iy++) {
+                int variant = Math.floorMod(ix * 2 + iy * 3, 3);
+                g.blit(MAP_PIECES, mapX + ix * tile, mapY + iy * tile, tile, tile,
+                        variant * 512, 0, 512, 512, 1536, 512);
+            }
+        }
+        g.fill(mapX, mapY, mapX + mapW, mapY + mapH, 0x3A04090C);
+    }
+
+    /** 原作航路是白色虚线；这里按 7px 步长画 4px 线段。 */
+    private static void dashedLine(GuiGraphics g, int x0, int y0, int x1, int y1, int color) {
+        double len = Math.hypot(x1 - x0, y1 - y0);
+        if (len < 1.0D) {
+            return;
+        }
+        for (double t = 0; t < len; t += 7.0D) {
+            double t1 = Math.min(len, t + 4.0D);
+            int ax = (int) Math.round(x0 + (x1 - x0) * t / len);
+            int ay = (int) Math.round(y0 + (y1 - y0) * t / len);
+            int bx = (int) Math.round(x0 + (x1 - x0) * t1 / len);
+            int by = (int) Math.round(y0 + (y1 - y0) * t1 / len);
+            line(g, ax, ay, bx, by, color);
         }
     }
     private int wrapped(GuiGraphics g, Component text, int xx, int yy, int maxWidth, int color) {

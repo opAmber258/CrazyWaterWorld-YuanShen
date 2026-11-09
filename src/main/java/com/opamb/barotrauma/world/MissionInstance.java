@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.world;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 
@@ -42,6 +43,106 @@ public final class MissionInstance {
         }
     }
 
+    /** 出发站离目的站的水平距离。 */
+    public static final int START_DISTANCE = 192;
+
+    /** 本轮关卡两端的站点类型：无人航路点不建站（原作 Location.Type.HasOutpost）。 */
+    private static int routeSlot = Integer.MIN_VALUE;
+    private static boolean routeStartOutpost = true;
+    private static boolean routeEndOutpost = true;
+
+    /** 下潜时写入本轮起点/终点是否需要哨站；世界生成按这个决定建不建站。 */
+    public static void setRouteOutposts(int slot, boolean startOutpost, boolean endOutpost) {
+        routeSlot = slot;
+        routeStartOutpost = startOutpost;
+        routeEndOutpost = endOutpost;
+    }
+
+    /** 这个站点本轮要不要生成哨站（主站永远要）。 */
+    public static boolean outpostExpected(DockingBay.Site site) {
+        if (DockingBay.Site.MAIN.equals(site)) {
+            return true;
+        }
+        int slot = siteSlot(site);
+        if (slot != routeSlot) {
+            return true;
+        }
+        Anchor anchor = anchorForRound(slot);
+        if (site.equals(startSite(anchor))) {
+            return routeStartOutpost;
+        }
+        if (site.x() == anchor.x() && site.z() == anchor.z()) {
+            return routeEndOutpost;
+        }
+        return true;
+    }
+
+    /** 从站点坐标反推轮次（出发站偏移 192 格，仍然落在同一个 slot 里）。 */
+    public static int siteSlot(DockingBay.Site site) {
+        return Math.max(0, Math.round((site.x() - BASE_X) / (float) SPACING));
+    }
+
+    /**
+     * 本轮的出发站：目的站 {@link #START_DISTANCE} 格外，方向按轮次轮换
+     * （0 西 / 1 北 / 2 东 / 3 南）。
+     *
+     * <p>原作每个航行关卡同时有 {@code Level.StartOutpost} 和 {@code Level.EndOutpost}，
+     * 中间由 MainPath 隧道连接；这里的出发站就是关卡里的当前地点，目的站是要去的节点。</p>
+     */
+    public static DockingBay.Site startSite(Anchor anchor) {
+        int dir = Math.floorMod(anchor.slot(), 4);
+        int dx = switch (dir) {
+            case 0 -> -1;
+            case 2 -> 1;
+            default -> 0;
+        };
+        int dz = switch (dir) {
+            case 1 -> -1;
+            case 3 -> 1;
+            default -> 0;
+        };
+        return new DockingBay.Site(anchor.x() + dx * START_DISTANCE,
+                anchor.z() + dz * START_DISTANCE);
+    }
+
+    /**
+     * 这个 (x,z) 是否落在副本的“出发站—目的站”大海域里。
+     *
+     * <p>世界生成时这里不摆岩柱/岩墙：两个站各留 64 格净空，中间再沿航线留一条
+     * 48 格半径的开阔水道（原作 MainPath 的放大版）。</p>
+     */
+    public static boolean inRouteZone(int x, int z) {
+        int base = Math.max(0, Math.round((x - BASE_X) / (float) SPACING));
+        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
+            Anchor anchor = anchorForRound(slot);
+            DockingBay.Site start = startSite(anchor);
+            if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 64.0D) {
+                return true;
+            }
+            if (Math.hypot(x - start.x(), z - start.z()) <= 64.0D) {
+                return true;
+            }
+            if (distanceToSegment(x, z, anchor.x(), anchor.z(),
+                    start.x(), start.z()) <= 48.0D) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static double distanceToSegment(double px, double pz,
+                                            double ax, double az, double bx, double bz) {
+        double dx = bx - ax;
+        double dz = bz - az;
+        double lengthSq = dx * dx + dz * dz;
+        if (lengthSq <= 1.0E-6D) {
+            return Math.hypot(px - ax, pz - az);
+        }
+        double t = ((px - ax) * dx + (pz - az) * dz) / lengthSq;
+        t = Math.max(0.0D, Math.min(1.0D, t));
+        return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+    }
+
     private MissionInstance() {
     }
 
@@ -76,8 +177,13 @@ public final class MissionInstance {
      * （日志里的 {@code moved while colliding with unloaded ships}）。所以先加载再传送。</p>
      */
     public static int preload(ServerLevel level, Anchor anchor, int chunkRadius) {
-        int centerX = anchor.x() >> 4;
-        int centerZ = anchor.z() >> 4;
+        return preloadNear(level, new BlockPos(anchor.x(), anchor.y(), anchor.z()), chunkRadius);
+    }
+
+    /** 把任意坐标周围的区块同步加载出来（出发海域也用这个）。 */
+    public static int preloadNear(ServerLevel level, BlockPos center, int chunkRadius) {
+        int centerX = center.getX() >> 4;
+        int centerZ = center.getZ() >> 4;
         int loaded = 0;
         for (int dx = -chunkRadius; dx <= chunkRadius; dx++) {
             for (int dz = -chunkRadius; dz <= chunkRadius; dz++) {

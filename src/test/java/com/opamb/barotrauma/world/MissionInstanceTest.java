@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,6 +37,22 @@ class MissionInstanceTest {
         assertNull(MissionInstance.siteXAt(anchor.x(), MissionInstance.SITE_RADIUS + 1));
         assertNull(MissionInstance.siteXAt(MissionInstance.BASE_X - MissionInstance.SPACING, 0),
                 "负 slot 不算站点");
+    }
+
+    @Test
+    @DisplayName("双站关卡：出发站在目的站 192 格外，方向按轮次轮换")
+    void startSiteRotates() {
+        MissionInstance.Anchor anchor = MissionInstance.anchorForRound(0);
+        var start = MissionInstance.startSite(anchor);
+        assertEquals(anchor.x() - MissionInstance.START_DISTANCE, start.x(), "0 轮出发站靠西");
+        assertEquals(anchor.z(), start.z());
+        var north = MissionInstance.startSite(MissionInstance.anchorForRound(1));
+        assertEquals(-MissionInstance.START_DISTANCE, north.z(), "1 轮出发站靠北");
+        assertTrue(MissionInstance.inRouteZone(anchor.x(), anchor.z()), "目的站净空");
+        assertTrue(MissionInstance.inRouteZone(start.x(), start.z()), "出发站净空");
+        int midX = (anchor.x() + start.x()) / 2;
+        assertTrue(MissionInstance.inRouteZone(midX, anchor.z()), "两站之间是开阔水道");
+        assertFalse(MissionInstance.inRouteZone(anchor.x(), anchor.z() + 400), "远离航线");
     }
 
     @Test

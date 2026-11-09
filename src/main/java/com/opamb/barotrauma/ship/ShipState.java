@@ -621,6 +621,21 @@ public final class ShipState {
 
     /** 舱室总进水比例（0..1），用于让灌了水的船往下沉。 */
     public double floodRatio() {
+        return waterRatio(true);
+    }
+
+    /**
+     * 原版 {@code SubmarineBody.CalculateBuoyancy()} 的输入：全船水量 / 全船容积。
+     *
+     * <p>和 {@link #floodRatio()} 的区别是<b>包含压载水</b>——原作压载舱也是
+     * Hull，压载水本来就计入浮力；中性点是 {@code NeutralBallastPercentage = 0.07}
+     * （全船 7% 的水），不是压载泵所在舱的百分比。</p>
+     */
+    public double buoyancyWaterRatio() {
+        return waterRatio(false);
+    }
+
+    private double waterRatio(boolean excludeBallast) {
         // 分母必须把"连海空腔"也算上：舱室破洞后会从 compartments 移到 openPockets，
         // 只数密闭舱室的话，整艘船灌满水时比例反而是 0，物理上不会下沉。
         // 但只算**船壳以内**的格：圆角船体的包围盒四角也在同一片连海空腔里，
@@ -648,12 +663,14 @@ public final class ShipState {
             pocketWater += simulation().pocketWater(i)
                     * (pocket.interiorVolume() / (double) cells);
         }
-        // 压载舱的水是有意灌进去的，不能同时算成"进水"——否则浮力会被
-        // 压载因子（0.35）和进水因子（0.65）各扣一次。
-        double units = simulation().waterUnits() + pocketWater
-                - simulation().ballastUnits();
-        double capacity = volume * ShipSimulation.UNITS_PER_BLOCK
-                - simulation().ballastCapacityUnits();
+        double units = simulation().waterUnits() + pocketWater;
+        double capacity = volume * ShipSimulation.UNITS_PER_BLOCK;
+        if (excludeBallast) {
+            // 压载舱的水是有意灌进去的，不能同时算成"进水"——否则浮力会被
+            // 压载因子和进水因子各扣一次。
+            units -= simulation().ballastUnits();
+            capacity -= simulation().ballastCapacityUnits();
+        }
         return capacity <= 0.0D ? 0.0D : Math.min(1.0D, Math.max(0.0D, units / capacity));
     }
 

@@ -4,15 +4,22 @@ import com.opamb.barotrauma.registry.ModShipBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoorHingeSide;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.chunk.ChunkAccess;
 
 /**
- * 新手哨站（M1 版本）：一个 40×21×24 的气密盒子，内部分成前厅 / 医疗 / 补给三间。
+ * 哨站（M1 版本）：一个气密的盒子建筑，内部分成前厅 / 医疗 / 补给等房间。
+ *
+ * <p>主站（教程哨站）保持原样；副本哨站按 slot 轮换 3 套外形/内装（小型中继站、
+ * 大型矿业站、研究站），避免每次下潜头顶都是同一栋房子。对接舱、竖井和停靠
+ * 判定仍由 {@link DockingBay} 复用用户做的那套，不随变体改变。</p>
  *
  * <p>位置：挂在<b>顶部岩壳的底面</b>，顶部装甲与压平后的顶板底面（y=-44）重合
  * （用户要求：之前哨站悬在 carveCavern 挖出的椭球洞正中，四周全是光滑洞壁，看起来"生在洞里"）。
@@ -44,9 +51,60 @@ public final class OutpostBuilder {
     private OutpostBuilder() {
     }
 
+    /**
+     * 哨站外形/内装变体。主站保持原教程哨站；副本站按 slot 轮换 1..3，
+     * 让每次下潜钻出水面的站不是同一套房子（对接舱/竖井仍由
+     * {@link DockingBay#buildStation} 复用用户做的那套，不在这里改）。
+     *
+     * @param splitX 纵向隔墙（|x| 等于它），0 = 不切
+     * @param splitZ 横向隔墙（|z| 等于它），0 = 不切
+     * @param accent 隔墙材质
+     * @param terminalX/terminalZ 任务终端相对站点中心的偏移
+     */
+    private record Layout(int halfX, int halfZ, int innerHalfX, int innerHalfZ,
+                          int splitX, int splitZ, Block accent,
+                          int terminalX, int terminalZ) {
+    }
+
+    /** 主站 = 教程哨站原样；副本出发站沿用“你离开的那座站”的外观，目的站按轮次轮换。 */
+    private static Layout layout(DockingBay.Site site) {
+        if (DockingBay.Site.MAIN.equals(site)) {
+            return tutorialLayout();
+        }
+        int slot = Math.max(0, Math.round((site.x() - MissionInstance.BASE_X)
+                / (float) MissionInstance.SPACING));
+        if (isRouteStart(site, slot)) {
+            // 出发站 = 上一轮的目的站：保持你在上一轮看到的站不变
+            return slot <= 0 ? tutorialLayout() : destinationLayout(slot - 1);
+        }
+        return destinationLayout(slot);
+    }
+
+    private static Layout tutorialLayout() {
+        return new Layout(HALF_X, HALF_Z, INNER_HALF_X, INNER_HALF_Z,
+                6, 0, ModShipBlocks.STATION_PLATING.get(), 8, 0);
+    }
+
+    /** 目的站按轮次轮换：大型矿业站 / 研究站。 */
+    private static Layout destinationLayout(int slot) {
+        return switch (Math.floorMod(slot, 2)) {
+            // 大型矿业站：宽两圈，深板岩隔墙，终端在远侧房间
+            case 0 -> new Layout(24, 14, 22, 12, 8, 0, Blocks.DEEPSLATE_TILES, 13, 0);
+            // 研究站：纵深更大，多一道横向隔墙（低三格留门洞）
+            default -> new Layout(18, 15, 16, 13, 6, 7, Blocks.IRON_BLOCK, 8, -4);
+        };
+    }
+
+    private static boolean isRouteStart(DockingBay.Site site, int slot) {
+        return MissionInstance.startSite(MissionInstance.anchorForRound(slot)).equals(site);
+    }
+
     public static boolean intersects(ChunkPos pos, DockingBay.Site site) {
-        return pos.getMaxBlockX() >= site.x() - HALF_X && pos.getMinBlockX() <= site.x() + HALF_X
-                && pos.getMaxBlockZ() >= site.z() - HALF_Z && pos.getMinBlockZ() <= site.z() + HALF_Z;
+        Layout layout = layout(site);
+        return pos.getMaxBlockX() >= site.x() - layout.halfX()
+                && pos.getMinBlockX() <= site.x() + layout.halfX()
+                && pos.getMaxBlockZ() >= site.z() - layout.halfZ()
+                && pos.getMinBlockZ() <= site.z() + layout.halfZ();
     }
 
     /** 哨站水池的判定范围（比建筑本体大）。 */
@@ -111,10 +169,11 @@ public final class OutpostBuilder {
 
     public static void build(ChunkAccess chunk, DockingBay.Site site) {
         ChunkPos pos = chunk.getPos();
-        int minX = site.x() - HALF_X;
-        int maxX = site.x() + HALF_X;
-        int minZ = site.z() - HALF_Z;
-        int maxZ = site.z() + HALF_Z;
+        Layout layout = layout(site);
+        int minX = site.x() - layout.halfX();
+        int maxX = site.x() + layout.halfX();
+        int minZ = site.z() - layout.halfZ();
+        int maxZ = site.z() + layout.halfZ();
         int x0 = Math.max(pos.getMinBlockX(), minX);
         int x1 = Math.min(pos.getMaxBlockX(), maxX);
         int z0 = Math.max(pos.getMinBlockZ(), minZ);
@@ -123,9 +182,9 @@ public final class OutpostBuilder {
         for (int x = x0; x <= x1; x++) {
             for (int z = z0; z <= z1; z++) {
                 for (int y = MIN_Y; y <= MAX_Y; y++) {
-                    BlockState state = stateAt(x - site.x(), y, z - site.z());
+                    BlockState state = stateAt(x - site.x(), y, z - site.z(), layout);
                     if (state != null) {
-                        chunk.setBlockState(new BlockPos(x, y, z), state, false);
+                        setWithBe(chunk, new BlockPos(x, y, z), state);
                     }
                 }
             }
@@ -135,7 +194,7 @@ public final class OutpostBuilder {
         BlockState plating = plating();
         int platformY = ModDimensions.OUTPOST_SPAWN_Y - 1;
         for (int lx = -3; lx <= 3; lx++) {
-            for (int lz = HALF_Z + 1; lz <= HALF_Z + 5; lz++) {
+            for (int lz = layout.halfZ() + 1; lz <= layout.halfZ() + 5; lz++) {
                 int x = site.x() + lx;
                 int z = site.z() + lz;
                 if (inChunk(pos, x, z)) {
@@ -145,15 +204,16 @@ public final class OutpostBuilder {
         }
 
         // 气闸门（两格高）
-        if (inChunk(pos, site.x(), site.z() + HALF_Z)) {
-            placeDoor(chunk, site.x(), ModDimensions.OUTPOST_SPAWN_Y, site.z() + HALF_Z);
+        if (inChunk(pos, site.x(), site.z() + layout.halfZ())) {
+            placeDoor(chunk, site.x(), ModDimensions.OUTPOST_SPAWN_Y, site.z() + layout.halfZ());
         }
 
-        // 任务终端：前厅右侧（医疗间门口），接任务/交付/商店都在这里
-        if (inChunk(pos, site.x() + 8, site.z())) {
-            chunk.setBlockState(new BlockPos(site.x() + 8, ModDimensions.OUTPOST_SPAWN_Y - 1, site.z()),
-                    com.opamb.barotrauma.registry.ModBlocks.MISSION_TERMINAL.get().defaultBlockState(),
-                    false);
+        // 任务终端：位置随变体走，接任务/交付/商店都在这里
+        int terminalX = site.x() + layout.terminalX();
+        int terminalZ = site.z() + layout.terminalZ();
+        if (inChunk(pos, terminalX, terminalZ)) {
+            setWithBe(chunk, new BlockPos(terminalX, ModDimensions.OUTPOST_SPAWN_Y - 1, terminalZ),
+                    com.opamb.barotrauma.registry.ModBlocks.MISSION_TERMINAL.get().defaultBlockState());
         }
 
         // 对接通道：站内地板开洞、向下 3长×4宽×6高的垂直气密通道、底部水平对接舱口
@@ -161,21 +221,31 @@ public final class OutpostBuilder {
     }
 
     /** 局部坐标（相对站点中心）取方块；y 仍是绝对高度。 */
-    private static BlockState stateAt(int x, int y, int z) {
-        if (Math.abs(x) > HALF_X || Math.abs(z) > HALF_Z || y < MIN_Y || y > MAX_Y) {
+    private static BlockState stateAt(int x, int y, int z, Layout layout) {
+        if (Math.abs(x) > layout.halfX() || Math.abs(z) > layout.halfZ()
+                || y < MIN_Y || y > MAX_Y) {
             return null;
         }
 
-        boolean interior = Math.abs(x) <= INNER_HALF_X
-                && Math.abs(z) <= INNER_HALF_Z
+        boolean interior = Math.abs(x) <= layout.innerHalfX()
+                && Math.abs(z) <= layout.innerHalfZ()
                 && y >= INNER_MIN_Y && y <= INNER_MAX_Y;
 
         if (interior) {
-            // 隔墙：把内部切成三间，中间 |z|<=1 且下三格留门洞
-            if (Math.abs(x) == 6 && y >= INNER_MIN_Y && y <= INNER_MAX_Y) {
+            // 纵向隔墙：把内部切成几间，中间 |z|<=1 且下三格留门洞
+            if (layout.splitX() > 0 && Math.abs(x) == layout.splitX()
+                    && y >= INNER_MIN_Y && y <= INNER_MAX_Y) {
                 boolean doorway = Math.abs(z) <= 1 && y <= INNER_MIN_Y + 2;
                 if (!doorway) {
-                    return plating();
+                    return layout.accent().defaultBlockState();
+                }
+            }
+            // 横向隔墙（研究站）：|x|<=1 且下三格留门洞，别挡住去气闸门的路
+            if (layout.splitZ() > 0 && Math.abs(z) == layout.splitZ()
+                    && y >= INNER_MIN_Y && y <= INNER_MAX_Y) {
+                boolean doorway = Math.abs(x) <= 1 && y <= INNER_MIN_Y + 2;
+                if (!doorway) {
+                    return layout.accent().defaultBlockState();
                 }
             }
             // 天花板灯
@@ -186,7 +256,7 @@ public final class OutpostBuilder {
         }
 
         // 气闸门洞：把外墙挖穿，等下面放门
-        if (x == 0 && z == HALF_Z && (y == ModDimensions.OUTPOST_SPAWN_Y
+        if (x == 0 && z == layout.halfZ() && (y == ModDimensions.OUTPOST_SPAWN_Y
                 || y == ModDimensions.OUTPOST_SPAWN_Y + 1)) {
             return Blocks.AIR.defaultBlockState();
         }
@@ -210,8 +280,33 @@ public final class OutpostBuilder {
         return ModShipBlocks.STATION_PLATING.get().defaultBlockState();
     }
 
+    /**
+     * 放置方块，并在世界生成阶段就为带方块实体的方块建好 BE。
+     *
+     * <p>只 {@code chunk.setBlockState} 的话，GeckoLib 的舱口/舱壁门/任务终端在
+     * 客户端没有 BE，模型要等玩家右键让 blockstate 变化后才出现（用户反馈
+     * "到了哨站那些模型不点一下刷新不出来"）。世界生成时显式建 BE，区块第一次
+     * 发给客户端就会带上它们。</p>
+     */
+    public static void setWithBe(ChunkAccess chunk, BlockPos pos, BlockState state) {
+        chunk.setBlockState(pos, state, false);
+        if (state.getBlock() instanceof EntityBlock entityBlock) {
+            BlockEntity be = entityBlock.newBlockEntity(pos, state);
+            if (be != null) {
+                chunk.setBlockEntity(be);
+            }
+        }
+    }
+
     private static boolean inChunk(ChunkPos pos, int x, int z) {
         return x >= pos.getMinBlockX() && x <= pos.getMaxBlockX()
                 && z >= pos.getMinBlockZ() && z <= pos.getMaxBlockZ();
+    }
+
+    /** 任务终端的绝对位置（位置随布局变体走；旧存档补 BE 用）。 */
+    public static BlockPos terminalPos(DockingBay.Site site) {
+        Layout layout = layout(site);
+        return new BlockPos(site.x() + layout.terminalX(),
+                ModDimensions.OUTPOST_SPAWN_Y - 1, site.z() + layout.terminalZ());
     }
 }

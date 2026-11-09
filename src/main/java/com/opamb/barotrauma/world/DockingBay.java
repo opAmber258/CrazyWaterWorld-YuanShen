@@ -92,19 +92,25 @@ public final class DockingBay {
     /** 站点/水腔的横向判定半径（比建筑外墙大，覆盖站下水腔和停靠的潜艇）。 */
     private static final int SITE_RADIUS = 40;
 
-    /** 世界生成用：这个区块可能碰到的站点（主站 + 由区块 x 推出的副本站）。 */
+    /** 世界生成用：这个区块可能碰到的站点（主站 + 本轮副本的出发站/目的站）。 */
     public static java.util.List<Site> sitesNear(ChunkPos pos) {
-        java.util.List<Site> sites = new java.util.ArrayList<>(2);
+        java.util.List<Site> sites = new java.util.ArrayList<>(3);
         sites.add(Site.MAIN);
         int centerX = pos.getMiddleBlockX();
         int centerZ = pos.getMiddleBlockZ();
-        if (Math.abs(centerZ) <= SITE_RADIUS) {
-            int slot = Math.round((centerX - MissionInstance.BASE_X) / (float) MissionInstance.SPACING);
-            if (slot >= 0) {
-                Site instance = Site.forSlot(slot);
-                if (Math.abs(centerX - instance.x()) <= SITE_RADIUS) {
-                    sites.add(instance);
-                }
+        int base = Math.max(0, Math.round((centerX - MissionInstance.BASE_X)
+                / (float) MissionInstance.SPACING));
+        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
+            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+            Site destination = new Site(anchor.x(), anchor.z());
+            if (Math.abs(centerX - destination.x()) <= SITE_RADIUS
+                    && Math.abs(centerZ - destination.z()) <= SITE_RADIUS) {
+                sites.add(destination);
+            }
+            Site start = MissionInstance.startSite(anchor);
+            if (Math.abs(centerX - start.x()) <= SITE_RADIUS
+                    && Math.abs(centerZ - start.z()) <= SITE_RADIUS) {
+                sites.add(start);
             }
         }
         return sites;
@@ -112,19 +118,26 @@ public final class DockingBay {
 
     /**
      * 找出包含 (x,z) 的哨站；不在任何站范围就返回 null。
-     * z 方向所有站都在 0，离得远就看 x 落在哪个副本锚点。
+     * 副本关卡里同时有出发站和目的站，两个都要能认出来。
      */
     public static Site siteAt(int x, int z) {
         if (Math.abs(x) <= SITE_RADIUS && Math.abs(z) <= SITE_RADIUS) {
             return Site.MAIN;
         }
-        int slot = Math.round((x - MissionInstance.BASE_X) / (float) MissionInstance.SPACING);
-        if (slot < 0) {
-            return null;
-        }
-        Site site = Site.forSlot(slot);
-        if (Math.abs(x - site.x()) <= SITE_RADIUS && Math.abs(z - site.z()) <= SITE_RADIUS) {
-            return site;
+        int base = Math.max(0, Math.round((x - MissionInstance.BASE_X)
+                / (float) MissionInstance.SPACING));
+        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
+            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+            Site destination = new Site(anchor.x(), anchor.z());
+            if (Math.abs(x - destination.x()) <= SITE_RADIUS
+                    && Math.abs(z - destination.z()) <= SITE_RADIUS) {
+                return destination;
+            }
+            Site start = MissionInstance.startSite(anchor);
+            if (Math.abs(x - start.x()) <= SITE_RADIUS
+                    && Math.abs(z - start.z()) <= SITE_RADIUS) {
+                return start;
+            }
         }
         return null;
     }
@@ -387,18 +400,43 @@ public final class DockingBay {
         ensureHatchRow(level, site, SUB_HATCH_Y);
         ensureBulkhead(level, site.x() - ROOM_HALF_X - 1, SIDE_DOOR_Y, site.z());
         ensureBulkhead(level, site.x() + ROOM_HALF_X + 1, SIDE_DOOR_Y, site.z());
+        ensureMissionTerminal(level, site);
     }
 
-    /** 主站 + 本轮副本站；给开局补实体、开合舱口用。 */
+    /** 任务终端也靠 BE 渲染：旧存档/世界生成漏建时补一个。 */
+    private static void ensureMissionTerminal(ServerLevel level, Site site) {
+        BlockPos pos = OutpostBuilder.terminalPos(site);
+        level.getChunkAt(pos);
+        BlockState state = level.getBlockState(pos);
+        if (state.is(ModBlocks.MISSION_TERMINAL.get()) && level.getBlockEntity(pos) == null
+                && state.getBlock() instanceof net.minecraft.world.level.block.EntityBlock entityBlock) {
+            var be = entityBlock.newBlockEntity(pos, state);
+            if (be != null) {
+                level.setBlockEntity(be);
+            }
+        }
+    }
+
+    /** 主站 + 本轮正在下潜的副本（目的站和出发站）；给开局补实体、开合舱口用。 */
     public static java.util.List<Site> activeSites(ServerLevel level) {
-        java.util.List<Site> sites = new java.util.ArrayList<>(2);
+        java.util.List<Site> sites = new java.util.ArrayList<>(3);
         sites.add(Site.MAIN);
         try {
-            var round = com.opamb.barotrauma.campaign.CampaignState.wallet(level).round();
-            if (round.hasInstance()) {
+            var state = com.opamb.barotrauma.campaign.CampaignState.wallet(level);
+            var round = state.round();
+            // 只有真正在航行中才认副本站点：到达后 roundsCompleted 已指向下一轮，
+            // 提前按下一轮出发站加载区块会把不该建的站生成出来。
+            if (round.phase() == com.opamb.barotrauma.campaign.RoundPhase.DIVING
+                    && round.hasInstance()) {
                 Site instance = new Site(round.instanceX(), round.instanceZ());
                 if (!instance.equals(Site.MAIN)) {
                     sites.add(instance);
+                }
+                int slot = Math.max(0, Math.round((round.instanceX() - MissionInstance.BASE_X)
+                        / (float) MissionInstance.SPACING));
+                Site start = MissionInstance.startSite(MissionInstance.anchorForRound(slot));
+                if (!sites.contains(start)) {
+                    sites.add(start);
                 }
             }
         } catch (Throwable ignored) {
@@ -538,6 +576,13 @@ public final class DockingBay {
                     .setValue(HatchBlock.PART, parts[i])
                     .setValue(HatchBlock.OPEN, open);
             chunk.setBlockState(new BlockPos(x, y, site.z()), state, false);
+            // 世界生成阶段就把中段的舱口 BE 建好，模型不用右键才出现
+            if (state.getBlock() instanceof net.minecraft.world.level.block.EntityBlock entityBlock) {
+                var be = entityBlock.newBlockEntity(new BlockPos(x, y, site.z()), state);
+                if (be != null) {
+                    chunk.setBlockEntity(be);
+                }
+            }
         }
     }
 
@@ -567,6 +612,13 @@ public final class DockingBay {
         chunk.setBlockState(new BlockPos(x, y, z), lower, false);
         chunk.setBlockState(new BlockPos(x, y + 1, z),
                 lower.setValue(BulkheadDoorBlock.PART, BulkheadDoorBlock.Part.UPPER), false);
+        // 世界生成阶段就把下半格门 BE 建好，模型不用右键才出现
+        if (lower.getBlock() instanceof net.minecraft.world.level.block.EntityBlock entityBlock) {
+            var be = entityBlock.newBlockEntity(new BlockPos(x, y, z), lower);
+            if (be != null) {
+                chunk.setBlockEntity(be);
+            }
+        }
     }
 
     private static void set(ChunkAccess chunk, int x, int y, int z, BlockState state) {

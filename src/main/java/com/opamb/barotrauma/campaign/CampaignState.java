@@ -31,6 +31,11 @@ public final class CampaignState extends SavedData {
     private CompoundTag snapshot;
     /** 旧版按玩家余额是否已迁入；标记放在战役存档顶层，不参与回档快照。 */
     private boolean legacyCreditsMigrated;
+    /**
+     * 下一个可用的副本 slot。只增不减，**不参与回档快照**：失败/回滚后重试会换新 slot，
+     * 避免复用一个已经按“无人航路点”生成过（没有站）的区块。
+     */
+    private int nextInstanceSlot;
 
     public CampaignState() {
         visited.add(currentNode);
@@ -77,6 +82,17 @@ public final class CampaignState extends SavedData {
 
     public RoundState round() {
         return round;
+    }
+
+    /**
+     * 取一个未使用过的副本 slot（至少是已完成轮数）。失败重试不会复用旧 slot，
+     * 已经按另一种站点类型生成过的区块不会被错误沿用。
+     */
+    public int takeInstanceSlot() {
+        int slot = Math.max(roundsCompleted, nextInstanceSlot);
+        nextInstanceSlot = slot + 1;
+        setDirty();
+        return slot;
     }
 
     public boolean hasSnapshot() {
@@ -132,7 +148,12 @@ public final class CampaignState extends SavedData {
     }
 
     public void beginTravel(int destination, long gameTime) {
-        round.beginTravel(currentNode, destination, gameTime);
+        beginTravel(destination, gameTime, true, true);
+    }
+
+    public void beginTravel(int destination, long gameTime,
+                            boolean startHasOutpost, boolean endHasOutpost) {
+        round.beginTravel(currentNode, destination, gameTime, startHasOutpost, endHasOutpost);
         setDirty();
     }
 
@@ -215,6 +236,7 @@ public final class CampaignState extends SavedData {
     public CompoundTag save(CompoundTag tag) {
         tag.put("core", saveCore());
         tag.putBoolean("legacyCreditsMigrated", legacyCreditsMigrated);
+        tag.putInt("nextInstanceSlot", nextInstanceSlot);
         if (snapshot != null) {
             tag.put("snapshot", snapshot.copy());
         }
@@ -230,6 +252,7 @@ public final class CampaignState extends SavedData {
             state.snapshot = tag.getCompound("snapshot").copy();
         }
         state.legacyCreditsMigrated = tag.getBoolean("legacyCreditsMigrated");
+        state.nextInstanceSlot = Math.max(0, tag.getInt("nextInstanceSlot"));
         return state;
     }
 }

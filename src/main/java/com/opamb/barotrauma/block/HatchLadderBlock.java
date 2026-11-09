@@ -62,9 +62,9 @@ public class HatchLadderBlock extends HatchBlock {
         return state.getValue(OPEN) ? Shapes.or(base, plate(state)) : base;
     }
 
-    /** 梯子常驻：舱口关着也能爬（爬到顶会被关着的舱口面板挡住）。 */
+    /** 舱口打开时才可攀爬：关着的时候人停在下面，不会顶到盖板把镜头糊满。 */
     @Override
     public boolean isLadder(BlockState state, LevelReader level, BlockPos pos, LivingEntity entity) {
-        return state.getValue(PART) == Part.MIDDLE;
+        return state.getValue(OPEN) && state.getValue(PART) == Part.MIDDLE;
     }
 }

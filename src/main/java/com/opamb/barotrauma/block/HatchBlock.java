@@ -67,10 +67,16 @@ public class HatchBlock extends Block implements EntityBlock {
 
     public static final EnumProperty<Part> PART = EnumProperty.create("part", Part.class);
 
-    /** 地板舱口板：整格 footprint，1 px 厚，位于方块正中（y=7.5..8.5）。 */
+    /**
+     * 地板舱口板：整格 footprint，1 px 厚，贴方块顶面（y=15..16）。
+     *
+     * <p>盖板和地板/天花板齐平：关闭时爬梯子顶到它，就是顶到天花板（0.18 格），
+     * 不会像悬在半空的薄板那样贴着镜头糊一片材质；从上面走也不会踩进半格凹坑。
+     * 模型在渲染器里整体抬高 7.5px，和这个形状对齐。</p>
+     */
     private static final VoxelShape PANEL = Shapes.box(
-            0.0D, 7.5D / 16.0D, 0.0D,
-            1.0D, 8.5D / 16.0D, 1.0D);
+            0.0D, 15.0D / 16.0D, 0.0D,
+            1.0D, 16.0D / 16.0D, 1.0D);
 
     /**
      * 舱口固定的外框（1px 边条）：开门后只剩它，右键它才能关门。
@@ -83,13 +89,13 @@ public class HatchBlock extends Block implements EntityBlock {
             int i = facing.get2DDataValue();
             // 长边方向的两条边条（每段都有）
             VoxelShape across = Shapes.or(
-                    DoorShapes.slab(facing, -8.0D, 8.0D, -8.0D, -7.0D, 7.5D, 8.5D),
-                    DoorShapes.slab(facing, -8.0D, 8.0D, 7.0D, 8.0D, 7.5D, 8.5D));
+                    DoorShapes.slab(facing, -8.0D, 8.0D, -8.0D, -7.0D, 15.0D, 16.0D),
+                    DoorShapes.slab(facing, -8.0D, 8.0D, 7.0D, 8.0D, 15.0D, 16.0D));
             RIM_SHAPES[Part.LEFT.ordinal()][i] = Shapes.or(across,
-                    DoorShapes.slab(facing, -8.0D, -7.0D, -7.0D, 7.0D, 7.5D, 8.5D));
+                    DoorShapes.slab(facing, -8.0D, -7.0D, -7.0D, 7.0D, 15.0D, 16.0D));
             RIM_SHAPES[Part.MIDDLE.ordinal()][i] = across;
             RIM_SHAPES[Part.RIGHT.ordinal()][i] = Shapes.or(across,
-                    DoorShapes.slab(facing, 7.0D, 8.0D, -7.0D, 7.0D, 7.5D, 8.5D));
+                    DoorShapes.slab(facing, 7.0D, 8.0D, -7.0D, 7.0D, 15.0D, 16.0D));
         }
     }
 

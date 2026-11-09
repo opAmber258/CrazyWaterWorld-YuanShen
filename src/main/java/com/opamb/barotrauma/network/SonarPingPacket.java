@@ -53,15 +53,24 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                 return;
             }
             ServerLevel level = player.serverLevel();
-            // 船在开动，声纳台方块会跟着挪；坐标对不上时以玩家为准（玩家在船里）
-            // 物理船：声纳台的方块坐标是 VS2 的"船坞坐标"，拿它去扫世界只会扫到船坞，
-            // 玩家自己在船上、坐标已经是世界坐标，直接用玩家的。
+            // 声纳扫描中心必须和自动驾驶/目标标记用同一个基准：
+            // 方块船 = 声纳台方块；物理船 = 船核心的世界坐标（方块在 VS2 船坞里，
+            // 方块坐标不是世界坐标；玩家站的位置也不是核心，差了会让目标整体歪掉）。
             boolean physical = com.opamb.barotrauma.ship.vs.VsState.active();
             BlockState sonarState = level.getBlockState(sonarPos);
-            BlockPos center = !physical
-                    && (sonarState.is(ModShipBlocks.SONAR.get())
-                        || sonarState.is(ModShipBlocks.NAVIGATION_TERMINAL.get()))
-                    ? sonarPos : player.blockPosition();
+            BlockPos center;
+            if (physical) {
+                BlockPos assembled = com.opamb.barotrauma.ship.vs.VsState.corePos();
+                center = assembled != null
+                        ? assembled.offset(com.opamb.barotrauma.ship.vs.VsState.offsetX(),
+                                com.opamb.barotrauma.ship.vs.VsState.offsetY(),
+                                com.opamb.barotrauma.ship.vs.VsState.offsetZ())
+                        : player.blockPosition();
+            } else {
+                center = sonarState.is(ModShipBlocks.SONAR.get())
+                        || sonarState.is(ModShipBlocks.NAVIGATION_TERMINAL.get())
+                        ? sonarPos : player.blockPosition();
+            }
 
             ShipCoreBlockEntity core = ShipCores.resolve(level, null, center);
             ShipState ship = null;
@@ -104,9 +113,9 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             long diveTenths = Math.round(Math.abs(verticalSpeed) * 3.6D * 10.0D)
                     * (verticalSpeed < -0.05D ? -1 : verticalSpeed > 0.05D ? 1 : 0);
 
-            // 自动驾驶目标：转成相对玩家的偏移，和客户端点选时的基准保持一致
+            // 自动驾驶目标：转成相对扫描中心的偏移（客户端点选也以这个中心为基准）
             BlockPos target = ship == null ? null : ship.autopilotTarget();
-            BlockPos base = player.blockPosition();
+            BlockPos base = center;
             boolean hasTarget = target != null;
 
             // 对接面板：船核心当前世界坐标 → 最近哨站的靠泊标准位距离/状态
@@ -178,11 +187,8 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
     }
 
     /**
-     * 本轮任务的目标点：实例海里的航路浮标（不是头顶那个副本站）。
-     *
-     * <p>2026-11-09 用户反馈"所有任务的目标点都是头顶那个继承过来的哨站"。
-     * 现在按目的地节点给不同方向的航路浮标（{@link com.opamb.barotrauma.world.MissionTarget}），
-     * 声纳金色菱形指向它；副本站码头仍然用于返航对接。</p>
+     * 本轮任务的目标点：有目的站时指向它的靠泊核心；无人航路点没有站，
+     * 指向目的坐标（靠近 32 格即抵达）。
      */
     private static Waypoint waypoint(ServerLevel level, BlockPos base) {
         try {
@@ -193,12 +199,19 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                     || !round.hasInstance()) {
                 return Waypoint.NONE;
             }
-            com.opamb.barotrauma.world.MissionInstance.Anchor anchor =
-                    com.opamb.barotrauma.world.MissionTarget.anchorForInstance(
-                            round.instanceX(), round.instanceZ());
-            BlockPos target = com.opamb.barotrauma.world.MissionTarget.targetFor(anchor, round.destination());
+            BlockPos target;
+            if (round.endHasOutpost()) {
+                com.opamb.barotrauma.world.DockingBay.Site site =
+                        new com.opamb.barotrauma.world.DockingBay.Site(
+                                round.instanceX(), round.instanceZ());
+                target = com.opamb.barotrauma.world.DockingBay.dockCore(
+                        site, com.opamb.barotrauma.world.StarterSub.newLayout(level));
+            } else {
+                target = new BlockPos(round.instanceX(),
+                        com.opamb.barotrauma.world.MissionInstance.ANCHOR_Y, round.instanceZ());
+            }
             var node = com.opamb.barotrauma.campaign.CampaignMap.node(round.destination());
-            String label = (node == null ? "任务目标" : node.name()) + " 航路";
+            String label = node == null ? "目的站" : node.name();
             return new Waypoint(true,
                     target.getX() - base.getX(),
                     target.getY() - base.getY(),

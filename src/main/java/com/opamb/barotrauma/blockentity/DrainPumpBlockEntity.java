@@ -152,11 +152,16 @@ public class DrainPumpBlockEntity extends BlockEntity {
         double requested = be.signedRate(state);
         double ratio = ship.simulation().powerRatio();
         ship.simulation().reportPump(cell, requested * ratio, be.ballast(), requested,
-                be.keepBelowDoor());
+                be.keepBelowDoor(), be.ballastTarget());
     }
 
     /** 上报前钩子：默认什么也不做；压载泵用它读取舵台垂直指令。 */
     protected void beforeReport(ShipState ship) {
+    }
+
+    /** 自动压载泵的目标水位（0..1）；普通泵/手动模式返回 -1（不做单步目标钳制）。 */
+    protected double ballastTarget() {
+        return -1.0D;
     }
 
     /**

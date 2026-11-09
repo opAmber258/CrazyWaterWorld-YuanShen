@@ -33,8 +33,41 @@ public record MapNode(int id, NodeType type, String name, BlockPos anchor, List<
     /** 官方 factions.xml 初始值；M1 暂无声望变更机制。 */
     public int reputation() { return type == NodeType.OUTPOST ? 15 : 0; }
 
-    public int mapX() { return switch (id) { case 0 -> 100; case 1 -> 330; case 2, 3 -> 710; default -> 1040; }; }
-    public int mapY() { return switch (id) { case 2 -> 200; case 3 -> 610; default -> 410; }; }
+    public int mapX() {
+        return switch (id) {
+            case 0 -> 105;
+            case 1 -> 354;
+            case 2 -> 645;
+            case 3 -> 622;
+            case 4 -> 814;
+            case 5 -> 196;
+            case 6 -> 417;
+            case 7 -> 638;
+            case 8 -> 619;
+            case 9 -> 831;
+            case 10 -> 839;
+            case 11 -> 1106;
+            default -> 1086;
+        };
+    }
+
+    public int mapY() {
+        return switch (id) {
+            case 0 -> 524;
+            case 1 -> 478;
+            case 2 -> 317;
+            case 3 -> 686;
+            case 4 -> 494;
+            case 5 -> 255;
+            case 6 -> 667;
+            case 7 -> 69;
+            case 8 -> 585;
+            case 9 -> 199;
+            case 10 -> 674;
+            case 11 -> 184;
+            default -> 620;
+        };
+    }
 
     public boolean connectsTo(int other) {
         return neighbors.contains(other);

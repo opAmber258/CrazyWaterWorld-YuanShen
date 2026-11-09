@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.ship.vs;
 
+import com.opamb.barotrauma.ship.ShipSimulation;
 import org.joml.Quaterniondc;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
@@ -33,14 +34,6 @@ public final class VsThruster implements ShipPhysicsListener {
 
     /** 满油门时的水平加速度（格/秒²）。 */
     private static final double ACCEL = 2.5D;
-    /** 垂直推进器加速度（格/秒²）。 */
-    private static final double ACCEL_VERTICAL = 1.8D;
-    /** 压载满水时额外的下沉比例（相对重力加速度）。 */
-    private static final double BALLAST_WEIGHT = 0.35D;
-    /** 进水满舱时损失的浮力比例；剩下的 0.35 是船体结构本身的残余浮力。 */
-    private static final double FLOOD_WEIGHT = 0.65D;
-    /** 进水后给垂直速度的阻尼，避免满舱后像石头一样无限加速。 */
-    private static final double FLOOD_DRAG = 0.65D;
     /**
      * 原版 {@code SubmarineBody} 的二次水阻：水平 0.01、垂直 0.05，
      * 附加船员质量 / 5000，两者都封顶 0.1。加速度 = sign(v)·v²·系数。
@@ -50,10 +43,6 @@ public final class VsThruster implements ShipPhysicsListener {
     private static final double DRAG_MAX = 0.1D;
     /** 维度重力，和 data/valkyrienskies/vs_dimension_parameters/the_deep.json 里的 -10 对应。 */
     private static final double GRAVITY = 10.0D;
-    /** 无垂直输入时阻尼残余垂速（1/秒）。 */
-    private static final double VERTICAL_DAMPING = 2.0D;
-    /** 无垂直输入时把船拉回"松开按键那一刻的深度"（1/秒²/格）。 */
-    private static final double DEPTH_HOLD_GAIN = 0.8D;
 
     /** 角速度阻尼（乘质量；越大越"锁死"在水平）。 */
     private static final double ATTITUDE_DAMPING = 900.0D;
@@ -74,10 +63,11 @@ public final class VsThruster implements ShipPhysicsListener {
     private volatile double supply = 1.0D;
     /** 船上已安装的引擎数量；0 时完全不能推进。 */
     private volatile int engineCount;
-    private volatile double ballast;
-    private volatile double flooded;
-    /** 没有垂直输入时要保持的深度（NaN = 还没记录 / 正在手动下潜）。 */
-    private double holdY = Double.NaN;
+    /**
+     * 全船水量占比（含压载水，0..1）。原版 {@code SubmarineBody.CalculateBuoyancy()}
+     * 的唯一输入：7% 中性，低于 7% 正浮力 ×2，低于 0 的部分封顶 -0.5。
+     */
+    private volatile double waterRatio;
 
     // 诊断用：上一次物理步实际施加的力（牛顿）
     private volatile double lastForceX;
@@ -190,9 +180,9 @@ public final class VsThruster implements ShipPhysicsListener {
         return supply >= 0.5D && engineCount > 0;
     }
 
-    public void setBallast(double filled, double flood) {
-        ballast = filled;
-        flooded = flood;
+    /** 全船水量占比（含压载水），原版浮力公式的唯一输入。 */
+    public void setWaterRatio(double ratio) {
+        waterRatio = ratio;
     }
 
     public double lastForceX() {
@@ -276,42 +266,20 @@ public final class VsThruster implements ShipPhysicsListener {
             ax = hx / len * ACCEL * throttle * supplyFactor * engineFactor * engineBoost;
             az = hz / len * ACCEL * throttle * supplyFactor * engineFactor * engineBoost;
         }
-        double ay = throttleY * ACCEL_VERTICAL * throttle * supplyFactor * engineFactor * engineBoost;
-        // 原版 SubmarineBody 的二次水阻：v² 阻尼，水平 0.01、垂直 0.05（+船员质量/5000，
-        // 封顶 0.1）。没有它船会一直加速（实测下潜 20 多秒就到 25 m/s）。
-        // 我们不在物理回调里统计船员质量，按原版空载值算。
+        // 原版二次水阻（水平 0.01 + 船员质量/5000，封顶 0.1）
         double dragHorizontal = Math.min(DRAG_MAX, DRAG_HORIZONTAL);
-        double dragVertical = Math.min(DRAG_MAX, DRAG_VERTICAL);
         ax -= Math.signum(vel.x()) * vel.x() * vel.x() * dragHorizontal;
         az -= Math.signum(vel.z()) * vel.z() * vel.z() * dragHorizontal;
+        // 原版 SubmarineBody.CalculateBuoyancy()：刚体忽略重力（IgnoreGravity = true），
+        // 垂直力只有浮力：lift = 0.07 - 全船水量占比，正浮力 ×2，负浮力封顶 -0.5。
+        // +1 这一项补偿 VS2 的世界重力 -10，等价于原作的 IgnoreGravity。
+        double ratio = clamp01(waterRatio);
+        double lift = ShipSimulation.NEUTRAL_WATER_RATIO - ratio;
+        lift = lift > 0.0D ? lift * 2.0D : Math.max(lift, -0.5D);
+        double ay = GRAVITY * (1.0D + lift);
+        // 原版二次水阻：垂直 0.05 + 船员质量/5000，封顶 0.1（按空载船员质量 0 算）。
+        double dragVertical = Math.min(DRAG_MAX, DRAG_VERTICAL);
         ay -= Math.signum(vel.y()) * vel.y() * vel.y() * dragVertical;
-        // 空气海域的浮力完全由数值计算：完整船体接近中性，压载/进水按比例扣掉浮力。
-        // 不再依赖 VS2 的 liquidOverlap（它对我们的自定义方块恒为 0），也不依赖世界里的水。
-        double ballastLoad = clamp01(ballast);
-        double floodLoad = clamp01(flooded);
-        ay += GRAVITY * (1.0D - BALLAST_WEIGHT * ballastLoad - FLOOD_WEIGHT * floodLoad);
-        if (floodLoad > 0.02D) {
-            // 满舱时给一个垂直阻尼，避免下沉速度无限增大；也保留一点“水阻”的手感。
-            ay += -vel.y() * FLOOD_DRAG;
-        }
-
-        // 没有垂直输入时保持深度：VS2 的实际重力和我们补的 GRAVITY 不一定严格相等，
-        // 不锁的话船会一直缓慢上浮（用户实测"物理船一直往上浮"）。这里用
-        // "垂速阻尼 + 深度误差回拉"做深度保持；有油门/进水时让开。
-        // 压载不算垂直输入：松手下潜指令后压载水还在舱里，若它关掉深度保持，
-        // 船会带着满压载一路沉到海底（不能只靠水阻）。
-        boolean verticalInput = throttleY != 0 || clamp01(flooded) > 0.02D;
-        // 没电时深度保持也要停：那是靠推进器做的"自动悬停"，不是浮力。
-        if (!powered() || verticalInput) {
-            holdY = Double.NaN;
-        } else {
-            if (Double.isNaN(holdY)) {
-                holdY = where.y();
-            }
-            // 抵消压载造成的恒定净下沉力，否则 PD 会稳稳停在低 8 格左右的位置。
-            ay -= GRAVITY * (1.0D - BALLAST_WEIGHT * ballastLoad);
-            ay += -vel.y() * VERTICAL_DAMPING + (holdY - where.y()) * DEPTH_HOLD_GAIN;
-        }
 
         double fx = ax * mass;
         double fy = ay * mass;
