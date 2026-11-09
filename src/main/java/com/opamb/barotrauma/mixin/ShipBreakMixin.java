@@ -86,7 +86,8 @@ public abstract class ShipBreakMixin {
             return;
         }
         BlockState state = level.getBlockState(pos);
-        if (state.is(ModShipBlocks.SONAR.get())) {
+        if (state.is(ModShipBlocks.SONAR.get())
+                || state.is(ModShipBlocks.NAVIGATION_TERMINAL.get())) {
             player.displayClientMessage(Component.translatable("message.barotrauma.hull_sonar")
                     .withStyle(ChatFormatting.GOLD), true);
             ackAndCancel(player, sequence, ci);

@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.Locale;
@@ -56,7 +57,10 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             // 物理船：声纳台的方块坐标是 VS2 的"船坞坐标"，拿它去扫世界只会扫到船坞，
             // 玩家自己在船上、坐标已经是世界坐标，直接用玩家的。
             boolean physical = com.opamb.barotrauma.ship.vs.VsState.active();
-            BlockPos center = !physical && level.getBlockState(sonarPos).is(ModShipBlocks.SONAR.get())
+            BlockState sonarState = level.getBlockState(sonarPos);
+            BlockPos center = !physical
+                    && (sonarState.is(ModShipBlocks.SONAR.get())
+                        || sonarState.is(ModShipBlocks.NAVIGATION_TERMINAL.get()))
                     ? sonarPos : player.blockPosition();
 
             ShipCoreBlockEntity core = ShipCores.resolve(level, null, center);

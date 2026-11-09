@@ -873,7 +873,9 @@ public final class ShipState {
         net.minecraft.core.BlockPos target = null;
         for (net.minecraft.core.BlockPos pos : geometry.hull()) {
             // 声纳是船脑，不能当迎撞面被撞掉
-            if (level.getBlockState(pos).is(com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get())) {
+            if (level.getBlockState(pos).is(com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get())
+                    || level.getBlockState(pos).is(
+                            com.opamb.barotrauma.registry.ModShipBlocks.NAVIGATION_TERMINAL.get())) {
                 continue;
             }
             int score = pos.getX() * dx + pos.getY() * dy + pos.getZ() * dz;

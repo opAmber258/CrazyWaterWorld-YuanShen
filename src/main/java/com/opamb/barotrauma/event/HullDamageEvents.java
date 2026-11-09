@@ -68,7 +68,8 @@ public final class HullDamageEvents {
         Iterator<BlockPos> iterator = event.getAffectedBlocks().iterator();
         while (iterator.hasNext()) {
             BlockPos pos = iterator.next();
-            if (level.getBlockState(pos).is(ModShipBlocks.SONAR.get())
+            if ((level.getBlockState(pos).is(ModShipBlocks.SONAR.get())
+                    || level.getBlockState(pos).is(ModShipBlocks.NAVIGATION_TERMINAL.get()))
                     && core.state().tracksHullBlock(pos)) {
                 // 声纳是船脑，爆炸也不能炸掉。
                 iterator.remove();

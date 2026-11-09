@@ -45,6 +45,9 @@ public final class ModItems {
     /** 测试用透明船壳（调试专用）。 */
     public static final RegistryObject<Item> TEST_HULL = blockItem("test_hull", ModShipBlocks.TEST_HULL);
     public static final RegistryObject<Item> SONAR = blockItem("sonar", ModShipBlocks.SONAR);
+    /** 导航终端：3×3×1 多方块驾驶台，右键打开声纳界面。 */
+    public static final RegistryObject<Item> NAVIGATION_TERMINAL =
+            blockItem("navigation_terminal", ModShipBlocks.NAVIGATION_TERMINAL);
     public static final RegistryObject<Item> STATION_PLATING = blockItem("station_plating", ModShipBlocks.STATION_PLATING);
     public static final RegistryObject<Item> HATCH = blockItem("hatch", ModShipBlocks.HATCH);
     /** 带梯舱口：舱口 + 铁梯做进同一个方块，梯子不随开合消失。 */

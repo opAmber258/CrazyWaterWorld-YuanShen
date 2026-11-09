@@ -112,5 +112,8 @@
   "item.barotrauma.naloxone": "纳洛酮",
   "item.barotrauma.fentanyl": "芬太尼",
   "item.barotrauma.67": "67",
-  "subtitles.barotrauma.ladder_climb": "攀爬铁梯"
+  "subtitles.barotrauma.ladder_climb": "攀爬铁梯",
+  "block.barotrauma.navigation_terminal": "导航终端",
+  "message.barotrauma.navigation_terminal.core_exists": "附近已有船核心（旧声纳台）；先清掉旧核心（创造模式可用 /setblock）再放导航终端",
+  "message.barotrauma.navigation_terminal.protected": "导航终端是船核心，不能拆"
 }

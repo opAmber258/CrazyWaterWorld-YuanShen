@@ -31,6 +31,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.HULL_GLASS.get());
                         output.accept(ModItems.TEST_HULL.get());
                         output.accept(ModItems.SONAR.get());
+                        output.accept(ModItems.NAVIGATION_TERMINAL.get());
                         output.accept(ModItems.STATION_PLATING.get());
                         output.accept(ModItems.HATCH.get());
                         output.accept(ModItems.HATCH_LADDER.get());

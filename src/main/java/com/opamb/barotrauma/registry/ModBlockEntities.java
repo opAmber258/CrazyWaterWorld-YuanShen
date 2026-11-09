@@ -5,6 +5,7 @@ import com.opamb.barotrauma.blockentity.BallastPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity;
 import com.opamb.barotrauma.blockentity.DrainPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.HatchBlockEntity;
+import com.opamb.barotrauma.blockentity.NavigationTerminalBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.blockentity.SmallPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.SonarBlockEntity;
@@ -25,6 +26,12 @@ public final class ModBlockEntities {
     public static final RegistryObject<BlockEntityType<SonarBlockEntity>> SONAR =
             BLOCK_ENTITIES.register("sonar",
                     () -> BlockEntityType.Builder.of(SonarBlockEntity::new, ModShipBlocks.SONAR.get()).build(null));
+
+    /** 导航终端：3×3×1 多方块，只有下排中段有方块实体（GeckoLib 渲染 + 船核心 + 声纳全息）。 */
+    public static final RegistryObject<BlockEntityType<NavigationTerminalBlockEntity>> NAVIGATION_TERMINAL =
+            BLOCK_ENTITIES.register("navigation_terminal", () -> BlockEntityType.Builder
+                    .of(NavigationTerminalBlockEntity::new, ModShipBlocks.NAVIGATION_TERMINAL.get())
+                    .build(null));
 
     /** 普通排水泵：普通方块模型 + 流量/自动控制逻辑。 */
     public static final RegistryObject<BlockEntityType<DrainPumpBlockEntity>> DRAIN_PUMP =
