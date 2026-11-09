@@ -26,6 +26,12 @@ public final class ShipSimulation {
 
     public static final double UNITS_PER_BLOCK = 100.0D;
 
+    /**
+     * 原版 {@code SubmarineBody.NeutralBallastPercentage = 0.07f}：全船水量占比
+     * 7% 时浮力中性。压载泵把压载舱注到这个相对水位来保持浮力平衡。
+     */
+    public static final double NEUTRAL_WATER_RATIO = 0.07D;
+
     private static final double O2_PER_GENERATOR = 700.0D;
     private static final double CREW_OXYGEN = 700.0D;
     private static final double PUMP_RATE = 600.0D;
@@ -55,6 +61,12 @@ public final class ShipSimulation {
 
     private double ballast;
     private double ballastCapacity;
+    /** 压载舱中性相对水位（由 {@link #primeBallast()} 按舱容算出）。 */
+    private double ballastNeutral = 0.5D;
+    /** 物理船第一次启动时请求一次压载注水。 */
+    private boolean ballastPrimePending;
+    /** 中性水位已经算好；算好之前压载泵不动作（方块船停靠时也不乱注水）。 */
+    private boolean ballastPrimed;
     private boolean pumpOut = true;
     /** 反应堆上报表：格子 → (输出 kW, 额定 kW, 温度, 过热, 熔毁, 最后上报 tick)。 */
     private final java.util.Map<net.minecraft.core.BlockPos, ReactorReport> reactors =
@@ -170,6 +182,8 @@ public final class ShipSimulation {
         }
         this.ballast = old.ballast;
         this.ballastCapacity = old.ballastCapacity;
+        this.ballastNeutral = old.ballastNeutral;
+        this.ballastPrimed = old.ballastPrimed;
         this.pumpOut = old.pumpOut;
         this.airlockPhase = old.airlockPhase;
         this.airlockWater = old.airlockWater;
@@ -419,6 +433,14 @@ public final class ShipSimulation {
         }
         this.ballast = ballastWater;
         this.ballastCapacity = ballastCapacity;
+
+        // 原版中性浮力：全船 7% 的水（SubmarineBody.NeutralBallastPercentage）。
+        // 物理船第一次启动时把压载舱注到"刚好让全船水量 = 7%"的相对水位，
+        // 之后舵台空闲就让压载泵保持这个水位；上浮排空、下潜注满。
+        if (ballastPrimePending && ballastCapacity > 0.0D) {
+            primeBallast();
+            ballastPrimePending = false;
+        }
 
         // 气闸：抽干 / 注水，完成后自动回到 CLOSED（此时另一侧门才允许开）
         if (airlockPhase == AirlockPhase.DRAINING) {
@@ -921,6 +943,63 @@ public final class ShipSimulation {
 
     public double ballastPercent() {
         return ballastCapacity <= 0.0D ? 0.0D : ballast / ballastCapacity;
+    }
+
+    /**
+     * 压载舱的"中性相对水位"（0..1）：让全船水量刚好等于 7% 时，压载舱应有的
+     * 填充比例；由 {@link #primeBallast()} 按实际舱容算出来。舵台空闲时压载泵
+     * 保持这个水位，上浮/下潜才改成 0/1。
+     */
+    public double ballastNeutral() {
+        return ballastNeutral;
+    }
+
+    /** 物理船第一次启动时调用一次：下一 tick 把压载舱注到中性水位。 */
+    public void requestBallastPrime() {
+        ballastPrimePending = true;
+    }
+
+    /** 中性水位是否已经标定；没标定前压载泵不自动动作。 */
+    public boolean ballastPrimed() {
+        return ballastPrimed;
+    }
+
+    private void primeBallast() {
+        double total = 0.0D;
+        for (double volume : volumes) {
+            total += volume * UNITS_PER_BLOCK;
+        }
+        double need = total * NEUTRAL_WATER_RATIO - waterUnits();
+        if (need > 0.0D) {
+            for (int body : ballastBodies) {
+                double room = bodyCapacity(body) - bodyWater(body);
+                // 和压载泵注水一样：有舱门时最深只能注到舱门下方
+                double limit = doorBottomLevel(body);
+                if (limit < Double.MAX_VALUE) {
+                    room = Math.min(room, Math.max(0.0D,
+                            unitsBelowLevel(body, limit) - bodyWater(body)));
+                }
+                double add = Math.min(room, need);
+                if (add > 0.0D) {
+                    addBodyWater(body, add);
+                    need -= add;
+                }
+                if (need <= 0.0D) {
+                    break;
+                }
+            }
+        }
+        double filled = 0.0D;
+        double capacity = 0.0D;
+        for (int body : ballastBodies) {
+            filled += bodyWater(body);
+            capacity += bodyCapacity(body);
+        }
+        this.ballast = filled;
+        this.ballastCapacity = capacity;
+        this.ballastNeutral = capacity > 0.0D
+                ? Math.min(1.0D, Math.max(0.0D, filled / capacity)) : 0.5D;
+        this.ballastPrimed = true;
     }
 
     /** 压载舱当前水量（单位）。 */

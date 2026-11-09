@@ -189,8 +189,11 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
         // 6c) 任务海域实例不再单独挖洞穴：副本站周围直接复用主世界开阔海域地形
         //     （SeaTerrain 会在锚点附近压平洞顶并留出 64 格机动净空）。
 
-        // 6d) 哨站：主站 + 每个任务副本顶部各一座。
+        // 6d) 哨站：主站 + 本轮关卡两端的站（无人航路点两端不建站，和原作一致）。
         for (DockingBay.Site site : DockingBay.sitesNear(chunkPos)) {
+            if (!MissionInstance.outpostExpected(site)) {
+                continue;
+            }
             if (DockingBay.Site.MAIN.equals(site)) {
                 if (OutpostBuilder.intersectsCavern(chunkPos, site)) {
                     OutpostBuilder.carveCavern(chunk, site);

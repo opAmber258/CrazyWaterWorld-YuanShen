@@ -70,25 +70,45 @@ public final class CampaignManager {
             BarotraumaMod.LOGGER.info("[campaign] 下潜前装配物理船：{}", launch);
         }
 
-        // 3) 目的地 = 本轮副本顶部的哨站；船传送到哨站正下方的水里（不下潜时不再靠泊），
-        //    玩家在物理船里登船，直接往下开进任务洞穴。
+        // 3) 原作：关卡里同时有出发站和目的站，但无人航路点没有站
+        //    （Location.Type.HasOutpost）。两端的站点类型由本轮起终点决定，
+        //    先写进静态路由状态，世界生成据此决定建不建站。
         MissionInstance.Anchor anchor = MissionInstance.anchorForRound(state.roundsCompleted());
         com.opamb.barotrauma.world.DockingBay.Site destSite =
                 new com.opamb.barotrauma.world.DockingBay.Site(anchor.x(), anchor.z());
-        int preloaded = MissionInstance.preload(deep, anchor, 2);
+        com.opamb.barotrauma.world.DockingBay.Site startSite = MissionInstance.startSite(anchor);
+        MapNode originNode = CampaignMap.node(state.currentNode());
+        MapNode destNode = CampaignMap.node(destination);
+        boolean startHasOutpost = originNode != null && originNode.type() == NodeType.OUTPOST;
+        boolean endHasOutpost = destNode != null && destNode.type() == NodeType.OUTPOST;
+        MissionInstance.setRouteOutposts(anchor.slot(), startHasOutpost, endHasOutpost);
+
+        // 旧存档里出发站那片区块已经生成过，不会再有世界生成的站：退回旧行为
+        // （目的站正下方），至少不会把船塞进岩石。新世界才会是完整的关卡。
+        boolean hasStartStation = !startHasOutpost || stationExists(deep, startSite);
+        if (startHasOutpost && !hasStartStation) {
+            BarotraumaMod.LOGGER.warn("[campaign] 出发站未生成（旧存档）：退回目的站正下方");
+        }
+        // 船放在出发站正下方的水里；无人航路点出发时这里就是开阔水域。
+        Vec3 start = hasStartStation
+                ? new Vec3(startSite.x() + 0.5D, anchor.y(), startSite.z() + 0.5D)
+                : anchor.spawn();
+        int preloaded = MissionInstance.preloadNear(deep,
+                new BlockPos(startSite.x(), anchor.y(), startSite.z()), 2);
+        MissionInstance.preload(deep, anchor, 1);
         VsPilot.preloadShipChunks(deep);
         Vec3 shipBefore = VsPilot.shipPosition();
-        String moved = VsPilot.teleportShipTo(deep, anchor.spawn());
+        String moved = VsPilot.teleportShipTo(deep, start);
         if (moved != null) {
-            BarotraumaMod.LOGGER.info("[campaign] 副本码头传送失败：{}", moved);
+            BarotraumaMod.LOGGER.info("[campaign] 出发站码头传送失败：{}", moved);
             rollbackShip(deep, shipBefore, assembledHere);
             player.sendSystemMessage(Component.translatable("campaign.barotrauma.instance_failed", moved));
             sync(player);
             return false;
         }
+        BarotraumaMod.LOGGER.info("[campaign] 出发站=({},{}) 目的站=({},{})",
+                startSite.x(), startSite.z(), anchor.x(), anchor.z());
         com.opamb.barotrauma.world.DockingBay.ensureStationHatch(deep, destSite);
-        // 本轮任务的航路浮标：声纳上的金色目标点指向它，而不是头顶的副本站。
-        com.opamb.barotrauma.world.MissionTarget.ensure(deep, anchor, destination);
         // 传送到副本后停车：别把出发时的油门/自动驾驶带过去，船会自己开走。
         if (VsPilot.state() != null) {
             VsPilot.state().setThrottle(0, 0, 0);
@@ -110,7 +130,7 @@ public final class CampaignManager {
                 VsSupport.available(), positions.size());
         state.takeSnapshot();
         state.selectMissions(ids);
-        state.beginTravel(destination, deep.getGameTime());
+        state.beginTravel(destination, deep.getGameTime(), startHasOutpost, endHasOutpost);
         state.setInstance(anchor.x(), anchor.y(), anchor.z());
         for (int i = 0; i < players.size(); i++) {
             ServerPlayer online = players.get(i);
@@ -124,6 +144,15 @@ public final class CampaignManager {
         }
         syncAll(player.server);
         return true;
+    }
+
+    /** 出发站是否已经由世界生成铺出来（旧存档的区块不会补生成）。 */
+    private static boolean stationExists(ServerLevel level,
+                                         com.opamb.barotrauma.world.DockingBay.Site site) {
+        BlockPos probe = new BlockPos(site.x() + 10, -64, site.z());
+        level.getChunkAt(probe);
+        return level.getBlockState(probe)
+                .is(com.opamb.barotrauma.registry.ModShipBlocks.STATION_PLATING.get());
     }
 
     /** 船当前停靠的站：本轮副本（如果那里真有方块船）或主站。 */
@@ -224,8 +253,42 @@ public final class CampaignManager {
         return null;
     }
 
-    /** 自动抵达明确禁用：玩家坐标不代表潜艇物理靠泊。 */
-    public static void tick(MinecraftServer server) {}
+    /**
+     * 每 server tick：无人航路点目的地没有站，靠近目的坐标就算抵达
+     * （原作无人地点的 AtEndExit 近似）。有目的站时仍由靠泊触发。
+     */
+    public static void tick(MinecraftServer server) {
+        ServerLevel deep = server.getLevel(ModDimensions.THE_DEEP);
+        if (deep == null) {
+            return;
+        }
+        CampaignState state = CampaignState.wallet(deep);
+        var round = state.round();
+        if (round.phase() != RoundPhase.DIVING || !round.hasInstance()) {
+            return;
+        }
+        // 中途生成的新区块也要按本轮站点类型来（读档后静态标记可能没设上）
+        int slot = Math.max(0, Math.round((round.instanceX() - MissionInstance.BASE_X)
+                / (float) MissionInstance.SPACING));
+        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
+        if (round.endHasOutpost()) {
+            return; // 有目的站：靠泊由 VsPilot.dock → onDocked 触发
+        }
+        Vec3 ship = VsPilot.shipPosition();
+        if (ship == null) {
+            return;
+        }
+        double dx = ship.x - round.instanceX();
+        double dy = ship.y - MissionInstance.ANCHOR_Y;
+        double dz = ship.z - round.instanceZ();
+        if (dx * dx + dy * dy + dz * dz > 32.0D * 32.0D) {
+            return;
+        }
+        BarotraumaMod.LOGGER.info("[campaign] 无人航路点：靠近目的坐标，抵达结算");
+        settleArrival(deep, state);
+        syncAll(server);
+        server.saveEverything(false, false, true);
+    }
 
     /** 管理员调试：直接推进到目的地并自动存档。 */
     public static boolean forceArrive(MinecraftServer server) {
@@ -279,14 +342,6 @@ public final class CampaignManager {
             return;
         }
         CampaignState state = CampaignState.wallet(deep);
-        // 旧存档兼容：已经在航行中的轮次没有航路浮标，登录时补建一次（幂等）。
-        var round = state.round();
-        if (round.phase() == RoundPhase.DIVING && round.hasInstance()) {
-            com.opamb.barotrauma.world.MissionTarget.ensure(deep,
-                    com.opamb.barotrauma.world.MissionTarget.anchorForInstance(
-                            round.instanceX(), round.instanceZ()),
-                    round.destination());
-        }
         ModNetwork.sendToPlayer(player, CampaignStatePacket.build(state));
     }
 

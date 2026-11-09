@@ -34,7 +34,12 @@ public class HatchRenderer implements BlockEntityRenderer<HatchBlockEntity> {
     @Override
     public void render(HatchBlockEntity animatable, float partialTick, PoseStack poseStack,
                        MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        // 模型整体抬到方块顶面：盖板和地板/天花板齐平，碰撞/拾取形状也是 y=15..16。
+        // 爬梯子顶到关闭的舱口时，看到的是正常天花板，而不是悬在半空的薄板。
+        poseStack.pushPose();
+        poseStack.translate(0.0D, 7.5D / 16.0D, 0.0D);
         geo.render(animatable, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
+        poseStack.popPose();
         BlockState state = animatable.getBlockState();
         if (!(state.getBlock() instanceof HatchLadderBlock)) {
             return;

@@ -13,6 +13,9 @@ public final class RoundState {
     private int instanceX = Integer.MIN_VALUE;
     private int instanceY = Integer.MIN_VALUE;
     private int instanceZ = Integer.MIN_VALUE;
+    /** 本轮起点/终点有没有哨站（原作 Location.Type.HasOutpost；无人航路点两端都不建站）。 */
+    private boolean startHasOutpost = true;
+    private boolean endHasOutpost = true;
 
     public RoundPhase phase() {
         return phase;
@@ -50,6 +53,14 @@ public final class RoundState {
         return instanceZ;
     }
 
+    public boolean startHasOutpost() {
+        return startHasOutpost;
+    }
+
+    public boolean endHasOutpost() {
+        return endHasOutpost;
+    }
+
     /** 记录本轮任务海域实例锚点（同一轮内不变）。 */
     public void setInstance(int x, int y, int z) {
         instanceX = x;
@@ -58,10 +69,17 @@ public final class RoundState {
     }
 
     public void beginTravel(int from, int to, long gameTime) {
+        beginTravel(from, to, gameTime, true, true);
+    }
+
+    public void beginTravel(int from, int to, long gameTime,
+                            boolean startOutpost, boolean endOutpost) {
         phase = RoundPhase.DIVING;
         origin = from;
         destination = to;
         startedAtGameTime = gameTime;
+        startHasOutpost = startOutpost;
+        endHasOutpost = endOutpost;
     }
 
     /** 抵达：回到节点状态，终点清空。 */
@@ -70,6 +88,8 @@ public final class RoundState {
         origin = node;
         destination = -1;
         startedAtGameTime = 0L;
+        startHasOutpost = true;
+        endHasOutpost = true;
     }
 
     public void fail() {
@@ -92,6 +112,8 @@ public final class RoundState {
         tag.putInt("instanceX", instanceX);
         tag.putInt("instanceY", instanceY);
         tag.putInt("instanceZ", instanceZ);
+        tag.putBoolean("startHasOutpost", startHasOutpost);
+        tag.putBoolean("endHasOutpost", endHasOutpost);
         return tag;
     }
 
@@ -113,6 +135,8 @@ public final class RoundState {
             instanceY = Integer.MIN_VALUE;
             instanceZ = Integer.MIN_VALUE;
         }
+        startHasOutpost = !tag.contains("startHasOutpost") || tag.getBoolean("startHasOutpost");
+        endHasOutpost = !tag.contains("endHasOutpost") || tag.getBoolean("endHasOutpost");
         if (!CampaignMap.isValid(origin)) {
             origin = CampaignMap.START_NODE;
         }

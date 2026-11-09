@@ -255,7 +255,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         super.render(graphics, mouseX, mouseY, partialTick);
         drawBanner(graphics);
         if (page == 0) {
-            drawScope(graphics);
+            drawScope(graphics, mouseX, mouseY);
             drawStatusPanel(graphics);
             drawLogPanel(graphics);
             drawSonarBox(graphics);
@@ -498,7 +498,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
 
     // ---------------------------------------------------------- 中：声纳
 
-    private void drawScope(GuiGraphics graphics) {
+    private void drawScope(GuiGraphics graphics, int mouseX, int mouseY) {
         int cx = leftPos + SCOPE_CX;
         int cy = topPos + SCOPE_CY;
 
@@ -528,6 +528,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
 
         drawHeadingArrow(graphics, cx, cy);
         drawTargetMarker(graphics, cx, cy, viewRange);
+        drawTargetPreview(graphics, cx, cy, mouseX, mouseY, viewRange);
         drawWaypoint(graphics, cx, cy, viewRange);
         drawBearings(graphics, cx, cy);
         graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, 0xFFD8FFE8);
@@ -790,6 +791,58 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         graphics.fill(px + 4, py - 5, px + 6, py + 6, TARGET_COLOR);
         graphics.fill(px - 5, py - 5, px + 6, py - 3, TARGET_COLOR);
         graphics.fill(px - 5, py + 4, px + 6, py + 6, TARGET_COLOR);
+    }
+
+    /**
+     * 鼠标悬停预览：点下去之前就把目标位置画出来（虚线十字 + 距离），
+     * 免得玩家“看不清会点到的位置”。
+     */
+    private void drawTargetPreview(GuiGraphics graphics, int cx, int cy,
+                                   int mouseX, int mouseY, int viewRange) {
+        if (page != 0 || orbiting) {
+            return;
+        }
+        int dx = mouseX - cx;
+        int dy = mouseY - cy;
+        if (dx * dx + dy * dy > SCOPE_R * SCOPE_R) {
+            return;
+        }
+        int[] target = computeTarget(mouseX, mouseY);
+        if (target == null) {
+            return;
+        }
+        float[] b = basis();
+        float camDistance = camDistanceOf(viewRange);
+        float focal = FIELD_R * 0.95F / 0.57735F;
+        float depth = target[0] * b[0] + target[1] * b[1] + target[2] * b[2] + camDistance;
+        if (depth < 2.0F) {
+            return;
+        }
+        int px = cx + Math.round((target[0] * b[3] + target[2] * b[5]) * focal / depth);
+        int py = cy - Math.round((target[0] * b[6] + target[1] * b[7] + target[2] * b[8]) * focal / depth);
+        if ((long) (px - cx) * (px - cx) + (long) (py - cy) * (py - cy) > (long) FIELD_R * FIELD_R) {
+            return;
+        }
+        line(graphics, cx, cy, px, py, 0x44FFFFFF);
+        int color = 0xCCE8FFF2;
+        int r = 8;
+        // 四角括号
+        line(graphics, px - r, py - r, px - 3, py - r, color);
+        line(graphics, px - r, py - r, px - r, py - 3, color);
+        line(graphics, px + 3, py - r, px + r, py - r, color);
+        line(graphics, px + r, py - r, px + r, py - 3, color);
+        line(graphics, px - r, py + 3, px - r, py + r, color);
+        line(graphics, px - r, py + r, px - 3, py + r, color);
+        line(graphics, px + 3, py + r, px + r, py + r, color);
+        line(graphics, px + r, py + 3, px + r, py + r, color);
+        double dist = Math.sqrt((double) target[0] * target[0]
+                + (double) target[1] * target[1] + (double) target[2] * target[2]);
+        String label = String.format("%.0f m", dist);
+        graphics.drawString(font, label, px + 10, py + 2, color, false);
+        if (dist > 0.5D) {
+            graphics.drawString(font, "点击设为自动驾驶目标", px + 10, py + 12,
+                    0x99E8FFF2, false);
+        }
     }
 
     // ---------------------------------------------------------- 右上：声纳设置
@@ -1279,8 +1332,30 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
-    /** 在示波器上点一下：沿视线找最近的声纳点当目标；没点中就按视线取半程距离。 */
+    /** 在示波器上点一下：沿视线找最近的声纳点当目标；没点中取视线与量程球的交点。 */
     private void markTargetAt(double mouseX, double mouseY) {
+        int[] target = computeTarget(mouseX, mouseY);
+        if (target == null) {
+            return;
+        }
+        localTarget = true;
+        localTargetX = target[0];
+        localTargetY = target[1];
+        localTargetZ = target[2];
+        autoMode = true;
+        ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.SET_AUTOPILOT_TARGET,
+                target[0], target[1], target[2]));
+        sendPing();
+    }
+
+    /**
+     * 鼠标位置对应的自动驾驶目标（相对声纳中心）；视点方向退化时返回 null。
+     *
+     * <p>没命中地形时不再按相机距离随手给点，而是取视线与"以声纳中心为球心、
+     * 量程为半径"的球的远交点——目标一定落在量程内，屏幕上的预览标记和实际
+     * 目标也不会一个近一个远。</p>
+     */
+    private int[] computeTarget(double mouseX, double mouseY) {
         int cx = leftPos + SCOPE_CX;
         int cy = topPos + SCOPE_CY;
         float focal = FIELD_R * 0.95F / 0.57735F;
@@ -1297,7 +1372,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         double dz = fz + rz * nx + uz * ny;
         double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (len < 1.0E-4D) {
-            return;
+            return null;
         }
         dx /= len;
         dy /= len;
@@ -1307,9 +1382,10 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         int viewRange = frame == null ? range : frame.range();
         // 相机在球外 camDistance 处，画点云时也是这么算的。射线必须从这里出发，
         // 从球心出发的话，点到射线的距离会系统性偏大一个 camDistance，点击位置整个跑偏。
-        double camX = -fx * camDistanceOf(viewRange);
-        double camY = -fy * camDistanceOf(viewRange);
-        double camZ = -fz * camDistanceOf(viewRange);
+        double camDistance = camDistanceOf(viewRange);
+        double camX = -fx * camDistance;
+        double camY = -fy * camDistance;
+        double camZ = -fz * camDistance;
 
         double bestDist = -1.0D;
         double bestOffset = 4.5D;
@@ -1335,19 +1411,22 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                 }
             }
         }
-        double dist = bestDist > 0.0D ? bestDist : Math.max(8.0D, viewRange * 0.5D);
-        int tx = (int) Math.round(camX + dx * dist);
-        int ty = (int) Math.round(camY + dy * dist);
-        int tz = (int) Math.round(camZ + dz * dist);
-
-        localTarget = true;
-        localTargetX = tx;
-        localTargetY = ty;
-        localTargetZ = tz;
-        autoMode = true;
-        ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.SET_AUTOPILOT_TARGET,
-                tx, ty, tz));
-        sendPing();
+        double dist;
+        if (bestDist > 0.0D) {
+            dist = bestDist;
+        } else {
+            // |O + t·d|² = R²，O = 相机位置，R = 量程；取远交点
+            double bDot = camX * dx + camY * dy + camZ * dz;
+            double c = camX * camX + camY * camY + camZ * camZ
+                    - (double) viewRange * viewRange;
+            double disc = bDot * bDot - c;
+            dist = disc >= 0.0D ? -bDot + Math.sqrt(disc) : camDistance - viewRange * 0.5D;
+            dist = Math.max(2.0D, dist);
+        }
+        return new int[]{
+                (int) Math.round(camX + dx * dist),
+                (int) Math.round(camY + dy * dist),
+                (int) Math.round(camZ + dz * dist)};
     }
 
     /** 相机到球心的距离，画点云和反投影必须用同一个值。 */

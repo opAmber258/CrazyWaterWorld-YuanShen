@@ -11,10 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CampaignMapTest {
 
     @Test
-    @DisplayName("节点数在 5–7 之间")
+    @DisplayName("节点数在 12–15 之间（精简首群系：站点多、航路点少）")
     void nodeBudget() {
-        assertTrue(CampaignMap.nodes().size() >= 5, "至少 5 个节点");
-        assertTrue(CampaignMap.nodes().size() <= 7, "不超过 7 个节点");
+        assertTrue(CampaignMap.nodes().size() >= 12, "至少 12 个节点");
+        assertTrue(CampaignMap.nodes().size() <= 15, "不超过 15 个节点");
     }
 
     @Test

@@ -566,8 +566,8 @@ public final class VsPilot {
         target.setSupply(control.simulation().powerRatio());
         target.setEngineCount(control.simulation().engineCount());
         target.setEngineMultiplier(control.engineMultiplier());
-        ShipSimulation.Report report = control.simulation().report();
-        target.setBallast(report.ballastPercent(), control.floodRatio());
+        // 原版浮力只认全船水量占比（含压载水），不再按"压载百分比"另算一份力。
+        target.setWaterRatio(control.buoyancyWaterRatio());
     }
 
     // ------------------------------------------------------------------ tick
@@ -668,9 +668,18 @@ public final class VsPilot {
             if (state != null && ++waterSyncTimer % 2 == 0) {
                 sendWaterState(state);
             }
-            // 自动驾驶：物理船没有方块形态的 tickMovement 了，这里按目标点算推力再推给刚体
+            // 自动驾驶：物理船没有方块形态的 tickMovement 了，这里按目标点算推力再推给刚体。
+            // 当前坐标必须用**船核心**的世界坐标，和声纳扫描中心/目标偏移同一个基准；
+            // 用刚体位置（质心）会让船停在离标记几格远的地方。
             if (state != null && state.autopilotHold()) {
-                state.autopilotStep(now.x, now.y, now.z, vel.x, vel.y, vel.z);
+                Vec3 ap = now;
+                BlockPos assembledCore = VsState.corePos();
+                if (assembledCore != null) {
+                    ap = new Vec3(assembledCore.getX() + VsState.offsetX(),
+                            assembledCore.getY() + VsState.offsetY(),
+                            assembledCore.getZ() + VsState.offsetZ());
+                }
+                state.autopilotStep(ap.x, ap.y, ap.z, vel.x, vel.y, vel.z);
                 applyControl(state);
             }
             if (state != null) {
@@ -1993,6 +2002,8 @@ public final class VsPilot {
             thruster = control;
             ship = assembled;
             state = shipState;
+            // 原作中性浮力：压载舱注到全船 7% 水量的相对水位（下一 tick 生效）
+            shipState.simulation().requestBallastPrime();
             VsState.activate(core, shipState, VsPilot::isPhysicalHere, VsPilot::applyControl);
             applyControl(shipState);
             sendWaterState(shipState);
@@ -2006,6 +2017,8 @@ public final class VsPilot {
         thruster = attached;
         ship = assembled;
         state = shipState;
+        // 原作中性浮力：压载舱注到全船 7% 水量的相对水位（下一 tick 生效）
+        shipState.simulation().requestBallastPrime();
         VsState.activate(core, shipState, VsPilot::isPhysicalHere, VsPilot::applyControl);
         applyControl(shipState);
         sendWaterState(shipState);
@@ -2625,6 +2638,8 @@ public final class VsPilot {
         int initial = record.initialBlocks > 0 ? record.initialBlocks : snap.size();
         int destroyed = Math.max(0, initial - snap.size());
         rebuilt.simulation().setBreachSize(Math.max(1, destroyed + breached.size()));
+        // 认领/读档后没有存档水位：压载重置到原版中性相对水位
+        rebuilt.simulation().requestBallastPrime();
 
         ship = found;
         state = rebuilt;

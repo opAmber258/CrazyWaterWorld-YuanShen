@@ -23,8 +23,8 @@ class CampaignSelectionTest {
         assertEquals("outpost", CampaignMap.start().locationType());
         assertEquals(15, CampaignMap.start().reputation());
         assertFalse(CampaignMap.start().services().isEmpty());
-        assertEquals("none", CampaignMap.node(1).faction());
-        assertTrue(CampaignMap.node(1).services().isEmpty());
+        assertEquals("none", CampaignMap.node(2).faction());
+        assertTrue(CampaignMap.node(2).services().isEmpty());
     }
     @Test void optionalEmptyAndAllOfferedSelectionAllowed() {
         assertTrue(CampaignMission.valid(RoundPhase.AT_NODE,0,0,1,List.of()));

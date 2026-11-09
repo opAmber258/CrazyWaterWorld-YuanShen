@@ -1182,6 +1182,8 @@ public final class DeepSeaEvents {
             }
             VsPilot.tick();
         }
+        // 战役：无人航路点靠“靠近目的坐标”抵达（有站时仍靠泊）
+        com.opamb.barotrauma.campaign.CampaignManager.tick(event.getServer());
         // 隔离场景（.smoketest-vs）：自己管自己的节奏，跑完关服
         if (VsFloodSmoke.active()) {
             net.minecraft.server.level.ServerLevel deep =

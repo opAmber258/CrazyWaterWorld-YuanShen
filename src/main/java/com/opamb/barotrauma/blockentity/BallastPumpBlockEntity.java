@@ -15,10 +15,11 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * 压载泵方块实体：复用排水泵的流量/菜单逻辑，额外做两件事——
  *
  * <ol>
- *   <li>自动模式跟随舵台垂直指令：{@code throttleY < 0}（下潜）泵入、
- *       {@code > 0}（上浮）泵出、{@code 0}（停车）保持；</li>
+ *   <li>自动模式跟随舵台垂直指令：{@code throttleY < 0}（下潜）注到满、
+ *       {@code > 0}（上浮）排空、{@code 0}（停车）保持在
+ *       {@link com.opamb.barotrauma.ship.ShipSimulation#ballastNeutral()} 的中性相对水位；</li>
  *   <li>{@link #ballast()} 返回 true，船体模拟把泵所在舱室登记成压载舱，
- *       水量进 {@code ShipSimulation.ballastPercent()} → {@code VsThruster} 浮力因子。</li>
+ *       水量计入全船水量占比 → {@code VsThruster} 按原版公式算浮力。</li>
  * </ol>
  *
  * <p>手动模式仍保留 −100..+100% 的注排，方便单独调试某个舱。</p>
@@ -27,6 +28,8 @@ public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoB
 
     /** 最近一次服务端读到的舵台垂直指令：负=下潜、正=上浮、0=停车。 */
     private int helm;
+    /** 当前船状态；用来读全船压载比例和中性水位。 */
+    private ShipState ship;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public BallastPumpBlockEntity(BlockPos pos, BlockState state) {
@@ -44,6 +47,7 @@ public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoB
 
     @Override
     protected void beforeReport(ShipState ship) {
+        this.ship = ship;
         helm = ship == null ? 0 : ship.throttleY();
     }
 
@@ -54,19 +58,27 @@ public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoB
     }
 
     /**
-     * 自动模式：跟随舵台。flow 的约定是正值泵入、负值泵出；
-     * {@link #signedRate} 会再取负成"正=泵出"交给船体模拟。
+     * 自动模式：舵台给目标水位，泵按全船压载比例注/排到目标。
+     * flow 的约定是正值泵入、负值泵出；{@link #signedRate} 会再取负成
+     * "正=泵出"交给船体模拟。
      */
     @Override
     public int effectiveFlow() {
         if (!auto()) {
             return super.effectiveFlow();
         }
-        if (helm < 0) {
-            return 100;
+        // 停靠中的方块船 / 还没标定中性水位的物理船：不自动注排
+        if (ship == null || !ship.simulation().ballastPrimed()) {
+            return 0;
         }
-        if (helm > 0) {
+        double target = helm < 0 ? 1.0D : helm > 0 ? 0.0D
+                : ship.simulation().ballastNeutral();
+        double current = ship.simulation().ballastPercent();
+        if (current > target + 0.02D) {
             return -100;
+        }
+        if (current < target - 0.02D) {
+            return 100;
         }
         return 0;
     }

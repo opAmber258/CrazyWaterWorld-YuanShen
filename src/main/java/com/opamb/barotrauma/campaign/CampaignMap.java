@@ -7,17 +7,21 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * v1 的固定战役地图：5 个节点，1 处分叉、1 处汇合。
+ * v1 的固定战役地图：13 个节点、17 条连接。
+ *
+ * <p>比例参照原作第一个群系（寒冷洞穴）：<b>站点多、无人航路点少</b>。
+ * 原作存档里该群系有 36 个位置，其中 25 个是站点、11 个是无人航路点；
+ * 这里按 M1 体量做成 11 个站点 + 2 个无人航路点。</p>
  *
  * <ul>
- *   <li>0 起始哨站（现有哨站坐标）；</li>
- *   <li>1 B 中继站（现有航路点，分叉点）；</li>
- *   <li>2/3 两条航路（热泉 / 沉船带），二选一；</li>
+ *   <li>0 起始哨站（起点，只通中继站）；</li>
+ *   <li>1 B 中继站（枢纽，五条边）；</li>
+ *   <li>2/3 冰隙航路 / 沉船航路（仅有的两个无人航路点，分叉）；</li>
+ *   <li>5–12 沿两条航路分布的站点（锈锚、寒晶矿、热泉、深井、断链、潮汐、冰臼、暗流）；</li>
  *   <li>4 冰下聚居地（汇合点，v1 的终点）。</li>
  * </ul>
  *
- * <p>坐标现在是逻辑锚点：抵达判定用它，建筑生成留给后续里程碑。
- * 5 个节点符合需求文档「5–7 节点小型分支图」的上限。</p>
+ * <p>节点 0–4 的 id 和旧版一致，老存档的 currentNode 仍然有效。</p>
  */
 public final class CampaignMap {
 
@@ -31,10 +35,18 @@ public final class CampaignMap {
 
     private static final List<MapNode> NODES = List.of(
             new MapNode(0, NodeType.OUTPOST, "起始哨站", new BlockPos(0, -62, 0), List.of(1)),
-            new MapNode(1, NodeType.WAYPOINT, "B 中继站", new BlockPos(320, -301, 0), List.of(0, 2, 3)),
-            new MapNode(2, NodeType.WAYPOINT, "冰隙航路", new BlockPos(640, -420, 240), List.of(1, 4)),
-            new MapNode(3, NodeType.WAYPOINT, "沉船航路", new BlockPos(640, -520, -240), List.of(1, 4)),
-            new MapNode(4, NodeType.OUTPOST, "冰下聚居地", new BlockPos(960, -640, 0), List.of(2, 3))
+            new MapNode(1, NodeType.OUTPOST, "B 中继站", new BlockPos(320, -301, 0), List.of(0, 2, 3, 5, 6)),
+            new MapNode(2, NodeType.WAYPOINT, "冰隙航路", new BlockPos(640, -420, 240), List.of(1, 4, 7, 9)),
+            new MapNode(3, NodeType.WAYPOINT, "沉船航路", new BlockPos(640, -520, -240), List.of(1, 4, 8, 10)),
+            new MapNode(4, NodeType.OUTPOST, "冰下聚居地", new BlockPos(960, -640, 0), List.of(2, 3, 11, 12)),
+            new MapNode(5, NodeType.OUTPOST, "锈锚站", new BlockPos(470, -360, 180), List.of(1, 7)),
+            new MapNode(6, NodeType.OUTPOST, "寒晶矿站", new BlockPos(470, -460, -180), List.of(1, 8)),
+            new MapNode(7, NodeType.OUTPOST, "热泉前哨", new BlockPos(760, -500, 120), List.of(2, 5)),
+            new MapNode(8, NodeType.OUTPOST, "深井维修站", new BlockPos(760, -560, -120), List.of(3, 6)),
+            new MapNode(9, NodeType.OUTPOST, "断链站", new BlockPos(900, -520, 220), List.of(2, 11)),
+            new MapNode(10, NodeType.OUTPOST, "潮汐站", new BlockPos(900, -600, -220), List.of(3, 12)),
+            new MapNode(11, NodeType.OUTPOST, "冰臼前哨", new BlockPos(1000, -600, 180), List.of(4, 9)),
+            new MapNode(12, NodeType.OUTPOST, "暗流站", new BlockPos(1000, -640, -180), List.of(4, 10))
     );
 
     private CampaignMap() {

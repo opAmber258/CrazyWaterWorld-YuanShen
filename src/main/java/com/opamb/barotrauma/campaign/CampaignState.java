@@ -132,7 +132,12 @@ public final class CampaignState extends SavedData {
     }
 
     public void beginTravel(int destination, long gameTime) {
-        round.beginTravel(currentNode, destination, gameTime);
+        beginTravel(destination, gameTime, true, true);
+    }
+
+    public void beginTravel(int destination, long gameTime,
+                            boolean startHasOutpost, boolean endHasOutpost) {
+        round.beginTravel(currentNode, destination, gameTime, startHasOutpost, endHasOutpost);
         setDirty();
     }
 

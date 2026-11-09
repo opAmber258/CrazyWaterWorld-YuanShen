@@ -52,11 +52,12 @@ public final class SeaTerrain {
         if (isOutpostCore(x, z)) {
             return ROOF_FLAT_Y;
         }
-        Integer instanceX = siteXWithinBlend(x, z);
         double n = DeepSeaNoise.fbm2(seed ^ SALT_ROOF, x / 150.0D, z / 150.0D, 3);
         int world = ROOF_FLAT_Y - (int) Math.round((n * 0.5D + 0.5D) * ROOF_DEPTH);
-        int ceiling = instanceX != null
-                ? blendAt(ROOF_FLAT_Y, world, Math.max(Math.abs(x - instanceX), Math.abs(z)))
+        DockingBay.Site instance = siteWithinBlend(x, z);
+        int ceiling = instance != null
+                ? blendAt(ROOF_FLAT_Y, world,
+                        Math.max(Math.abs(x - instance.x()), Math.abs(z - instance.z())))
                 : blendOutpost(ROOF_FLAT_Y, world, x, z);
         for (ClearZone zone : POI_CLEAR) {
             double distance = Math.hypot(x - zone.x(), z - zone.z());
@@ -90,9 +91,8 @@ public final class SeaTerrain {
         if (Math.max(Math.abs(x), Math.abs(z)) <= OUTPOST_CLEAR) {
             return true;
         }
-        // 副本站（任务海域实例）也要留出同样的机动净空，否则岩柱会把船围住。
-        Integer instanceX = MissionInstance.siteXAt(x, z);
-        if (instanceX != null) {
+        // 副本关卡：出发站—目的站的大海域（两站净空 + 48 格半径的开阔水道）
+        if (MissionInstance.inRouteZone(x, z)) {
             return true;
         }
         // 哨站东侧留一条宽阔的天然出口：噪声岩墙偶尔会把出生点围成一圈，这里兜底。
@@ -112,17 +112,36 @@ public final class SeaTerrain {
         return Math.max(Math.abs(x), Math.abs(z)) <= OUTPOST_CORE;
     }
 
-    /** 副本站处理半径（核心 + 渐变），和主站的 {@link #OUTPOST_BLEND} 一致。 */
-    private static Integer siteXWithinBlend(int x, int z) {
-        if (Math.abs(z) > OUTPOST_BLEND) {
-            return null;
+    /**
+     * 副本关卡里离 (x,z) 最近的站（出发站或目的站），用于把洞顶压平到 -44。
+     * 双站关卡两个站都要有平台，否则出发站会挂在自然岩壳下面。
+     */
+    private static DockingBay.Site siteWithinBlend(int x, int z) {
+        int base = Math.max(0, Math.round((x - MissionInstance.BASE_X)
+                / (float) MissionInstance.SPACING));
+        DockingBay.Site best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
+            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+            for (DockingBay.Site site : new DockingBay.Site[]{
+                    new DockingBay.Site(anchor.x(), anchor.z()),
+                    MissionInstance.startSite(anchor)}) {
+                if (!MissionInstance.outpostExpected(site)) {
+                    continue; // 无人航路点没有站，洞顶保持自然岩壳
+                }
+                double dx = Math.abs(x - site.x());
+                double dz = Math.abs(z - site.z());
+                if (dx > OUTPOST_BLEND || dz > OUTPOST_BLEND) {
+                    continue;
+                }
+                double distance = Math.max(dx, dz);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    best = site;
+                }
+            }
         }
-        int slot = Math.round((x - MissionInstance.BASE_X) / (float) MissionInstance.SPACING);
-        if (slot < 0) {
-            return null;
-        }
-        int ax = MissionInstance.BASE_X + slot * MissionInstance.SPACING;
-        return Math.abs(x - ax) <= OUTPOST_BLEND ? ax : null;
+        return best;
     }
 
     /** 按到站点中心的最大轴距做平滑过渡。 */

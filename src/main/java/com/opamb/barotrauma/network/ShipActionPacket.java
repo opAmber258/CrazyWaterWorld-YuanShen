@@ -107,8 +107,21 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                 case SET_POWER -> ship.setPower(a);
                 case SET_AUTOPILOT -> ship.setAutopilotHold(a != 0);
                 case SET_AUTOPILOT_TARGET -> {
-                    // 偏移以玩家位置为基准（玩家就站在声纳台前，和扫描中心基本重合）
-                    ship.setAutopilotTarget(player.blockPosition().offset(a, b, c));
+                    // 偏移以声纳扫描中心为基准（物理船 = 核心世界坐标，方块船 = 核心方块），
+                    // 和 SonarPingPacket 的 center 完全一致，目标才不会随玩家站位整体偏。
+                    BlockPos base = player.blockPosition();
+                    if (com.opamb.barotrauma.ship.vs.VsState.active()) {
+                        BlockPos assembled = com.opamb.barotrauma.ship.vs.VsState.corePos();
+                        if (assembled != null) {
+                            base = assembled.offset(
+                                    com.opamb.barotrauma.ship.vs.VsState.offsetX(),
+                                    com.opamb.barotrauma.ship.vs.VsState.offsetY(),
+                                    com.opamb.barotrauma.ship.vs.VsState.offsetZ());
+                        }
+                    } else if (core != null) {
+                        base = core.getBlockPos();
+                    }
+                    ship.setAutopilotTarget(base.offset(a, b, c));
                 }
                 case CLEAR_AUTOPILOT_TARGET -> ship.clearAutopilotTarget();
                 default -> BarotraumaMod.LOGGER.warn("[Barotrauma] 未知船控指令 {}", action);
