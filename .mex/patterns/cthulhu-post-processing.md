@@ -54,19 +54,19 @@ mex:
 
 ### 几何类预设（万花筒）
 
-「万花筒」（`cthulhu_kaleido`，Mode 7）也是真几何：覆盖 6 个原版核心顶点着色器（`assets/minecraft/shaders/core/*.vsh`，地形 4 个 + 粒子 + 世界掉落物），在视空间对顶点做形变。文件由 `tools/gen_kaleido_shaders.py` 从原版客户端 jar 提取并注入，**不要手改生成结果**；重新生成：
+「万花筒」（`cthulhu_kaleido`，Mode 7）也是真几何：覆盖 5 个原版核心顶点着色器（`assets/minecraft/shaders/core/*.vsh`，地形 4 个 + 粒子），在视空间对顶点做形变。文件由 `tools/gen_kaleido_shaders.py` 从原版客户端 jar 提取并注入，**不要手改生成结果**；重新生成：
 
 ```bash
 python tools/gen_kaleido_shaders.py "<gradle 缓存里的 downloadClient/client.jar>"
 ```
 
-**不要覆盖 `rendertype_entity_*`**：GUI 里的物品图标也走 `RenderType.entitySolid/entityTranslucentCull`，覆盖 entity 系列会把背包、快捷栏和拖拽中的物品一起折掉（2026-11-09 实机确认）。备选方案是在 `Gui#render` 期间把 `Kaleido` 置 0（保留世界实体折叠），但要多一个 mixin；当前取简单方案：只折地形/粒子/掉落物，怪、GeckoLib 模型和第一人称手臂不折。
+**不要覆盖 `rendertype_entity_*`**：GUI 里的物品图标和世界里的掉落物都走 entity RenderType（不透明方块掉落物用 `entity_solid`），覆盖 entity 系列会把背包、快捷栏、拖拽物品和掉落物一起折掉（2026-11-09 实机确认）。备选方案是在 `Gui#render` 期间把 `Kaleido` 置 0（保留世界实体折叠），但要多一个 mixin；当前取简单方案：只折地形/粒子，怪、掉落物、GeckoLib 模型和第一人称手臂都不折。
 
 uniform `Kaleido` 不在原版 shader JSON 的 uniforms 列表里，所以 `ShaderUniformMixin` 在每次 `ShaderInstance#apply()` 末尾按 program id 缓存 `glGetUniformLocation`，直接用 `GL20.glUniform1f` 上传；**值为 0 也上传**，否则效果结束后会残留上一次的折叠量。没被覆盖的 shader 查不到这个 uniform，location = -1 自动跳过。
 
 形变函数是**连续**的：径向正弦折返（`r + A*sin(2πr/P)`，A 随强度增大，超过 `P/2π` 后映射非单调，远处几何会折回来重复）+ 六瓣角向调制（`sin(6θ)`）+ 轻微深度压缩。**不要用交替扇区镜像**：镜像本身若不随强度衰减，最弱档也会是完整六瓣，几何被撕开、画面大面积黑洞，完全不可玩（2026-11-09 实机确认）。强度曲线：`strength × 0.5 × 呼吸`，三档等效约 0.17 / 0.33 / 0.49。
 
-几何类预设的边界：视锥剔除仍按未形变坐标做，只有正前方的区块会被画进来（不会出现背后的几何折进画面）；雾和法线用形变前的位置计算；天空/GUI/文字不走这些 shader；实体（怪、玩家、GeckoLib 模型、第一人称手臂）不在覆盖范围内，不会折；其它模组自己的自定义 RenderType/着色器也不会被折。
+几何类预设的边界：视锥剔除仍按未形变坐标做，只有正前方的区块会被画进来（不会出现背后的几何折进画面）；雾和法线用形变前的位置计算；天空/GUI/文字不走这些 shader；实体与掉落物（怪、玩家、物品实体、GeckoLib 模型、第一人称手臂）不在覆盖范围内，不会折；其它模组自己的自定义 RenderType/着色器也不会被折。
 
 ## Steps
 
@@ -95,7 +95,7 @@ uniform `Kaleido` 不在原版 shader JSON 的 uniforms 列表里，所以 `Shad
 - [ ] 背包/效果栏显示 18×18 图标（不是紫黑缺省框）
 - [ ] 与倒地模糊同时存在时，退出注视不会把模糊一起关掉
 - [ ] 平面凝视：三档能看出压平程度差异，退出后投影平滑回弹，天空/雾/手部无明显破面
-- [ ] 万花筒：弱档可正常行动，强档能看到径向折叠/重复，折痕处无裂缝；背包/快捷栏/拖拽物品图标保持正常；退出后世界完全恢复原状
+- [ ] 万花筒：弱档可正常行动，强档能看到径向折叠/重复，折痕处无裂缝；背包/快捷栏/拖拽物品图标保持正常；不透明方块掉落物不折（预期）；退出后世界完全恢复原状
 - [ ] 日志无 `[cthulhu] 无法访问 PostChain.passes`
 
 ## Debug
