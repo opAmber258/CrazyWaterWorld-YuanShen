@@ -4,6 +4,8 @@ import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.item.CthulhuTriggerItem;
 import com.opamb.barotrauma.item.DivingKnifeItem;
 import com.opamb.barotrauma.item.DivingSuitItem;
+import com.opamb.barotrauma.item.GuitarItem;
+import com.opamb.barotrauma.item.InstrumentItem;
 import com.opamb.barotrauma.item.MedicalDebuggerItem;
 import com.opamb.barotrauma.item.OxygenTankItem;
 import com.opamb.barotrauma.item.WeldingToolItem;
@@ -109,6 +111,16 @@ public final class ModItems {
     /** "67"：彩蛋物品。只能拿在手上，不能放置，没有任何作用（致敬仓库里的 676767）。 */
     public static final RegistryObject<Item> SIXTY_SEVEN = ITEMS.register("67",
             () -> new Item(new Item.Properties()));
+
+    // ---- 物品与材料（新页签） ----
+    /** 小丑喇叭：右键吹一声，服务端 1 秒限流（不显示物品冷却 UI）。 */
+    public static final RegistryObject<Item> CLOWN_HORN = ITEMS.register("clown_horn",
+            () -> new InstrumentItem(new Item.Properties().stacksTo(1),
+                    () -> ModSounds.CLOWN_HORN.get(), 20, 1.0F, 0.06F));
+
+    /** 吉他：长按右键持续演奏占位曲目，松手停止。 */
+    public static final RegistryObject<Item> GUITAR = ITEMS.register("guitar",
+            () -> new GuitarItem(new Item.Properties().stacksTo(1)));
 
     /** 医疗调试器（开发者工具）：右键打开面板，自由改六部位/全身病症与活力。 */
     public static final RegistryObject<Item> MEDICAL_DEBUGGER = ITEMS.register("medical_debugger",

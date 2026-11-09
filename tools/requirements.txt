@@ -1,0 +1,5 @@
+# 素材生成脚本的依赖（贴图/音效）。
+# 安装：python -m pip install -r tools/requirements.txt
+pillow>=10.0
+numpy>=1.26
+soundfile>=0.12

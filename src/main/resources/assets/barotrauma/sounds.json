@@ -18,5 +18,23 @@
       "barotrauma:ladder/climb5",
       "barotrauma:ladder/climb6"
     ]
+  },
+  "clown_horn": {
+    "subtitle": "subtitles.barotrauma.clown_horn",
+    "sounds": [
+      "barotrauma:instrument/clown_horn"
+    ]
+  },
+  "guitar": {
+    "subtitle": "subtitles.barotrauma.guitar",
+    "sounds": [
+      "barotrauma:instrument/guitar"
+    ]
+  },
+  "guitar_note": {
+    "subtitle": "subtitles.barotrauma.guitar_note",
+    "sounds": [
+      "barotrauma:instrument/guitar_note"
+    ]
   }
 }

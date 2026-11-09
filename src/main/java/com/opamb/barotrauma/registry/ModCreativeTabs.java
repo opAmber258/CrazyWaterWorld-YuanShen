@@ -56,6 +56,17 @@ public final class ModCreativeTabs {
                     })
                     .build());
 
+    /** 物品与材料页签：乐器、材料等非装备类物品。 */
+    public static final RegistryObject<CreativeModeTab> MATERIALS = TABS.register("materials",
+            () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.barotrauma.materials"))
+                    .icon(() -> new ItemStack(ModItems.GUITAR.get()))
+                    .displayItems((params, output) -> {
+                        output.accept(ModItems.CLOWN_HORN.get());
+                        output.accept(ModItems.GUITAR.get());
+                    })
+                    .build());
+
     /** 开发者工具页签：只在创造模式出现，给调试/制作流程用。 */
     public static final RegistryObject<CreativeModeTab> DEV = TABS.register("dev",
             () -> CreativeModeTab.builder()

@@ -26,6 +26,15 @@ public final class ModSounds {
     /** 爬铁梯：原版 {@code footstep_metal}（登梯时手脚撞金属梯级的声音）。 */
     public static final RegistryObject<SoundEvent> LADDER_CLIMB = register("ladder_climb");
 
+    /** 小丑喇叭：原创合成的滑稽喇叭声。 */
+    public static final RegistryObject<SoundEvent> CLOWN_HORN = register("clown_horn");
+
+    /** 吉他：原创合成的扫弦和弦。 */
+    public static final RegistryObject<SoundEvent> GUITAR = register("guitar");
+
+    /** 吉他单音：长按演奏用，靠 pitch 变调。 */
+    public static final RegistryObject<SoundEvent> GUITAR_NOTE = register("guitar_note");
+
     private ModSounds() {
     }
 
