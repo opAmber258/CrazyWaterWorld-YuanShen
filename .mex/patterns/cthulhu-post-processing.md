@@ -40,16 +40,16 @@ mex:
 
 服务端只挂 MobEffect：`CthulhuGazePacket(preset, tier, seconds)` 校验 `创造模式 || 权限 ≥ 2`，先移除其它注视效果再 `addEffect(durationSeconds * 20, tier, false, false)`。amplifier 0/1/2 就是弱/中/强（`CthulhuPreset.tierStrength` = 0.35 / 0.65 / 1.0）。
 
-客户端 `CthulhuGazeClient` 每 tick 从玩家身上找激活的预设，算目标强度，按 0.05/tick 淡入、0.028/tick 淡出（约 0.7s / 1.2s）；效果结束后仍继续淡出，所以 `activePreset` 要保留到强度归零再清。镜头侧：`ViewportEvent.ComputeFov` 乘 `fovFactor` 与 1.2% 呼吸脉动，`ComputeCameraAngles` 加 `1.8° × rollFactor × strength` 滚转。
+客户端 `CthulhuGazeClient` 每 tick 从玩家身上找激活的预设，算目标强度，按 0.05/tick 淡入、0.028/tick 淡出；效果结束后仍继续淡出，所以 `activePreset` 要保留到强度归零再清。换算成时间：满档（目标 1.0）约 1.0s 进 / 1.8s 出，中档（0.65）约 0.7s / 1.2s——写文档别只写一个数。镜头侧：`ViewportEvent.ComputeFov` 乘 `fovFactor` 与 1.2% 呼吸脉动，`ComputeCameraAngles` 加 `1.8° × rollFactor × strength` 滚转。
 
 面板 `CthulhuGazeScreen`（440×300 基准，等比例 `uiScale`）只负责选预设/档位/时长，一个触发器物品搞定全部组合，**不要**给每个档位造物品。
 
 ## Steps
 
 1. 新预设：在 `registry/ModEffects` 注册一个 `MobEffect(MobEffectCategory.HARMFUL, color)`（纯视觉，不 tick），在 `CthulhuPreset` 枚举里加 id / effect / mode / fovFactor / rollFactor / 显示名 / 描述。
-2. 着色器：在 `cthulhu_gaze.fsh` 里用 `else if (Mode < N.5)` 加分支，所有位移量都乘 `s`（Strength），保证弱档不糊、强档明显。
+2. 着色器：在 `cthulhu_gaze.fsh` 里加分支。**最后一档梦境目前是无条件 `else`（Mode ≥ 4.5 全落进去）**，新增模式前先把它改成 `else if (Mode < 5.5)`，再把新分支追加在后面；否则新 Mode 会被梦境截走。所有位移量都乘 `s`（Strength），保证弱档不糊、强档明显。
 3. 图标：`assets/barotrauma/textures/mob_effect/<effect_id>.png`，18×18；`mob_effects` 图集目录源已覆盖所有命名空间，不需要额外 atlas 配置。面板里用 `Minecraft.getInstance().getMobEffectTextures().get(effect)` 取图标。
-4. lang：`mob_effect.barotrauma.<id>` 与 `effect.barotrauma.<id>.desc`（zh_cn + en_us 都要）。
+4. lang：效果名称用 `effect.barotrauma.<id>`（1.20.1 的 `MobEffect` 名称键前缀是 `effect.`，不是 `mob_effect.`），描述用 `effect.barotrauma.<id>.desc`；zh_cn + en_us 都要。
 5. 实机：`/effect give @s barotrauma:cthulhu_<id> 10 <0|1|2>` 可直接验证，不必开面板。
 
 ## Gotchas

@@ -56,7 +56,7 @@ mex:
 
 - **创造模式每秒清空医疗状态**：`MedicalEvents` 的上帝模式会对创造/旁观玩家 `clear()` 病况，调试器改完立刻被抹掉。修复方式是按**携带物**豁免：`carriesMedicalDebugger(player)` 时跳过清理。新增调试物品如果依赖持久状态，也要检查这条清理链。
 - **生存态残留覆盖要清**：创造模式设置的 `vitalityOverride` 如果被玩家带回生存，会把血条钉死；`MedicalEvents` 在生存且无权限时自动清掉（上游 `4d122d7`）。
-- **packet id 顺序**：新包插在中间会让之后所有包 id 移位，`PROTOCOL` 仍是旧值时跨版本握手不会拒绝，结果是解码成错误类型。要么追加到末尾，要么同时升 `PROTOCOL`。
+- **packet id 与协议版本**：新包插在中间会让之后所有包 id 移位，旧端会把新包解码成错误类型；即使只追加到末尾（旧 id 不变），旧端也不认识新 id。两种情况都要**升 `PROTOCOL`**（`ModNetwork` 握手只比较这个字符串）；除非实现了能力协商、确保只向支持该包的对端发送，才可不升。
 - **`use()` 两边都会调**：忘记 `level.isClientSide` 判断会在服务端尝试加载客户端 Screen 类；忘记 `setPacketHandled(true)` 会丢包。
 - 面板不要用固定像素硬编码到 `width/height` 之外；窗口 resize 后坐标会错位。
 

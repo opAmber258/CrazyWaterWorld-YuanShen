@@ -38,7 +38,7 @@ mex:
 1. Blockbench 新建 `java_block` 工程；先用 `list_textures` / `create_texture` 把贴图建好。
 2. **先定贴图尺寸再摆 UV**：Blockbench 按工程贴图尺寸归一化 UV，而 Minecraft 模型 UV 空间固定是 0…16。两张贴图用同一尺寸（本案 128×64），把 `Project.texture_width/height` 和每张贴图的 `uv_width/uv_height` 设成一致，然后按像素坐标拉 UV，导出时会自动换成 0…16。
 3. 控制面数：一个方块 2–3 个 element 足够，细节交给贴图丝印；`credit`/`particle` 键不要漏（缺 `particle` 会被审查指出）。
-4. 导出后补资源：`blockstates/<id>.json`、`models/item/<id>.json`、`loot_tables/blocks/<id>.json`、`lang` 中英条目；方块属性在 `ModBlocks` 里配（`.noOcclusion()` 用于非满块）。
+4. 导出后补资源：`blockstates/<id>.json`、`models/item/<id>.json`、`loot_tables/blocks/<id>.json`、`lang` 中英条目；方块属性在 `ModBlocks` 里配（`.noOcclusion()` 用于非满块）。**方块物品还要在 `ModItems` 用 `blockItem("<id>", ModBlocks.<ID>)` 注册 BlockItem，并加进创造页签**——只注册方块的话玩家拿不到物品，也没法实机放置验证（`cpu_6700x3d` 就是这么接的）。
 5. 物品栏图标单独做：方块模型在背包里会显得又扁又平，直接画一张 32×32 俯视图，`item/generated` + `layer0`。
 
 ## Gotchas

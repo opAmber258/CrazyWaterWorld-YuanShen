@@ -65,7 +65,7 @@ mex:
 - **2026-11-04 水面渲染现状（未解决）**：顶面高度改为"角点取周围四格水位平均 + 同相位波浪"，相邻 quad 共享角点数值相同；相邻水柱之间的竖直台阶面已删除；贴墙面只沿法线缩 1cm、沿墙方向占满；明暗用空间+时间连续函数。用户实测**仍能看到缝/分界线**。已试且无效的方案：平水面（用户否决，要波浪）、波浪接缝对齐、台阶面保留/删除、贴墙面 XZ 双缩/单缩、角点平均。下一步应开 `-Dbarotrauma.waterDebug=true` 在**真实进水场景**（组装物理船 + 破口）抓 `[water-diag]` 完整日志（箱体、矩阵、深度对照标记），先确认缝是不是 quad 边界，再怀疑深度精度/船体渲染交互，不要继续盲改几何。
 - **没有水包时水面渲染根本不跑**：新世界/船未组装时 `[water] 画水面` 每行都是 `ship=-1 boxes=0`，此时室内被水下滤镜染色（干燥区判定没有数据），看起来像"水渲染坏了"。先看日志的 boxes 数量再判断。
 - **诊断日志**：`[water] 画水面`（1 Hz，boxes/breaches/delta）、`[water] 水盒快照`（每艘船第一包，前 12 盒坐标/水面 + 不同水面值数量）、`[hull-bar]`（每格血条首次渲染的原始数值）。
-- **泳姿/干湿不是同一件事（PR #36）**：`player.isSwimming()` 会被医疗钩子设置，不能当浸没判定用；客户端只看 `ClientSwimState`（服务端 `SwimStatePacket` 推的"脚部浸没"，来源 `OceanEnvironment.isOceanWaterAt`，干舱/哨站优先）。症状是"船内或水里泳姿闪烁"时先查这条链，不要去改泳姿判断本身。
+- **泳姿/干湿不是同一件事（PR #36）**：`player.isSwimming()` 会被医疗钩子设置，不能当浸没判定用。客户端优先看 `ClientSwimState`（服务端 `SwimStatePacket` 推的"脚部浸没"，来源 `OceanEnvironment.isOceanWaterAt`，干舱/哨站优先）；**没收到过包时（刚进世界）回退到本地 `OceanEnvironment.isOceanWaterAt`**（`UnderwaterMovement` 里 `ClientSwimState.known()` 为 false 的分支）。注意服务端只在状态变化时发包：同状态重连后本地判定可能一直生效，直到状态改变，所以排查时两条路径都要看。症状是"船内或水里泳姿闪烁"时先查这条链，不要改泳姿判断本身。
 - 物理船的船壳方块在世界里是空气，不能用 `level.getBlockState(worldPos)` 判断破口/耐久；物理船走 `snapshot` + `VsPilot.breakSnapshotBlock`，耐久包 `ShipHullDamagePacket` 的坐标空间和 `ShipWaterStatePacket` 相同。
 
 ## Verify
