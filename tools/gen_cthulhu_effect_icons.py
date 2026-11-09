@@ -125,6 +125,36 @@ def dream() -> Image.Image:
     return img
 
 
+def flat() -> Image.Image:
+    img = base()
+    d = ImageDraw.Draw(img)
+    accent = (120, 196, 204, 255)
+    # 虹膜压成方形（正交/网格感），用直边代替圆弧
+    d.rectangle([7, 7, 11, 11], fill=IRIS)
+    d.rectangle([8, 8, 10, 10], fill=PUPIL)
+    # 上下两条压平线：透视被摊在平面上
+    d.line([(4, 5), (13, 5)], fill=accent)
+    d.line([(4, 13), (13, 13)], fill=accent)
+    d.point((5, 9), fill=accent)
+    d.point((12, 9), fill=accent)
+    return img
+
+
+def kaleido() -> Image.Image:
+    img = base()
+    d = ImageDraw.Draw(img)
+    accent = (150, 110, 230, 255)
+    accent2 = (96, 200, 220, 255)
+    # 六瓣/菱形镜像：两圈对称的菱形轮廓
+    d.polygon([(9, 1), (13, 9), (9, 17), (5, 9)], outline=accent)
+    d.polygon([(9, 4), (11, 9), (9, 14), (7, 9)], outline=accent2)
+    d.ellipse([7, 7, 11, 11], fill=IRIS)
+    d.ellipse([8, 8, 10, 10], fill=PUPIL)
+    d.point((12, 9), fill=accent)
+    d.point((6, 9), fill=accent)
+    return img
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     icons = {
@@ -134,13 +164,15 @@ def main() -> None:
         "cthulhu_ripple": ripple(),
         "cthulhu_static": static(),
         "cthulhu_dream": dream(),
+        "cthulhu_flat": flat(),
+        "cthulhu_kaleido": kaleido(),
     }
     for name, image in icons.items():
         path = OUT / f"{name}.png"
         image.save(path)
         print(f"wrote {path}")
     # 预览拼图（方便肉眼检查统一性）
-    sheet = Image.new("RGBA", (18 * 6 + 10, 18), (24, 18, 30, 255))
+    sheet = Image.new("RGBA", (20 * len(icons), 18), (24, 18, 30, 255))
     for i, image in enumerate(icons.values()):
         sheet.paste(image, (i * 20, 0), image)
     preview = ROOT / "build" / "cthulhu_effect_icons_preview.png"

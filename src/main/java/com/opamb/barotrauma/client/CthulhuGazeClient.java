@@ -43,6 +43,11 @@ public final class CthulhuGazeClient {
     /** 淡出每 tick 减量（约 1.2 秒归零，作为退出动画）。 */
     private static final float FADE_OUT_STEP = 0.028F;
 
+    /** 平面凝视的投影混合基准（0 = 透视，1 = 正交；停在偏透视一侧）。 */
+    private static final float FLAT_BASE = 0.28F;
+    /** 平面凝视的混合量晃动幅度。 */
+    private static final float FLAT_WOBBLE = 0.09F;
+
     /** 最近一次生效的预设（淡出期间保留，用于继续渲染）。 */
     private static CthulhuPreset activePreset;
     private static int activeTier;
@@ -84,7 +89,7 @@ public final class CthulhuGazeClient {
         }
         if (found != null) {
             activePreset = found;
-            activeTier = Math.max(0, Math.min(2, amplifier));
+            activeTier = Math.max(0, Math.min(found.maxTier(), amplifier));
         }
 
         float target = found != null ? CthulhuPreset.tierStrength(activeTier) : 0.0F;
@@ -133,6 +138,40 @@ public final class CthulhuGazeClient {
         double phase = shaderTime() * 1.25;
         float roll = (float) (Math.sin(phase) * 1.8 * strength * activePreset.rollFactor());
         event.setRoll(event.getRoll() + roll);
+    }
+
+    /**
+     * 「平面凝视」的投影混合量：0 = 原版透视，1 = 完全正交。
+     *
+     * <p>不推到满正交，基准停在偏透视的一侧，再叠一个缓慢的小幅晃动；
+     * 淡出期间随 {@link #strength} 一起归零，所以退出时投影会平滑回弹。</p>
+     */
+    public static float projectionBlend() {
+        if (strength <= 0.001F || activePreset != CthulhuPreset.FLAT) {
+            return 0.0F;
+        }
+        if (activeTier >= 3) {
+            // 第四档「满」：完全正交，不再晃动，强度只随淡入淡出走
+            return Math.min(1.0F, strength);
+        }
+        double time = shaderTime();
+        float wobble = (float) (Math.sin(time * 0.9) * 0.7 + Math.sin(time * 2.1) * 0.3);
+        return Math.max(0.0F, strength * (FLAT_BASE + FLAT_WOBBLE * wobble));
+    }
+
+    /**
+     * 「万花筒」的几何折叠强度（0 = 原版几何，1 = 最强折叠）。
+     *
+     * <p>由覆盖过的核心顶点着色器读取；叠一个 0.8 rad/s 的呼吸，让折叠/缩放
+     * 缓慢起伏。淡出时随 {@link #strength} 一起归零。</p>
+     */
+    public static float kaleidoAmount() {
+        if (strength <= 0.001F || activePreset != CthulhuPreset.KALEIDO) {
+            return 0.0F;
+        }
+        double time = shaderTime();
+        float breathe = 1.0F + 0.10F * (float) Math.sin(time * 0.8);
+        return Math.min(1.0F, strength * 0.5F * breathe);
     }
 
     private static double shaderTime() {

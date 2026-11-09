@@ -124,7 +124,7 @@ void main() {
         float n = hash(floor(uv * InSize * 0.5) + floor(Time * 12.0));
         col += (n - 0.5) * 0.22 * s;
         uv = p;
-    } else {
+    } else if (Mode < 5.5) {
         // 5 梦境漂移：规则的网格错位 + 每格独立透视缩放 + 接缝压暗。
         // 与正弦波动类不同：位移在格子内部是常量，边界出现明显的透视错位。
         vec2 gridSize = vec2(6.0, 4.0);
@@ -147,6 +147,15 @@ void main() {
         float lum = dot(col, vec3(0.299, 0.587, 0.114));
         col = mix(col, vec3(lum) * vec3(1.06, 1.00, 0.94), 0.35 * s);
         uv = sampleUv;
+    } else if (Mode < 6.5) {
+        // 6 平面凝视：透视压平由投影矩阵完成（CameraProjectionMixin），
+        // 这里只补一点边缘压暗与极细横向扫描，强化“世界被摊平”的观感。
+        float v = smoothstep(0.40, 1.0, length((uv - 0.5) * vec2(aspectRatio(), 1.0)));
+        col = mix(col, vec3(0.03, 0.02, 0.06), v * 0.30 * s);
+        col *= 1.0 - 0.035 * s * (0.5 + 0.5 * sin(uv.y * InSize.y * 0.7 + Time * 1.2));
+    } else {
+        // 7 万花筒：几何折叠在核心顶点着色器里完成（Kaleido uniform），
+        // 后处理不叠加像素位移，只保留下面的全模式暗角。
     }
 
     // 全模式暗角呼吸

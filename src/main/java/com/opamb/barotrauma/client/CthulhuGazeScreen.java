@@ -15,13 +15,13 @@ import net.minecraft.network.chat.Component;
  * <p>顶部选持续时长（3/6/12 秒），下面每行一个预设，右侧三档 弱/中/强。
  * 所有组合都从这一个触发器里选，不为档位单独做物品。</p>
  *
- * <p>布局按 440×300 设计；窗口太小（高 GUI 缩放）时整块等比缩小，
+ * <p>布局按 440×272 设计；窗口太小（高 GUI 缩放）时整块等比缩小，
  * 避免像早先那样上下被裁掉。鼠标坐标也按同一比例换算。</p>
  */
 public final class CthulhuGazeScreen extends Screen {
 
     private static final int PANEL_W = 440;
-    private static final int PANEL_H = 224;
+    private static final int PANEL_H = 272;
     private static final int ROW_H = 24;
 
     private static final int BG = 0xF0161218;
@@ -102,6 +102,7 @@ public final class CthulhuGazeScreen extends Screen {
         CthulhuPreset[] presets = CthulhuPreset.values();
         for (int i = 0; i < presets.length; i++) {
             int ry = rowY(i);
+            int tierCount = presets[i].maxTier() + 1;
             g.fill(8, ry, PANEL_W - 8, ry + ROW_H - 2, BOX);
             g.fill(8, ry, PANEL_W - 8, ry + 1, EDGE);
             TextureAtlasSprite icon = Minecraft.getInstance().getMobEffectTextures()
@@ -109,11 +110,11 @@ public final class CthulhuGazeScreen extends Screen {
             g.blit(12, ry + 3, 0, 18, 18, icon);
             g.drawString(font, presets[i].displayName(), 34, ry + 7, TEXT, false);
             int descX = 90;
-            int descWidth = Math.max(0, tierX(0) - 6 - descX);
+            int descWidth = Math.max(0, tierX(0, tierCount) - 6 - descX);
             String desc = font.plainSubstrByWidth(presets[i].description(), descWidth);
             g.drawString(font, desc, descX, ry + 7, DIM, false);
-            for (int tier = 0; tier < 3; tier++) {
-                int bx = tierX(tier);
+            for (int tier = 0; tier < tierCount; tier++) {
+                int bx = tierX(tier, tierCount);
                 boolean hover = in(mx, my, bx, ry + 4, TIER_W, TIER_H);
                 int color = tierColor(tier);
                 g.fill(bx, ry + 4, bx + TIER_W, ry + 4 + TIER_H, hover ? HOVER : 0xFF2C2235);
@@ -148,8 +149,9 @@ public final class CthulhuGazeScreen extends Screen {
         CthulhuPreset[] presets = CthulhuPreset.values();
         for (int i = 0; i < presets.length; i++) {
             int ry = rowY(i);
-            for (int tier = 0; tier < 3; tier++) {
-                if (in(mx, my, tierX(tier), ry + 4, TIER_W, TIER_H)) {
+            int tierCount = presets[i].maxTier() + 1;
+            for (int tier = 0; tier < tierCount; tier++) {
+                if (in(mx, my, tierX(tier, tierCount), ry + 4, TIER_W, TIER_H)) {
                     ModNetwork.sendToServer(new CthulhuGazePacket(
                             i, tier, CthulhuPreset.DURATION_SECONDS[durationIndex]));
                     onClose();
@@ -176,8 +178,8 @@ public final class CthulhuGazeScreen extends Screen {
         return 46 + index * ROW_H;
     }
 
-    private static int tierX(int tier) {
-        int start = PANEL_W - 8 - (TIER_W * 3 + TIER_GAP * 2);
+    private static int tierX(int tier, int count) {
+        int start = PANEL_W - 8 - (TIER_W * count + TIER_GAP * (count - 1));
         return start + tier * (TIER_W + TIER_GAP);
     }
 
@@ -189,7 +191,8 @@ public final class CthulhuGazeScreen extends Screen {
         return switch (tier) {
             case 0 -> 0xFF6FBF73;
             case 1 -> 0xFFD9A64A;
-            default -> 0xFFD95C5C;
+            case 2 -> 0xFFD95C5C;
+            default -> 0xFFB15CE8;
         };
     }
 
