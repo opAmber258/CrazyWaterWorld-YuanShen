@@ -65,8 +65,22 @@ public final class ShipWaterStateBuilder {
         for (int i = 0; i < pockets.size(); i++) {
             bodyBox[compartments.size() + i] = boxes.size();
             pocketBoxStart[i] = boxes.size();
-            pocketBoxIndex[i] = appendCompartment(boxes, pockets.get(i),
-                    state.simulation().pocketWater(i), pocketSources.get(i));
+            ShipGeometry.Compartment pocket = pockets.get(i);
+            // 只画船壳包住的那部分水：纯船外空腔（圆角船体包围盒四角的空气）
+            // 如果也画出来，客户端会在船壳外面糊一层"水壳"，看着像假水。
+            if (pocket.interiorCells().isEmpty()) {
+                bodyBox[compartments.size() + i] = -1;
+                pocketBoxIndex[i] = -1;
+                pocketBoxEnd[i] = boxes.size();
+                continue;
+            }
+            ShipGeometry.Compartment visible = pocket.interiorCells() == pocket.cells()
+                    ? pocket : new ShipGeometry.Compartment(pocket.interiorCells(), pocket.waterBlocks());
+            // 空腔里的水位是均匀的：只画船壳内的格子时，水量也按格数比例折算，
+            // 否则同一水位会被画高（单位水摊到了更小的体积上）。
+            double units = pocket.volume() <= 0 ? 0.0D
+                    : state.simulation().pocketWater(i) * (visible.volume() / (double) pocket.volume());
+            pocketBoxIndex[i] = appendCompartment(boxes, visible, units, pocketSources.get(i));
             pocketBoxEnd[i] = boxes.size();
         }
 
@@ -81,13 +95,17 @@ public final class ShipWaterStateBuilder {
         }
         for (ShipState.Breach breach : state.breaches()) {
             int pocket = pocketIndex(pockets, breach.pos());
-            if (pocket < 0) {
+            if (pocket < 0 || pocketBoxIndex[pocket] < 0) {
+                // 没画出来的空腔（纯船外空气）不需要破口水柱。
                 continue;
             }
             int ownBox = boxAtCell(boxes, pocketBoxStart[pocket], pocketBoxEnd[pocket], breach.pos());
             if (ownBox < 0) {
                 // appendCompartment 返回的是盒子下标，协议要的是绝对 float 偏移。
                 ownBox = pocketBoxIndex[pocket] * 7;
+            }
+            if (ownBox < 0) {
+                continue;
             }
             float[] range = yRange(pockets.get(pocket));
             float[] normal = breachNormal(pockets.get(pocket), breachCells, breach.pos(),

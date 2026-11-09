@@ -27,8 +27,6 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
     public static final int AIRLOCK_FLOOD = 4;
     public static final int THROTTLE_FORWARD = 5;
     public static final int STOP = 6;
-    public static final int REACTOR_UP = 7;
-    public static final int REACTOR_DOWN = 8;
     /** 设定推进方向：a/b/c = x/y/z，每轴 −1/0/1。 */
     public static final int SET_HEADING = 9;
     /** 设定推进功率：a = 百分比。 */
@@ -113,16 +111,6 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                     ship.setAutopilotTarget(player.blockPosition().offset(a, b, c));
                 }
                 case CLEAR_AUTOPILOT_TARGET -> ship.clearAutopilotTarget();
-                case REACTOR_UP -> {
-                    double next = Math.min(1.0D, ship.simulation().fission() + 0.1D);
-                    ship.simulation().setFission(next);
-                    ship.simulation().setTurbine(next);
-                }
-                case REACTOR_DOWN -> {
-                    double next = Math.max(0.0D, ship.simulation().fission() - 0.1D);
-                    ship.simulation().setFission(next);
-                    ship.simulation().setTurbine(next);
-                }
                 default -> BarotraumaMod.LOGGER.warn("[Barotrauma] 未知船控指令 {}", action);
             }
             // 船已经被收成物理刚体时，把油门/功率/压载立刻同步给 VS2 推进器。

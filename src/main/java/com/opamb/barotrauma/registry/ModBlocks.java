@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.registry;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.block.BallastPumpBlock;
 import com.opamb.barotrauma.block.Cpu6700X3DBlock;
 import com.opamb.barotrauma.block.DrainPumpBlock;
 import com.opamb.barotrauma.block.HullBlock;
@@ -62,8 +63,46 @@ public final class ModBlocks {
                     .isViewBlocking((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)));
 
-    /** 免支撑铁梯：整格宽、2px 厚的钢板梯，立在对接井中央，可攀爬、有碰撞。 */
-    public static final RegistryObject<Block> IRON_LADDER = BLOCKS.register("iron_ladder",
+    /**
+     * 压载泵：3 格宽 × 2 格高 × 1 格深的六格墙面泵，装在压载舱内壁。
+     * 跟随舵台垂直指令注排压载舱水，水量进 ShipSimulation 的浮力因子。
+     */
+    public static final RegistryObject<Block> BALLAST_PUMP = BLOCKS.register("ballast_pump",
+            () -> new BallastPumpBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(12.0F, 800.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /**
+     * 反应堆：3 格宽 × 2.5 格高 × 2 格深的落地多方块（框架 3×3×2，顶排半格）。
+     * 发电驱动全船；没堆/没开机 = 没动力（见 ShipSimulation 的 powerRatio）。
+     */
+    public static final RegistryObject<Block> REACTOR = BLOCKS.register("reactor",
+            () -> new com.opamb.barotrauma.block.ReactorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(20.0F, 1200.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /**
+     * 引擎：3 格宽 × 2 格高 × 3 格深的落地多方块（18 格，后层是螺旋桨护罩）。
+     * 必须装在船上才提供推进；声纳油门控制目标力，耗电走 ShipSimulation。
+     */
+    public static final RegistryObject<Block> ENGINE = BLOCKS.register("engine",
+            () -> new com.opamb.barotrauma.block.EngineBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(20.0F, 1200.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /** 免支撑铁梯：整格宽、2px 厚的钢板梯，立在对接井中央，可攀爬、有碰撞。 */    public static final RegistryObject<Block> IRON_LADDER = BLOCKS.register("iron_ladder",
             () -> new IronLadderBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
                     .strength(4.0F, 200.0F)

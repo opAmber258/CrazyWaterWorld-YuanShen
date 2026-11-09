@@ -57,6 +57,26 @@ public final class ModItems {
 
     public static final RegistryObject<Item> SMALL_PUMP = blockItem("small_pump", ModBlocks.SMALL_PUMP);
 
+    /** 压载泵方块物品（六格多块，放的时候自动铺满 3×2×1）。 */
+    public static final RegistryObject<Item> BALLAST_PUMP = blockItem("ballast_pump", ModBlocks.BALLAST_PUMP);
+
+    /** 反应堆方块物品（18 格多块，放的时候自动铺满 3×3×2）。 */
+    public static final RegistryObject<Item> REACTOR = blockItem("reactor", ModBlocks.REACTOR);
+
+    /** 引擎方块物品（18 格多块，放的时候自动铺满 3×2×3）。 */
+    public static final RegistryObject<Item> ENGINE = blockItem("engine", ModBlocks.ENGINE);
+
+    // ---- 核燃料棒（耐久 = 原作 Condition 上限） ----
+    /** 铀燃料棒：80 点。 */
+    public static final RegistryObject<Item> URANIUM_FUEL_ROD = ITEMS.register("uranium_fuel_rod",
+            () -> new Item(new Item.Properties().durability(80)));
+    /** 钍燃料棒：100 点。 */
+    public static final RegistryObject<Item> THORIUM_FUEL_ROD = ITEMS.register("thorium_fuel_rod",
+            () -> new Item(new Item.Properties().durability(100)));
+    /** 富尔古瑞姆燃料棒：150 点。 */
+    public static final RegistryObject<Item> FULGURIUM_FUEL_ROD = ITEMS.register("fulgurium_fuel_rod",
+            () -> new Item(new Item.Properties().durability(150)));
+
     public static final RegistryObject<Item> DRAIN_OUTLET = blockItem("drain_outlet", ModBlocks.DRAIN_OUTLET);
 
     public static final RegistryObject<Item> IRON_LADDER = blockItem("iron_ladder", ModBlocks.IRON_LADDER);

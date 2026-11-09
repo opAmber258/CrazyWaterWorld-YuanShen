@@ -39,6 +39,8 @@ public final class ShipSavedData extends SavedData {
     public static final String NAME = "barotrauma_ships";
 
     private boolean starterClaimed;
+    /** 新世界改用用户搭的儒艮号（5×9×17，站外侧）作为出生潜艇。旧存档默认 false。 */
+    private boolean starterLayoutNew;
 
     @Nullable
     private AssembledShip assembled;
@@ -55,6 +57,17 @@ public final class ShipSavedData extends SavedData {
     public void markStarterClaimed() {
         if (!starterClaimed) {
             starterClaimed = true;
+            setDirty();
+        }
+    }
+
+    public boolean starterLayoutNew() {
+        return starterLayoutNew;
+    }
+
+    public void markStarterLayoutNew() {
+        if (!starterLayoutNew) {
+            starterLayoutNew = true;
             setDirty();
         }
     }
@@ -184,6 +197,7 @@ public final class ShipSavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag) {
         tag.putBoolean("starterClaimed", starterClaimed);
+        tag.putBoolean("starterLayoutNew", starterLayoutNew);
         if (assembled != null) {
             tag.put("assembled", assembled.save());
         }
@@ -193,6 +207,7 @@ public final class ShipSavedData extends SavedData {
     private static ShipSavedData load(CompoundTag tag, ServerLevel level) {
         ShipSavedData data = new ShipSavedData();
         data.starterClaimed = tag.getBoolean("starterClaimed");
+        data.starterLayoutNew = tag.getBoolean("starterLayoutNew");
         if (tag.contains("assembled", Tag.TAG_COMPOUND)) {
             HolderGetter<Block> blocks = level.registryAccess().lookupOrThrow(Registries.BLOCK);
             data.assembled = AssembledShip.load(tag.getCompound("assembled"), blocks);

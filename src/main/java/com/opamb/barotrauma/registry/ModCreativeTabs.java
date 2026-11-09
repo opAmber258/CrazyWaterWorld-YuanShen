@@ -37,6 +37,12 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.BULKHEAD_DOOR.get());
                         output.accept(ModItems.DRAIN_PUMP.get());
                         output.accept(ModItems.SMALL_PUMP.get());
+                        output.accept(ModItems.BALLAST_PUMP.get());
+                        output.accept(ModItems.REACTOR.get());
+                        output.accept(ModItems.ENGINE.get());
+                        output.accept(ModItems.URANIUM_FUEL_ROD.get());
+                        output.accept(ModItems.THORIUM_FUEL_ROD.get());
+                        output.accept(ModItems.FULGURIUM_FUEL_ROD.get());
                         output.accept(ModItems.DRAIN_OUTLET.get());
                         output.accept(ModItems.IRON_LADDER.get());
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.BANDAGE.get());

@@ -87,6 +87,8 @@ public final class CampaignManager {
             return false;
         }
         com.opamb.barotrauma.world.DockingBay.ensureStationHatch(deep, destSite);
+        // 本轮任务的航路浮标：声纳上的金色目标点指向它，而不是头顶的副本站。
+        com.opamb.barotrauma.world.MissionTarget.ensure(deep, anchor, destination);
         // 传送到副本后停车：别把出发时的油门/自动驾驶带过去，船会自己开走。
         if (VsPilot.state() != null) {
             VsPilot.state().setThrottle(0, 0, 0);
@@ -131,9 +133,7 @@ public final class CampaignManager {
             com.opamb.barotrauma.world.DockingBay.Site instance =
                     new com.opamb.barotrauma.world.DockingBay.Site(
                             state.round().instanceX(), state.round().instanceZ());
-            BlockPos core = new BlockPos(instance.x() + 1, StarterSub.ORIGIN_Y + 1, instance.z() - 3);
-            deep.getChunkAt(core);
-            if (deep.getBlockEntity(core) instanceof ShipCoreBlockEntity) {
+            if (starterCorePos(deep, instance) != null) {
                 return instance;
             }
         }
@@ -174,13 +174,16 @@ public final class CampaignManager {
             return List.of();
         // 核心在 originY+1；旧存档的船还在 -78。
         int originY = corePos.getY() - 1;
-        int shipX = site.x() + StarterSub.ORIGIN_X;
-        int shipZ = site.z() + StarterSub.ORIGIN_Z;
+        boolean newLayout = StarterSub.newLayout(deep);
+        int shipX = site.x() + (newLayout ? StarterSub.NEW_ORIGIN_X : StarterSub.ORIGIN_X);
+        int shipZ = site.z() + (newLayout ? StarterSub.NEW_ORIGIN_Z : StarterSub.ORIGIN_Z);
+        int sizeX = newLayout ? StarterSub.NEW_SIZE_X : StarterSub.SIZE_X;
+        int sizeZ = newLayout ? StarterSub.NEW_SIZE_Z : StarterSub.SIZE_Z;
         var boat = core.state() == null ? core.rescan(deep) : core.state();
         if (boat == null || boat.compartments().isEmpty() || boat.floodRatio() > 0.001) return List.of();
         List<Vec3> result = new ArrayList<>();
-        for (int x = shipX + 1; x < shipX + StarterSub.SIZE_X - 1; x++) {
-            for (int z = shipZ + 1; z < shipZ + StarterSub.SIZE_Z - 1; z++) {
+        for (int x = shipX + 1; x < shipX + sizeX - 1; x++) {
+            for (int z = shipZ + 1; z < shipZ + sizeZ - 1; z++) {
                 BlockPos feet = new BlockPos(x, originY + 1, z);
                 if (boat.compartments().stream().noneMatch(c -> c.cells().contains(feet) && c.cells().contains(feet.above()))) continue;
                 if (!deep.getBlockState(feet).getCollisionShape(deep, feet).isEmpty()
@@ -193,8 +196,13 @@ public final class CampaignManager {
         return List.of();
     }
 
-    /** 找到这个站停靠的初始潜艇核心；主站兼容 -75/-77 的旧存档。 */
+    /** 找到这个站停靠的初始潜艇核心；新布局找站外侧的儒艮号，旧存档兼容 -75/-77。 */
     private static BlockPos starterCorePos(ServerLevel deep, com.opamb.barotrauma.world.DockingBay.Site site) {
+        if (StarterSub.newLayout(deep)) {
+            BlockPos pos = StarterSub.newCorePos(site.x(), site.z());
+            deep.getChunkAt(pos);
+            return deep.getBlockEntity(pos) instanceof ShipCoreBlockEntity ? pos : null;
+        }
         BlockPos pos = new BlockPos(site.x() + 1, StarterSub.ORIGIN_Y + 1, site.z() - 3);
         deep.getChunkAt(pos);
         if (deep.getBlockEntity(pos) instanceof ShipCoreBlockEntity) {
@@ -262,7 +270,19 @@ public final class CampaignManager {
     /** 把战役状态推给单个玩家。 */
     public static void sync(ServerPlayer player) {
         ServerLevel deep = player.server.getLevel(ModDimensions.THE_DEEP);
-        if (deep != null) ModNetwork.sendToPlayer(player, CampaignStatePacket.build(CampaignState.wallet(deep)));
+        if (deep == null) {
+            return;
+        }
+        CampaignState state = CampaignState.wallet(deep);
+        // 旧存档兼容：已经在航行中的轮次没有航路浮标，登录时补建一次（幂等）。
+        var round = state.round();
+        if (round.phase() == RoundPhase.DIVING && round.hasInstance()) {
+            com.opamb.barotrauma.world.MissionTarget.ensure(deep,
+                    com.opamb.barotrauma.world.MissionTarget.anchorForInstance(
+                            round.instanceX(), round.instanceZ()),
+                    round.destination());
+        }
+        ModNetwork.sendToPlayer(player, CampaignStatePacket.build(state));
     }
 
     /** 把战役状态推给所有在线玩家。 */

@@ -5,6 +5,9 @@
     "barotrauma:hatch",
     "barotrauma:bulkhead_door",
     "barotrauma:iron_ladder",
-    "barotrauma:hatch_ladder"
+    "barotrauma:hatch_ladder",
+    "barotrauma:ballast_pump",
+    "barotrauma:reactor",
+    "barotrauma:engine"
   ]
 }

@@ -10,7 +10,9 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class ModNetwork {
 
-    private static final String PROTOCOL = "2";
+    // 3：ReactorActionPacket 插在注册序列中间，后面所有包的 ID 都后移一位，
+    // 旧版本必须被握手拒绝，否则会把包解码成错误类型。
+    private static final String PROTOCOL = "3";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -43,6 +45,8 @@ public final class ModNetwork {
                 MissionActionPacket::encode, MissionActionPacket::decode, MissionActionPacket::handle);
         CHANNEL.registerMessage(nextId++, PumpActionPacket.class,
                 PumpActionPacket::encode, PumpActionPacket::decode, PumpActionPacket::handle);
+        CHANNEL.registerMessage(nextId++, ReactorActionPacket.class,
+                ReactorActionPacket::encode, ReactorActionPacket::decode, ReactorActionPacket::handle);
         CHANNEL.registerMessage(nextId++, ShipHullDamagePacket.class,
                 ShipHullDamagePacket::encode, ShipHullDamagePacket::decode, ShipHullDamagePacket::handle);
         CHANNEL.messageBuilder(MedicalSyncPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)

@@ -105,6 +105,20 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             BlockPos base = player.blockPosition();
             boolean hasTarget = target != null;
 
+            // 对接面板：船核心当前世界坐标 → 最近哨站的靠泊标准位距离/状态
+            BlockPos coreWorld = coreWorld(core, center);
+            Dock dock = dockInfo(level, coreWorld);
+            // 客户端舰况图用「声纳点（相对 center）− 这个偏移」换算核心局部坐标，
+            // 所以基准是 center，不是玩家位置（方块船时 center 是声纳台）。
+            int cdx = coreWorld.getX() - center.getX();
+            int cdy = coreWorld.getY() - center.getY();
+            int cdz = coreWorld.getZ() - center.getZ();
+            Waypoint waypoint = waypoint(level, base);
+            // 舱室格是装配坐标：物理船减装配核心，减掉位移后的 coreWorld 会整体偏掉。
+            BlockPos geometryCore = com.opamb.barotrauma.ship.vs.VsState.active()
+                    && com.opamb.barotrauma.ship.vs.VsState.corePos() != null
+                    ? com.opamb.barotrauma.ship.vs.VsState.corePos() : coreWorld;
+
             ModNetwork.sendToPlayer(player, new SonarDataPacket(frame.range(), frame.points(),
                     power,
                     ship == null ? 0 : ship.throttleX(),
@@ -120,9 +134,168 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                     hasTarget ? target.getY() - base.getY() : 0,
                     hasTarget ? target.getZ() - base.getZ() : 0,
                     statusText(ship, center, scanMode, frame.range()),
-                    coreText(ship)));
+                    coreText(ship),
+                    dock.state(), dock.distance(), dock.label(),
+                    com.opamb.barotrauma.ship.vs.VsState.active(),
+                    hullPercent(ship), waterPercent(ship),
+                    cdx, cdy, cdz,
+                    roomRects(ship, geometryCore),
+                    waypoint.set(), waypoint.x(), waypoint.y(), waypoint.z(), waypoint.label()));
         });
         context.setPacketHandled(true);
+    }
+
+    /**
+     * 船的船核心现在的世界坐标。
+     *
+     * <p>物理船的方块在 VS2 船坞里，核心方块坐标已经不是世界坐标了；
+     * 装配时记下的 {@code VsState.corePos()} 加上整位移才是船真正的位置。</p>
+     */
+    private static BlockPos coreWorld(com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core,
+                                      BlockPos fallback) {
+        if (com.opamb.barotrauma.ship.vs.VsState.active()) {
+            BlockPos assembled = com.opamb.barotrauma.ship.vs.VsState.corePos();
+            if (assembled != null) {
+                return assembled.offset(com.opamb.barotrauma.ship.vs.VsState.offsetX(),
+                        com.opamb.barotrauma.ship.vs.VsState.offsetY(),
+                        com.opamb.barotrauma.ship.vs.VsState.offsetZ());
+            }
+        }
+        return core != null ? core.getBlockPos() : fallback;
+    }
+
+    /** 对接状态：0 不可用 / 1 物理船在码头范围内 / 2 方块船停在码头。 */
+    private record Dock(int state, int distance, String label) {
+    }
+
+    /** 声纳上的下一个目标点（相对玩家坐标）。 */
+    private record Waypoint(boolean set, int x, int y, int z, String label) {
+        private static final Waypoint NONE = new Waypoint(false, 0, 0, 0, "");
+    }
+
+    /**
+     * 本轮任务的目标点：实例海里的航路浮标（不是头顶那个副本站）。
+     *
+     * <p>2026-11-09 用户反馈"所有任务的目标点都是头顶那个继承过来的哨站"。
+     * 现在按目的地节点给不同方向的航路浮标（{@link com.opamb.barotrauma.world.MissionTarget}），
+     * 声纳金色菱形指向它；副本站码头仍然用于返航对接。</p>
+     */
+    private static Waypoint waypoint(ServerLevel level, BlockPos base) {
+        try {
+            com.opamb.barotrauma.campaign.CampaignState state =
+                    com.opamb.barotrauma.campaign.CampaignState.get(level);
+            var round = state.round();
+            if (round.phase() != com.opamb.barotrauma.campaign.RoundPhase.DIVING
+                    || !round.hasInstance()) {
+                return Waypoint.NONE;
+            }
+            com.opamb.barotrauma.world.MissionInstance.Anchor anchor =
+                    com.opamb.barotrauma.world.MissionTarget.anchorForInstance(
+                            round.instanceX(), round.instanceZ());
+            BlockPos target = com.opamb.barotrauma.world.MissionTarget.targetFor(anchor, round.destination());
+            var node = com.opamb.barotrauma.campaign.CampaignMap.node(round.destination());
+            String label = (node == null ? "任务目标" : node.name()) + " 航路";
+            return new Waypoint(true,
+                    target.getX() - base.getX(),
+                    target.getY() - base.getY(),
+                    target.getZ() - base.getZ(),
+                    label);
+        } catch (Throwable ignored) {
+            // 世界数据还没初始化（测试/非常早的加载）：不标目标点
+            return Waypoint.NONE;
+        }
+    }
+
+    /**
+     * 最近哨站的靠泊判定，和 {@code VsPilot.dock} 完全同一套坐标：
+     * 站点中心 + 该布局的核心偏移（新布局「儒艮号」是 +6,0，旧小艇是 +1,−3）。
+     */
+    private static Dock dockInfo(ServerLevel level, BlockPos coreWorld) {
+        com.opamb.barotrauma.world.DockingBay.Site site =
+                com.opamb.barotrauma.world.DockingBay.siteAt(coreWorld.getX(), coreWorld.getZ());
+        if (site == null) {
+            return new Dock(0, -1, "");
+        }
+        BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(
+                site, com.opamb.barotrauma.world.StarterSub.newLayout(level));
+        int distance = (int) Math.round(Math.hypot(
+                coreWorld.getX() - dockCore.getX(), coreWorld.getZ() - dockCore.getZ()));
+        int dy = Math.abs(coreWorld.getY() - dockCore.getY());
+        boolean physical = com.opamb.barotrauma.ship.vs.VsState.active();
+        String label = site.equals(com.opamb.barotrauma.world.DockingBay.Site.MAIN)
+                ? "起始哨站" : "任务前哨站";
+        int state;
+        if (physical) {
+            // 和 VsPilot.dock 的判定一致：水平 16 格 / 高差 6 格
+            state = distance <= 16 && dy <= 6 ? 1 : 0;
+        } else {
+            // 方块船就停在码头：核心基本重合才算「已靠泊」
+            state = distance <= 6 && dy <= 4 ? 2 : 0;
+        }
+        return new Dock(state, Math.max(0, distance), label);
+    }
+
+    /** 船壳平均完好度（0..100）。没有耐久记录 = 满血。 */
+    private static int hullPercent(ShipState ship) {
+        if (ship == null) {
+            return 100;
+        }
+        Set<BlockPos> hull = ship.geometry().hull();
+        if (hull.isEmpty()) {
+            return 100;
+        }
+        float sum = 0.0F;
+        for (BlockPos pos : hull) {
+            sum += ship.hullDamage().health(pos);
+        }
+        return Math.round(sum / hull.size() * 100.0F);
+    }
+
+    private static int waterPercent(ShipState ship) {
+        return ship == null ? 0 : (int) Math.round(ship.floodRatio() * 100.0D);
+    }
+
+    /**
+     * 左舷「舰况」图用的舱室侧视矩形：5 个 int 一组
+     * （minX, maxX, minY, maxY, 进水百分比），坐标以船核心为原点。
+     * 最多 10 个舱室，超出直接丢弃——面板上也画不下。
+     */
+    private static int[] roomRects(ShipState ship, BlockPos coreWorld) {
+        if (ship == null || coreWorld == null) {
+            return new int[0];
+        }
+        java.util.List<Integer> out = new java.util.ArrayList<>();
+        int used = 0;
+        for (com.opamb.barotrauma.ship.ShipGeometry.Compartment compartment : ship.compartments()) {
+            if (used++ >= 10) {
+                break;
+            }
+            int minX = Integer.MAX_VALUE;
+            int maxX = Integer.MIN_VALUE;
+            int minY = Integer.MAX_VALUE;
+            int maxY = Integer.MIN_VALUE;
+            for (BlockPos pos : compartment.cells()) {
+                int lx = pos.getX() - coreWorld.getX();
+                int ly = pos.getY() - coreWorld.getY();
+                minX = Math.min(minX, lx);
+                maxX = Math.max(maxX, lx);
+                minY = Math.min(minY, ly);
+                maxY = Math.max(maxY, ly);
+            }
+            if (minX > maxX || minY > maxY) {
+                continue;
+            }
+            out.add(minX);
+            out.add(maxX);
+            out.add(minY);
+            out.add(maxY);
+            out.add((int) Math.round(compartment.waterRatio() * 100.0D));
+        }
+        int[] result = new int[out.size()];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = out.get(i);
+        }
+        return result;
     }
 
     /**

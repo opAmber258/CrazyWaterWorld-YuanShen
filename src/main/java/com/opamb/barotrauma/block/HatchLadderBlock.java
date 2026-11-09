@@ -55,7 +55,11 @@ public class HatchLadderBlock extends HatchBlock {
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
                                         CollisionContext context) {
-        return Shapes.or(super.getCollisionShape(state, level, pos, context), plate(state));
+        // 关着的时候只留舱口板：人站在 1px 舱口板上时，竖着的梯子薄板会顶在
+        // 腿中间，MC 的碰撞解算会把人往两边挤（和垂直舱门那次是同一个问题）。
+        // 开着的时候才加梯子碰撞——那是从洞口上下、贴着梯子时需要的。
+        VoxelShape base = super.getCollisionShape(state, level, pos, context);
+        return state.getValue(OPEN) ? Shapes.or(base, plate(state)) : base;
     }
 
     /** 梯子常驻：舱口关着也能爬（爬到顶会被关着的舱口面板挡住）。 */

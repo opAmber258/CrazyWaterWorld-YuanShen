@@ -50,7 +50,9 @@ public record PumpActionPacket(BlockPos pos, int action, int value) {
             if (pump == null && VsState.active()
                     && level.getBlockState(pos).is(ModShipBlocks.PUMP_PROXY.get())) {
                 // 物理船：pos 是跟船移动的代理方块，真实泵方块实体在船坞里。
-                pump = VsPilot.pumpBlockEntity(level);
+                // 必须按代理位置解析——每台泵各有一个代理，写死"第一台"会把
+                // 小泵面板上的操作全作用到压载泵上。
+                pump = VsPilot.pumpBlockEntity(level, pos);
             }
             if (pump == null) {
                 return;

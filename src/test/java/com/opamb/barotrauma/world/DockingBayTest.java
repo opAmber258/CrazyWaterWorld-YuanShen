@@ -12,6 +12,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DockingBayTest {
 
     @Test
+    @DisplayName("靠泊标准位：旧小艇 (+1,−3)、儒艮号 (+6,0)，副本站按站点偏移")
+    void dockCoreFollowsLayout() {
+        DockingBay.Site main = DockingBay.Site.MAIN;
+        var legacy = DockingBay.dockCore(main, false);
+        assertEquals(StarterSub.ORIGIN_X + 5, legacy.getX());
+        assertEquals(StarterSub.ORIGIN_Y + 1, legacy.getY());
+        assertEquals(StarterSub.ORIGIN_Z + 4, legacy.getZ());
+
+        var dugong = DockingBay.dockCore(main, true);
+        assertEquals(StarterSub.NEW_CORE_OFFSET_X, dugong.getX());
+        assertEquals(StarterSub.NEW_CORE_OFFSET_Y, dugong.getY());
+        assertEquals(StarterSub.NEW_CORE_OFFSET_Z, dugong.getZ());
+        assertEquals(StarterSub.newCorePos(), dugong, "新布局码头核心必须就是儒艮号装配时的核心位");
+
+        DockingBay.Site slot = DockingBay.Site.forSlot(2);
+        var instanceDock = DockingBay.dockCore(slot, true);
+        assertEquals(StarterSub.newCorePos(slot.x(), slot.z()), instanceDock,
+                "副本站的停靠核心同样按站点偏移");
+    }
+
+    @Test
     @DisplayName("主站和每个副本锚点都能被认成站点，远海不是")
     void sitesResolveForMainAndInstances() {
         assertEquals(DockingBay.Site.MAIN, DockingBay.siteAt(0, 0));

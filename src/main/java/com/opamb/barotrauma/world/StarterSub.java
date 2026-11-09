@@ -5,6 +5,12 @@ import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.registry.ModBlocks;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.vs.VsState;
+import com.opamb.barotrauma.block.BulkheadDoorBlock;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.LadderBlock;
+import net.minecraft.world.level.block.Rotation;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -47,6 +53,66 @@ public final class StarterSub {
     public static final int SIZE_Y = 5;
     public static final int SIZE_Z = 15;
 
+    // ---- 儒艮号（2026-11-08 用户在新存档里搭的替换出生潜艇）----
+    /**
+     * 新出生潜艇「儒艮号」：模板原始朝向 5 宽 × 9 高 × 17 长（长轴沿 z）。
+     *
+     * <p>放置时整艘绕 Y 轴顺时针转 90°：长轴改为沿 x，船顶 3×1 舱口才会和哨站
+     * -68 中层舱口同向。原朝向的船顶舱口沿 z，和站侧舱口十字交叉，实际只能
+     * 过 1×1，用户反馈“对接对歪了”。</p>
+     *
+     * <p>因此世界包围盒是 17×9×5（x 17、y 9、z 5），x/z 都从 origin 向正方向。</p>
+     */
+    public static final int NEW_ORIGIN_X = -9;
+    public static final int NEW_ORIGIN_Y = -77;
+    public static final int NEW_ORIGIN_Z = -2;
+    public static final int NEW_SIZE_X = 17;
+    public static final int NEW_SIZE_Y = 9;
+    public static final int NEW_SIZE_Z = 5;
+    /** 相对站点原点的核心偏移（旋转后声纳在船的东端 (6,-72,0)）。 */
+    public static final int NEW_CORE_OFFSET_X = 6;
+    public static final int NEW_CORE_OFFSET_Y = -72;
+    public static final int NEW_CORE_OFFSET_Z = 0;
+
+    /** 儒艮号的声纳/船核心：站下方 (6, -72, 0)。 */
+    public static BlockPos newCorePos() {
+        return new BlockPos(6, -72, 0);
+    }
+
+    /** 副本站点里的儒艮号核心（相对站点原点同一偏移）。 */
+    public static BlockPos newCorePos(int siteX, int siteZ) {
+        return new BlockPos(siteX + NEW_CORE_OFFSET_X, NEW_CORE_OFFSET_Y,
+                siteZ + NEW_CORE_OFFSET_Z);
+    }
+
+    /** 这个存档是否已切换到儒艮号出生潜艇布局。 */
+    public static boolean newLayout(ServerLevel level) {
+        return com.opamb.barotrauma.data.ShipSavedData.get(level).starterLayoutNew();
+    }
+
+    /** 儒艮号床边出生点（床在 x -8..-7、z -1..1，站在 x -6 的过道）。 */
+    public static net.minecraft.world.phys.Vec3 newSpawnPos() {
+        return new net.minecraft.world.phys.Vec3(-5.5D, -72.0D, 0.5D);
+    }
+
+    /** 这艘儒艮号是否已经在世界里（或已经被收成物理船）。 */
+    public static boolean newStarterActive(ServerLevel level) {
+        if (!newLayout(level)) {
+            return false;
+        }
+        BlockPos core = newCorePos();
+        level.getChunk(core.getX() >> 4, core.getZ() >> 4);
+        if (level.getBlockState(core).is(ModShipBlocks.SONAR.get())) {
+            return true;
+        }
+        return VsState.active() && core.equals(VsState.corePos());
+    }
+
+    /** 有儒艮号时出生在它床边，否则沿用旧出生潜艇。 */
+    public static net.minecraft.world.phys.Vec3 spawnPos(ServerLevel level) {
+        return newStarterActive(level) ? newSpawnPos() : spawnPos();
+    }
+
     private StarterSub() {
     }
 
@@ -81,6 +147,20 @@ public final class StarterSub {
     @Nullable
     public static ShipCoreBlockEntity ensure(ServerLevel level) {
         DockingBay.ensureStationHatch(level);
+        // 用户在新存档里搭的儒艮号：已经在世界里（或已收成物理船）就优先认它，
+        // 不再走旧出生潜艇的建造/认领逻辑；旧船在码头里保留，不主动删除。
+        if (newStarterActive(level)) {
+            BlockPos newCore = newCorePos();
+            level.getChunk(newCore.getX() >> 4, newCore.getZ() >> 4);
+            if (level.getBlockEntity(newCore) instanceof ShipCoreBlockEntity core) {
+                if (core.state() == null) {
+                    core.rescan(level);
+                }
+                return core;
+            }
+            BarotraumaMod.LOGGER.info("[Barotrauma] 儒艮号已收成物理船，跳过旧出生潜艇重建");
+            return null;
+        }
         // 先处理旧档：潜艇之前在 -76/-78，现在直接顶到 -68 平台；登录时整体上移。
         liftLegacySub(level);
         BlockPos corePos = corePos();
@@ -145,74 +225,55 @@ public final class StarterSub {
             return null;
         }
 
-        // 船壳用不透明装甲板：物理船是连续坐标渲染、排水体是整格方块，
-        // 船 y 不是整数时两者在船壳处差半格——透明船壳会把"半个方块"的水/缺口暴露出来。
-        // 飞机舷窗用玻璃（HULL_GLASS），既能看到外面，又不会把整艘船做成透明壳。
-        BlockState hull = ModBlocks.SUBMARINE_PLATING.get().defaultBlockState();
-        BlockState glass = ModShipBlocks.HULL_GLASS.get().defaultBlockState();
+        return placeNewStarter(level);
+    }
 
-        for (int dx = 0; dx < SIZE_X; dx++) {
-            for (int dy = 0; dy < SIZE_Y; dy++) {
-                for (int dz = 0; dz < SIZE_Z; dz++) {
-                    BlockPos pos = new BlockPos(ORIGIN_X + dx, ORIGIN_Y + dy, ORIGIN_Z + dz);
-                    boolean shell = dx == 0 || dx == SIZE_X - 1
-                            || dy == 0 || dy == SIZE_Y - 1
-                            || dz == 0 || dz == SIZE_Z - 1;
-                    if (!shell) {
-                        level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
-                        continue;
-                    }
-                    // 顶部舷窗（dx 3..5, dz 4..6）
-                    boolean window = dy == SIZE_Y - 1 && dx >= 3 && dx <= 5 && dz >= 4 && dz <= 6;
-                    level.setBlock(pos, window ? glass : hull, 2);
-                }
-            }
+    /**
+     * 新世界：把用户搭的儒艮号模板放到站正下方，作为出生潜艇。
+     * 模板 = 原始 5×9×17（长轴沿 z），放置时整艘顺时针转 90°，
+     * 船顶 3×1 舱口（局部 z=7）正好落在站点正下方，和 -68 中层舱口对齐。
+     */
+    @Nullable
+    private static ShipCoreBlockEntity placeNewStarter(ServerLevel level) {
+        StructureTemplateManager manager = level.getStructureManager();
+        var template = manager.get(new ResourceLocation(BarotraumaMod.MOD_ID, "starter_sub"));
+        if (template.isEmpty()) {
+            BarotraumaMod.LOGGER.error("[Barotrauma] 找不到儒艮号结构模板 barotrauma:starter_sub");
+            return null;
         }
-
-        // 顶部 3×1 对接舱口：正对哨站通道，出生时打开
-        for (int i = 0; i < 3; i++) {
-            level.setBlock(new BlockPos(ORIGIN_X + 3 + i, ORIGIN_Y + SIZE_Y - 1, ORIGIN_Z + 7),
-                    DockingBay.subHatchState(i, true), 2);
+        BlockPos origin = new BlockPos(NEW_ORIGIN_X, NEW_ORIGIN_Y, NEW_ORIGIN_Z);
+        level.getChunk(origin.getX() >> 4, origin.getZ() >> 4);
+        // 模板只存了非空气方块；先把整块体积清成空气，否则站外的水/岩石会灌进船内。
+        for (BlockPos pos : BlockPos.betweenClosed(origin,
+                origin.offset(NEW_SIZE_X - 1, NEW_SIZE_Y - 1, NEW_SIZE_Z - 1))) {
+            level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
         }
-        // 舱口爬梯井：玩家从舱底爬到顶部对接舱口（铁梯免支撑、有碰撞）
-        // 船内梯子按用户要求转 90°：薄板沿 z，东西朝向。
-        BlockState ladder = com.opamb.barotrauma.registry.ModBlocks.IRON_LADDER.get()
-                .defaultBlockState()
-                .setValue(net.minecraft.world.level.block.LadderBlock.FACING,
-                        net.minecraft.core.Direction.EAST)
-                .setValue(net.minecraft.world.level.block.LadderBlock.WATERLOGGED, Boolean.FALSE);
-        for (int y = ORIGIN_Y + 1; y <= ORIGIN_Y + SIZE_Y - 2; y++) {
-            level.setBlock(new BlockPos(ORIGIN_X + 4, y, ORIGIN_Z + 7), ladder, 2);
-        }
+        StructurePlaceSettings settings = new StructurePlaceSettings()
+                .setRotation(Rotation.CLOCKWISE_90);
+        settings.setIgnoreEntities(false);
+        // 旋转以 (0,0,0) 为轴心：局部 (x,z) → 放置点 + (-z, x)。模板长 17，
+        // 把放置点放在包围盒 +x 边，船顶舱口（局部 z=7）才会落在 site.x 正下方。
+        BlockPos placePos = new BlockPos(origin.getX() + NEW_SIZE_X - 1, origin.getY(), origin.getZ());
+        template.get().placeInWorld(level, placePos, placePos, settings, level.random, 3);
 
-        // 声纳台就是船脑（机器/舱门已按用户要求全部删除，船上只留船壳和声纳）
-        level.setBlock(new BlockPos(ORIGIN_X + 5, ORIGIN_Y + 1, ORIGIN_Z + 4),
-                ModShipBlocks.SONAR.get().defaultBlockState(), 2);
-        // 排水泵：普通泵只留在压载舱（船尾）
-        level.setBlock(new BlockPos(ORIGIN_X + 4, ORIGIN_Y + 1, ORIGIN_Z + 2),
-                com.opamb.barotrauma.registry.ModBlocks.DRAIN_PUMP.get().defaultBlockState(), 2);
-        // 小型泵/排水口铺在船舱前后段
-        level.setBlock(new BlockPos(ORIGIN_X + 6, ORIGIN_Y + 1, ORIGIN_Z + 11),
-                com.opamb.barotrauma.registry.ModBlocks.SMALL_PUMP.get().defaultBlockState(), 2);
-        level.setBlock(new BlockPos(ORIGIN_X + 2, ORIGIN_Y + 1, ORIGIN_Z + 11),
-                com.opamb.barotrauma.registry.ModBlocks.DRAIN_OUTLET.get().defaultBlockState(), 2);
-        level.setBlock(new BlockPos(ORIGIN_X + 2, ORIGIN_Y + 1, ORIGIN_Z + 2),
-                com.opamb.barotrauma.registry.ModBlocks.DRAIN_OUTLET.get().defaultBlockState(), 2);
-
-        // 声纳台就是船脑（在上面的机器布局里已经放下去了），这里直接拿它的方块实体扫一次
+        com.opamb.barotrauma.data.ShipSavedData data =
+                com.opamb.barotrauma.data.ShipSavedData.get(level);
+        data.markStarterLayoutNew();
+        data.markStarterClaimed();
+        BlockPos corePos = newCorePos();
+        level.getChunk(corePos.getX() >> 4, corePos.getZ() >> 4);
         if (level.getBlockEntity(corePos) instanceof ShipCoreBlockEntity core) {
             core.rescan(level);
-            com.opamb.barotrauma.data.ShipSavedData.get(level).markStarterClaimed();
-            BarotraumaMod.LOGGER.info("[Barotrauma] 初始潜艇已建造：core={} 范围 {}x{}x{}",
-                    corePos, SIZE_X, SIZE_Y, SIZE_Z);
+            BarotraumaMod.LOGGER.info("[Barotrauma] 儒艮号已生成：core={} 范围 {}x{}x{}",
+                    corePos, NEW_SIZE_X, NEW_SIZE_Y, NEW_SIZE_Z);
             return core;
         }
+        BarotraumaMod.LOGGER.error("[Barotrauma] 儒艮号模板已放置，但核心不在 {}", corePos);
         return null;
     }
 
     /** 玩家出生点：潜艇舱内（对接时从这里进站）。 */
-    public static net.minecraft.world.phys.Vec3 spawnPos() {
-        return spawnPos(ORIGIN_Y);
+    public static net.minecraft.world.phys.Vec3 spawnPos() {        return spawnPos(ORIGIN_Y);
     }
 
     /** 2026-11-07 之前（船在 -76）的出生点。 */

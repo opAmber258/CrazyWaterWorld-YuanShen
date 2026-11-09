@@ -623,19 +623,38 @@ public final class ShipState {
     public double floodRatio() {
         // 分母必须把"连海空腔"也算上：舱室破洞后会从 compartments 移到 openPockets，
         // 只数密闭舱室的话，整艘船灌满水时比例反而是 0，物理上不会下沉。
+        // 但只算**船壳以内**的格：圆角船体的包围盒四角也在同一片连海空腔里，
+        // 那部分外海海水不能算成船内进水（否则内部全干的船会显示 60% 进水直接沉底）。
         double volume = 0.0D;
         for (ShipGeometry.Compartment compartment : compartments()) {
             volume += compartment.volume();
         }
         for (ShipGeometry.Compartment pocket : geometry.openPockets()) {
-            volume += pocket.volume();
+            volume += pocket.interiorVolume();
         }
         if (volume <= 0.0D) {
             return 0.0D;
         }
-        double units = simulation().waterUnits() + simulation().pocketWaterTotal();
-        double capacity = volume * ShipSimulation.UNITS_PER_BLOCK;
-        return capacity <= 0.0D ? 0.0D : Math.min(1.0D, units / capacity);
+        // 连海空腔里的水按"壳内格数 / 空腔总格数"折算：空腔水位均匀，
+        // 只有船壳包住的那一部分才算船里的水。
+        double pocketWater = 0.0D;
+        List<ShipGeometry.Compartment> pockets = geometry.openPockets();
+        for (int i = 0; i < pockets.size(); i++) {
+            ShipGeometry.Compartment pocket = pockets.get(i);
+            int cells = pocket.volume();
+            if (cells <= 0 || pocket.interiorVolume() <= 0) {
+                continue;
+            }
+            pocketWater += simulation().pocketWater(i)
+                    * (pocket.interiorVolume() / (double) cells);
+        }
+        // 压载舱的水是有意灌进去的，不能同时算成"进水"——否则浮力会被
+        // 压载因子（0.35）和进水因子（0.65）各扣一次。
+        double units = simulation().waterUnits() + pocketWater
+                - simulation().ballastUnits();
+        double capacity = volume * ShipSimulation.UNITS_PER_BLOCK
+                - simulation().ballastCapacityUnits();
+        return capacity <= 0.0D ? 0.0D : Math.min(1.0D, Math.max(0.0D, units / capacity));
     }
 
     /**
@@ -775,9 +794,12 @@ public final class ShipState {
             aimAtTarget(corePos);
         }
         double dt = 0.1D;
+        // 硬核供电：没反应堆/没开机时 supply=0；没有引擎时 engineFactor=0，推进器不出力。
+        double supply = simulation().powerRatio();
+        int engineFactor = Math.min(8, Math.max(0, simulation().engineCount()));
         if (autopilotHold && autopilotTarget != null) {
             // P 控制：离目标越远目标速度越大；靠近时目标速度自己收敛到 0，不用额外刹车
-            double gain = 0.7D * power / 100.0D;
+            double gain = 0.7D * power / 100.0D * supply * engineFactor;
             double tx = net.minecraft.util.Mth.clamp(
                     (autopilotTarget.getX() - corePos.getX()) * gain, -ShipPhysics.MAX_SPEED, ShipPhysics.MAX_SPEED);
             double ty = net.minecraft.util.Mth.clamp(
@@ -786,7 +808,9 @@ public final class ShipState {
                     (autopilotTarget.getZ() - corePos.getZ()) * gain, -ShipPhysics.MAX_SPEED, ShipPhysics.MAX_SPEED);
             physics.tickAuto(dt, tx, ty, tz);
         } else {
-            physics.tickManual(dt, throttleX, throttleY, throttleZ, power, 0.0D, floodRatio());
+            int effectivePower = (int) Math.round(power * supply * engineFactor);
+            physics.tickManual(dt, throttleX, throttleY, throttleZ, effectivePower,
+                    simulation().ballastPercent(), floodRatio());
         }
         return applyStep(level, corePos);
     }

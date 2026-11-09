@@ -1,0 +1,76 @@
+{
+  "variants": {
+    "facing=north,part=lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=north,part=upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=east,part=upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=south,part=upper_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=lower_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=lower_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=lower_right": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=upper_left": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=upper_middle": {
+      "model": "barotrauma:block/invisible"
+    },
+    "facing=west,part=upper_right": {
+      "model": "barotrauma:block/invisible"
+    }
+  }
+}

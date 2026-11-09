@@ -34,18 +34,23 @@ public class DrainPumpBlockEntity extends BlockEntity {
      * 普通泵满流量（单位/秒）：1 格 = 100 单位。
      *
      * <p>对齐原版本机数据 {@code Content/Items/Pump/pump.xml}：MaxFlow=600、功率 300；
-     * 小型泵 {@code smallpump}：MaxFlow=100、功率 60。两者比例 6:1，和原版一致。</p>
+     * 小型泵 {@code smallpump}：MaxFlow=100、功率 60。</p>
+     *
+     * <p><b>为什么不是 600：</b>反编译 {@code Pump.Update} 里是
+     * {@code WaterVolume += flowPercent/100 * MaxFlow * voltage * deltaTime * 60}，
+     * 游戏固定 1/60 秒一帧，等于每帧 600、每秒 600×60 = 36000 水体单位。
+     * 原版一格是 16×16 = 256 水体单位，我们一格 = 100 单位，
+     * 换算后：600 × 60 × (100/256) ≈ 14062（每秒约 140 格³）。
+     * 之前直接按 600 用（每秒 6 格³）比原版慢约 23 倍，实测就是
+     * "泵入泵出太慢、沉浮延迟高"。</p>
      */
-    public static final int MAX_FLOW = 600;
+    public static final int MAX_FLOW = 14_062;
 
-    /** 小型泵满流量（原版 MaxFlow=100）。 */
-    public static final int SMALL_MAX_FLOW = 100;
+    /** 小型泵满流量（原版 MaxFlow=100 → 100×60×100/256 ≈ 2344，每秒约 23 格³）。 */
+    public static final int SMALL_MAX_FLOW = 2_344;
 
-    /** 排水口固定功率（模组简化件，原版没有独立方块）。 */
-    public static final int OUTLET_RATE = 25;
-
-    /** 自动控制判定"舱内还有水"的水位阈值（格）。 */
-    private static final double AUTO_WET_LEVEL = 0.05D;
+    /** 排水口固定流量（模组简化件，原版没有独立方块；按小泵的 1/4 取整）。 */
+    public static final int OUTLET_RATE = 586;
 
     private boolean auto = true;
     /** 手动流量百分比：-100..100。 */
@@ -90,9 +95,14 @@ public class DrainPumpBlockEntity extends BlockEntity {
         return flow;
     }
 
-    /** 当前流量（单位/秒），正值泵出、负值泵入。 */
+    /**
+     * 当前流量（单位/秒），**正值泵出、负值泵入**（{@link ShipSimulation} 的约定）。
+     *
+     * <p>注意 flow 的约定相反（负值泵出、正值泵入），这里必须取负。之前漏了这个
+     * 负号，自动/手动泵出实际会往舱里注水。</p>
+     */
     public double signedRate(BlockState state) {
-        return maxFlow(state) * effectiveFlow() / 100.0D;
+        return -maxFlow(state) * effectiveFlow() / 100.0D;
     }
 
     /** 是否是小型泵（小型泵用 GeckoLib 模型，其它泵仍是普通方块模型）。 */
@@ -129,12 +139,39 @@ public class DrainPumpBlockEntity extends BlockEntity {
         if (!ship.tracksHullBlock(cell)) {
             return;
         }
+        // 子类钩子：压载泵在这里读舵台垂直指令（下潜泵入 / 上浮泵出）。
+        be.beforeReport(ship);
         if (be.auto) {
             // 泵格子本身是实心方块，要用邻格解析出它服务的舱室（水传感器语义）。
             int body = ship.simulation().pumpBody(cell);
-            be.autoWet = body >= 0 && ship.simulation().bodyLevel(body) >= AUTO_WET_LEVEL;
+            // 注意：bodyLevel 是绝对 Y（深海是负数），不能拿来和 0.05 比；
+            // 用 bodyIsWet（水量 > 0.05 格）判断，自动泵才会真的在水进舱时启动。
+            be.autoWet = ship.simulation().bodyIsWet(body);
         }
-        ship.simulation().reportPump(cell, be.signedRate(state));
+        // 硬核供电：实际流量按全船供电比例缩放；请求值单独上报，负载按请求值算。
+        double requested = be.signedRate(state);
+        double ratio = ship.simulation().powerRatio();
+        ship.simulation().reportPump(cell, requested * ratio, be.ballast(), requested,
+                be.keepBelowDoor());
+    }
+
+    /** 上报前钩子：默认什么也不做；压载泵用它读取舵台垂直指令。 */
+    protected void beforeReport(ShipState ship) {
+    }
+
+    /**
+     * 注水时是否只注到"最近的舱门/舱口下方那一格"。
+     *
+     * <p>压载泵打开：压载舱注水不能漫过通往上层的舱门，否则一开门水就灌进
+     * 驾驶室。普通排水泵没有这个限制。</p>
+     */
+    protected boolean keepBelowDoor() {
+        return false;
+    }
+
+    /** 这台泵是否属于压载系统（true 时船体模拟会把它所在舱算作压载舱）。 */
+    public boolean ballast() {
+        return false;
     }
 
     /** 物理船的方块实体在船坞坐标里；转成船状态用的装配坐标。 */

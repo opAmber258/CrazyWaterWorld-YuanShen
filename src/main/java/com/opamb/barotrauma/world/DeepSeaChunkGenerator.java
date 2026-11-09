@@ -186,18 +186,17 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
         // 6b) 任务 POI：沉船/侦察点/B 中继站（确定性，幂等）
         PoiNetwork.buildInto(chunk);
 
-        // 6c) 任务海域实例：远处保留带里的封闭洞穴，只有落在锚点影响范围的区块才写
-        MissionInstance.generate(chunk, seed);
+        // 6c) 任务海域实例不再单独挖洞穴：副本站周围直接复用主世界开阔海域地形
+        //     （SeaTerrain 会在锚点附近压平洞顶并留出 64 格机动净空）。
 
         // 6d) 哨站：主站 + 每个任务副本顶部各一座。
-        //     放在洞穴之后：站外水池要把洞顶岩壳挖开，船才能从码头下到洞里。
         for (DockingBay.Site site : DockingBay.sitesNear(chunkPos)) {
             if (DockingBay.Site.MAIN.equals(site)) {
                 if (OutpostBuilder.intersectsCavern(chunkPos, site)) {
                     OutpostBuilder.carveCavern(chunk, site);
                 }
             } else if (OutpostBuilder.intersectsWell(chunkPos, site)) {
-                // 副本站只挖码头竖井，哨站本身挂在岩壁上，不泡在大洞里。
+                // 副本站只挖码头竖井，站体挂在压平的洞顶上。
                 OutpostBuilder.carveDockWell(chunk, site);
             }
             if (OutpostBuilder.intersects(chunkPos, site)) {

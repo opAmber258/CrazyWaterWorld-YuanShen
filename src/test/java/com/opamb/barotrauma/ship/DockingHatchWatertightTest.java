@@ -72,6 +72,11 @@ class DockingHatchWatertightTest {
         assertTrue(geometry.sealed(), "打开舱口不能产生连海空腔");
         assertEquals(0, geometry.openPockets().size());
         assertEquals(1, geometry.compartments().size(), "艇内仍然是一个密封舱室");
-        assertTrue(geometry.doorLinks().isEmpty(), "舱口外没有水体，不应该有 DoorLink");
+        // 舱口开在船壳外表面：必须连到"外海"这条水体（2026-11-08 修复"开门不进水"），
+        // 但舱室本身依旧是密闭的，不会被判成连海空腔。
+        assertEquals(3, geometry.doorLinks().size(), "3 格舱口各有一条通往外海的连线");
+        assertTrue(geometry.doorLinks().stream().allMatch(link ->
+                        link.other() == ShipGeometry.SEA_BODY && link.open()),
+                "三条连线都应指向 SEA_BODY 且是开着的");
     }
 }

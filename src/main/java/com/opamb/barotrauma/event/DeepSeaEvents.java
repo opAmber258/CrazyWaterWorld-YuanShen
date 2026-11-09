@@ -75,6 +75,20 @@ public final class DeepSeaEvents {
         }
     }
 
+    /**
+     * 退出世界前把物理船的认领记录落盘。
+     *
+     * <p>实测退出世界时 VS2 的 shipyard-entities mixin 会抛
+     * {@code NoSuchElementException} 打断世界保存；不提前写盘的话认领记录会退回
+     * 装配前，物理船变永久孤儿。这里只写数据文件，不碰方块。</p>
+     */
+    @SubscribeEvent
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            com.opamb.barotrauma.ship.vs.VsPilot.flushShipRecord(player.serverLevel());
+        }
+    }
+
     /** 第一次进服的玩家直接送进哨站，并把重生点设在那里。 */
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
@@ -99,11 +113,11 @@ public final class DeepSeaEvents {
         // 新手引导：不依赖文档，聊天里说清楚第一步；左上角还有常驻目标 HUD（ObjectiveOverlay）。
         player.sendSystemMessage(Component.literal("欢迎来到《潜渊症》深海。你出生在潜艇里，潜艇正与哨站对接；抬头爬梯子可以进站，按 ~ 选择航线并下潜。")
                 .withStyle(ChatFormatting.AQUA));
-        player.sendSystemMessage(Component.literal("▸ 右键潜艇里的声纳台打开舵台，点「下潜」启动物理船")
+        player.sendSystemMessage(Component.literal("▸ 右键潜艇里的声纳台打开舵台：停靠时右下圆钮是「离港」（打开海图选任务），出海后靠近哨站会变成「对接」")
                 .withStyle(ChatFormatting.GOLD));
         player.sendSystemMessage(Component.literal("▸ WASD/空格/Shift 操舵；受损船壳用焊接工具右键修复；破口会进水，别沉了")
                 .withStyle(ChatFormatting.GOLD));
-        player.sendSystemMessage(Component.literal("▸ 返航后回声纳台点「靠泊」收船；深度越深海压越危险")
+        player.sendSystemMessage(Component.literal("▸ 任务完成/打到东西后开回任务前哨站，点「对接」收船进站；深度越深海压越危险")
                 .withStyle(ChatFormatting.GRAY));
     }
 
@@ -120,18 +134,21 @@ public final class DeepSeaEvents {
         }
         // 先造好潜艇，再把人放进舱内；否则出生点还是一片空水。
         StarterSub.ensure(deep);
+        boolean newStarter = StarterSub.newStarterActive(deep);
         // 潜艇位置判定（issue #22 + CodeRabbit 审查）：统一用"声纳台是否在码头原位"兜底。
         // 旧存档没有 starterClaimed 标记但艇已装配驶离时，声纳台不在 → 不会误判在码头；
         // 活动物理船是别的船、初始方块潜艇仍在码头时，声纳台在 → 仍然算在码头。
         var sonarBlock = com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get();
-        boolean legacyDock = !deep.getBlockState(StarterSub.corePos()).is(sonarBlock)
+        boolean legacyDock = !newStarter
+                && !deep.getBlockState(StarterSub.corePos()).is(sonarBlock)
                 && deep.getBlockState(StarterSub.legacyCorePos()).is(sonarBlock);
-        boolean sonarAtDock = legacyDock
+        boolean sonarAtDock = newStarter || legacyDock
                 || deep.getBlockState(StarterSub.corePos()).is(sonarBlock);
         boolean docked;
         if (com.opamb.barotrauma.ship.vs.VsState.active()) {
             var ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
-            var dock = legacyDock ? StarterSub.legacySpawnPos() : StarterSub.spawnPos();
+            var dock = newStarter ? StarterSub.newSpawnPos()
+                    : (legacyDock ? StarterSub.legacySpawnPos() : StarterSub.spawnPos());
             boolean activeNear = ship != null && ship.distanceToSqr(dock) < 24.0D * 24.0D;
             docked = activeNear || sonarAtDock;
         } else {
@@ -140,7 +157,8 @@ public final class DeepSeaEvents {
             docked = sonarAtDock;
         }
         if (docked) {
-            var spawn = legacyDock ? StarterSub.legacySpawnPos() : StarterSub.spawnPos();
+            var spawn = newStarter ? StarterSub.newSpawnPos()
+                    : (legacyDock ? StarterSub.legacySpawnPos() : StarterSub.spawnPos());
             player.teleportTo(deep, spawn.x, spawn.y, spawn.z, 0.0F, 0.0F);
             player.setRespawnPosition(ModDimensions.THE_DEEP, BlockPos.containing(spawn), 0.0F, true, false);
         } else {

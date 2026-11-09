@@ -15,13 +15,17 @@ import java.util.Random;
  * 海压（P3）：深度超过船的耐压上限后，船壳开始被压伤——走现有
  * {@link HullDamage} → 渗漏 → 破口 → 进水链路，不新开一套伤害模型。
  *
- * <p>耐压上限：基础 150m，船体加固每级 +100m（0~3 级 → 150/250/350/450m）。
+ * <p>数值按原作：船壳 Structure 的基础 CrushDepth 是 3500m（原作
+ * {@code Level.DefaultRealWorldCrushDepth} 也是 3500），船体加固每级 +15%
+ * （原作 UpgradeModule {@code crushdepth="+15%"}）。0~3 级 → 3500/4025/4550/5075m。
  * 玩家出舱的挤压伤害在 {@code UnderwaterSurvival} 里（300m 起）。</p>
  */
 public final class ShipPressure {
 
-    public static final int BASE_RATING_METERS = 150;
-    public static final int RATING_PER_UPGRADE = 100;
+    /** 原作船壳/关卡默认耐压深度（米）。 */
+    public static final int BASE_RATING_METERS = 3500;
+    /** 原作船体加固每级 +15% 耐压。 */
+    public static final double RATING_PER_UPGRADE = 0.15D;
 
     /** 每 2 秒压伤一次。 */
     private static final int INTERVAL_TICKS = 40;
@@ -37,7 +41,8 @@ public final class ShipPressure {
 
     public static int ratingMeters(ShipState state) {
         int level = Math.round((state.hullHealthMultiplier() - 1.0F) / 0.2F);
-        return BASE_RATING_METERS + Math.max(0, Math.min(3, level)) * RATING_PER_UPGRADE;
+        int clamped = Math.max(0, Math.min(3, level));
+        return (int) Math.round(BASE_RATING_METERS * (1.0D + RATING_PER_UPGRADE * clamped));
     }
 
     /**

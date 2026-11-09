@@ -56,6 +56,10 @@ public final class ClientSetup {
                     com.opamb.barotrauma.registry.ModMenus.MISSION_TERMINAL.get(), MissionScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.PUMP.get(), PumpScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.REACTOR.get(), ReactorScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.ENGINE.get(), EngineScreen::new);
         });
     }
 
@@ -69,6 +73,12 @@ public final class ClientSetup {
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModBlockEntities.SONAR.get(), SonarRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.SMALL_PUMP.get(), context -> new SmallPumpRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.BALLAST_PUMP.get(),
+                context -> new BallastPumpRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.REACTOR.get(),
+                context -> new ReactorRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.ENGINE.get(),
+                context -> new EngineRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.HATCH.get(), context -> new HatchRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.BULKHEAD_DOOR.get(),
                 context -> new BulkheadDoorRenderer());

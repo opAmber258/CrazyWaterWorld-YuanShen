@@ -52,9 +52,12 @@ public final class SeaTerrain {
         if (isOutpostCore(x, z)) {
             return ROOF_FLAT_Y;
         }
+        Integer instanceX = siteXWithinBlend(x, z);
         double n = DeepSeaNoise.fbm2(seed ^ SALT_ROOF, x / 150.0D, z / 150.0D, 3);
         int world = ROOF_FLAT_Y - (int) Math.round((n * 0.5D + 0.5D) * ROOF_DEPTH);
-        int ceiling = blendOutpost(ROOF_FLAT_Y, world, x, z);
+        int ceiling = instanceX != null
+                ? blendAt(ROOF_FLAT_Y, world, Math.max(Math.abs(x - instanceX), Math.abs(z)))
+                : blendOutpost(ROOF_FLAT_Y, world, x, z);
         for (ClearZone zone : POI_CLEAR) {
             double distance = Math.hypot(x - zone.x(), z - zone.z());
             double weight = 1.0D - smooth((distance - zone.radius()) / 30.0D);
@@ -82,9 +85,14 @@ public final class SeaTerrain {
         return floor;
     }
 
-    /** 哨站机动区 / POI 周围 / 东侧出口通道不生成岩柱、岩墙、浮岩岛。 */
+    /** 哨站机动区 / 副本站周围 / POI 周围 / 东侧出口通道不生成岩柱、岩墙、浮岩岛。 */
     public static boolean inClearZone(int x, int z) {
         if (Math.max(Math.abs(x), Math.abs(z)) <= OUTPOST_CLEAR) {
+            return true;
+        }
+        // 副本站（任务海域实例）也要留出同样的机动净空，否则岩柱会把船围住。
+        Integer instanceX = MissionInstance.siteXAt(x, z);
+        if (instanceX != null) {
             return true;
         }
         // 哨站东侧留一条宽阔的天然出口：噪声岩墙偶尔会把出生点围成一圈，这里兜底。
@@ -104,10 +112,27 @@ public final class SeaTerrain {
         return Math.max(Math.abs(x), Math.abs(z)) <= OUTPOST_CORE;
     }
 
-    private static int blendOutpost(int postValue, int worldValue, int x, int z) {
-        double d = Math.max(Math.abs(x), Math.abs(z));
-        double t = smooth((d - OUTPOST_CORE) / (double) (OUTPOST_BLEND - OUTPOST_CORE));
+    /** 副本站处理半径（核心 + 渐变），和主站的 {@link #OUTPOST_BLEND} 一致。 */
+    private static Integer siteXWithinBlend(int x, int z) {
+        if (Math.abs(z) > OUTPOST_BLEND) {
+            return null;
+        }
+        int slot = Math.round((x - MissionInstance.BASE_X) / (float) MissionInstance.SPACING);
+        if (slot < 0) {
+            return null;
+        }
+        int ax = MissionInstance.BASE_X + slot * MissionInstance.SPACING;
+        return Math.abs(x - ax) <= OUTPOST_BLEND ? ax : null;
+    }
+
+    /** 按到站点中心的最大轴距做平滑过渡。 */
+    private static int blendAt(int postValue, int worldValue, double distance) {
+        double t = smooth((distance - OUTPOST_CORE) / (double) (OUTPOST_BLEND - OUTPOST_CORE));
         return (int) Math.round(postValue + (worldValue - postValue) * t);
+    }
+
+    private static int blendOutpost(int postValue, int worldValue, int x, int z) {
+        return blendAt(postValue, worldValue, Math.max(Math.abs(x), Math.abs(z)));
     }
 
     private static double smooth(double t) {
