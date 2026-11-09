@@ -417,25 +417,27 @@ public final class DockingBay {
         }
     }
 
-    /** 主站 + 本轮副本站（目的站和出发站）；给开局补实体、开合舱口用。 */
+    /** 主站 + 本轮正在下潜的副本（目的站和出发站）；给开局补实体、开合舱口用。 */
     public static java.util.List<Site> activeSites(ServerLevel level) {
         java.util.List<Site> sites = new java.util.ArrayList<>(3);
         sites.add(Site.MAIN);
         try {
             var state = com.opamb.barotrauma.campaign.CampaignState.wallet(level);
             var round = state.round();
-            if (round.hasInstance()) {
+            // 只有真正在航行中才认副本站点：到达后 roundsCompleted 已指向下一轮，
+            // 提前按下一轮出发站加载区块会把不该建的站生成出来。
+            if (round.phase() == com.opamb.barotrauma.campaign.RoundPhase.DIVING
+                    && round.hasInstance()) {
                 Site instance = new Site(round.instanceX(), round.instanceZ());
                 if (!instance.equals(Site.MAIN)) {
                     sites.add(instance);
                 }
-            }
-            // 本轮关卡的出发站：和目的站一起补舱口/门/终端的方块实体
-            MissionInstance.Anchor anchor =
-                    MissionInstance.anchorForRound(state.roundsCompleted());
-            Site start = MissionInstance.startSite(anchor);
-            if (!sites.contains(start)) {
-                sites.add(start);
+                int slot = Math.max(0, Math.round((round.instanceX() - MissionInstance.BASE_X)
+                        / (float) MissionInstance.SPACING));
+                Site start = MissionInstance.startSite(MissionInstance.anchorForRound(slot));
+                if (!sites.contains(start)) {
+                    sites.add(start);
+                }
             }
         } catch (Throwable ignored) {
             // 世界数据还没初始化（测试/非常早的加载）：只处理主站。

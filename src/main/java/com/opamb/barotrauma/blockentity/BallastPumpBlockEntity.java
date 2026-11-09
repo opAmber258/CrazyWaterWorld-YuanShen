@@ -67,12 +67,10 @@ public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoB
         if (!auto()) {
             return super.effectiveFlow();
         }
-        // 停靠中的方块船 / 还没标定中性水位的物理船：不自动注排
-        if (ship == null || !ship.simulation().ballastPrimed()) {
+        double target = autoTarget();
+        if (target < 0.0D) {
             return 0;
         }
-        double target = helm < 0 ? 1.0D : helm > 0 ? 0.0D
-                : ship.simulation().ballastNeutral();
         double current = ship.simulation().ballastPercent();
         if (current > target + 0.02D) {
             return -100;
@@ -81,6 +79,22 @@ public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoB
             return 100;
         }
         return 0;
+    }
+
+    /** 自动压载目标水位（0..1）；手动/未标定返回 -1。 */
+    private double autoTarget() {
+        // 停靠中的方块船 / 还没标定中性水位的物理船：不自动注排
+        if (ship == null || !ship.simulation().ballastPrimed()) {
+            return -1.0D;
+        }
+        double max = ship.simulation().ballastMaxPercent();
+        return helm < 0 ? max : helm > 0 ? 0.0D
+                : Math.min(ship.simulation().ballastNeutral(), max);
+    }
+
+    @Override
+    protected double ballastTarget() {
+        return auto() ? autoTarget() : -1.0D;
     }
 
     /**

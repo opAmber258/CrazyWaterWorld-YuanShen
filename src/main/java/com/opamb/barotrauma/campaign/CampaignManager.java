@@ -73,7 +73,7 @@ public final class CampaignManager {
         // 3) 原作：关卡里同时有出发站和目的站，但无人航路点没有站
         //    （Location.Type.HasOutpost）。两端的站点类型由本轮起终点决定，
         //    先写进静态路由状态，世界生成据此决定建不建站。
-        MissionInstance.Anchor anchor = MissionInstance.anchorForRound(state.roundsCompleted());
+        MissionInstance.Anchor anchor = MissionInstance.anchorForRound(state.takeInstanceSlot());
         com.opamb.barotrauma.world.DockingBay.Site destSite =
                 new com.opamb.barotrauma.world.DockingBay.Site(anchor.x(), anchor.z());
         com.opamb.barotrauma.world.DockingBay.Site startSite = MissionInstance.startSite(anchor);

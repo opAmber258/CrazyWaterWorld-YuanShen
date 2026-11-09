@@ -63,6 +63,8 @@ public final class ShipSimulation {
     private double ballastCapacity;
     /** 压载舱中性相对水位（由 {@link #primeBallast()} 按舱容算出）。 */
     private double ballastNeutral = 0.5D;
+    /** 压载舱可达的最大水位比例（受舱门限幅影响，可能小于 1）。 */
+    private double ballastMax = 1.0D;
     /** 物理船第一次启动时请求一次压载注水。 */
     private boolean ballastPrimePending;
     /** 中性水位已经算好；算好之前压载泵不动作（方块船停靠时也不乱注水）。 */
@@ -100,7 +102,7 @@ public final class ShipSimulation {
     private static final int PUMP_STALE_TICKS = 40;
 
     private record PumpReport(double rate, double requestedRate, long lastSeen, boolean ballast,
-                              boolean keepBelowDoor) {
+                              boolean keepBelowDoor, double ballastTarget) {
     }
 
     /** 上一 tick 由压载泵登记为压载舱的水体下标（用于浮力/进水比例）。 */
@@ -184,6 +186,8 @@ public final class ShipSimulation {
         this.ballastCapacity = old.ballastCapacity;
         this.ballastNeutral = old.ballastNeutral;
         this.ballastPrimed = old.ballastPrimed;
+        this.ballastPrimePending = old.ballastPrimePending;
+        this.ballastMax = old.ballastMax;
         this.pumpOut = old.pumpOut;
         this.airlockPhase = old.airlockPhase;
         this.airlockWater = old.airlockWater;
@@ -371,6 +375,7 @@ public final class ShipSimulation {
         java.util.Map<Integer, Double> pumpInRates = new java.util.HashMap<>();
         java.util.Set<Integer> ballastBodies = new java.util.HashSet<>();
         java.util.Set<Integer> keepBelowDoorBodies = new java.util.HashSet<>();
+        double autoBallastTarget = -1.0D;
         var pumpIterator = pumps.entrySet().iterator();
         while (pumpIterator.hasNext()) {
             var entry = pumpIterator.next();
@@ -384,6 +389,9 @@ public final class ShipSimulation {
             if (report.ballast() && body >= 0) {
                 ballastBodies.add(body);
             }
+            if (report.ballast() && report.ballastTarget() >= 0.0D && autoBallastTarget < 0.0D) {
+                autoBallastTarget = report.ballastTarget();
+            }
             if (report.keepBelowDoor() && body >= 0) {
                 keepBelowDoorBodies.add(body);
             }
@@ -396,8 +404,27 @@ public final class ShipSimulation {
                 pumpInRates.merge(body, -report.rate(), Double::sum);
             }
         }
+        // 自动压载泵的单步进/出水量不超过到目标水位的差值，避免大流量泵
+        // 在目标附近一整步灌满/抽空来回振荡（原作压载泵是逐步趋近目标水位）。
+        double ballastNow = 0.0D;
+        double ballastCapNow = 0.0D;
+        for (int body : ballastBodies) {
+            ballastNow += bodyWater(body);
+            ballastCapNow += bodyCapacity(body);
+        }
+        double outBudget = Double.MAX_VALUE;
+        double inBudget = Double.MAX_VALUE;
+        if (autoBallastTarget >= 0.0D) {
+            double targetUnits = autoBallastTarget * ballastCapNow;
+            outBudget = Math.max(0.0D, ballastNow - targetUnits);
+            inBudget = Math.max(0.0D, targetUnits - ballastNow);
+        }
         for (var entry : pumpOutRates.entrySet()) {
             double take = Math.min(bodyWater(entry.getKey()), entry.getValue() * dt);
+            if (ballastBodies.contains(entry.getKey())) {
+                take = Math.min(take, outBudget);
+                outBudget -= take;
+            }
             if (take > 0.0D) {
                 removeBodyWater(entry.getKey(), take);
             }
@@ -414,6 +441,10 @@ public final class ShipSimulation {
                 }
                 double capUnits = unitsBelowLevel(body, limit);
                 add = Math.min(add, Math.max(0.0D, capUnits - bodyWater(body)));
+            }
+            if (ballastBodies.contains(body)) {
+                add = Math.min(add, inBudget);
+                inBudget -= add;
             }
             if (add > 0.0D) {
                 addBodyWater(body, add);
@@ -433,6 +464,18 @@ public final class ShipSimulation {
         }
         this.ballast = ballastWater;
         this.ballastCapacity = ballastCapacity;
+        // 压载舱有舱门时注不到 100%：算出真正可达的最大比例，舵台目标不要超过它
+        double usable = 0.0D;
+        for (int body : ballastBodies) {
+            double cap = bodyCapacity(body);
+            double limit = doorBottomLevel(body);
+            if (limit < Double.MAX_VALUE) {
+                cap = Math.min(cap, Math.max(0.0D, unitsBelowLevel(body, limit)));
+            }
+            usable += cap;
+        }
+        this.ballastMax = ballastCapacity > 0.0D
+                ? Math.min(1.0D, Math.max(0.0D, usable / ballastCapacity)) : 1.0D;
 
         // 原版中性浮力：全船 7% 的水（SubmarineBody.NeutralBallastPercentage）。
         // 物理船第一次启动时把压载舱注到"刚好让全船水量 = 7%"的相对水位，
@@ -774,6 +817,15 @@ public final class ShipSimulation {
      */
     public void reportPump(net.minecraft.core.BlockPos cell, double rate, boolean ballast,
                            double requestedRate, boolean keepBelowDoor) {
+        reportPump(cell, rate, ballast, requestedRate, keepBelowDoor, -1.0D);
+    }
+
+    /**
+     * @param ballastTarget 压载泵的自动目标水位（0..1）；-1 = 不做目标钳制。
+     *                      汇总时限制单步进/出水量，避免大流量泵在目标附近来回过冲。
+     */
+    public void reportPump(net.minecraft.core.BlockPos cell, double rate, boolean ballast,
+                           double requestedRate, boolean keepBelowDoor, double ballastTarget) {
         if (cell == null) {
             return;
         }
@@ -781,7 +833,7 @@ public final class ShipSimulation {
                 // 单台普通泵按原版换算后是 ~14062 单位/秒，旧上限 3000 会把它削到 1/5
                 Mth.clamp(rate, -30000.0D, 30000.0D),
                 Mth.clamp(requestedRate, -30000.0D, 30000.0D),
-                pumpTick, ballast, keepBelowDoor));
+                pumpTick, ballast, keepBelowDoor, ballastTarget));
     }
 
     /**
@@ -952,6 +1004,11 @@ public final class ShipSimulation {
      */
     public double ballastNeutral() {
         return ballastNeutral;
+    }
+
+    /** 压载舱可达的最大水位比例（舱门限幅后）。下潜目标不能超过它，否则泵会一直空转耗电。 */
+    public double ballastMaxPercent() {
+        return ballastMax;
     }
 
     /** 物理船第一次启动时调用一次：下一 tick 把压载舱注到中性水位。 */

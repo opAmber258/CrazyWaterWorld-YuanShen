@@ -126,9 +126,8 @@ public final class SeaTerrain {
             for (DockingBay.Site site : new DockingBay.Site[]{
                     new DockingBay.Site(anchor.x(), anchor.z()),
                     MissionInstance.startSite(anchor)}) {
-                if (!MissionInstance.outpostExpected(site)) {
-                    continue; // 无人航路点没有站，洞顶保持自然岩壳
-                }
+                // 无人航路点虽然不建站，但船舶仍要在 -80 高度出生/抵达：
+                // 洞顶必须压平，否则天然岩壳可能低过 -80 把船埋进去。
                 double dx = Math.abs(x - site.x());
                 double dz = Math.abs(z - site.z());
                 if (dx > OUTPOST_BLEND || dz > OUTPOST_BLEND) {
