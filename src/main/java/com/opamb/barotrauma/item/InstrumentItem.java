@@ -23,7 +23,7 @@ import java.util.function.Supplier;
  */
 public class InstrumentItem extends Item {
 
-    private static final Map<UUID, Integer> LAST_PLAY_TICK = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> LAST_PLAY_GAME_TIME = new ConcurrentHashMap<>();
 
     private final Supplier<SoundEvent> sound;
     private final int minIntervalTicks;
@@ -45,12 +45,13 @@ public class InstrumentItem extends Item {
         if (level.isClientSide) {
             return InteractionResultHolder.sidedSuccess(stack, true);
         }
-        int now = player.tickCount;
-        Integer last = LAST_PLAY_TICK.get(player.getUUID());
+        // 用关卡时间而不是 player.tickCount：重生后 tickCount 会重置，旧记录会一直挡住播放
+        long now = level.getGameTime();
+        Long last = LAST_PLAY_GAME_TIME.get(player.getUUID());
         if (last != null && now - last < minIntervalTicks) {
             return InteractionResultHolder.fail(stack);
         }
-        LAST_PLAY_TICK.put(player.getUUID(), now);
+        LAST_PLAY_GAME_TIME.put(player.getUUID(), now);
         float pitch = basePitch + (player.getRandom().nextFloat() * 2.0F - 1.0F) * pitchJitter;
         level.playSound(null, player.getX(), player.getY(), player.getZ(),
                 sound.get(), SoundSource.PLAYERS, 1.0F, Math.max(0.5F, pitch));

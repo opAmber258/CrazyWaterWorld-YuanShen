@@ -3,6 +3,7 @@
 - 小丑喇叭：两声音高下滑的鼻音「叭叭」，带颤音与少量气声。
 - 吉他：Karplus-Strong 拨弦的六弦扫和弦（E2 A2 D3 G3 B3 E4）。
 
+依赖：python -m pip install -r tools/requirements.txt
 用法：python tools/gen_instrument_sounds.py
 输出：src/main/resources/assets/barotrauma/sounds/instrument/{clown_horn,guitar}.ogg
 """

@@ -1,5 +1,6 @@
 """生成乐器物品贴图（16x16，原创像素画，不复制任何原版/维基素材）。
 
+依赖：python -m pip install -r tools/requirements.txt
 用法：python tools/gen_instrument_textures.py
 输出：src/main/resources/assets/barotrauma/textures/item/{clown_horn,guitar}.png
 预览：build/instrument_textures_preview.png（4x 放大）
