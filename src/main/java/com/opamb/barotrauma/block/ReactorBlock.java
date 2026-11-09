@@ -8,6 +8,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.Container;
+import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
@@ -202,6 +204,15 @@ public class ReactorBlock extends Block implements EntityBlock {
             REMOVING.set(Boolean.TRUE);
             try {
                 BlockPos master = masterPos(pos, state);
+                // 燃料棒装在容器里，和原版箱子一样在 onRemove 掉落，不然挖掉/炸掉
+                // 反应堆会把 4 根燃料一起吞掉。此时 BE 还在（LevelChunk 先 onRemove
+                // 再 removeBlockEntity）；VS2 装配/拆船会先 removeBlockEntity 再改方块，
+                // 这里读不到 BE，所以不会和装配快照里的 NBT 重复生成（见 VsPilot）。
+                BlockEntity masterBe = level.getBlockEntity(master);
+                if (masterBe instanceof Container container
+                        && (pos.equals(master) || level.getBlockState(master).getBlock() == this)) {
+                    Containers.dropContents(level, master, container);
+                }
                 Direction facing = state.getValue(FACING);
                 for (Part part : Part.values()) {
                     BlockPos partPos = partPos(master, facing, part);

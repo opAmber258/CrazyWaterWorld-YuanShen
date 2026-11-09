@@ -108,10 +108,16 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             // 对接面板：船核心当前世界坐标 → 最近哨站的靠泊标准位距离/状态
             BlockPos coreWorld = coreWorld(core, center);
             Dock dock = dockInfo(level, coreWorld);
-            int cdx = coreWorld.getX() - base.getX();
-            int cdy = coreWorld.getY() - base.getY();
-            int cdz = coreWorld.getZ() - base.getZ();
+            // 客户端舰况图用「声纳点（相对 center）− 这个偏移」换算核心局部坐标，
+            // 所以基准是 center，不是玩家位置（方块船时 center 是声纳台）。
+            int cdx = coreWorld.getX() - center.getX();
+            int cdy = coreWorld.getY() - center.getY();
+            int cdz = coreWorld.getZ() - center.getZ();
             Waypoint waypoint = waypoint(level, base);
+            // 舱室格是装配坐标：物理船减装配核心，减掉位移后的 coreWorld 会整体偏掉。
+            BlockPos geometryCore = com.opamb.barotrauma.ship.vs.VsState.active()
+                    && com.opamb.barotrauma.ship.vs.VsState.corePos() != null
+                    ? com.opamb.barotrauma.ship.vs.VsState.corePos() : coreWorld;
 
             ModNetwork.sendToPlayer(player, new SonarDataPacket(frame.range(), frame.points(),
                     power,
@@ -133,7 +139,7 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                     com.opamb.barotrauma.ship.vs.VsState.active(),
                     hullPercent(ship), waterPercent(ship),
                     cdx, cdy, cdz,
-                    roomRects(ship, coreWorld),
+                    roomRects(ship, geometryCore),
                     waypoint.set(), waypoint.x(), waypoint.y(), waypoint.z(), waypoint.label()));
         });
         context.setPacketHandled(true);

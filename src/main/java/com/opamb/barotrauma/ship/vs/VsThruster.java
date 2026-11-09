@@ -297,8 +297,10 @@ public final class VsThruster implements ShipPhysicsListener {
 
         // 没有垂直输入时保持深度：VS2 的实际重力和我们补的 GRAVITY 不一定严格相等，
         // 不锁的话船会一直缓慢上浮（用户实测"物理船一直往上浮"）。这里用
-        // "垂速阻尼 + 深度误差回拉"做深度保持；有油门/压载/进水时让开。
-        boolean verticalInput = throttleY != 0 || clamp01(ballast) > 0.02D || clamp01(flooded) > 0.02D;
+        // "垂速阻尼 + 深度误差回拉"做深度保持；有油门/进水时让开。
+        // 压载不算垂直输入：松手下潜指令后压载水还在舱里，若它关掉深度保持，
+        // 船会带着满压载一路沉到海底（不能只靠水阻）。
+        boolean verticalInput = throttleY != 0 || clamp01(flooded) > 0.02D;
         // 没电时深度保持也要停：那是靠推进器做的"自动悬停"，不是浮力。
         if (!powered() || verticalInput) {
             holdY = Double.NaN;
@@ -306,6 +308,8 @@ public final class VsThruster implements ShipPhysicsListener {
             if (Double.isNaN(holdY)) {
                 holdY = where.y();
             }
+            // 抵消压载造成的恒定净下沉力，否则 PD 会稳稳停在低 8 格左右的位置。
+            ay -= GRAVITY * (1.0D - BALLAST_WEIGHT * ballastLoad);
             ay += -vel.y() * VERTICAL_DAMPING + (holdY - where.y()) * DEPTH_HOLD_GAIN;
         }
 
