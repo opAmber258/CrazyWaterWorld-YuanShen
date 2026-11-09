@@ -178,7 +178,14 @@ public final class ModShipBlocks {
 
     public static Machine machineOf(BlockState state) {
         Block block = state.getBlock();
-        if (block == SONAR.get() || block == NAVIGATION_TERMINAL.get()) {
+        if (block == SONAR.get()) {
+            return Machine.SONAR;
+        }
+        // 导航终端是 9 段多方块：只有主方块（下排中列）算一台声纳。
+        // 按段计数会把功耗需求放大 9 倍（ShipCoreBlockEntity.rescan 逐格统计）。
+        if (block == NAVIGATION_TERMINAL.get()
+                && state.getValue(NavigationTerminalBlock.PART)
+                == com.opamb.barotrauma.block.NavigationTerminalLayout.Part.LOWER_MIDDLE) {
             return Machine.SONAR;
         }
         return Machine.NONE;

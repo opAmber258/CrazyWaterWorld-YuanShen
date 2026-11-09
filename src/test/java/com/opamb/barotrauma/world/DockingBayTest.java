@@ -60,6 +60,20 @@ class DockingBayTest {
     }
 
     @Test
+    @DisplayName("新布局靠泊核心只认标称位和低一格，与 starterCore 同一判定")
+    void newLayoutDockedCoreTolerance() {
+        DockingBay.Site site = DockingBay.Site.forSlot(2);
+        net.minecraft.core.BlockPos nominal = StarterSub.newCorePos(site.x(), site.z());
+        assertTrue(DockingBay.isDockedCore(nominal), "标称核心位");
+        assertTrue(DockingBay.isDockedCore(nominal.below()), "驾驶室改造后核心低一格");
+        assertFalse(DockingBay.isDockedCore(nominal.below(2)), "再低一格就不是儒艮号核心");
+        assertFalse(DockingBay.isDockedCore(nominal.above()));
+        assertFalse(DockingBay.isDockedCore(nominal.east()), "水平偏一格不算靠泊");
+        assertFalse(DockingBay.isDockedCore(nominal.offset(2, 0, 0)));
+        assertFalse(DockingBay.isDockedCore(nominal.offset(0, 0, 2)));
+    }
+
+    @Test
     @DisplayName("站内地板到潜艇顶舱口之间有四层结构")
     void dockLayersAreContinuous() {
         assertEquals(-64, DockingBay.STATION_FLOOR_Y);

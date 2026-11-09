@@ -115,8 +115,9 @@ public final class StarterSub {
     }
 
     /**
-     * 儒艮号的船核心：正常在 {@link #newCorePos()}，驾驶室改过、导航终端整体
-     * 下移一格后会在下面一格；附近 4 格内找最近的 {@link ShipCoreBlockEntity}。
+     * 儒艮号的船核心：正常在 {@link #newCorePos()}，驾驶室改造过、导航终端整体
+     * 下移一格后会在下面一格。只在 x/z 对齐、y 为标称位或低一格时算数，
+     * 与 {@link DockingBay#isDockedCore} 共用 {@link #isStarterCoreAt}。
      */
     @Nullable
     public static ShipCoreBlockEntity starterCore(ServerLevel level) {
@@ -125,7 +126,22 @@ public final class StarterSub {
         if (level.getBlockEntity(nominal) instanceof ShipCoreBlockEntity core) {
             return core;
         }
-        return com.opamb.barotrauma.ship.ShipCores.nearestCore(level, nominal, 4.0D);
+        ShipCoreBlockEntity nearby =
+                com.opamb.barotrauma.ship.ShipCores.nearestCore(level, nominal, 2.0D);
+        return nearby != null && isStarterCoreAt(nominal, nearby.getBlockPos())
+                ? nearby : null;
+    }
+
+    /**
+     * 儒艮号核心可能出现的格子：标称位，或驾驶室改造后整体低一格。
+     * 出生潜艇探测和对接判定必须共用这一条，否则会出现“船在但不算靠泊”的分叉
+     * （{@code ShipCoreBlockEntity} 就不会把对接舱口层当虚拟密封盖）。
+     */
+    public static boolean isStarterCoreAt(BlockPos nominal, BlockPos core) {
+        return core.getX() == nominal.getX()
+                && core.getZ() == nominal.getZ()
+                && core.getY() >= nominal.getY() - 1
+                && core.getY() <= nominal.getY();
     }
 
     /** 有儒艮号时出生在它床边，否则沿用旧出生潜艇。 */

@@ -192,8 +192,9 @@ public final class DockingBay {
             return false;
         }
         // 新世界：儒艮号挂在站下方，核心在 (site,-72,-6)；驾驶室改过后可能低一格。
+        // 只认 x/z 对齐 + 标称位/低一格，和 StarterSub.starterCore 同一判定。
         BlockPos nominal = StarterSub.newCorePos(site.x(), site.z());
-        if (core.distSqr(nominal) <= 4.0D) {
+        if (StarterSub.isStarterCoreAt(nominal, core)) {
             return true;
         }
         // 旧出生潜艇在码头里的几版位置。

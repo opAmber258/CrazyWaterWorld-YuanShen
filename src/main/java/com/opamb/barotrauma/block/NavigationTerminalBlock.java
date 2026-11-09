@@ -118,6 +118,11 @@ public class NavigationTerminalBlock extends BaseEntityBlock {
 
         for (Part part : Part.values()) {
             BlockPos partPos = partPos(master, facing, part);
+            // 顶层超出建造高度时 getBlockState 是虚空空气，canBeReplaced 会放行，
+            // setPlacedBy 再静默失败 → 只剩两层。直接拒绝放置。
+            if (level.isOutsideBuildHeight(partPos)) {
+                return null;
+            }
             if (!level.getBlockState(partPos).canBeReplaced(context)) {
                 return null;
             }

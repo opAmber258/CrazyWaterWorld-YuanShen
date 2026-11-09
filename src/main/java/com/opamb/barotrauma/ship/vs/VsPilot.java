@@ -2567,7 +2567,8 @@ public final class VsPilot {
         }
         int sonar = 0;
         for (BlockState blockState : snap.values()) {
-            if (isConsolePart(blockState)) {
+            // 导航终端 9 段只算一台声纳，否则认领后功耗需求 ×9。
+            if (isConsoleMaster(blockState)) {
                 sonar++;
             }
         }
