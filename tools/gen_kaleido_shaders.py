@@ -25,20 +25,14 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "src" / "main" / "resources" / "assets" / "minecraft" / "shaders" / "core"
 
 # 需要折叠的几何类别：地形、实体、粒子、掉落物。GUI/文字/天空不碰。
+# 只覆盖地形与粒子。entity 系列不覆盖：GUI 物品图标和掉落物都走 entity
+# RenderType，覆盖它会连背包/快捷栏一起折（2026-11-09 实机确认）。
 TARGETS = [
     "rendertype_solid",
     "rendertype_cutout",
     "rendertype_cutout_mipped",
     "rendertype_translucent",
-    "rendertype_entity_solid",
-    "rendertype_entity_cutout",
-    "rendertype_entity_cutout_no_cull",
-    "rendertype_entity_translucent",
-    "rendertype_entity_translucent_cull",
-    "rendertype_entity_smooth_cutout",
-    "rendertype_entity_no_outline",
     "particle",
-    "rendertype_item_entity_translucent_cull",
 ]
 
 INJECT_GLSL = """
