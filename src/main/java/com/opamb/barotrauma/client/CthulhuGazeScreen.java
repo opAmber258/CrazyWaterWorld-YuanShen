@@ -15,7 +15,7 @@ import net.minecraft.network.chat.Component;
  * <p>顶部选持续时长（3/6/12 秒），下面每行一个预设，右侧三档 弱/中/强。
  * 所有组合都从这一个触发器里选，不为档位单独做物品。</p>
  *
- * <p>布局按 440×300 设计；窗口太小（高 GUI 缩放）时整块等比缩小，
+ * <p>布局按 440×272 设计；窗口太小（高 GUI 缩放）时整块等比缩小，
  * 避免像早先那样上下被裁掉。鼠标坐标也按同一比例换算。</p>
  */
 public final class CthulhuGazeScreen extends Screen {

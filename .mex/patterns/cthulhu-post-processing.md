@@ -38,11 +38,11 @@ mex:
 
 八个预设共用**一套**后处理链：`assets/barotrauma/shaders/post/cthulhu_gaze.json`（main → swap 跑 program，再用 `minecraft:blit` 回 main）+ `program/cthulhu_gaze.json` + `cthulhu_gaze.fsh`。着色器用 `Mode`（0–7）分支、`Strength`（0–1）控制强度，所以加预设不需要新的 post chain。几何类预设（平面凝视、万花筒）另走投影矩阵/核心顶点着色器，见下文。
 
-服务端只挂 MobEffect：`CthulhuGazePacket(preset, tier, seconds)` 校验 `创造模式 || 权限 ≥ 2`，先移除其它注视效果再 `addEffect(durationSeconds * 20, tier, false, false)`。amplifier 0/1/2 就是弱/中/强（`CthulhuPreset.tierStrength` = 0.35 / 0.65 / 1.0）。
+服务端只挂 MobEffect：`CthulhuGazePacket(preset, tier, seconds)` 校验 `创造模式 || 权限 ≥ 2`，先移除其它注视效果再 `addEffect(durationSeconds * 20, tier, false, false)`。amplifier 0/1/2 是弱/中/强（`CthulhuPreset.tierStrength` = 0.35 / 0.65 / 1.0）；平面凝视额外允许 amplifier 3「满」，走 `tierStrength` 的 default 分支（同样是 1.0，但投影混合量由 `projectionBlend()` 单独处理成完全正交）。
 
 客户端 `CthulhuGazeClient` 每 tick 从玩家身上找激活的预设，算目标强度，按 0.05/tick 淡入、0.028/tick 淡出；效果结束后仍继续淡出，所以 `activePreset` 要保留到强度归零再清。换算成时间：满档（目标 1.0）约 1.0s 进 / 1.8s 出，中档（0.65）约 0.7s / 1.2s——写文档别只写一个数。镜头侧：`ViewportEvent.ComputeFov` 乘 `fovFactor` 与 1.2% 呼吸脉动，`ComputeCameraAngles` 加 `1.8° × rollFactor × strength` 滚转。
 
-面板 `CthulhuGazeScreen`（440×300 基准，等比例 `uiScale`）只负责选预设/档位/时长，一个触发器物品搞定全部组合，**不要**给每个档位造物品。每行按钮数由 `CthulhuPreset.maxTier() + 1` 决定：默认三档（弱/中/强），平面凝视多一个「满」档（amplifier 3），`tierX(tier, count)` 按行内档位数右对齐排布。
+面板 `CthulhuGazeScreen`（440×272 基准，等比例 `uiScale`）只负责选预设/档位/时长，一个触发器物品搞定全部组合，**不要**给每个档位造物品。每行按钮数由 `CthulhuPreset.maxTier() + 1` 决定：默认三档（弱/中/强），平面凝视多一个「满」档（amplifier 3），`tierX(tier, count)` 按行内档位数右对齐排布。
 
 ### 投影类预设（平面凝视）
 
