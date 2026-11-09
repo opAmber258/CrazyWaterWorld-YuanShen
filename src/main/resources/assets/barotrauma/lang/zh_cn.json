@@ -1,6 +1,12 @@
 {
   "itemGroup.barotrauma": "潜渊症",
   "itemGroup.barotrauma.dev": "潜渊症·开发者工具",
+  "itemGroup.barotrauma.materials": "潜渊症-物品与材料",
+  "item.barotrauma.clown_horn": "小丑喇叭",
+  "item.barotrauma.guitar": "吉他",
+  "subtitles.barotrauma.clown_horn": "喇叭声",
+  "subtitles.barotrauma.guitar": "吉他声",
+  "subtitles.barotrauma.guitar_note": "吉他声",
   "item.barotrauma.oxygen_tank": "氧气瓶",
   "item.barotrauma.diving_knife": "潜水刀",
   "item.barotrauma.welding_tool": "焊接工具",
