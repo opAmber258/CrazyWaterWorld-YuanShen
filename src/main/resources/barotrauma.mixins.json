@@ -10,7 +10,9 @@
     "ShipBreakMixin"
   ],
   "client": [
-    "PlayerSwimRotationMixin"
+    "CameraProjectionMixin",
+    "PlayerSwimRotationMixin",
+    "ShaderUniformMixin"
   ],
   "injectors": {
     "defaultRequire": 1

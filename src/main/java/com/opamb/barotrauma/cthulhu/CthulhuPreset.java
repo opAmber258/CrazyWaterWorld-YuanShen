@@ -35,7 +35,15 @@ public enum CthulhuPreset {
 
     /** 梦境漂移：规则网格错位 + 每格透视缩放 + 接缝压暗（阈限空间）。 */
     DREAM("cthulhu_dream", ModEffects.CTHULHU_DREAM, 5, 0.94f, 0.6f,
-            "梦境漂移", "空间被切成规则的格子，每格透视错位，像走不出去的阈限空间");
+            "梦境漂移", "空间被切成规则的格子，每格透视错位，像走不出去的阈限空间"),
+
+    /** 平面凝视：投影从透视压向正交（偏透视一侧），并小幅晃动。 */
+    FLAT("cthulhu_flat", ModEffects.CTHULHU_FLAT, 6, 1.00f, 0.0f,
+            "平面凝视", "透视被缓缓压平又弹回，世界像被摊在一张纸面上"),
+
+    /** 万花筒：世界几何被折成六瓣并缩放（顶点着色器）。 */
+    KALEIDO("cthulhu_kaleido", ModEffects.CTHULHU_KALEIDO, 7, 1.00f, 0.0f,
+            "万花筒", "空间被折成六瓣，弯曲、折叠、缩放，像透过碎玻璃看世界");
 
     /** 效果注册名（同时是 lang key 的后缀）。 */
     private final String id;
@@ -101,8 +109,19 @@ public enum CthulhuPreset {
         return switch (amplifier) {
             case 0 -> "弱";
             case 1 -> "中";
-            default -> "强";
+            case 2 -> "强";
+            default -> "满";
         };
+    }
+
+    /** 档位上限：平面凝视多一个「满」档（完全正交），其余预设最多到强。 */
+    public int maxTier() {
+        return this == FLAT ? 3 : 2;
+    }
+
+    /** 档位越界收敛到该预设允许的范围（网络包/旧存档容错）。 */
+    public static int clampTier(CthulhuPreset preset, int tier) {
+        return Math.max(0, Math.min(preset.maxTier(), tier));
     }
 
     /** 面板里可选的持续秒数。 */

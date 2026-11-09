@@ -31,6 +31,10 @@ public final class ModEffects {
     public static final RegistryObject<MobEffect> CTHULHU_STATIC = register("cthulhu_static", 0x8A8A8A);
     /** 梦境漂移：柔化 + 色相循环。 */
     public static final RegistryObject<MobEffect> CTHULHU_DREAM = register("cthulhu_dream", 0xA78BC4);
+    /** 平面凝视：透视被压向正交并缓慢晃动（投影矩阵驱动）。 */
+    public static final RegistryObject<MobEffect> CTHULHU_FLAT = register("cthulhu_flat", 0x6E8FA8);
+    /** 万花筒：世界几何被折成六瓣并缩放（顶点着色器驱动）。 */
+    public static final RegistryObject<MobEffect> CTHULHU_KALEIDO = register("cthulhu_kaleido", 0x7B5CD6);
 
     private ModEffects() {
     }

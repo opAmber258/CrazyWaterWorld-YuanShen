@@ -40,7 +40,7 @@ public record CthulhuGazePacket(int preset, int tier, int durationSeconds) {
             }
             CthulhuPreset chosen = CthulhuPreset.byIndex(preset);
             if (chosen != null) {
-                apply(user, chosen, Math.max(0, Math.min(2, tier)),
+                apply(user, chosen, CthulhuPreset.clampTier(chosen, tier),
                         CthulhuPreset.clampDurationSeconds(durationSeconds));
             }
         });

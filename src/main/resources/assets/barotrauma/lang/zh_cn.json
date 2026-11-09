@@ -87,6 +87,8 @@
   "effect.barotrauma.cthulhu_ripple": "时间涟漪",
   "effect.barotrauma.cthulhu_static": "静电噪点",
   "effect.barotrauma.cthulhu_dream": "梦境漂移",
+  "effect.barotrauma.cthulhu_flat": "平面凝视",
+  "effect.barotrauma.cthulhu_kaleido": "万花筒",
   "key.barotrauma.toggle_natural_sink": "切换水中自然下沉",
   "message.barotrauma.natural_sink.on": "水中自然下沉：开",
   "message.barotrauma.natural_sink.off": "水中自然下沉：关",
