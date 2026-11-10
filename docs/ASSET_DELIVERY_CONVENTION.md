@@ -1,11 +1,12 @@
 # 模型资产交付约定
 
-> 适用：所有 Blockbench 模型资产（方块 / 道具 / 物品 / 生物）。
+> 适用：**Bedrock 格式**的 Blockbench 模型资产（方块 / 道具 / 物品 / 生物），即交付 `.geo.json` 的那一类。
+> 不适用：`java_block` 格式的 Java 方块模型 —— 那类继续遵循 `.mex/patterns/blockbench-modeling.md`（UV 归一化、贴图、物品图标），交付 Java 方块模型 JSON，不需要 `.geo.json`。
 > 配套：[`art/models/BAROTRAUMA_PROP_MODELING_GUIDE_V2.md`](../art/models/BAROTRAUMA_PROP_MODELING_GUIDE_V2.md)（建模手法）。
 > 登记处：[Discussion #39 · 模型资产统计](https://github.com/opAmber258/CrazyWaterWorld-YuanShen/discussions/39)。
 > 运行手册：`.mex/patterns/deliver-model-asset.md`。
 
-本文档是资产交付的**唯一权威约定**。其它位置的说明若与本文冲突，以本文为准。
+本文档是上述范围内资产交付的**唯一权威约定**。其它位置的说明若与本文冲突，以本文为准。
 
 ---
 
@@ -27,10 +28,15 @@
 
 **中文官方译名 + 官方英文名（驼峰）**，例如：焊接工具 WeldingTool、导航终端 NavigationTerminal、核反应堆 NuclearReactor。
 
-- 译名的唯一来源是**游戏安装目录**下的本地化文件（不在本仓库内）：
-  `Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml`，
-  条目形式 `<entityname.标识>` / `<entitiedescription.标识>`。
-- **不得凭印象或从英文直译**。查证后在 README 中写明所用条目标识。
+中英两名**必须分别查证**，不能从同一份文件推出来：
+
+| 需要 | 查证来源（均在游戏安装目录，不在本仓库内） |
+| --- | --- |
+| 中文译名 | `Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml` 的 `<entityname.标识>` |
+| 官方英文名 | 英文文本 `Content/Texts/English/EnglishVanilla.xml` 的同标识条目；或实体定义文件（`Content/Items/**/*.xml`）中的显示名 |
+
+- 简中文件的条目值**只有中文**，部分条目只有中文无英文对应，不能据此推断英文名。
+- **不得凭印象或从英文直译**。查证后在 README 中写明所用的两个条目标识。
 - 英文名取官方英文的驼峰形式（`Nuclear Reactor` → `NuclearReactor`），**不是**文件标识的驼峰（`reactor1` → Reactor）。
 - 原版没有对应实体时（自创生物、项目特有构件），使用项目定名，并在讨论条目里**注明"非原版实体，项目定名"**。已知例：噬海女妖 Charybdis、压载泵 BallastPump。
 
@@ -47,7 +53,7 @@
 **AI 制作的资产额外要求：**
 
 1. **README 首屏**写入 `制作来源：AI`，并写明使用的模型/工具（如"GLM-5.3-Flash + Blockbench 自动化脚本"）；
-2. **Discussion #39 候选条目**行首加 `🤖` 标记，与人工资产区分；
+2. **Discussion #39 候选条目**在任务复选框**之后**加 `🤖` 标记（格式 `- [ ] 🤖 候选 A…`），与人工资产区分。**不要写成 `🤖 - [ ] …`** —— 那会让 GitHub 不再把该行识别为可勾选的任务列表项；
 3. **PR 描述**注明 AI 参与范围（几何 / 贴图 / 预览 / 全部）；
 4. **评审强度不降低** —— AI 产出必须逐项走第 6 节自查，且原作者需确认视觉结论；不得以"AI 生成"为由跳过评审。
 
@@ -165,9 +171,9 @@ art/models/<标识>_<YYYYMMDD>/
 
 | 内容 | 目标位置 |
 | --- | --- |
-| 几何 | `src/main/resources/assets/barotrauma/geo/<block|entity>/<标识>.geo.json` |
-| 贴图 | `src/main/resources/assets/barotrauma/textures/<block|entity|item>/<标识>.png` |
-| 动画 | `src/main/resources/assets/barotrauma/animations/<block|entity>/<标识>.animation.json` |
+| 几何 | `src/main/resources/assets/barotrauma/geo/` 下的 `block/` 或 `entity/`，文件 `<标识>.geo.json` |
+| 贴图 | `src/main/resources/assets/barotrauma/textures/` 下的 `block/`、`entity/` 或 `item/`，文件 `<标识>.png` |
+| 动画 | `src/main/resources/assets/barotrauma/animations/` 下的 `block/` 或 `entity/`，文件 `<标识>.animation.json` |
 | 物品图标 | `src/main/resources/assets/barotrauma/textures/item/<标识>.png` |
 
 - 方块类资产还需 blockstate、block model、loot table、lang（中英）同步，命名与注册 id 完全一致，详见 `.mex/context/conventions.md`。
@@ -211,7 +217,7 @@ art/models/<标识>_<YYYYMMDD>/
 | 分类 | 含义 | 条目要求 |
 | --- | --- | --- |
 | ✅ 正式资产 | 已入库 `main` 且定案 | 只放定位链接（工程/变体/动画/geo/贴图/预览），**不内嵌预览图** |
-| 🔍 待评选资产 | 同一资产多候选并列 | 每候选一条任务列表项 + 定位链接 + 几何规格 + commit + **制作来源**（AI 制作的行首加 `🤖`）；**允许内嵌预览图** |
+| 🔍 待评选资产 | 同一资产多候选并列 | 每候选一条任务列表项 + 定位链接 + 几何规格 + commit + **制作来源**（AI 制作的在复选框后加 `🤖`，写作 `- [ ] 🤖 候选 A…`）；**允许内嵌预览图** |
 | 📌 待制作 / 待推送 | 需求池 | 三列表格（资产 / 类型 / 状态）；**不写本地路径** |
 
 ### 8.1 流转

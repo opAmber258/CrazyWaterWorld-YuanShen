@@ -16,17 +16,25 @@ edges:
     condition: when starting a task — check the pattern index for a matching pattern file
   - target: patterns/add-ship-block.md
     condition: when adding a new submarine hull block
+  - target: patterns/blockbench-modeling.md
+    condition: when building a block model in Blockbench or fixing UV / item-icon issues
   - target: patterns/deliver-model-asset.md
-    condition: when creating, packaging, pushing, or integrating a Blockbench model asset
+    condition: when creating, packaging, pushing, or integrating a Blockbench asset delivery
+  - target: patterns/cthulhu-post-processing.md
+    condition: when adding or tuning a Cthulhu-gaze visual preset or its shader
+  - target: patterns/developer-tools.md
+    condition: when adding a creative-tab debug item, screen, or server-validated edit packet
   - target: patterns/debug-ship-water.md
     condition: when a ship is dry, flooding incorrectly, or missing water visuals
   - target: patterns/debug-hull-damage.md
     condition: when hull durability, damage bars, welding, or breach-on-zero-HP behavior looks wrong
   - target: patterns/run-tests.md
     condition: when building or running the verification layers
+  - target: patterns/publish.md
+    condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-10
+last_updated: 2026-11-09
 ---
 
 # Session Bootstrap
@@ -61,6 +69,13 @@ Then read this file fully before doing anything else in this session.
   left east/west doors clickable only at a 1px centre overlap. Toggle sounds are the original
   Barotrauma `Door1..4.ogg`.
 - L1 unit tests (46, including `HullDamageNbtTest`) pass; 3 GameTests and L3 `.smoketest-vs` passed earlier.
+- **医疗系统（PR #28 已合并 2026-11-07，含 17 条复审修复）**：病症即血量模型（取消原版玩家伤害/回血，vitality=100−Σ病症消耗，原作 CalculateVitality 语义源码核对）；部位鉴定按伤害来源（摔=腿、投射物=命中高度、近战=躯干；头部不做外伤）；六药（绷带/凝胶/吗啡/血袋/盐水/纳洛酮）+芬太尼，数值对照原作 XML；双界面（E 背包=窄条辅助健康栏+拖拽/双击用药，右键药品=治疗面板点选部位+对症方框）；重伤倒地状态机（≤0 倒地可救、≤−100 真死、自然流失同伤势挂钩）；饱食度机制移除。M0 底表 `docs/medical/vanilla-baseline.md`（§8 vitality 语义源码核对）。L1 医疗测试 29 个全绿、L3 任务链冒烟 PASS；合并后 main 复跑 L1 全绿（2026-11-08）。
+  - **出血来源已接通（2026-11-08 方案 A）**：近战 +出血 5×HP×50%、投射物 +2.5×HP×100%、爆炸 ≥8HP 时 5% 概率 40 固定强度、摔落 ≥6HP 双腿各 10；失血由出血推进自动产生（原作 AfflictionBleeding 语义）。设计文档 `docs/medical/bleeding-sources.md`（原作 XML 行号索引）。**downedDrain 已按原版语义移除**（0 以下无额外流失，原 CharacterHealth.cs 复核）。
+  - **未决**：L2 医疗用例缺 gameteststructures 模板（环境基建）；缺氧第二来源（舱内 O2）依赖氧气模块 issue #24；出血来源待实机验收。
+- **开发者工具（PR #37/#38/#40，2026-11-08）**：创造模式独立页签 `itemGroup.barotrauma.dev`（图标医疗调试器）。内容：`medical_debugger`（右键开面板，六部位+全身逐病症 ±1/±10/±100、活力覆盖可设负数；`MedicalDebugPacket` 服务端校验创造/权限≥2；`AfflictionContainer.vitalityOverride` 以 `v|值` 行持久化）、`67`（从主页签挪来）、`cpu_6700x3d`（Blockbench 建模的 2-element 方块，128×64 双贴图 + 32×32 物品栏图标）、`cthulhu_trigger`（一个物品选全部预设/档位/时长）。**坑**：创造模式每秒清空病况的上帝模式要对携带调试器的玩家豁免；`PostChain.passes` 在正式包是 SRG `f_110009_`，反射必须走 `ObfuscationReflectionHelper`。详见 `patterns/developer-tools.md`、`patterns/cthulhu-post-processing.md`、`patterns/blockbench-modeling.md`。
+- **物品与材料页签（2026-11-09）**：创造模式新增 `itemGroup.barotrauma.materials`「潜渊症-物品与材料」，首批两个乐器：`clown_horn`（右键一声，服务端 tick 限流，不使用物品冷却 UI）与 `guitar`（长按右键持续演奏 C–Am–F–G 琶音占位曲目，松手停止）。贴图与音效全部程序化生成（`tools/gen_instrument_textures.py`、`tools/gen_instrument_sounds.py`），**不复制原版/维基素材**；6700X3D 放置时不弹提示，右键已放置的方块显示 CPU/GPU/内存面板。
+- **克苏鲁的注视（PR #38/#40，2026-11-08；2026-11-09 加平面凝视/万花筒）**：8 个纯视觉 MobEffect 预设（鱼眼/深渊低语/星之彩/时间涟漪/静电噪点/梦境漂移/平面凝视/万花筒），共用一套后处理 `shaders/post/cthulhu_gaze.json`（`Mode` 0–7 + `Strength` uniform）；客户端按 amplifier 换算 0.35/0.65/1.0 强度，按 0.05/tick 淡入、0.028/tick 淡出（中档约 0.7s / 1.2s，满档约 1.0s / 1.8s），叠加 FOV 呼吸与镜头滚转；8 张 18×18 `textures/mob_effect/cthulhu_*.png` 统一暗紫眼图标。静电是 3 像素细行带 + 16Hz 重掷 + 3% 概率错位；梦境是 6×4 网格规则透视错位（阈限空间感）。**平面凝视走投影矩阵**：`CameraProjectionMixin` 把透视与正交按 `FLAT_BASE 0.28 ± FLAT_WOBBLE 0.09` 混合，第四档「满」（仅该预设，amplifier 3）= 完全正交。**万花筒走核心顶点着色器**：`tools/gen_kaleido_shaders.py` 生成 5 个 `assets/minecraft/shaders/core/*.vsh` 覆盖（地形 4 + 粒子；**不覆盖 entity 系列**，否则背包/快捷栏图标和掉落物会被一起折），`ShaderUniformMixin` 用实例字段缓存 location 直传 `Kaleido`；形变是连续径向折返 + 六瓣角向调制（不要用无条件镜像，最弱档也会不可玩），强度 `strength × 0.5 × 呼吸`。详见 `patterns/cthulhu-post-processing.md`。
+- **泳姿闪烁修复（PR #36）**：客户端不再用 `isSwimming`（医疗钩子也会设置）判断干湿；服务端用 `OceanEnvironment.isOceanWaterAt`（干舱/哨站优先）判定脚部浸没，经 `SwimStatePacket` 推给 `ClientSwimState`，水中移动入口以服务端状态为准。
 
 **Not yet built:**
 - Multi-ship support (one `VsPilot` singleton manages one physical ship).
@@ -97,6 +112,10 @@ Load the relevant file based on the current task. Always load `context/architect
 | Setting up or running the project | `context/setup.md` |
 | Changing dev scripts, textures, or GameTest templates | `context/tools.md` |
 | Debugging hull damage, durability bars, or welding | `patterns/debug-hull-damage.md` |
+| Building a block model in Blockbench | `patterns/blockbench-modeling.md` |
+| Adding/tuning a Cthulhu-gaze preset | `patterns/cthulhu-post-processing.md` |
+| Adding a creative-tab debug item or panel | `patterns/developer-tools.md` |
+| Publishing changes (走流程 / `/publish`) | `patterns/publish.md` |
 | Any specific task | Check `patterns/INDEX.md` for a matching pattern |
 
 ## Behavioural Contract
@@ -113,3 +132,5 @@ For every task, follow this loop:
    - **Connect:** Link section entities to their enclosing knowledge with `refines` using existing ids. Preview missing structural links with `mex wiki link-sections`, then apply explicitly. Review semantic relationships from evidence; do not connect records just because they share keywords or code groundings.
    - **Orient:** If this task can recur and no pattern exists, create one in `patterns/` using `patterns/README.md`, then add it to `patterns/INDEX.md`. If a pattern exists but you learned a gotcha, update it.
    - **Write:** Bump `last_updated` in every scaffold file you changed. Read `mex logging --json` before optional `mex log` notes: `significant` records material rationale, `checkpoints` batches useful notes at task/session boundaries, and `manual` avoids unsolicited notes. Honor explicit user log requests in every mode; mandatory workflow Activity and recovery audits remain required.
+
+发布时走 `.zcode/commands/publish.md`（`/publish`，或用户说「走流程」）：MEX 记账是流程的第 2 步，不是可选项。PR 阶段的兜底是 `.github/workflows/mex-guard.yml`——只统计 `src/` 与 `tools/`：改这两处却不补 `.mex/` 或 `docs/` 会让检查变红；豁免方式是给 PR 加 `mex-skip` 标签（门禁只校验标签，原因须写在说明里，靠 reviewer 把关）。`mex check` 需要 CLI 在 PATH 里；若提示 `command not found`，先按 `AGENTS.md` 的"新机器"一节处理。
