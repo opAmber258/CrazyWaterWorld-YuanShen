@@ -17,7 +17,7 @@ edges:
   - target: patterns/add-ship-block.md
     condition: when adding a new submarine hull block
   - target: patterns/blockbench-modeling.md
-    condition: when building a `java_block`-format model in Blockbench (UV normalization, item icon, Java block model JSON)
+    condition: when building a `java_block`-format model in Blockbench, or debugging an existing Java block model (purple-black textures, UV out of 0–16, item icon showing a block projection)
   - target: patterns/deliver-model-asset.md
     condition: when delivering a Bedrock-format asset that ships a .geo.json (prop / item / creature / GeckoLib block)
   - target: patterns/cthulhu-post-processing.md
