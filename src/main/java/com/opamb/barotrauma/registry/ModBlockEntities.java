@@ -63,6 +63,18 @@ public final class ModBlockEntities {
                     .of(com.opamb.barotrauma.blockentity.EngineBlockEntity::new, ModBlocks.ENGINE.get())
                     .build(null));
 
+    /** 潜渊症容器：钢柜/带窗钢柜/货架/潜水服柜/氧气瓶架共用一套方块实体。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.CabinetBlockEntity>> CABINET =
+            BLOCK_ENTITIES.register("cabinet", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.CabinetBlockEntity::new,
+                            ModBlocks.MEDIUM_STEEL_CABINET.get(),
+                            ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get(),
+                            ModBlocks.CRATE_SHELF.get(),
+                            ModBlocks.DIVING_SUIT_LOCKER.get(),
+                            ModBlocks.OXYGEN_TANK_SHELF.get(),
+                            ModBlocks.DIVING_SUIT_STATION.get())
+                    .build(null));
+
     /** 3 格宽舱口（普通舱口和带梯变种共用）；只有中间段有方块实体，渲染整扇模型。 */
     public static final RegistryObject<BlockEntityType<HatchBlockEntity>> HATCH =
             BLOCK_ENTITIES.register("hatch", () -> BlockEntityType.Builder

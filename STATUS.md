@@ -3,11 +3,112 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-08（医疗出血来源方案 A 落地；对接舱/副本站为 2026-11-07 最后一轮，均待实机验收）。
+> 上次更新：2026-11-10（寒冷深穴任务目录 + 任务界面迁到导航终端，见下方最新一节；医疗/对接舱仍待实机验收）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
 > ⚠️ 2026-11-04 那条"按 Shift 不沉 = 人站在舱底，非代码问题"的定性**是错的**，
 > 已在 §10.57.1 纠正：是原版潜行边缘保护在 VS2 船上把水平位移清零。
+
+## 2026-11-10 晚 六个容器模型全部删除（新会话重做）
+
+- **美术文件全删**：`art/models/containers_20261110`、`containers_20261110_v2`、`containers_review`、
+  `containers_final` 四个目录已移除（含 .bbmodel、geo、贴图、图标、预览、审计报告）。
+- **游戏内资源也删了**：`geo/block/`、`textures/block/`、`textures/item/`、`blockstates/`、
+  `models/block/`、`models/item/`、`animations/block/` 下这六个 id 的文件全部移除。
+- **方块代码保留**：`CabinetBlock` / `CabinetBlockEntity` / `CabinetMenu` / `CabinetScreen` /
+  `CabinetRenderer`、注册项、创造栏、语言键都还在。模型补回来之前，这六个方块进游戏是**无模型**状态
+  （碰撞与容器逻辑正常）。
+- Blockbench 已关闭，没有残留工程标签。
+- 下一步：新会话用 `minecraft-modeling-prop-block` 重做；`CabinetBlock.Kind` 里的
+  width/height/depth 仍是 v1 数值（12.19/29.46/8 等），换新模型时要同步改成 16 宽那套尺寸。
+
+## 2026-11-10 寒冷深穴任务目录 + 任务界面迁到导航终端（未提交，待实机验收）
+
+> **交接摘要：新会话从这一节开始读。** 代码全在工作区、**未提交、未推送、未 pull**。
+
+### 1. 任务目录（Phase 0：全部登记，按功能开关发布）
+
+- 数据文件 `src/main/resources/data/barotrauma/missions/cold_caverns.json`：原版寒冷深穴
+  **83 条**任务（MONSTER 25 / CARGO 13 / MINERAL 13 / ESCORT 10 / ABANDONED 10 / NEST 6 /
+  BEACON 3 / PIRATE 2 / SALVAGE 1），`spawnType` 里 76 条 none、7 条 cave。
+  字段：`id / kind / text / nameZh / nameEn / reward / difficulty / minLevelDifficulty /
+  maxLevelDifficulty / spawnType / fromType / toType`；名称取自原作
+  `Content/Texts/{SimplifiedChinese,English}/*Vanilla.xml` 的 `missionname.*`。
+- 代码：`mission/MissionSpec`（record）、`MissionKind`（映射原版 `CargoMission` 等元素名）、
+  `MissionFeature`（底层功能开关）、`MissionCatalog`（读 JSON + 过滤发布）。
+- **`MissionFeature` 是唯一的总闸**：`CARGO_ITEMS` / `SALVAGE_ITEM` = true，其余
+  BEACON / MINERALS / CREATURES / NEST / WRECKS / RUINS / ESCORT / ABANDONED / PIRATES /
+  THALAMUS = false。打开一项，目录里对应任务自动进入终端发布列表。
+- `MissionCatalog.offers()` = 已实装功能 + `spawnType ∈ {none, cave}` + 4 条货运白名单，
+  当前正好 **5 条**：
+  | kind | id | 中文名 | reward |
+  | --- | --- | --- | --- |
+  | CARGO | cargochemicals | 化学品运输 | 500 |
+  | CARGO | cargoconstructionminerals | 矿业中心建材运输 | 500 |
+  | CARGO | cargomeditems | 医疗物资运输 | 500 |
+  | CARGO | cargovolatilecompoundn | 易爆货物 | JSON 里 0，代码按限时紧急任务兜成 800 |
+  | SALVAGE | salvageartifactcave | 打捞一件异星遗物 | 3500 |
+
+### 2. 任务池与世界生成
+
+- `PoiNetwork.definitions()` 不再写死 5 条，改为遍历 `MissionCatalog.offers()` 生成：
+  普通货运 → `DELIVERY`（交付点 `POST_B_TERMINAL`）；`cargovolatilecompoundn` →
+  `URGENT_DELIVERY`（24000 tick 限时）；遗物打捞 → `WRECK_A` 的 `SALVAGE`。
+- **任务终端方块不再由世界生成放置**：`OutpostBuilder`、`DockingBay`、`PoiNetwork`
+  里的放置调用已删（`OutpostBuilder` 留了「任务终端已弃用」注释）。
+  方块本体、`MissionMenu`、`MissionScreen` 仍注册着——老存档里已有的终端不会变缺失方块，
+  只是新世界不再生成。
+
+### 3. 任务界面搬进导航终端
+
+- `client/SonarScreen` 新增第三页签「任务」（`labels = {"声纳","核心","任务"}`）：
+  `drawMissionPage` / `drawMissionRow` / `handleMissionClick`，接单/交付/放弃都发
+  `MissionActionPacket(ACCEPT/TURN_IN/ABANDON, mission.id, menu.sonarPos())`。
+- `NavigationTerminalBlock.use` 打开 `SonarMenu` 时额外下发 `MissionStatePacket`，
+  否则任务页拿不到任务列表。
+- **交付判定改成玩家世界坐标**：`MissionActionPacket` 里
+  `player.position().distanceToSqr(Vec3.atCenterOf(PoiNetwork.POST_B_TERMINAL)) <= 64`
+  （8 格内）→ 全额报酬，否则 50%。不再用 `terminalPos`——VS2 船上终端坐标不可靠。
+- `client/MissionScreen`（旧终端方块的界面）没删，行标题改成优先显示
+  `MissionCatalog.offer(id)` 的原版任务名。
+
+### 4. 命令与测试
+
+- 新增 `/barotrauma campaign missions`：打印目录统计（按 kind 计数）+ 当前发布条目。
+- 新增 `MissionCatalogTest`：目录 ≥80 条、offers 只含已实装且 spawn none/cave、按 id 反查。
+- 适配旧测试：`MissionSavedDataFailureTest` / `MissionDepthTest` 改成按 `MissionType`
+  动态找任务（别再写死 id=6）；`DeepPermitPolicyTest` 期望值按深度推。
+- **验证**：`./gradlew test --offline` → **203 项 0 失败**（2026-11-10 20:01，
+  `build/test-results/test`，34 个 XML）。本轮**没跑** `build` / L2 GameTest / L3 冒烟。
+- 客户端：改完后起过一次 `runClient`，日志正常进游戏；**用户还没回报任务页签的实际效果**。
+
+### 5. Git 状态
+
+- 分支 `main`，HEAD `3cb1d71`（PR #50 合并后）。
+- 工作区脏：**14 个修改 + 6 个未跟踪**，全部是本轮任务目录/导航终端改动。
+  未跟踪：`mission/MissionSpec|MissionKind|MissionFeature|MissionCatalog.java`、
+  `resources/data/barotrauma/missions/`、`test/.../MissionCatalogTest.java`。
+- **未提交、未 push、未 pull**。提交/推送/拉取都要用户明确授权。
+
+### 6. 下一步（按顺序）
+
+1. **实机验收**：靠泊哨站 → 右键导航终端 → 第三页签「任务」应列出上面 5 条；
+   接单、到 B 中继站终端 8 格内交付、报酬到账；旧任务终端方块不再生成。
+2. 用户说「提交」后才走发布流程：补 `.mex/ROUTER.md`（本轮已同步）→ `test` → 任务分支 →
+   push → PR → 审过合并 → 删分支。
+3. 之后按功能逐个打开 `MissionFeature` 并把对应的完成判定接上（现在只有 CARGO / SALVAGE 有结算）：
+   BEACON → MINERALS → WRECKS/RUINS（现有沉船/遗迹可直接复用）→ CREATURES/NEST →
+   ESCORT/ABANDONED/PIRATES → THALAMUS。**只翻 flag 不写完成判定，任务会接单但无法完成。**
+
+### 7. 本轮特有的坑
+
+- `offers()` 的数值 id 是**列表序 +1**，跟 JSON 里的字符串 id 无关；任务存档存的是数值 id，
+  **改 offers 顺序会让老存档里的任务错位**。要增删条目就追加到末尾或做迁移。
+- `MissionCatalog` 用 `getResourceAsStream("/data/...")`，单测和服务端都能读；改 JSON 不用重新生成。
+- `cargovolatilecompoundn` 的 JSON `reward` 是 0，报酬由 `PoiNetwork` 的 `Math.max(800, ...)` 兜底，
+  不是漏填。
+- 两个任务界面并存（导航终端里的 `SonarScreen` 任务页 + 旧 `MissionScreen`），改文案别只改一边。
+- 交付全额判定在 8 格内，调半径改 `MissionActionPacket.DELIVERY_ENDPOINT_RADIUS_SQR`。
 
 ## 2026-11-08 出血来源方案 A 落地 + 倒地流失按原版语义移除（L1 全绿，待实机验收）
 

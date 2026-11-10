@@ -71,6 +71,20 @@ public final class ModItems {
     /** 引擎方块物品（18 格多块，放的时候自动铺满 3×2×3）。 */
     public static final RegistryObject<Item> ENGINE = blockItem("engine", ModBlocks.ENGINE);
 
+    // ---- 潜渊症容器 ----
+    public static final RegistryObject<Item> MEDIUM_STEEL_CABINET =
+            blockItem("medium_steel_cabinet", ModBlocks.MEDIUM_STEEL_CABINET);
+    public static final RegistryObject<Item> MEDIUM_WINDOWED_STEEL_CABINET =
+            blockItem("medium_windowed_steel_cabinet", ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET);
+    public static final RegistryObject<Item> CRATE_SHELF =
+            blockItem("crate_shelf", ModBlocks.CRATE_SHELF);
+    public static final RegistryObject<Item> DIVING_SUIT_LOCKER =
+            blockItem("diving_suit_locker", ModBlocks.DIVING_SUIT_LOCKER);
+    public static final RegistryObject<Item> OXYGEN_TANK_SHELF =
+            blockItem("oxygen_tank_shelf", ModBlocks.OXYGEN_TANK_SHELF);
+    public static final RegistryObject<Item> DIVING_SUIT_STATION =
+            blockItem("diving_suit_station", ModBlocks.DIVING_SUIT_STATION);
+
     // ---- 核燃料棒（耐久 = 原作 Condition 上限） ----
     /** 铀燃料棒：80 点。 */
     public static final RegistryObject<Item> URANIUM_FUEL_ROD = ITEMS.register("uranium_fuel_rod",

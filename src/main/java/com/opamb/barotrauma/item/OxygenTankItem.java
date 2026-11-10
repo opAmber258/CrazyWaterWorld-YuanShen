@@ -51,6 +51,11 @@ public class OxygenTankItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.barotrauma.oxygen_tank").withStyle(ChatFormatting.AQUA));
+        tooltip.add(Component.translatable("tooltip.barotrauma.equipment.slot",
+                Component.translatable("tooltip.barotrauma.equipment.slot.oxygen_tank"))
+                .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.barotrauma.equipment.oxygen_tank_equipped")
+                .withStyle(ChatFormatting.GRAY));
         super.appendHoverText(stack, level, tooltip, flag);
     }
 }

@@ -14,6 +14,10 @@ import com.opamb.barotrauma.world.ModDimensions;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
+import com.opamb.barotrauma.block.CabinetBlock;
+import com.opamb.barotrauma.blockentity.CabinetBlockEntity;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -41,7 +45,62 @@ public final class CampaignCommand {
                 .then(Commands.literal("fail").requires(source -> source.hasPermission(2)).executes(CampaignCommand::fail))
                 .then(Commands.literal("credits").requires(source -> source.hasPermission(2))
                         .then(Commands.argument("amount", IntegerArgumentType.integer(-100000, 100000))
-                                .executes(CampaignCommand::credits)));
+                                .executes(CampaignCommand::credits)))
+                .then(Commands.literal("missions").executes(CampaignCommand::missions))
+                .then(Commands.literal("cabinets").requires(source -> source.hasPermission(2))
+                        .executes(CampaignCommand::cabinets));
+    }
+
+    /** 诊断：扫描玩家周围的容器方块，打印分片/主方块/方块实体/形状状态。 */
+    private static int cabinets(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        ServerLevel level = source.getLevel();
+        BlockPos center = BlockPos.containing(source.getPosition());
+        int found = 0;
+        for (BlockPos p : BlockPos.betweenClosed(center.offset(-8, -6, -8), center.offset(8, 8, 8))) {
+            BlockState st = level.getBlockState(p);
+            if (!(st.getBlock() instanceof CabinetBlock cab)) {
+                continue;
+            }
+            BlockPos immutable = p.immutable();
+            int part = st.getValue(CabinetBlock.PART);
+            BlockPos master = immutable.below(part);
+            BlockState ms = level.getBlockState(master);
+            boolean masterOk = ms.getBlock() == st.getBlock()
+                    && ms.getValue(CabinetBlock.PART) == 0;
+            boolean hasBe = level.getBlockEntity(master) instanceof CabinetBlockEntity;
+            String shape = st.getShape(level, immutable).isEmpty() ? "empty" : "solid";
+            final String line = immutable.toShortString() + " " + cab.kind().id()
+                    + " part=" + part + " master=" + master.toShortString()
+                    + " masterOk=" + masterOk + " be=" + hasBe + " shape=" + shape;
+            source.sendSuccess(() -> Component.literal(line), false);
+            found++;
+        }
+        final int n = found;
+        source.sendSuccess(() -> Component.literal("容器方块 " + n + " 个"), false);
+        return found;
+    }
+
+    /** 列出寒冷深穴任务目录：登记总数、终端实际发布、未实装类别。 */
+    private static int missions(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        var specs = com.opamb.barotrauma.mission.MissionCatalog.specs();
+        var offers = com.opamb.barotrauma.mission.MissionCatalog.offers();
+        source.sendSuccess(() -> Component.literal("== 任务目录（寒冷深穴）==")
+                .withStyle(ChatFormatting.AQUA), false);
+        source.sendSuccess(() -> Component.literal("登记 " + specs.size() + " 条，终端发布 "
+                + offers.size() + " 条"), false);
+        var byKind = specs.stream().collect(java.util.stream.Collectors.groupingBy(
+                com.opamb.barotrauma.mission.MissionSpec::kind,
+                java.util.LinkedHashMap::new, java.util.stream.Collectors.counting()));
+        byKind.forEach((kind, count) -> source.sendSuccess(
+                () -> Component.literal("· " + kind + " " + count + " 条"
+                        + (kind.implemented() ? "（已实装）" : "（未实装）")), false));
+        for (var spec : offers) {
+            source.sendSuccess(() -> Component.literal("发布 · " + spec.nameZh()
+                    + "（" + spec.kind() + "，奖励 " + spec.reward() + "）"), false);
+        }
+        return offers.size();
     }
 
     private static ServerLevel level(CommandSourceStack source) {

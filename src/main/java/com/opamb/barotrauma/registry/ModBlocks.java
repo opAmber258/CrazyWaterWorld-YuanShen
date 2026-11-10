@@ -102,6 +102,51 @@ public final class ModBlocks {
                     .isViewBlocking((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)));
 
+    // ---- 潜渊症容器（2026-11-10） ----
+    /** 中型钢柜：5×4 主格 + 3 个移动容器格。 */
+    public static final RegistryObject<Block> MEDIUM_STEEL_CABINET = BLOCKS.register("medium_steel_cabinet",
+            () -> new com.opamb.barotrauma.block.CabinetBlock(
+                    com.opamb.barotrauma.block.CabinetBlock.Kind.MEDIUM_STEEL_CABINET, cabinetProps()));
+
+    /** 中型带窗钢柜：同中型钢柜，正面带观察窗。 */
+    public static final RegistryObject<Block> MEDIUM_WINDOWED_STEEL_CABINET =
+            BLOCKS.register("medium_windowed_steel_cabinet",
+                    () -> new com.opamb.barotrauma.block.CabinetBlock(
+                            com.opamb.barotrauma.block.CabinetBlock.Kind.MEDIUM_WINDOWED_STEEL_CABINET,
+                            cabinetProps()));
+
+    /** 箱子货架：1×4 货箱位。 */
+    public static final RegistryObject<Block> CRATE_SHELF = BLOCKS.register("crate_shelf",
+            () -> new com.opamb.barotrauma.block.CabinetBlock(
+                    com.opamb.barotrauma.block.CabinetBlock.Kind.CRATE_SHELF, cabinetProps()));
+
+    /** 潜水服柜：1 个潜水服位。 */
+    public static final RegistryObject<Block> DIVING_SUIT_LOCKER = BLOCKS.register("diving_suit_locker",
+            () -> new com.opamb.barotrauma.block.CabinetBlock(
+                    com.opamb.barotrauma.block.CabinetBlock.Kind.DIVING_SUIT_LOCKER, cabinetProps()));
+
+    /** 氧气瓶架：潜水服柜下方的 3 个氧气瓶位。 */
+    public static final RegistryObject<Block> OXYGEN_TANK_SHELF = BLOCKS.register("oxygen_tank_shelf",
+            () -> new com.opamb.barotrauma.block.CabinetBlock(
+                    com.opamb.barotrauma.block.CabinetBlock.Kind.OXYGEN_TANK_SHELF, cabinetProps()));
+
+    /** 潜水服柜（组合）：原作装配比例，上层潜水服、下层氧气瓶架。 */
+    public static final RegistryObject<Block> DIVING_SUIT_STATION = BLOCKS.register("diving_suit_station",
+            () -> new com.opamb.barotrauma.block.CabinetBlock(
+                    com.opamb.barotrauma.block.CabinetBlock.Kind.DIVING_SUIT_STATION, cabinetProps()));
+
+    private static BlockBehaviour.Properties cabinetProps() {
+        return BlockBehaviour.Properties.of()
+                .mapColor(MapColor.METAL)
+                .strength(8.0F, 300.0F)
+                .sound(SoundType.METAL)
+                .noOcclusion()
+                .isViewBlocking((state, level, pos) -> false)
+                .isSuffocating((state, level, pos) -> false)
+                // 多格柜的分片自愈（CabinetBlock.randomTick）：清孤儿分片、补齐整列。
+                .randomTicks();
+    }
+
     /** 免支撑铁梯：整格宽、2px 厚的钢板梯，立在对接井中央，可攀爬、有碰撞。 */    public static final RegistryObject<Block> IRON_LADDER = BLOCKS.register("iron_ladder",
             () -> new IronLadderBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)

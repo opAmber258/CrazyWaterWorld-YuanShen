@@ -10,6 +10,7 @@ import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.command.CampaignCommand;
 import com.opamb.barotrauma.data.MissionSavedData;
 import com.opamb.barotrauma.mission.Mission;
+import com.opamb.barotrauma.mission.MissionType;
 import com.opamb.barotrauma.registry.ModBlocks;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.ShipCores;
@@ -273,55 +274,56 @@ public final class DeepSeaEvents {
         }
         var failures = new java.util.ArrayList<String>();
 
-        // 1) 主哨站终端
-        if (!deep.getBlockState(new BlockPos(8, ModDimensions.OUTPOST_SPAWN_Y - 1, 0))
-                .is(com.opamb.barotrauma.registry.ModBlocks.MISSION_TERMINAL.get())) {
-            failures.add("主哨站没有任务终端");
+        // 1) 任务目录（任务终端已弃用，改由导航终端发布）
+        if (com.opamb.barotrauma.mission.MissionCatalog.offers().isEmpty()) {
+            failures.add("任务目录没有可发布条目");
         }
-        // 2) B 中继站终端
-        if (!deep.getBlockState(com.opamb.barotrauma.world.PoiNetwork.POST_B_TERMINAL)
-                .is(com.opamb.barotrauma.registry.ModBlocks.MISSION_TERMINAL.get())) {
-            failures.add("B 中继站没有任务终端");
-        }
-        // 3) 沉船 A 的黑匣子方块
+        // 2) 沉船 A 的黑匣子方块
         if (!deep.getBlockState(com.opamb.barotrauma.world.PoiNetwork.WRECK_A)
                 .is(com.opamb.barotrauma.registry.ModBlocks.BLACK_BOX_BLOCK.get())) {
             failures.add("沉船 A 里没有黑匣子方块");
         }
 
-        // 4) 任务状态机 + 经济（合成 UUID 当虚拟玩家）
+        // 3) 任务状态机 + 经济（合成 UUID 当虚拟玩家）
         java.util.UUID tester = new java.util.UUID(0xBA12, 0x0C4E);
         MissionSavedData data = MissionSavedData.get(deep);
         var missions = data.missions();
-        Mission salvage1 = missions.get(1);
-        Mission deep300 = missions.get(2);
-
-        if (!data.accept(tester, 1, 0)) {
-            failures.add("接取任务 #1 失败");
-        } else if (salvage1.state() != Mission.State.ACTIVE) {
-            failures.add("任务 #1 接取后不是 ACTIVE");
-        }
-        data.markReady(salvage1);
-        if (salvage1.state() != Mission.State.READY) {
-            failures.add("任务 #1 markReady 后不是 READY");
-        }
-        var wallet = com.opamb.barotrauma.campaign.CampaignState.wallet(deep);
-        int walletBefore = wallet.credits();
-        wallet.addCredits(salvage1.reward);
-        data.finish(tester, salvage1);
-        if (wallet.credits() - walletBefore != salvage1.reward || salvage1.reward != 80) {
-            failures.add("交付 #1 后共享钱包 +" + (wallet.credits() - walletBefore)
-                    + " != 80");
-        }
-        if (salvage1.state() != Mission.State.DONE) {
-            failures.add("交付 #1 后不是 DONE");
-        }
-        if (!data.accept(tester, 2, 0)) {
-            failures.add("接取 300m 任务 #2 失败");
+        Mission salvage = missions.values().stream()
+                .filter(m -> m.type == MissionType.SALVAGE).findFirst().orElse(null);
+        Mission cargo = missions.values().stream()
+                .filter(m -> m.type == MissionType.DELIVERY
+                        || m.type == MissionType.URGENT_DELIVERY)
+                .findFirst().orElse(null);
+        if (salvage == null || cargo == null) {
+            failures.add("任务池缺少打捞/货运任务");
         } else {
-            data.abandon(tester);
-            if (deep300.state() != Mission.State.OFFERED) {
-                failures.add("放弃 #2 后没有回到 OFFERED");
+            if (!data.accept(tester, salvage.id, 0)) {
+                failures.add("接取打捞任务失败");
+            } else if (salvage.state() != Mission.State.ACTIVE) {
+                failures.add("打捞任务接取后不是 ACTIVE");
+            }
+            data.markReady(salvage);
+            if (salvage.state() != Mission.State.READY) {
+                failures.add("打捞任务 markReady 后不是 READY");
+            }
+            var wallet = com.opamb.barotrauma.campaign.CampaignState.wallet(deep);
+            int walletBefore = wallet.credits();
+            wallet.addCredits(salvage.reward);
+            data.finish(tester, salvage);
+            if (wallet.credits() - walletBefore != salvage.reward) {
+                failures.add("交付打捞任务后共享钱包 +" + (wallet.credits() - walletBefore)
+                        + " != " + salvage.reward);
+            }
+            if (salvage.state() != Mission.State.DONE) {
+                failures.add("交付打捞任务后不是 DONE");
+            }
+            if (!data.accept(tester, cargo.id, 0)) {
+                failures.add("接取货运任务失败");
+            } else {
+                data.abandon(tester);
+                if (cargo.state() != Mission.State.OFFERED) {
+                    failures.add("放弃货运任务后没有回到 OFFERED");
+                }
             }
         }
 

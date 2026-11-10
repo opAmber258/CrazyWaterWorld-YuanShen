@@ -14,7 +14,7 @@ class DeepPermitPolicyTest {
     @Test
     void 任务池里只有深水任务需要许可() {
         for (Mission mission : com.opamb.barotrauma.world.PoiNetwork.definitions()) {
-            boolean expected = mission.id == 3 || mission.id == 4;
+            boolean expected = -mission.target.getY() > 320;
             assertEquals(expected, mission.requiresDeepPermit(),
                     "任务 #" + mission.id + " 深度 " + -mission.target.getY() + "m");
         }

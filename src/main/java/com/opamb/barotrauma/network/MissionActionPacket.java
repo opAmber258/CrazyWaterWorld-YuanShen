@@ -180,9 +180,12 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             sendState(player, level);
             return;
         }
-        boolean atEndpoint = terminalPos != null
-                && terminalPos.distSqr(com.opamb.barotrauma.world.PoiNetwork.POST_B_TERMINAL)
-                        <= DELIVERY_ENDPOINT_RADIUS_SQR;
+        // 任务终端已弃用，交付改在导航终端（船核心）上操作；用玩家当前世界位置判终点，
+        // 物理船（方块坐标在船坞坐标系）也不会算错。
+        boolean atEndpoint = player.position().distanceToSqr(
+                net.minecraft.world.phys.Vec3.atCenterOf(
+                        com.opamb.barotrauma.world.PoiNetwork.POST_B_TERMINAL))
+                <= DELIVERY_ENDPOINT_RADIUS_SQR;
         double fraction = mission.rewardFraction(atEndpoint);
         int payout = (int) Math.round(mission.reward * fraction);
         wallet.addCredits(payout);

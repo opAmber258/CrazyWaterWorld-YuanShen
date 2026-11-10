@@ -41,9 +41,11 @@ class MissionDepthTest {
     @Test
     void 超时失败后本轮抵达重置回任务池() {
         MissionSavedData data = new MissionSavedData();
-        Mission mission = data.missions().get(6);
+        Mission mission = data.missions().values().stream()
+                .filter(m -> m.type == MissionType.URGENT_DELIVERY)
+                .findFirst().orElseThrow();
         UUID player = UUID.randomUUID();
-        assertTrue(data.accept(player, 6, 0L));
+        assertTrue(data.accept(player, mission.id, 0L));
         assertEquals(Mission.State.ACTIVE, mission.state());
         assertEquals(24000L, mission.deadlineAtGameTime());
         data.failMission(mission);

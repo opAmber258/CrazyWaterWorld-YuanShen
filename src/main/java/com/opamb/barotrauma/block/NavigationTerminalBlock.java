@@ -4,6 +4,8 @@ import com.opamb.barotrauma.block.NavigationTerminalLayout.Part;
 import com.opamb.barotrauma.blockentity.NavigationTerminalBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.menu.SonarMenu;
+import com.opamb.barotrauma.network.MissionStatePacket;
+import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.sonar.SonarScan;
@@ -201,6 +203,8 @@ public class NavigationTerminalBlock extends BaseEntityBlock {
                         buf.writeBlockPos(master);
                         buf.writeVarInt(SonarScan.DEFAULT_RANGE);
                     });
+            // 导航终端同时是任务界面：把任务状态一并同步给客户端（任务页签要用）。
+            ModNetwork.sendToPlayer(serverPlayer, MissionStatePacket.build(serverPlayer, level));
             return InteractionResult.CONSUME;
         }
         return InteractionResult.SUCCESS;

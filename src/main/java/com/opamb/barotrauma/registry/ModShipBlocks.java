@@ -251,6 +251,13 @@ public final class ModShipBlocks {
                 || block == ModBlocks.BALLAST_PUMP.get()
                 || block == ModBlocks.REACTOR.get()
                 || block == ModBlocks.ENGINE.get()
+                // 容器家具也要跟船走，否则装配后钢柜/货架留在码头原地。
+                || block == ModBlocks.MEDIUM_STEEL_CABINET.get()
+                || block == ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get()
+                || block == ModBlocks.CRATE_SHELF.get()
+                || block == ModBlocks.DIVING_SUIT_LOCKER.get()
+                || block == ModBlocks.OXYGEN_TANK_SHELF.get()
+                || block == ModBlocks.DIVING_SUIT_STATION.get()
                 || block == ModBlocks.DRAIN_OUTLET.get()
                 || block == HATCH.get()
                 || block == HATCH_LADDER.get()

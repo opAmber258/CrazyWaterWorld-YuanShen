@@ -43,6 +43,12 @@ public final class ModMenus {
                     (id, inv, buf) -> new com.opamb.barotrauma.menu.EngineMenu(id, inv,
                             buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
 
+    /** 潜渊症容器：钢柜/货架/潜水服柜/氧气瓶架共用。 */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.CabinetMenu>> CABINET =
+            MENUS.register("cabinet", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> new com.opamb.barotrauma.menu.CabinetMenu(id, inv,
+                            buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
+
     private ModMenus() {
     }
 

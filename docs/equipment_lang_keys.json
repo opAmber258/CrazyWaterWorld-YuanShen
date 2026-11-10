@@ -1,0 +1,43 @@
+{
+  "_note": "装备栏新增 lang key。item.barotrauma.diving_suit / item.barotrauma.oxygen_tank 已存在于 en_us.json / zh_cn.json，无需重复合并；本文件只列新增键。",
+  "zh_cn": {
+    "item.barotrauma.id_card": "ID卡",
+    "item.barotrauma.headset": "耳机",
+    "item.barotrauma.ballistic_helmet": "防弹头盔",
+    "item.barotrauma.body_armor": "防弹衣",
+    "item.barotrauma.toolbelt": "工具带",
+    "item.barotrauma.backpack": "背包",
+    "itemGroup.barotrauma.equipment": "潜渊症装备",
+    "tooltip.barotrauma.equipment.slot": "可装备于：%s",
+    "tooltip.barotrauma.equipment.armor": "护甲 +%s",
+    "tooltip.barotrauma.equipment.pressure": "耐压 %sm",
+    "tooltip.barotrauma.equipment.oxygen_tank_equipped": "装备后在水下自动消耗耐久补充氧气",
+    "tooltip.barotrauma.equipment.slot.id_card": "ID卡槽",
+    "tooltip.barotrauma.equipment.slot.headset": "耳机槽",
+    "tooltip.barotrauma.equipment.slot.helmet": "头盔槽",
+    "tooltip.barotrauma.equipment.slot.body_armor": "护甲槽",
+    "tooltip.barotrauma.equipment.slot.bag": "腰带/背包槽",
+    "tooltip.barotrauma.equipment.slot.diving_suit": "潜水服槽",
+    "tooltip.barotrauma.equipment.slot.oxygen_tank": "氧气瓶槽"
+  },
+  "en_us": {
+    "item.barotrauma.id_card": "ID Card",
+    "item.barotrauma.headset": "Headset",
+    "item.barotrauma.ballistic_helmet": "Ballistic Helmet",
+    "item.barotrauma.body_armor": "Body Armor",
+    "item.barotrauma.toolbelt": "Toolbelt",
+    "item.barotrauma.backpack": "Backpack",
+    "itemGroup.barotrauma.equipment": "Barotrauma Equipment",
+    "tooltip.barotrauma.equipment.slot": "Equips in: %s",
+    "tooltip.barotrauma.equipment.armor": "Armor +%s",
+    "tooltip.barotrauma.equipment.pressure": "Pressure rating %sm",
+    "tooltip.barotrauma.equipment.oxygen_tank_equipped": "Refills air underwater while equipped, consuming durability",
+    "tooltip.barotrauma.equipment.slot.id_card": "ID Card Slot",
+    "tooltip.barotrauma.equipment.slot.headset": "Headset Slot",
+    "tooltip.barotrauma.equipment.slot.helmet": "Helmet Slot",
+    "tooltip.barotrauma.equipment.slot.body_armor": "Body Armor Slot",
+    "tooltip.barotrauma.equipment.slot.bag": "Belt / Backpack Slot",
+    "tooltip.barotrauma.equipment.slot.diving_suit": "Diving Suit Slot",
+    "tooltip.barotrauma.equipment.slot.oxygen_tank": "Oxygen Tank Slot"
+  }
+}

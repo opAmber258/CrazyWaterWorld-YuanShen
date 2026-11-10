@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:titaniumaluminiumalloy"
+    },
+    {
+      "item": "barotrauma:rubber"
+    },
+    {
+      "item": "barotrauma:rubber"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:diving_suit"
+  }
+}

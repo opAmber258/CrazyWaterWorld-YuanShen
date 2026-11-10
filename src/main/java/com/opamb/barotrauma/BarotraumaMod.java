@@ -39,6 +39,8 @@ public final class BarotraumaMod {
 
         ModBlocks.register(modBus);
         ModItems.register(modBus);
+        // 玩家装备栏（ID卡/耳机/头盔/护甲/腰带/潜水服/氧气瓶）的独立注册表。
+        com.opamb.barotrauma.equipment.EquipmentItems.register(modBus);
         ModCreativeTabs.register(modBus);
         ModChunkGenerators.register(modBus);
         ModShipBlocks.register(modBus);

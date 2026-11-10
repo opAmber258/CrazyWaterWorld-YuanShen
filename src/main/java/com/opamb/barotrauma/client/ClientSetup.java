@@ -60,6 +60,8 @@ public final class ClientSetup {
                     com.opamb.barotrauma.registry.ModMenus.REACTOR.get(), ReactorScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.ENGINE.get(), EngineScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.CABINET.get(), CabinetScreen::new);
         });
     }
 
@@ -82,6 +84,8 @@ public final class ClientSetup {
                 context -> new ReactorRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.ENGINE.get(),
                 context -> new EngineRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.CABINET.get(),
+                context -> new CabinetRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.HATCH.get(), context -> new HatchRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.BULKHEAD_DOOR.get(),
                 context -> new BulkheadDoorRenderer());
