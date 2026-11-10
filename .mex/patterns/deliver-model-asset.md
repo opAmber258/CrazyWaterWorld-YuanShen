@@ -64,6 +64,12 @@ mex:
 
 按作者自定的建模手法与尺寸完成几何；约定不设建模规范（见约定第 4 节）。
 
+**AI 制作时的参考源**：只读 `art-vault/curated/`（仓库外的本地资产库，索引见其 `INDEX.md`，默认路径 `F:/BarotraumaMinecraft/art-vault/curated/`）。
+
+- `art-vault/deprecated/` **禁止作为参考** —— 历史修订与试验稿会把过时比例和粗糙细节带进新资产。
+- 新的 AI 产物默认落 `deprecated/`，人工评审后才上调 `curated/`；Agent 不得自行上调。
+- 本机没有 `art-vault` 时，在 README 注明"未使用本地参考库"，只以 `reference/` 里的原作裁切为参考。
+
 **判定点**：导出后用脚本复算包围盒，与作者 README 里记录的尺寸一致再往下走。
 
 ### 3. 出四件套 + 说明文件
