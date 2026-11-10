@@ -1,0 +1,10 @@
+{
+  "budgets": {
+    "components": 54,
+    "declared_faces": 330,
+    "texture_pixels": 8192,
+    "inverted_components": 0,
+    "partial_alpha_textures": 0
+  },
+  "lanes": []
+}

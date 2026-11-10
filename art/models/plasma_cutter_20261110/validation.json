@@ -1,0 +1,100 @@
+{
+  "asset": "等离子切割器 PlasmaCutter",
+  "identifier": "plasma_cutter",
+  "target": "Minecraft Java Edition 1.20.1 Forge",
+  "generated_on": "2026-11-10",
+  "project": {
+    "format": "java_block",
+    "elements": 53,
+    "groups_including_root": 7,
+    "textures": 2,
+    "display_slots": [
+      "thirdperson_righthand",
+      "thirdperson_lefthand",
+      "firstperson_righthand",
+      "firstperson_lefthand",
+      "ground",
+      "gui",
+      "fixed"
+    ],
+    "animations": 0,
+    "bones": 0,
+    "bounds": [
+      0.25,
+      2.5,
+      6.55,
+      16.45,
+      12.13,
+      9.72
+    ],
+    "size": [
+      16.2,
+      9.63,
+      3.17
+    ],
+    "rotated_elements": 4
+  },
+  "export": {
+    "parent": "minecraft:item/handheld",
+    "elements": 53,
+    "declared_faces": 318,
+    "faces_by_texture": {
+      "0": 294,
+      "1": 24
+    },
+    "uv_min": 0.25,
+    "uv_max": 15.75,
+    "source_export_mismatches": []
+  },
+  "textures": {
+    "base": {
+      "size": [
+        64,
+        64
+      ],
+      "transparent_pixels": 0,
+      "partial_alpha_pixels": 0,
+      "sha256": "bfbc3c622d1df9652a95c164f9bf888375cf88e24b329875314bdf01b0390161"
+    },
+    "emissive": {
+      "size": [
+        64,
+        64
+      ],
+      "transparent_pixels": 4064,
+      "partial_alpha_pixels": 0,
+      "sha256": "9d4f7b7393bdced5fe459765b648fcd099fcca0d46cf4a40f26b5bcba3c1df91"
+    }
+  },
+  "checks": {
+    "source_export_geometry_uv_match": true,
+    "embedded_textures_match_disk": true,
+    "java_uv_within_0_16": true,
+    "emissive_slot_present": true,
+    "emissive_faces_present": true,
+    "no_animation_or_bones": true
+  },
+  "files": {
+    "audit_bbmodel.json": "42a4a3ca185f7861541a0842afea0a121099cd6af64d6429686bcf2dd7309284",
+    "audit_cost.json": "91c4a1a00e08feaa56d117c8f7298068fc22380c3ca53b12d575500c0450a9f8",
+    "audit_model.json": "c3a72b7c04168e745ace56ba79416c47a3bc6ec59b05670a4abe111193843c51",
+    "plasma_cutter.bbmodel": "6dad24373bb1211ea5500010d293613c85feda9c6466da70292062e4c7c9f739",
+    "plasma_cutter_3d.png": "bfbc3c622d1df9652a95c164f9bf888375cf88e24b329875314bdf01b0390161",
+    "plasma_cutter_emissive.png": "9d4f7b7393bdced5fe459765b648fcd099fcca0d46cf4a40f26b5bcba3c1df91",
+    "preview_back.png": "e3b85822654ad0232efdefca287919be2ca08700ba8ed609b44d0d20edb7e619",
+    "preview_display_firstperson_lefthand.png": "9823c5f6e8d1d0229082e0f73bbdc1ae199995b5b0f29382e43cdb375969415f",
+    "preview_display_firstperson_righthand.png": "a9ef30a05e0e3bfdc50de056adfdaf18e9005354e009d9ef23db51c6543d29c0",
+    "preview_display_fixed.png": "1cb6b8fd77d79e7ef52b79a769ffe57db5ab5c1480bccdde04357699930416ce",
+    "preview_display_ground.png": "3ac0ba9b5f961f074675641b896317632d3b6df4f4668bca1159d44996e8d121",
+    "preview_display_gui.png": "44c0f616b3c813bea1210a76eeb8bdba5f47fa4f05b24f85de04a6abb81a4577",
+    "preview_display_thirdperson_lefthand.png": "db2e66eabc6475723f16fd6207f3cb1d5ddac52d9b7af38c540f2633f238ac0a",
+    "preview_display_thirdperson_righthand.png": "90d0ecebc15052a75a995361adc05eb7f597982210d8ae7688a29ddcd7519803",
+    "preview_front.png": "fe462221a3ffa83c1bfa77b796bce4d6e78713a5fe5c849b46dd90fa7779347a",
+    "preview_oblique.png": "25f81c63f934b7be0113d1ee580d7e53f0749d005a65350dd4a35dfba49e9c4f",
+    "preview_side.png": "8cd13aa1c5b946ffd08ff79f1088902eedf1ede51c3a50c01ff8b82ff948673d",
+    "preview_top.png": "f3b532563a9bb3e88155cd9eca2a1986fec99962d9e974a846b66bc37e7906b2",
+    "README.md": "991d8ef0f3ae02a12e44f78e85358c1eb2d801233a6c20c43ae7acee8b9dfccb",
+    "validation.json": "d3329e8d79f0d0862ec7e0bda61dd3d52782e33d62afdc854934cca39fa88313"
+  },
+  "client_test": "not_run"
+}
