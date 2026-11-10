@@ -1,6 +1,6 @@
 ---
 name: deliver-model-asset
-description: Deliver a Blockbench model asset end-to-end — naming, four-piece package, geometry rules, PR, and Discussion #39 registration. Load when adding or updating a model, prop, block, item, or creature asset.
+description: Deliver a Bedrock-format Blockbench asset end-to-end (ships a geo.json) — naming, four-piece package, geometry rules, PR, and Discussion #39 registration. Not for java_block models; use blockbench-modeling.md for those.
 triggers:
   - "new model"
   - "new asset"
@@ -90,7 +90,7 @@ art/models/<标识>_<YYYYMMDD>/
 - 正交（正/背/侧）与透视（斜视）的深度方向必须统一为"越近越小"；
 - 朝上的面（up）角点顺序决定法线朝向，写错会让顶面全部被背面剔除。
 
-如需自行出预览，优先用 Blockbench 内的预览截图；本机桥接不可用时再考虑自建渲染器（`.work/` 不入库，脚本不随仓库分发）。
+**预览怎么出**：优先用 Blockbench 内置预览截图（无需额外脚本）。若改用自建脚本渲染，按约定 3.3 该脚本**必须放进 `reference/` 并能在仓库内重跑** —— 否则评审无法复现预览。确实无法入库的（交互式会话片段等），在 README 写明"预览由 <工具名> 手工截取"及不可复现原因。
 
 ### 5. 推送
 

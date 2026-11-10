@@ -17,9 +17,9 @@ edges:
   - target: patterns/add-ship-block.md
     condition: when adding a new submarine hull block
   - target: patterns/blockbench-modeling.md
-    condition: when building a block model in Blockbench or fixing UV / item-icon issues
+    condition: when building a `java_block`-format model in Blockbench (UV normalization, item icon, Java block model JSON)
   - target: patterns/deliver-model-asset.md
-    condition: when creating, packaging, pushing, or integrating a Blockbench asset delivery
+    condition: when delivering a Bedrock-format asset that ships a .geo.json (prop / item / creature / GeckoLib block)
   - target: patterns/cthulhu-post-processing.md
     condition: when adding or tuning a Cthulhu-gaze visual preset or its shader
   - target: patterns/developer-tools.md
