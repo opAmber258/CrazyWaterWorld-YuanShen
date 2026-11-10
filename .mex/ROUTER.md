@@ -34,7 +34,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-09
+last_updated: 2026-11-10
 ---
 
 # Session Bootstrap
@@ -112,7 +112,8 @@ Load the relevant file based on the current task. Always load `context/architect
 | Setting up or running the project | `context/setup.md` |
 | Changing dev scripts, textures, or GameTest templates | `context/tools.md` |
 | Debugging hull damage, durability bars, or welding | `patterns/debug-hull-damage.md` |
-| Building a block model in Blockbench | `patterns/blockbench-modeling.md` |
+| Building or debugging a `java_block` Java block model in Blockbench | `patterns/blockbench-modeling.md` |
+| Delivering a Bedrock-format asset that ships a geo.json | `patterns/deliver-model-asset.md` |
 | Adding/tuning a Cthulhu-gaze preset | `patterns/cthulhu-post-processing.md` |
 | Adding a creative-tab debug item or panel | `patterns/developer-tools.md` |
 | Publishing changes (走流程 / `/publish`) | `patterns/publish.md` |
