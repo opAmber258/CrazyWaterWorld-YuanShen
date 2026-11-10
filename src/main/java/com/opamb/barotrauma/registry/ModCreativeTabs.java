@@ -82,6 +82,16 @@ public final class ModCreativeTabs {
                     })
                     .build());
 
+
+    /** 矿物页签：潜渊症原版矿物/矿石，贴图取自游戏素材。 */
+    public static final RegistryObject<CreativeModeTab> MINERALS = TABS.register("minerals",
+            () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.barotrauma.minerals"))
+                    .icon(() -> new ItemStack(ModItems.DIAMOND.get()))
+                    .displayItems((params, output) ->
+                            ModItems.MINERAL_ITEMS.forEach(item -> output.accept(item.get())))
+                    .build());
+
     private ModCreativeTabs() {
     }
 

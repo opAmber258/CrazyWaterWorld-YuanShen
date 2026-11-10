@@ -143,8 +143,10 @@ public final class ModShipBlocks {
                     .sound(SoundType.METAL)
                     .requiresCorrectToolForDrops()
                     .noOcclusion()
-                    .isViewBlocking((state, level, pos) -> !state.getValue(HatchBlock.OPEN))
-                    .isSuffocating((state, level, pos) -> !state.getValue(HatchBlock.OPEN))));
+                    // 舱口只是 1px 盖板，不是实心方块：镜头可以合法地站在舱口格里，
+                    // 不能触发“人在方块内”的整屏贴图叠层（关着时看起来像糊了一脸黑）。
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
 
     /** 带梯舱口：舱口 + 铁梯做进同一个方块；梯子常驻，不受开合状态影响。 */
     public static final RegistryObject<Block> HATCH_LADDER = BLOCKS.register("hatch_ladder",
@@ -154,8 +156,8 @@ public final class ModShipBlocks {
                     .sound(SoundType.METAL)
                     .requiresCorrectToolForDrops()
                     .noOcclusion()
-                    .isViewBlocking((state, level, pos) -> !state.getValue(com.opamb.barotrauma.block.HatchBlock.OPEN))
-                    .isSuffocating((state, level, pos) -> !state.getValue(com.opamb.barotrauma.block.HatchBlock.OPEN))));
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
 
     /** 竖向舱壁门：墙上的双滑板金属门，右键开合。 */
     public static final RegistryObject<Block> BULKHEAD_DOOR = BLOCKS.register("bulkhead_door",
@@ -165,8 +167,9 @@ public final class ModShipBlocks {
                     .sound(SoundType.METAL)
                     .requiresCorrectToolForDrops()
                     .noOcclusion()
-                    .isViewBlocking((state, level, pos) -> !state.getValue(BulkheadDoorBlock.OPEN))
-                    .isSuffocating((state, level, pos) -> !state.getValue(BulkheadDoorBlock.OPEN))));
+                    // 同样是贴面薄板，镜头和门板同格时不叠整屏贴图。
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
 
     private ModShipBlocks() {
     }

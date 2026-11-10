@@ -1,6 +1,15 @@
 {
   "variants": {
-    "": {
+    "facing=north": {
+      "model": "barotrauma:block/small_pump"
+    },
+    "facing=east": {
+      "model": "barotrauma:block/small_pump"
+    },
+    "facing=south": {
+      "model": "barotrauma:block/small_pump"
+    },
+    "facing=west": {
       "model": "barotrauma:block/small_pump"
     }
   }

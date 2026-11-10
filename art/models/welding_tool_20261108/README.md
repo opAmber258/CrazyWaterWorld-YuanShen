@@ -11,7 +11,7 @@
 | --- | --- |
 | `welding_tool.bbmodel` | 可编辑 Blockbench 工程，内嵌 64×64 贴图，44 个立方体、5 个部件组（另有根组）、7 个 Display 槽位，无动画/骨骼 |
 | `welding_tool_3d.png` | 64×64 统一密度像素图集（交付副本） |
-| `assets/barotrauma/models/item/welding_tool_3d.json` | 干净的 1.20.1 物品模型，`parent` 为 `minecraft:item/handheld` |
+| `assets/barotrauma/models/item/welding_tool_3d.json` | 干净的 1.20.1 物品模型，**无 `parent`**（自带 `display` 槽位；不要挂 `item/handheld`） |
 | `assets/barotrauma/textures/item/welding_tool_3d.png` | 模型引用的运行时贴图 |
 | `preview_front.png`、`preview_back.png`、`preview_side.png`、`preview_top.png`、`preview_oblique.png` | 本体视图：正面、背面、侧面、顶面正交视图与斜视透视 |
 | `preview_display_thirdperson_righthand.png`、`preview_display_thirdperson_lefthand.png`、`preview_display_firstperson_righthand.png`、`preview_display_firstperson_lefthand.png`、`preview_display_gui.png`、`preview_display_ground.png`、`preview_display_fixed.png` | Display 槽位预览（干净背景，无 UI/网格）；左右手各一组 |
@@ -93,7 +93,7 @@ v3 修正了四个手持槽位的朝向。原数值沿用原版 `item/handheld`�
 - 左手槽位按 Minecraft `ItemTransform.apply` 的左手臂规则取镜像值（Y/Z 旋转与 X 平移取反），实际游戏中的有效姿态与右手一致。
 - 推导以 Blockbench 预览中的原版剑握持姿态为参照；预览复刻了游戏的手臂坐标系，但未做游戏内实机截图。
 - `fixed` 的 180° 与原版 `item/generated` 的继承值一致，保证 Blockbench 的 Fixed 预览与游戏一致；`head` 未覆盖，沿用父模型。
-- `.bbmodel` 工程本身未填写 Parent Model；导出的 Java JSON 已显式加入 `minecraft:item/handheld`。若从 Blockbench 重新导出，请把 Parent Model 设为 `minecraft:item/handheld`，或保留本交付 JSON 的 `parent` 字段。
+- `.bbmodel` 工程本身未填写 Parent Model，导出的 Java JSON 也**不要有 `parent`**。物品模型若挂在 `item/handheld` → `item/generated` → `builtin/generated` 链上，原版会把模型当生成型物品扁平化成 `layer0` 贴图，结果是 0 个面（游戏里物品完全空白）；手持/GUI 姿态全部由模型自带的 `display` 槽位提供。
 
 2026-11-10 定稿把第三人称两个槽位的 Z 旋转从 ±90° 收到 ±40°，平移从 `[0, 6.26, 5.75]` 收到 `[0, 5, 0.25]`：Blockbench 预览中握把落入拳心，枪身随手臂前倾，枪口朝前下方。第一人称、GUI、地面、固定槽位不变。
 
@@ -109,7 +109,7 @@ v3 修正了四个手持槽位的朝向。原数值沿用原版 `item/handheld`�
 - 当前 sha1：`welding_tool.bbmodel` `4941a67141c9995ef3a05d0d287bd4703ae05c79`，`welding_tool_3d.png` `ca94461dea9d6ea1f38886770c0be4e0935df981`，`welding_tool_3d.json` `acee0251ec3940a84daa965c958dcdf6fe3217c3`。
 - `audit_model.py`（`java-legacy`）：
   - `.bbmodel`：结构错误 0，依赖完整，无警告。
-  - Java 模型：结构错误 0；警告 `parent_unresolved`，仅因审计时资源根目录没有原版 `minecraft:item/handheld`，游戏内由原版资源提供。
+  - Java 模型：结构错误 0；模型无 `parent`（见上一条，刻意为之），不使用原版生成型物品链。
 - 未启动 Minecraft 客户端，因此没有游戏内实机渲染、第一/第三人称实测或 FPS 数据；Blockbench 预览不能替代实机确认。
 - 未做隐藏面剔除：44 个立方体均保留完整六面，共 264 面。这是保守交付，便于后续编辑；面数与材质批次已在上面单列，未用删面或压缩声明替代性能证据。
 
@@ -122,7 +122,7 @@ v3 修正了四个手持槽位的朝向。原数值沿用原版 `item/handheld`�
 - `src/main/resources/assets/barotrauma/models/item/welding_tool.json`
 - `src/main/resources/assets/barotrauma/textures/item/welding_tool.png`
 
-接入时可将 `assets/barotrauma/...` 下的模型与贴图复制进 Mod 资源，并把物品模型指向 `barotrauma:item/welding_tool_3d`。若希望直接替换旧模型，可在备份原文件后将 `welding_tool_3d.json` 改名为 `welding_tool.json`，并同步贴图文件名；两种方式都不需要改动物品注册代码。保留 `parent: minecraft:item/handheld` 即可沿用原版手持姿态。
+接入时可将 `assets/barotrauma/...` 下的模型与贴图复制进 Mod 资源，并把物品模型指向 `barotrauma:item/welding_tool_3d`。若希望直接替换旧模型，可在备份原文件后将 `welding_tool_3d.json` 改名为 `welding_tool.json`，并同步贴图文件名；两种方式都不需要改动物品注册代码。**不要加 `parent: minecraft:item/handheld`**——那会触发原版生成型模型扁平化（0 面）；手持姿态由模型自带的 `display` 槽位控制。
 
 模型是静态的，现有火花/烟雾粒子继续由 Mod 逻辑生成，不需要为模型添加动画。
 
