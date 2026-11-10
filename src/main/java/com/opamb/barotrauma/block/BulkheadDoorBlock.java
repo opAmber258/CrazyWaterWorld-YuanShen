@@ -74,6 +74,12 @@ public class BulkheadDoorBlock extends Block implements EntityBlock {
     private static final VoxelShape[][] PANEL_SHAPES = new VoxelShape[2][4];
     private static final VoxelShape[][] FRAME_SHAPES = new VoxelShape[2][4];
 
+    /**
+     * 门关着时的碰撞板：整格宽、全高、1px 厚（门板所在平面）。
+     * 比门板宽，是为了让 MC 的碰撞解算只沿门法线推人，不从侧边挤人。
+     */
+    private static final VoxelShape[] COLLISION_PLATES = new VoxelShape[4];
+
     static {
         for (Direction facing : Direction.Plane.HORIZONTAL) {
             int i = facing.get2DDataValue();
@@ -88,11 +94,16 @@ public class BulkheadDoorBlock extends Block implements EntityBlock {
             PANEL_SHAPES[Part.LOWER.ordinal()][i] =
                     DoorShapes.slab(facing, -6.0D, 6.0D, -0.5D, 0.5D, 0.0D, 16.0D);
             PANEL_SHAPES[Part.UPPER.ordinal()][i] = PANEL_SHAPES[Part.LOWER.ordinal()][i];
+            COLLISION_PLATES[i] = DoorShapes.slab(facing, -8.0D, 8.0D, -0.5D, 0.5D, 0.0D, 16.0D);
         }
     }
 
     private static VoxelShape panelShape(BlockState state) {
         return PANEL_SHAPES[state.getValue(PART).ordinal()][state.getValue(FACING).get2DDataValue()];
+    }
+
+    private static VoxelShape collisionPlate(BlockState state) {
+        return COLLISION_PLATES[state.getValue(FACING).get2DDataValue()];
     }
 
     /** 固定门框（左右立柱 + 本段的下槛或上槛），开门后只留它可点。 */
@@ -195,10 +206,9 @@ public class BulkheadDoorBlock extends Block implements EntityBlock {
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
                                         CollisionContext context) {
-        // 关着门按整格挡：门板居中（1px 厚）时，1x1x1 的薄板塞不下 0.6 宽的人，
-        // MC 的碰撞解算会把贴边的人往侧面挤（方块船用 MC 碰撞，所以只有方块船弹人）。
-        // 整格碰撞是唯一"居中 + 不挤人"的形状；代价是离门板还有半格就停下。
-        return state.getValue(OPEN) ? Shapes.empty() : Shapes.block();
+        // 整格宽、全高、1px 厚的碰撞板：宽度覆盖整格后，MC 解算只会沿门法线
+        // 把人推回去，不会从侧边挤人；门板仍居中，玩家能贴到门板前停下。
+        return state.getValue(OPEN) ? Shapes.empty() : collisionPlate(state);
     }
 
     @Override

@@ -130,6 +130,83 @@ public final class ModItems {
     public static final RegistryObject<Item> CTHULHU_TRIGGER = ITEMS.register("cthulhu_trigger",
             () -> new CthulhuTriggerItem(new Item.Properties().stacksTo(1)));
 
+
+    // ---- 潜渊症矿物（独立创造页签） ----
+
+    /** 矿物注册顺序即页签展示顺序；贴图取自游戏原版 Minerals / AlienMaterials 图集。 */
+    public static final java.util.List<RegistryObject<Item>> MINERAL_ITEMS = new java.util.ArrayList<>();
+
+    public static final RegistryObject<Item> AMBLYGONITE = mineral("amblygonite");
+    public static final RegistryObject<Item> ARAGONITE = mineral("aragonite");
+    public static final RegistryObject<Item> BORNITE = mineral("bornite");
+    public static final RegistryObject<Item> BROCKITE = mineral("brockite");
+    public static final RegistryObject<Item> CASSITERITE = mineral("cassiterite");
+    public static final RegistryObject<Item> CHALCOPYRITE = mineral("chalcopyrite");
+    public static final RegistryObject<Item> CHAMOSITE = mineral("chamosite");
+    public static final RegistryObject<Item> CHRYSOPRASE = mineral("chrysoprase");
+    public static final RegistryObject<Item> CRYOLITE = mineral("cryolite");
+    public static final RegistryObject<Item> DEMENTONITE = mineral("dementonite");
+    public static final RegistryObject<Item> DIAMOND = mineral("diamond");
+    public static final RegistryObject<Item> ESPERITE = mineral("esperite");
+    public static final RegistryObject<Item> FULGURIUM = mineral("fulgurium");
+    public static final RegistryObject<Item> GALENA = mineral("galena");
+    public static final RegistryObject<Item> GRAPHITE = mineral("graphite");
+    public static final RegistryObject<Item> HYDROXYAPATITE = mineral("hydroxyapatite");
+    public static final RegistryObject<Item> ILMENITE = mineral("ilmenite");
+    public static final RegistryObject<Item> INCENDIUM = mineral("incendium");
+    public static final RegistryObject<Item> IRON_ORE = mineral("ironore");
+    public static final RegistryObject<Item> LANGBEINITE = mineral("langbeinite");
+    public static final RegistryObject<Item> LAZULITE = mineral("lazulite");
+    public static final RegistryObject<Item> PARALYXIS = mineral("paralyxis");
+    public static final RegistryObject<Item> PHYSICORIUM = mineral("physicorium");
+    public static final RegistryObject<Item> POLYHALITE = mineral("polyhalite");
+    public static final RegistryObject<Item> PYROMORPHITE = mineral("pyromorphite");
+    public static final RegistryObject<Item> QUARTZ = mineral("quartz");
+    public static final RegistryObject<Item> SPHALERITE = mineral("sphalerite");
+    public static final RegistryObject<Item> STANNITE = mineral("stannite");
+    public static final RegistryObject<Item> SYLVITE = mineral("sylvite");
+    public static final RegistryObject<Item> THORIANITE = mineral("thorianite");
+    public static final RegistryObject<Item> TITANITE = mineral("titanite");
+    public static final RegistryObject<Item> TRIPHYLITE = mineral("triphylite");
+    public static final RegistryObject<Item> URANIUM_ORE = mineral("uraniumore");
+    public static final RegistryObject<Item> PIEZOCRYSTAL = mineral("piezocrystal");
+
+    // ---- 材料（同页签，铜/铁/铅等） ----
+
+    public static final RegistryObject<Item> CARBON = mineral("carbon");
+    public static final RegistryObject<Item> IRON = mineral("iron");
+    public static final RegistryObject<Item> TIN = mineral("tin");
+    public static final RegistryObject<Item> LEAD = mineral("lead");
+    public static final RegistryObject<Item> PHOSPHORUS = mineral("phosphorus");
+    public static final RegistryObject<Item> COPPER = mineral("copper");
+    public static final RegistryObject<Item> ZINC = mineral("zinc");
+    public static final RegistryObject<Item> SODIUM = mineral("sodium");
+    public static final RegistryObject<Item> SILICON = mineral("silicon");
+    public static final RegistryObject<Item> CALCIUM = mineral("calcium");
+    public static final RegistryObject<Item> ALUMINIUM = mineral("aluminium");
+    public static final RegistryObject<Item> URANIUM = mineral("uranium");
+    public static final RegistryObject<Item> POTASSIUM = mineral("potassium");
+    public static final RegistryObject<Item> TITANIUM = mineral("titanium");
+    public static final RegistryObject<Item> MAGNESIUM = mineral("magnesium");
+    public static final RegistryObject<Item> LITHIUM = mineral("lithium");
+    public static final RegistryObject<Item> CHLORINE = mineral("chlorine");
+    public static final RegistryObject<Item> THORIUM = mineral("thorium");
+    public static final RegistryObject<Item> STEEL = mineral("steel");
+    public static final RegistryObject<Item> TITANIUM_ALUMINIUM_ALLOY = mineral("titaniumaluminiumalloy");
+    public static final RegistryObject<Item> PLASTIC = mineral("plastic");
+    public static final RegistryObject<Item> BALLISTIC_FIBER = mineral("ballisticfiber");
+    public static final RegistryObject<Item> ORGANIC_FIBER = mineral("organicfiber");
+    public static final RegistryObject<Item> RUBBER = mineral("rubber");
+    public static final RegistryObject<Item> FLASH_POWDER = mineral("flashpowder");
+    public static final RegistryObject<Item> SCRAP = mineral("scrap");
+
+    /** 注册一个矿物物品：纯材料，默认堆叠 64。 */
+    private static RegistryObject<Item> mineral(String name) {
+        RegistryObject<Item> item = ITEMS.register(name, () -> new Item(new Item.Properties()));
+        MINERAL_ITEMS.add(item);
+        return item;
+    }
+
     private ModItems() {
     }
 

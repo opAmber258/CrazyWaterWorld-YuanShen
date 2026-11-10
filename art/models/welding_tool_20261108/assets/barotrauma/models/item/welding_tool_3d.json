@@ -1,5 +1,4 @@
 {
-  "parent": "minecraft:item/handheld",
   "textures": {
     "0": "barotrauma:item/welding_tool_3d",
     "particle": "barotrauma:item/welding_tool_3d"
