@@ -30,7 +30,7 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [debug-hull-damage.md](debug-hull-damage.md) | Diagnosing missing hull durability, damage bars, welding, or “block won’t break” |
 | [debug-ship-water.md](debug-ship-water.md) | Diagnosing dry ships, missing flooding, or missing water visuals |
 | [developer-tools.md](developer-tools.md) | Adding a creative-tab debug item, its screen, or a server-validated edit packet |
-| [parallel-sessions.md](parallel-sessions.md) | Multiple Agent sessions editing the repo at once: worktree isolation, directory occupancy ledger, commit boundaries, stale-baseline recovery |
+| [parallel-sessions.md](parallel-sessions.md) | Multiple worktrees active in one checkout, or a working tree containing files you did not create: worktree isolation, occupancy ledger, commit boundaries, stale-baseline recovery |
 | [publish.md](publish.md) | Publishing changes (走流程 / `/publish`): branch → PR → merge, with required MEX bookkeeping |
 | [run-tests.md](run-tests.md) | Building and running the L1/L2/L3 verification layers |
 | [vs2-physical-ship.md](vs2-physical-ship.md) | Launching, docking, controlling, or debugging a VS2 physical ship |

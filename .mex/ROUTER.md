@@ -25,9 +25,9 @@ edges:
   - target: patterns/developer-tools.md
     condition: when adding a creative-tab debug item, screen, or server-validated edit packet
   - target: patterns/parallel-sessions.md
-    condition: when another Agent session may be working in this repo, or before touching shared scaffold files
+    condition: when more than one worktree is active in this checkout, when the working tree holds files you did not create, or before touching shared scaffold files
   - target: relays/concurrent-work-ledger.md
-    condition: when claiming a directory/subsystem for the current session, or when `git status` shows files you did not create
+    condition: when claiming a directory/subsystem for your worktree, or when `git status` shows files you did not create
   - target: patterns/debug-ship-water.md
     condition: when a ship is dry, flooding incorrectly, or missing water visuals
   - target: patterns/debug-hull-damage.md
@@ -47,14 +47,14 @@ If you haven't already read `AGENTS.md`, read it now — it contains the project
 
 Then read this file fully before doing anything else in this session.
 
-## 并发会话提醒
+## 多工作区提醒
 
-本仓库可能同时有多个 Agent 会话在工作。开工前读 [`patterns/parallel-sessions.md`](patterns/parallel-sessions.md) 与 [`relays/concurrent-work-ledger.md`](relays/concurrent-work-ledger.md)：
+本仓库是多人协作项目，上游 `main` 由多位协作者并行推进，本机也可能同时存在多个 `git worktree`。开工前读 [`patterns/parallel-sessions.md`](patterns/parallel-sessions.md) 与 [`relays/concurrent-work-ledger.md`](relays/concurrent-work-ledger.md)：
 
-- 主工作区是全局单一实例，停在某个分支不代表工作区里只有该分支的内容。
-- 独立交付（美术、文档、约定）用**基于 `origin/main` 的独立 worktree**，不混进开发分支的工作区。
-- 改共享文件（`ROUTER.md`、`patterns/INDEX.md`、`context/*`、`docs/*`）前先 `git fetch`，只追加不整文件覆盖。
-- 提交只 `git add` 明确路径，不用 `git add -A`。
+- **分支 ≠ 工作区**：主工作区是仓库级单一实例，停在某个分支不代表工作区里只有该分支的内容。
+- **独立交付走独立 worktree**：美术、文档、约定这类与功能分支无关的产出，用基于 `origin/main` 的独立 worktree，不堆进开发分支的工作区。
+- **改共享文件前先 `git fetch`**：`ROUTER.md`、`patterns/INDEX.md`、`context/*`、`docs/*` 只追加自己的条目，不做整文件覆盖。
+- **提交只 `git add` 明确路径**，不用 `git add -A`；`git status` 里出现非自己产出的文件要停下确认。
 
 ## 合作者下次开工提醒：先读模块还原路线
 

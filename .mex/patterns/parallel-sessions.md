@@ -1,15 +1,14 @@
 ---
 name: parallel-sessions
-description: 多个 Agent 会话并发工作时的协作规范 — 工作区隔离、目录占用登记、提交边界、基线新鲜度。Load when another session may be editing the repo, when picking up work mid-stream, or before touching shared files.
+description: 多人协作仓库里同时使用多个工作区（worktree）时的规范 — 工作区卫生、worktree 占用登记、提交边界、基线新鲜度。Load when another worktree may be active in this checkout, when the working tree contains files you did not create, or before touching shared scaffold files.
 triggers:
-  - "并发"
-  - "另一个会话"
-  - "别的 agent"
   - "worktree"
   - "工作区脏"
+  - "并发"
   - "冲突"
-  - "handoff"
   - "交接"
+  - "handoff"
+  - "不是我的改动"
 edges:
   - target: patterns/publish.md
     condition: when the work is ready to commit or push
@@ -18,7 +17,7 @@ mex:
   id: mx_01M71WCP35T4RTQKT1W0KJF7YV
   type: pattern
   status: promoted
-  revision: 2
+  revision: 4
   title: parallel-sessions
   relations:
     - type: related_to
@@ -26,72 +25,84 @@ mex:
       note: when the work is ready to commit or push
 ---
 
-# 多会话并发协作
+# 多工作区协作
 
 ## Context
 
-本仓库常有多个 Agent 会话同时工作：一个在改代码，另一个在做美术资产，第三个在写文档。它们共享**同一个工作区目录**（除非显式建 worktree），因此会出现三类问题：
+本仓库是多人协作项目：上游 `main` 由多位协作者通过 PR 推进（截至 2026-11-10，分叉点之后的 117 个提交来自 4 位作者），本地也常常同时存在多个 `git worktree`。
 
-1. **工作区混放**：分支上只有导航代码，工作区里却堆着美术资产和文档，`git add -A` 会把无关内容提交进去。
-2. **基线落后**：会话 A 基于旧的工作区副本改文件，覆盖掉会话 B 刚推送的新内容（2026-11-10 就这么丢了 4 个 pattern 索引条目）。
-3. **互相踩脚**：两个会话同时改同一个文件，后者覆盖前者。
+这带来两类**互相独立**的问题，不要混为一谈：
 
-工作区是 Git 的单一实例，**分支 ≠ 工作区**。停在 `feat/xxx` 分支上，不代表工作区里只有该分支的内容。
+### 问题一：工作区卫生（单人也会犯）
 
-## 开工前
+Git 的工作区是**仓库级单一实例**。在一个 checkout 里：
 
-1. 读 [`.mex/relays/concurrent-work-ledger.md`](../relays/concurrent-work-ledger.md)，确认你要动的目录有没有被别人占用。
-2. `git status --short` 看当前工作区状态。**如果出现不是你产出的未提交文件，不要碰、不要提交**，在回复里点出来。
-3. 判断手上工作属于哪一类，走对应通道：
+- 停在某个分支上，不代表工作区里只有该分支的内容；
+- 未提交的文件不会因为切换分支而消失，也不「归属」某个分支；
+- 长期停在功能分支上（例如等上游稳定后再同步），期间做的其它工作会全部堆进这个工作区。
 
-| 工作类型 | 通道 | 说明 |
-| --- | --- | --- |
-| 代码功能（分支已在开发） | 当前分支 | 正常提交，注意只 `git add` 自己的文件 |
-| 独立交付（美术、文档、约定） | **独立 worktree**，基于 `origin/main` | 不与开发分支的工作区混放 |
-| 小修补丁 | 独立 worktree + 短分支 + PR | 同上 |
+后果：`git add -A` 会把美术资产、文档、其它子系统的改动一起提交进功能分支。
+
+**判据**：`git log <branch> --name-only` 显示该分支只碰过若干个源码文件，而 `git status` 里却有一大堆无关文件 —— 这就是工作区卫生问题，与并发无关。
+
+### 问题二：多 worktree 并行
+
+同一个仓库可以有多个 `git worktree`，各自检出不同分支、位于不同目录，**互不共享文件**，但**共享同一个 `.git` 目录和远端**。
+
+真实观测（2026-11-10）：主工作区之外另有一个 `welding_tool_main_push_20261110`（detached HEAD），正在准备推送另一个资产。
+
+这类并行本身是**推荐做法**，风险只在于两件事：
+
+- 两个 worktree 修改相同文件 → 后者覆盖前者；
+- 一个 worktree 基于过期的 `origin/main` 提交 → 覆盖掉别人已推送的内容。
+
+## 独立交付放独立 worktree
+
+与功能分支无关的产出（美术资产、文档、约定、一次性补丁）一律走独立 worktree：
+
+```bash
+git fetch origin
+git worktree add ../<task-name> -b <type>/<short-name> origin/main
+# 在 ../<task-name> 里工作、提交、推送
+git worktree remove ../<task-name>
+```
+
+好处：主工作区的未提交改动完全不受影响，你的改动也不会混进别人的提交。
 
 ## 动手前
 
-在占用台账里登记一行（占用者 / 目录 / 分支或工作区 / 开始时间 / 说明）。收工时删掉或标记完成。
+1. `git worktree list` —— 看清本机有几个工作区，各自检出什么。
+2. `git status --short` —— **如果出现不是你产出的未提交文件，不要碰、不要提交**，在回复里点出来。
+3. 读 [`.mex/relays/concurrent-work-ledger.md`](../relays/concurrent-work-ledger.md)，确认你要动的目录没被别的 worktree 占用。
+4. 在台账里登记自己这次要占用的目录。
 
 ## 修改共享文件时
 
 `.mex/ROUTER.md`、`.mex/patterns/INDEX.md`、`.mex/context/*`、`docs/*`、根 `AGENTS.md` 属于共享结构，规则更严：
 
-1. **先 `git fetch origin`**，确认基线。
-2. **在基于 `origin/main` 的 worktree 里改**，不要拿本地工作区的副本当基准 —— 本地可能就是三天的旧版。
-3. **只追加自己的条目**，不要整文件替换。整文件覆盖是丢内容的头号原因。
-4. 改完跑 `mex check`（本机已装 CLI）确认没有 MISSING_PATH / KNOWLEDGE_NOT_ADOPTED。
-
-## 建 worktree 的推荐做法
-
-```bash
-# 从最新远端基线拉一个独立目录，不动主工作区
-git fetch origin
-git worktree add ../<task-name> -b <type>/<short-name> origin/main
-# 在那里做完、提交、推送、开 PR
-git worktree remove ../<task-name>
-```
-
-好处：主工作区里别人的未提交改动完全不受影响，你的改动也不会混进别人的提交。
+1. **先 `git fetch origin`**，确认基线是新的。
+2. **在基于 `origin/main` 的 worktree 里改**，不要拿本地工作区的副本当基准 —— 本地可能就是隔了几天的旧版。
+3. **只追加自己的条目，不要整文件替换。** 整文件覆盖是丢内容的头号原因。
+4. 改完跑 `mex check`，确认没有 `MISSING_PATH` / `KNOWLEDGE_NOT_ADOPTED` / `DEAD_EDGE`。
 
 ## 提交边界
 
 - **只 `git add` 明确列出的路径**，不要 `git add -A` / `git add .`。
-- 提交前再跑一次 `git diff --cached --name-only`，确认列表里每一项都是自己的产出。
-- 发现自己的改动里混入了别人的文件 → 停下，`git reset <file>` 移除，不要直接提交。
+- 提交前 `git diff --cached --name-only` 复核，每一项都应是自己的产出。
+- 发现混入别人的文件 → `git reset <file>` 移除，不要直接提交。
 
 ## 收工
 
-- 台账里自己的行：删除或标记完成。
-- 主工作区恢复到「只剩别人的东西」的状态。
-- 如果有跨会话必须交接的结论，用 MEX relay（`/skill mex-relay`）写持久交接，而不是只在对话里说 —— 对话不会传给下一个会话。
+- 台账里自己的行删掉或标记完成。
+- `git worktree remove` 清理临时工作区。
+- 有跨会话/跨协作者的结论要传递，用 MEX relay（`/skill mex-relay`）写持久记录 —— 对话不会传给下一个人。
 
 ## 已知坑
 
 | 现象 | 原因 | 处理 |
 | --- | --- | --- |
-| 提交里出现别人的美术资产 | 用了 `git add -A` | `git reset` 掉，改成精确路径 |
+| 功能分支的提交里出现美术资产 | 用了 `git add -A` | `git reset` 掉，改成精确路径 |
 | 改共享文档后别人的条目消失 | 拿本地旧副本整文件覆盖 | 从 `origin/main` 重新取基准，只追加 |
-| `mex check` 大量 MISSING_PATH | 本地工作区落后，缺新文件 | 在基于 `origin/main` 的 worktree 里检查 |
-| 分支 ahead/behind 数字很大但工作区没动过 | 长期停在旧分支，远端持续推进 | 属正常，计划性落后不算故障；重点是别让工作区内容误入该分支 |
+| `mex check` 大量 MISSING_PATH | 本地工作区落后，缺上游新文件 | 在基于 `origin/main` 的 worktree 里检查 |
+| 分支 ahead/behind 数字很大但工作区没动过 | 长期停在旧分支，上游持续推进 | 计划性落后不算故障；重点是别让工作区内容误入该分支 |
+| 台账里的占用早已失效 | 对方 worktree 已清理但没更新台账 | 备注「疑似过期」，不直接删别人的行 |
