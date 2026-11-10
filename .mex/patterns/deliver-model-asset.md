@@ -17,6 +17,19 @@ edges:
   - target: patterns/run-tests.md
     condition: when the asset needs integration verification beyond art review
 last_updated: 2026-11-10
+mex:
+  id: mx_01M71QR5WFYRJP79BPJRV1HS3F
+  type: pattern
+  status: promoted
+  revision: 3
+  title: deliver-model-asset
+  relations:
+    - type: related_to
+      target: mx_01M6FTBTB77P4PT8TV3HT78NGZ
+      note: when the asset must be wired into Java resources or registered blocks/items
+    - type: related_to
+      target: mx_01M6FTV7PNBD1ZG84B1K5GCG1N
+      note: when the asset needs integration verification beyond art review
 ---
 
 # Deliver a Model Asset
@@ -33,11 +46,19 @@ last_updated: 2026-11-10
 
 ### 1. 定名（不可跳过）
 
-1. 在 `Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml` 查 `<entityname.标识>`，拿到中文官方译名与英文官方名。
+1. 在游戏安装目录下的本地化文件里查 `<entityname.标识>` 条目（简中文件 `SimplifiedChineseVanilla.xml`，位于 `Content/Texts/SimplifiedChinese/`），拿到中文官方译名与英文官方名。该路径在游戏安装目录而非本仓库。
 2. 资产名 = 中文译名 + 英文驼峰，例如 `核反应堆 NuclearReactor`；mod 标识用小写下划线。
 3. 查不到条目 → 是项目定名，必须在讨论条目里注明"非原版实体"。
 
 **判定点**：译名有出处才能继续。凭印象命名是本流程最常见的返工原因。
+
+### 1b. 标注制作来源
+
+- 人工制作 → `制作来源：人工`
+- AI 制作 → `制作来源：AI`，README 首屏写明所用模型与工具，Discussion 候选行首加 `🤖`，PR 描述注明 AI 参与范围
+- 人机协作 → 说明分工
+
+**判定点**：AI 资产不得省略标注；标注不降低评审强度。
 
 ### 2. 建模
 
