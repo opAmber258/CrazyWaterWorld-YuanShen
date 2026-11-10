@@ -1,0 +1,47 @@
+{
+  "path": "F:\\BarotraumaMinecraft\\CrazyWaterWorld-YuanShen\\art\\models\\welding_tool_20261108\\assets\\barotrauma\\models\\item\\welding_tool_3d.json",
+  "profile": "java-legacy",
+  "kind": "java-model",
+  "structural_errors_absent": true,
+  "dependencies_complete": false,
+  "counts": {
+    "elements": 44,
+    "plane_elements": 0,
+    "inverted_elements": 0,
+    "rotated_elements": 2,
+    "declared_export_faces": 264
+  },
+  "textures": {
+    "barotrauma:item/welding_tool_3d": {
+      "size": [
+        64,
+        64
+      ],
+      "pixels": 4096,
+      "rgba_base_bytes": 16384,
+      "transparent_pixels": 0,
+      "partial_alpha_pixels": 0,
+      "frame_size": [
+        64,
+        64
+      ],
+      "frame_count": 1,
+      "animation_metadata_checked": false
+    }
+  },
+  "texture_pixels": 4096,
+  "errors": [],
+  "warnings": [
+    {
+      "code": "parent_unresolved",
+      "where": "F:\\BarotraumaMinecraft\\CrazyWaterWorld-YuanShen\\art\\models\\welding_tool_20261108\\assets\\barotrauma\\models\\item\\welding_tool_3d.json",
+      "detail": "minecraft:item/handheld"
+    }
+  ],
+  "limitations": [
+    "No Minecraft client render or FPS measurement",
+    "No full schema validation or arbitrary overlap/hidden-face proof",
+    "No custom animation expansion, bone transform baking or outline pairing verification",
+    "Pack version, item definitions and display contexts require separate checks"
+  ]
+}
