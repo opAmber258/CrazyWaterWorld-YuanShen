@@ -1,6 +1,6 @@
 # 潜渊症焊接工具 · Minecraft 物品模型交付
 
-- 日期：2026-11-10（v4 统一像素密度重绘定稿）
+- 日期：2026-11-10（v4 统一像素密度重绘定稿；同日重出交付预览）
 - 目标：Minecraft Java Edition 1.20.1（Forge 47.x）
 - 制作：Blockbench 5.2.2，Java Block/Item 格式
 - 范围：仅美术资产。未修改 Mod 的 `src/main/resources`，未启动 Minecraft 客户端。
@@ -13,9 +13,23 @@
 | `welding_tool_3d.png` | 64×64 统一密度像素图集（交付副本） |
 | `assets/barotrauma/models/item/welding_tool_3d.json` | 干净的 1.20.1 物品模型，`parent` 为 `minecraft:item/handheld` |
 | `assets/barotrauma/textures/item/welding_tool_3d.png` | 模型引用的运行时贴图 |
-| `preview_hero_south.png`、`preview_north.png`、`preview_east.png`、`preview_top.png`、`preview_oblique.png` | 终版工程的南/北/东/顶/斜视预览 |
-| `preview_display_gui.png`、`preview_display_thirdperson.png`、`preview_display_firstperson.png`、`preview_display_thirdperson_left.png`、`preview_display_firstperson_left.png`、`preview_display_ground.png`、`preview_display_fixed.png` | Display 槽位预览（含 Blockbench 中的参数面板）；左右手各一组 |
+| `preview_front.png`、`preview_back.png`、`preview_side.png`、`preview_top.png`、`preview_oblique.png` | 本体视图：正面、背面、侧面、顶面正交视图与斜视透视 |
+| `preview_display_thirdperson_righthand.png`、`preview_display_thirdperson_lefthand.png`、`preview_display_firstperson_righthand.png`、`preview_display_firstperson_lefthand.png`、`preview_display_gui.png`、`preview_display_ground.png`、`preview_display_fixed.png` | Display 槽位预览（干净背景，无 UI/网格）；左右手各一组 |
+| `reference/` | 原作裁切、预览复现脚本与说明 |
 | `audit_bbmodel.json`、`audit_model.json` | 结构审计报告 |
+
+## 预览规格
+
+12 张预览全部为 1200×900 RGBA、纯色底 `#202731`、无网格、无 Blockbench UI。本体视图在隔离的 Blockbench 5.2.2 实例中重出（2026-11-10），资产本身未改动：
+
+- `preview_front.png`：沿 +Z 的正交视图，枪口朝右，展示机身主轮廓、压力表与标签面。
+- `preview_back.png`：沿 −Z 的正交视图，枪口朝左，展示另一侧轮廓。
+- `preview_side.png`：沿 +X 的正交视图，从枪口端看，检查喷口同心度与截面。
+- `preview_top.png`：沿 +Y 的正交视图。
+- `preview_oblique.png`：透视 fov 38 的 3/4 视图。
+- Display 预览：按槽位加载 `DisplayMode` 后单独取景；第三人称包含玩家以核对握持，地面包含屏障方块，第一人称、GUI、固定槽位只取物品。GUI 与固定槽位使用 Blockbench Display 的 3/4 相机，是槽位姿态检查，不是游戏内 GUI/物品展示框的实机画面。
+
+预览规格按 `art/models/BAROTRAUMA_PROP_MODELING_GUIDE_V2.md` §10.5（至少正面、侧面、斜侧、背面；统一画幅）执行。`docs/ASSET_DELIVERY_CONVENTION.md` §3.1 的 1200×900 正交/受光四件套针对 Bedrock `.geo.json` 资产，其适用范围明确排除了 Java 模型；本资产是 Java 1.20.1 物品模型，不交付 `.geo.json`，因此不套用该项的受光比例与 `.geo.json` 要求。预览脚本与复现条件见 `reference/README.md`。
 
 ## 设计与保留特征
 
@@ -91,7 +105,7 @@ v3 修正了四个手持槽位的朝向。原数值沿用原版 `item/handheld`�
 - 工程与 Java 导出逐立方体核对：`from`/`to`、旋转与逐面 UV 一致，0 处不匹配；264 面全部满足 `像素 = max(1, round(尺寸 × 2))`。
 - 图集布局核对：77 个岛均在 0–64 内、相互无重叠；894 个有效像素，覆盖率 21.8%；59 个岛被多个面共用。
 - `.bbmodel` 内嵌贴图与 `welding_tool_3d.png` 为同一份 PNG 字节（base64 直接内嵌，无重编码），2586 字节完全一致。
-- 定稿已在隔离 Blockbench 重新截取 5 个本体视图和全部 7 个 Display 槽位；第三人称左右手按新数值复核，握把落在拳心、枪口朝前下方；第一人称、GUI、地面、固定槽位沿用 v3 的朝向结论。
+- 定稿已在隔离 Blockbench 重出 5 个本体视图和 7 个 Display 槽位预览：均为 1200×900、纯色底、无网格/UI；第三人称左右手按新数值复核，握把落在拳心、枪口朝前下方；第一人称、GUI、地面、固定槽位沿用 v3 的朝向结论。旧预览（1142×898 透视视图与含参数面板的整页截图）已归档到 `art/models/.work/welding_tool/baseline_v4_delivery_20261110/previews_legacy_20261110/`。
 - 当前 sha1：`welding_tool.bbmodel` `4941a67141c9995ef3a05d0d287bd4703ae05c79`，`welding_tool_3d.png` `ca94461dea9d6ea1f38886770c0be4e0935df981`，`welding_tool_3d.json` `acee0251ec3940a84daa965c958dcdf6fe3217c3`。
 - `audit_model.py`（`java-legacy`）：
   - `.bbmodel`：结构错误 0，依赖完整，无警告。
@@ -120,5 +134,6 @@ v3 修正了四个手持槽位的朝向。原数值沿用原版 `item/handheld`�
 - `uniform_atlas.py`：统一密度 UV 布局（`DENSITY=2.0`、77 个岛、货架式排布）。
 - `make_welding_texture.py`：按布局逐面重绘图集并应用 `TOUCHUPS` 像素修正，输出 `welding_tool_atlas.png` 与 8× 预览（与交付 PNG 逐像素一致，仅编码字节不同）。
 - `make_bbmodel.py`、`export_java.py`：生成工程与 Java 模型；`export_java.py` 在存在 `candidate/welding_tool_3d.png` 时优先用它作为运行时与交付贴图；`load_bbmodel.js`、`capture_view.js` 及 `cdp_*.js` 为隔离 Blockbench 的载入与截图辅助脚本。
+- `reference/load_bbmodel.js`、`reference/render_clean_views.js`、`reference/render_display_framed.js`：交付预览的载入与重出脚本，需 Blockbench 5.2.2 的 CDP 调试端口；固定参数、取景方式和版本敏感限制见 `reference/README.md`。
 
 这些文件不属于运行时资源。v3 交付完整留档在 `art/models/.work/welding_tool/baseline_v3_delivery/`，v4 初始交付与最终贴图留档在 `art/models/.work/welding_tool/baseline_v4_delivery_20261110/`；交付的 Java 模型已去除工程私有字段，并完成上述一致性核对。
