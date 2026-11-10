@@ -17,11 +17,17 @@ edges:
   - target: patterns/add-ship-block.md
     condition: when adding a new submarine hull block
   - target: patterns/blockbench-modeling.md
-    condition: when building a block model in Blockbench or fixing UV / item-icon issues
+    condition: when building a `java_block`-format model in Blockbench, or debugging an existing Java block model (purple-black textures, UV out of 0–16, item icon showing a block projection)
+  - target: patterns/deliver-model-asset.md
+    condition: when delivering a Bedrock-format asset that ships a .geo.json (prop / item / creature / GeckoLib block)
   - target: patterns/cthulhu-post-processing.md
     condition: when adding or tuning a Cthulhu-gaze visual preset or its shader
   - target: patterns/developer-tools.md
     condition: when adding a creative-tab debug item, screen, or server-validated edit packet
+  - target: patterns/parallel-sessions.md
+    condition: when another Agent session may be working in this repo, or before touching shared scaffold files
+  - target: relays/concurrent-work-ledger.md
+    condition: when claiming a directory/subsystem for the current session, or when `git status` shows files you did not create
   - target: patterns/debug-ship-water.md
     condition: when a ship is dry, flooding incorrectly, or missing water visuals
   - target: patterns/debug-hull-damage.md
@@ -32,7 +38,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-09
+last_updated: 2026-11-10
 ---
 
 # Session Bootstrap
@@ -40,6 +46,15 @@ last_updated: 2026-11-09
 If you haven't already read `AGENTS.md`, read it now — it contains the project identity, non-negotiables, and commands.
 
 Then read this file fully before doing anything else in this session.
+
+## 并发会话提醒
+
+本仓库可能同时有多个 Agent 会话在工作。开工前读 [`patterns/parallel-sessions.md`](patterns/parallel-sessions.md) 与 [`relays/concurrent-work-ledger.md`](relays/concurrent-work-ledger.md)：
+
+- 主工作区是全局单一实例，停在某个分支不代表工作区里只有该分支的内容。
+- 独立交付（美术、文档、约定）用**基于 `origin/main` 的独立 worktree**，不混进开发分支的工作区。
+- 改共享文件（`ROUTER.md`、`patterns/INDEX.md`、`context/*`、`docs/*`）前先 `git fetch`，只追加不整文件覆盖。
+- 提交只 `git add` 明确路径，不用 `git add -A`。
 
 ## 合作者下次开工提醒：先读模块还原路线
 
