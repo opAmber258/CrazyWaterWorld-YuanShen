@@ -24,10 +24,11 @@ Lookup table for all pattern files in this directory. Check here before starting
 | Pattern | Use when |
 |---------|----------|
 | [add-ship-block.md](add-ship-block.md) | Adding a new submarine hull block, including registration, resources, and `isShipBlock` coverage |
-| [blockbench-modeling.md](blockbench-modeling.md) | Building a Java block model in Blockbench (UV normalization, textures, item icon) |
+| [blockbench-modeling.md](blockbench-modeling.md) | Building a `java_block`-format Java block model in Blockbench, or debugging one (purple-black textures, UV out of 0–16, item icon rendering as a block projection) — not for Bedrock geo.json assets |
 | [cthulhu-post-processing.md](cthulhu-post-processing.md) | Adding or tuning a Cthulhu-gaze visual preset, its shader mode, effect icon, or fade behavior |
 | [debug-hull-damage.md](debug-hull-damage.md) | Diagnosing missing hull durability, damage bars, welding, or “block won’t break” |
 | [debug-ship-water.md](debug-ship-water.md) | Diagnosing dry ships, missing flooding, or missing water visuals |
+| [deliver-model-asset.md](deliver-model-asset.md) | Delivering a Bedrock-format model asset that ships a geo.json (prop / item / creature / GeckoLib block) — Java `java_block` models use blockbench-modeling.md |
 | [developer-tools.md](developer-tools.md) | Adding a creative-tab debug item, its screen, or a server-validated edit packet |
 | [publish.md](publish.md) | Publishing changes (走流程 / `/publish`): branch → PR → merge, with required MEX bookkeeping |
 | [run-tests.md](run-tests.md) | Building and running the L1/L2/L3 verification layers |
