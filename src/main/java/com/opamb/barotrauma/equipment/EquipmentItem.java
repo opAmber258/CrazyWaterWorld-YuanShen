@@ -13,36 +13,27 @@ import java.util.List;
 /**
  * 可装备到自定义装备槽的物品。
  *
- * <p>护甲点数由本类携带，{@link EquipmentEffects} 在 {@code LivingHurtEvent}
- * 里统一结算；不依赖原版 {@code ArmorItem} 的四个护甲槽逻辑。</p>
+ * <p>不提供"护甲点数"：原作护甲是 {@link ArmorModifiers} 里的按病症伤害倍率，
+ * 由 {@code MedicalEvents} 在把伤害换算成病症时统一结算。</p>
  */
 public class EquipmentItem extends Item {
 
     private final EquipmentSlotType slotType;
-    private final int armorPoints;
 
-    public EquipmentItem(Properties properties, EquipmentSlotType slotType, int armorPoints) {
+    public EquipmentItem(Properties properties, EquipmentSlotType slotType) {
         super(properties);
         this.slotType = slotType;
-        this.armorPoints = armorPoints;
     }
 
     public EquipmentSlotType slotType() {
         return this.slotType;
     }
 
-    public int armorPoints() {
-        return this.armorPoints;
-    }
-
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.barotrauma.equipment.slot",
                 Component.translatable(this.slotType.slotNameKey())).withStyle(ChatFormatting.GRAY));
-        if (this.armorPoints > 0) {
-            tooltip.add(Component.translatable("tooltip.barotrauma.equipment.armor", this.armorPoints)
-                    .withStyle(ChatFormatting.BLUE));
-        }
+        ArmorModifiers.appendTooltip(tooltip, this.slotType);
         super.appendHoverText(stack, level, tooltip, flag);
     }
 }

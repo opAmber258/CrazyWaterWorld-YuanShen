@@ -113,6 +113,8 @@ public record MedicalTreatPacket(UUID target, String limb, String itemId, boolea
             } else {
                 stack.shrink(1);
             }
+            // 药品可能在装备背包里：直接改的是背包容器里的物品堆，写回物品 NBT。
+            com.opamb.barotrauma.equipment.BagManager.commit(user);
             targetPlayer.displayClientMessage(Component.literal(
                     (targetPlayer == user ? "使用了 " : user.getName().getString() + " 为你使用了 ")
                             + spec.displayName()
@@ -133,6 +135,14 @@ public record MedicalTreatPacket(UUID target, String limb, String itemId, boolea
         var inventory = user.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
+            if (!stack.isEmpty() && isItem(stack, itemId)) {
+                return stack;
+            }
+        }
+        // 装备背包（工具带/背包）里的药品也允许使用。
+        var bag = com.opamb.barotrauma.equipment.BagManager.container(user);
+        for (int i = 0; i < bag.capacity(); i++) {
+            ItemStack stack = bag.getItem(i);
             if (!stack.isEmpty() && isItem(stack, itemId)) {
                 return stack;
             }

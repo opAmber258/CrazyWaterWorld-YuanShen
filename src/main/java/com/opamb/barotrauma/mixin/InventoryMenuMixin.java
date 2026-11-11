@@ -1,5 +1,7 @@
 package com.opamb.barotrauma.mixin;
 
+import com.opamb.barotrauma.equipment.BagManager;
+import com.opamb.barotrauma.equipment.BagSlots;
 import com.opamb.barotrauma.equipment.EquipmentData;
 import com.opamb.barotrauma.equipment.EquipmentInventory;
 import com.opamb.barotrauma.equipment.EquipmentSlot;
@@ -18,17 +20,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 把原版玩家背包菜单改造成潜渊症装备栏：
+ * 把原版玩家背包菜单改造成潜渊症装备栏 + 装备背包：
  *
  * <ul>
  *   <li>5..8（原四个护甲槽）→ ID 卡、耳机、头盔、身体护甲；</li>
- *   <li>45（原副手槽）→ 腰带/背包；</li>
- *   <li>追加 46/47 → 潜水服、氧气瓶。</li>
+ *   <li>45（原副手槽）→ 腰带/背包；46 → 潜水服（内部子格放氧气瓶）；</li>
+ *   <li>9..20 → 装备背包提供的格子（工具带 6 / 背包 12，没装备时全部隐藏）；</li>
+ *   <li>21..35 → 禁用占位（保留下标，避免 36..46 整体错位）。</li>
  * </ul>
  *
- * <p>槽对象直接换成 {@link EquipmentSlot}，菜单下标不变，原版 0..44 的
- * 合成/背包/快捷栏逻辑不用改。快速移动（Shift 点击）由本 mixin 接管，
- * 先尝试放入匹配的装备槽，再走原版的背包↔快捷栏搬运。</p>
+ * <p>菜单下标不变，原版 0..4 合成、36..44 热键栏逻辑不用改。快速移动由本 mixin
+ * 接管：目标只可能是装备槽、装备背包、热键栏，绝不会进 21..35。</p>
  */
 @Mixin(InventoryMenu.class)
 public abstract class InventoryMenuMixin {
@@ -51,6 +53,8 @@ public abstract class InventoryMenuMixin {
                 accessor.barotrauma$addSlot(slot);
             }
         }
+        // 原版 27 格主背包 → 装备背包 + 禁用占位。
+        BagSlots.install(menu, owner);
     }
 
     @Inject(method = "quickMoveStack", at = @At("HEAD"), cancellable = true)
@@ -75,49 +79,61 @@ public abstract class InventoryMenuMixin {
         ItemStack stack = slot.getItem();
         ItemStack original = stack.copy();
         AbstractContainerMenuAccessor accessor = (AbstractContainerMenuAccessor) (Object) this;
-        boolean movedAny = false;
 
+        int bagCapacity = BagManager.capacity(player);
+        int bagStart = BagSlots.START;
+        int bagEnd = bagStart + bagCapacity;
+        int hotbarStart = 36;
+        int hotbarEnd = 45;
+
+        boolean movedAny;
         if (index == 0) {
-            // 合成结果：和原版一样进背包，并触发 onQuickCraft。
-            movedAny = accessor.barotrauma$moveItemStackTo(stack, 9, 45, true);
+            // 合成结果：背包 → 热键栏，并触发 onQuickCraft。
+            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false)
+                    || accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
             if (!movedAny) {
                 return ItemStack.EMPTY;
             }
             slot.onQuickCraft(stack, original);
         } else if (index < 5) {
             // 2×2 合成输入。
-            movedAny = accessor.barotrauma$moveItemStackTo(stack, 9, 45, false);
+            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false)
+                    || accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
             if (!movedAny) {
                 return ItemStack.EMPTY;
             }
         } else if (EquipmentSlotType.byMenuIndex(index) != null) {
-            // 从装备槽拿出：只进背包/快捷栏。
-            movedAny = accessor.barotrauma$moveItemStackTo(stack, 9, 45, false);
+            // 从装备槽拿出：只进背包/热键栏。
+            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false)
+                    || accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
+            if (!movedAny) {
+                return ItemStack.EMPTY;
+            }
+        } else if (index >= bagStart && index < bagEnd) {
+            // 背包 → 装备槽，再进热键栏。
+            int target = EquipmentSlots.findMatchingEmptySlotMenuIndex(menu.slots, stack);
+            movedAny = target >= 0
+                    && accessor.barotrauma$moveItemStackTo(stack, target, target + 1, false);
+            if (!stack.isEmpty()) {
+                movedAny |= accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
+            }
+            if (!movedAny) {
+                return ItemStack.EMPTY;
+            }
+        } else if (index >= hotbarStart && index < hotbarEnd) {
+            // 热键栏 → 装备槽，再进装备背包。
+            int target = EquipmentSlots.findMatchingEmptySlotMenuIndex(menu.slots, stack);
+            movedAny = target >= 0
+                    && accessor.barotrauma$moveItemStackTo(stack, target, target + 1, false);
+            if (!stack.isEmpty()) {
+                movedAny |= accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false);
+            }
             if (!movedAny) {
                 return ItemStack.EMPTY;
             }
         } else {
-            // 背包/快捷栏 → 先试装备槽，再走原版搬运。
-            int target = EquipmentSlots.findMatchingEmptySlotMenuIndex(menu.slots, stack);
-            if (target >= 0) {
-                movedAny = accessor.barotrauma$moveItemStackTo(stack, target, target + 1, false);
-            }
-            if (!stack.isEmpty()) {
-                boolean intoHotbar = index >= 9 && index < 36;
-                boolean intoMain = index >= 36 && index < 45;
-                boolean moved;
-                if (intoHotbar) {
-                    moved = accessor.barotrauma$moveItemStackTo(stack, 36, 45, false);
-                } else if (intoMain) {
-                    moved = accessor.barotrauma$moveItemStackTo(stack, 9, 36, false);
-                } else {
-                    moved = accessor.barotrauma$moveItemStackTo(stack, 9, 45, false);
-                }
-                movedAny |= moved;
-            }
-            if (!movedAny) {
-                return ItemStack.EMPTY;
-            }
+            // 21..35 禁用格：不处理。
+            return ItemStack.EMPTY;
         }
 
         if (stack.isEmpty()) {

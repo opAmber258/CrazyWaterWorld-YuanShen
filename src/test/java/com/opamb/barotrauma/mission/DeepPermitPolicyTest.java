@@ -33,9 +33,11 @@ class DeepPermitPolicyTest {
     }
 
     @Test
-    void 潜水服把出舱安全深度提升到400m() {
+    void 潜水服按原作把出舱安全深度提升到4000m() {
         assertEquals(300, ShipPressure.PLAYER_SAFE_DEPTH);
-        assertEquals(400, ShipPressure.DIVING_SUIT_SAFE_DEPTH);
+        // 原作 Content/Items/Diving/divinggear.xml 的 PressureProtection=4000；
+        // 寒冷深穴约 1000–2300m，常规潜水服全覆盖。
+        assertEquals(4000, ShipPressure.DIVING_SUIT_SAFE_DEPTH);
         assertTrue(ShipPressure.DIVING_SUIT_SAFE_DEPTH > ShipPressure.PLAYER_SAFE_DEPTH);
     }
 }

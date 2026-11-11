@@ -25,7 +25,6 @@ public final class EquipmentSlots {
             case BODY_ARMOR -> stack.is(EquipmentTags.BODY_ARMOR);
             case BAG -> stack.is(EquipmentTags.BAG);
             case DIVING_SUIT -> stack.is(EquipmentTags.DIVING_SUIT);
-            case OXYGEN_TANK -> stack.is(EquipmentTags.OXYGEN_TANK);
         };
     }
 

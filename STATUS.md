@@ -3,11 +3,50 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-10（寒冷深穴任务目录 + 任务界面迁到导航终端，见下方最新一节；医疗/对接舱仍待实机验收）。
+> 上次更新：2026-11-11（护甲改原作病症倍率 + 柜子物理船修复，见下方最新一节；医疗/对接舱仍待实机验收）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
 > ⚠️ 2026-11-04 那条"按 Shift 不沉 = 人站在舱底，非代码问题"的定性**是错的**，
 > 已在 §10.57.1 纠正：是原版潜行边缘保护在 VS2 船上把水平位移清零。
+
+## 2026-11-11 护甲改原作倍率模型 + 柜子物理船修复（未提交）
+
+> **交接摘要：新会话从这一节开始读。** 改动都在工作区、未提交、未推送。
+
+### 1. 护甲：删掉原版护甲值（原作没有）
+
+- 查证本机 Barotrauma 1.13.5：`armorvalue="20.0"` 在代码中**没有任何读取方**；真正生效的是
+  `Wearable` 的 `<damagemodifier>`（按病症 `damagemultiplier`，个别 `probabilitymultiplier`）。
+- 潜水服：blunttrauma/bleeding ×0.9、burn ×0.75、radiationsickness ×0.75（唯一的概率项
+  huskinfection ×0.5 本模组没有）；防弹头盔：钝器 ×0.3、出血 ×0.1；防弹衣：钝器 ×0.3、
+  出血 ×0.2、烧伤 ×0.9。多件连乘（头盔+防弹衣钝器 = 0.09）。
+- 代码：新增 `equipment/ArmorModifierTable`（纯 Java，单测锁数值）+ `ArmorModifiers`
+  （读槽位 / 写 tooltip）；`MedicalEvents` 在伤害换算成病症后按倍率缩放（压力/环境伤害不吃）；
+  删除 `EquipmentItem.armorPoints`、`EquipmentData.armorPoints`、`EquipmentEffects.onLivingHurt`。
+- `DivingSuitItem` 不再是 `ArmorItem`（无原版护甲、无 400 耐久）；`ModItems.DIVING_SUIT`
+  改为 `stacksTo(1).fireResistant()`；旧存档胸甲槽兼容仍由 `ShipPressure` 双读 + 登录迁移。
+- 语言：删除 `tooltip.barotrauma.equipment.armor`，新增 `tooltip.barotrauma.equipment.resist`
+  与 `affliction.barotrauma.*` 名称键（zh/en + `docs/equipment_lang_keys.json` 同步）。
+- 行为变化：旧存档穿在原版护甲槽的**原版盔甲**（铁甲等）登录时会被迁到背包/脚下（不消失）。
+
+### 2. 柜子（容器）
+
+- **物理船（VS2 装配）上菜单会被秒关**：`CabinetMenu.stillValid` 原来算世界坐标距离，
+  而交互坐标在船坞里差上万格。新增 `ship/vs/VsDistance`（VS2 船感知距离，没装 VS2 自动退回），
+  stillValid 改用它；服务端同时要求方块实体还在（拆掉后不能再往鬼容器里塞东西）。
+- 打开界面时把容器种类写进网络包（`CabinetBlock.use` + `CabinetMenu` buf 构造器 +
+  `ModMenus` 工厂），客户端不再自己猜种类，避免槽位错位。
+- 组合柜 Shift 点击氧气瓶进不了下方 3 格：去掉 `slots.get(0).mayPlace` 门槛，
+  `moveItemStackTo` 自己按槽位过滤。
+- `CabinetBlock.Kind` 增加 `cells > MAX_PART + 1` 的启动断言（组合柜刚好 4 格用满）；
+  修正 `playerWillDestroy` 的过时掉落表注释。
+
+### 3. 验证 / 未做
+
+- `./gradlew compileJava` / `test` 通过：**207 项测试 0 失败**（新增 `ArmorModifierTableTest` 4 项）。
+- 未做：`oxygen_tank_shelf` / `diving_suit_station` 仍缺模型（blockstate/掉落表已有）；
+  漏斗可往 3 个"移动容器格"塞 64 个（Container 无按槽上限，需实现 per-slot `IItemHandler`）；
+  潜水服与原作一样不能和防弹衣同穿，但我们的槽位没做互斥（可叠乘 0.9×0.3）。
 
 ## 2026-11-10 晚 六个容器模型全部删除（新会话重做）
 

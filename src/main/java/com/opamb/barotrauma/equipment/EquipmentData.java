@@ -70,21 +70,6 @@ public final class EquipmentData {
         return !stack.isEmpty() && stack.is(EquipmentTags.DIVING_SUIT);
     }
 
-    /** 头盔 + 身体护甲提供的护甲点数（只统计本模组的 EquipmentItem）。 */
-    public static int armorPoints(Player player) {
-        EquipmentInventory inventory = getOrCreate(player);
-        int points = 0;
-        for (EquipmentSlotType type : new EquipmentSlotType[]{
-                EquipmentSlotType.HELMET, EquipmentSlotType.BODY_ARMOR}) {
-            ItemStack stack = inventory.getStackInSlot(type);
-            if (!stack.isEmpty() && stack.getItem() instanceof EquipmentItem item
-                    && item.slotType() == type) {
-                points += item.armorPoints();
-            }
-        }
-        return points;
-    }
-
     /**
      * 旧存档迁移：原版护甲槽/副手槽在新界面里已经不存在，登录时把里面的东西
      * 搬走——能进装备槽的进装备槽，剩下的进背包，背包满了就掉在脚下。
@@ -116,6 +101,8 @@ public final class EquipmentData {
 
     private static ItemStack moveIntoEquipment(EquipmentInventory equipment, ItemStack stack) {
         ItemStack remaining = stack.copy();
+        // 旧存档的潜水服可能还带耐久，迁走时顺手清掉（物品已经不是可损耗物品）。
+        EquipmentInventory.stripLegacyDamage(remaining);
         int slot = EquipmentSlots.findMatchingEmptySlot(equipment, remaining);
         if (slot >= 0) {
             EquipmentSlotType type = EquipmentSlotType.byIndex(slot);

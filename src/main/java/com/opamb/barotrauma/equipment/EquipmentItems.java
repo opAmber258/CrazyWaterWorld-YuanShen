@@ -28,32 +28,32 @@ public final class EquipmentItems {
     /** ID 卡：只作身份识别，暂无效效果。 */
     public static final RegistryObject<Item> ID_CARD = ITEMS.register("id_card",
             () -> new EquipmentItem(new Item.Properties().stacksTo(1),
-                    EquipmentSlotType.ID_CARD, 0));
+                    EquipmentSlotType.ID_CARD));
 
     /** 耳机：只作通讯装备，暂无效效果。 */
     public static final RegistryObject<Item> HEADSET = ITEMS.register("headset",
             () -> new EquipmentItem(new Item.Properties().stacksTo(1),
-                    EquipmentSlotType.HEADSET, 0));
+                    EquipmentSlotType.HEADSET));
 
-    /** 防弹头盔（原作 ballistichelmet1）：护甲 +4。 */
+    /** 防弹头盔（原作 ballistichelmet1）：钝器伤 ×0.3、出血 ×0.1。 */
     public static final RegistryObject<Item> BALLISTIC_HELMET = ITEMS.register("ballistic_helmet",
             () -> new EquipmentItem(new Item.Properties().stacksTo(1),
-                    EquipmentSlotType.HELMET, 4));
+                    EquipmentSlotType.HELMET));
 
-    /** 防弹衣（原作 bodyarmor）：护甲 +8。 */
+    /** 防弹衣（原作 bodyarmor）：钝器伤 ×0.3、出血 ×0.2、烧伤 ×0.9。 */
     public static final RegistryObject<Item> BODY_ARMOR = ITEMS.register("body_armor",
             () -> new EquipmentItem(new Item.Properties().stacksTo(1),
-                    EquipmentSlotType.BODY_ARMOR, 8));
+                    EquipmentSlotType.BODY_ARMOR));
 
     /** 工具带：腰带槽物品，暂不提供额外背包格。 */
     public static final RegistryObject<Item> TOOLBELT = ITEMS.register("toolbelt",
             () -> new EquipmentItem(new Item.Properties().stacksTo(1).fireResistant(),
-                    EquipmentSlotType.BAG, 0));
+                    EquipmentSlotType.BAG));
 
     /** 背包：腰带槽物品，和工具带互斥。 */
     public static final RegistryObject<Item> BACKPACK = ITEMS.register("backpack",
             () -> new EquipmentItem(new Item.Properties().stacksTo(1).fireResistant(),
-                    EquipmentSlotType.BAG, 0));
+                    EquipmentSlotType.BAG));
 
     /** 本模组的装备创造栏。主会话的 ModCreativeTabs 不需要改。 */
     public static final RegistryObject<CreativeModeTab> EQUIPMENT_TAB = TABS.register("equipment",

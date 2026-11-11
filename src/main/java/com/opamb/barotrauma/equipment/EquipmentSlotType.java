@@ -4,9 +4,11 @@ package com.opamb.barotrauma.equipment;
  * 潜渊症风格的玩家装备槽。
  *
  * <p>槽位分两列叠在原版背包界面上：左列接替原版四个护甲槽（y=8/26/44/62），
- * 右列从 y=26 起是氧气瓶、潜水服、腰带/背包。{@link #menuIndex()} 是
+ * 右列从 y=26 起是潜水服、腰带/背包。{@link #menuIndex()} 是
  * {@code InventoryMenu.slots} 里的菜单下标——0..4 是合成，5..8 是原护甲槽，
- * 9..44 是背包/快捷栏，45 是原副手槽；46/47 是本模组追加的两个槽。</p>
+ * 9..44 是背包/快捷栏，45 是原副手槽；46 是本模组追加的潜水服槽。</p>
+ *
+ * <p>氧气瓶不再单独占槽：它放在潜水服的内部子格里（原作同款，悬停潜水服弹出）。</p>
  *
  * <p>{@link #slotIndex()} 是装备容器自己的下标，和菜单下标无关；
  * 这样即使以后调整界面位置也不会动到存档里的槽位顺序。</p>
@@ -23,10 +25,8 @@ public enum EquipmentSlotType {
     BODY_ARMOR(3, 8, 8, 62, "body_armor", "AR"),
     /** 原副手槽：腰带或背包（二选一）。 */
     BAG(4, 45, 77, 62, "bag", "BG"),
-    /** 副手槽上方：潜水服。 */
-    DIVING_SUIT(5, 46, 77, 44, "diving_suit", "DS"),
-    /** 副手槽上方第二格：氧气瓶。 */
-    OXYGEN_TANK(6, 47, 77, 26, "oxygen_tank", "O2");
+    /** 副手槽上方：潜水服（内部可放一个氧气瓶）。 */
+    DIVING_SUIT(5, 46, 77, 44, "diving_suit", "DS");
 
     private final int slotIndex;
     private final int menuIndex;

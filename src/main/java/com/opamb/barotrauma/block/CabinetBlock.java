@@ -102,6 +102,12 @@ public class CabinetBlock extends Block implements EntityBlock {
             this.depthMax = depthMax;
             this.tall = tall;
             this.cells = Math.max(1, (int) Math.ceil(height / 16.0F));
+            if (this.cells > MAX_PART + 1) {
+                // PART 只有 0..MAX_PART，setPlacedBy 里 setValue(PART, cells-1) 会直接抛异常。
+                throw new IllegalArgumentException("容器 " + id + " 高 " + height + "px，需要 "
+                        + this.cells + " 格，但 PART 只定义了 0.." + MAX_PART
+                        + "；请调大 CabinetBlock.MAX_PART 并补 blockstate 的 part 变体");
+            }
         }
 
         public String id() {
@@ -239,8 +245,9 @@ public class CabinetBlock extends Block implements EntityBlock {
             BlockPos master = masterPos(pos, state);
             BlockState masterState = level.getBlockState(master);
             if (masterState.getBlock() == this && masterState.getValue(PART) == 0) {
-                // 柜子目前没有 block loot table，dropResources 会掉 0 个，直接掉方块物品。
-                // 以后补掉落表时记得沿用导航台/引擎的 part=0 条件，这样这里也不会双倍。
+                // 掉落表按 part=0 过滤（data/barotrauma/loot_tables/blocks/*.json），
+                // 所以打上面的分片只有这里补的这一份；打主方块走掉落表，不会双倍。
+                // 爆炸只炸掉分片时没有 playerWillDestroy，方块物品会丢（原版爆炸本来就不掉落）。
                 ItemStack drop = new ItemStack(state.getBlock().asItem());
                 if (!drop.isEmpty()) {
                     Block.popResource(level, master, drop);
@@ -340,7 +347,12 @@ public class CabinetBlock extends Block implements EntityBlock {
             BlockState masterState = level.getBlockState(master);
             if (masterState.getBlock() == this && masterState.getValue(PART) == 0
                     && level.getBlockEntity(master) instanceof CabinetBlockEntity cabinet) {
-                NetworkHooks.openScreen(serverPlayer, cabinet, buf -> buf.writeBlockPos(master));
+                NetworkHooks.openScreen(serverPlayer, cabinet, buf -> {
+                    buf.writeBlockPos(master);
+                    // 客户端不要自己猜种类：物理船上船坞区块/方块实体可能还没同步，
+                    // 猜错会让两边槽位数不一致 → 槽位错位。种类随包一起发过去。
+                    buf.writeByte(cabinet.kind().ordinal());
+                });
                 return InteractionResult.CONSUME;
             }
             return InteractionResult.PASS;

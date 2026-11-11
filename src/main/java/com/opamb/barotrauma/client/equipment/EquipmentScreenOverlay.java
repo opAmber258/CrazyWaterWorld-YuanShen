@@ -1,20 +1,20 @@
 package com.opamb.barotrauma.client.equipment;
 
-import com.opamb.barotrauma.equipment.EquipmentSlot;
 import com.opamb.barotrauma.equipment.EquipmentSlotType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 
 /**
  * 原版背包界面上的装备槽绘制。
  *
- * <p>背景在 {@code InventoryScreen#renderBg} 之后补画，因此画在物品下面；
- * 空槽里用两字符提示（ID/HD/HM/AR/BG/DS/O2），悬停空槽时显示槽位名。
- * 真实槽位坐标从 {@code menu.slots} 读取，医疗界面把背包整体左移时也能对齐。</p>
+ * <p>按**菜单下标**找槽位（而不是 {@code instanceof EquipmentSlot}），
+ * 这样创造模式"物品栏"标签页里被原版包成 {@code SlotWrapper} 的槽位也能画。
+ * 背景在 {@code renderBg} 之后补画，因此画在物品下面；
+ * 空槽里用两字符提示（ID/HD/HM/AR/BG/DS），悬停空槽时显示槽位名。</p>
  */
 public final class EquipmentScreenOverlay {
 
@@ -26,7 +26,7 @@ public final class EquipmentScreenOverlay {
     }
 
     /** 在背包背景上补画装备槽。 */
-    public static void renderSlots(GuiGraphics graphics, InventoryMenu menu, int left, int top) {
+    public static void renderSlots(GuiGraphics graphics, AbstractContainerMenu menu, int left, int top) {
         Font font = Minecraft.getInstance().font;
         for (EquipmentSlotType type : EquipmentSlotType.values()) {
             int menuIndex = type.menuIndex();
@@ -34,7 +34,7 @@ public final class EquipmentScreenOverlay {
                 continue;
             }
             Slot slot = menu.slots.get(menuIndex);
-            if (!(slot instanceof EquipmentSlot)) {
+            if (!slot.isActive()) {
                 continue;
             }
             int x = left + slot.x;
@@ -50,13 +50,16 @@ public final class EquipmentScreenOverlay {
     }
 
     /** 悬停空装备槽时显示"ID卡槽"这类提示。 */
-    public static void renderTooltip(GuiGraphics graphics, InventoryMenu menu, Slot hovered,
+    public static void renderTooltip(GuiGraphics graphics, AbstractContainerMenu menu, Slot hovered,
                                      int mouseX, int mouseY) {
-        if (hovered == null || hovered.hasItem() || !(hovered instanceof EquipmentSlot equipmentSlot)) {
+        if (hovered == null || hovered.hasItem()) {
+            return;
+        }
+        EquipmentSlotType type = EquipmentSlotType.byMenuIndex(menu.slots.indexOf(hovered));
+        if (type == null) {
             return;
         }
         Font font = Minecraft.getInstance().font;
-        graphics.renderTooltip(font,
-                Component.translatable(equipmentSlot.type().slotNameKey()), mouseX, mouseY);
+        graphics.renderTooltip(font, Component.translatable(type.slotNameKey()), mouseX, mouseY);
     }
 }

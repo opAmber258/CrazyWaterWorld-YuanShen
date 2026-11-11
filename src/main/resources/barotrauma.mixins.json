@@ -7,13 +7,19 @@
   "mixins": [
     "AbstractContainerMenuAccessor",
     "InventoryMenuMixin",
+    "InventoryMixin",
     "LevelFluidGuardMixin",
     "PlayerSneakEdgeMixin",
-    "ShipBreakMixin"
+    "ShipBreakMixin",
+    "SlotMixin",
+    "SlotPositionAccessor"
   ],
   "client": [
     "CameraProjectionMixin",
+    "CreativeScreenMixin",
+    "GuiMixin",
     "InventoryScreenMixin",
+    "PlayerFovMixin",
     "PlayerSwimRotationMixin",
     "ShaderUniformMixin"
   ],

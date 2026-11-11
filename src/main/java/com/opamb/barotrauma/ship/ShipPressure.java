@@ -92,8 +92,14 @@ public final class ShipPressure {
 
     /** 玩家出舱的挤压阈值与速率（UnderwaterSurvival 用）。 */
     public static final int PLAYER_SAFE_DEPTH = 300;
-    /** 穿潜水服时的出舱安全深度（REQUIREMENTS：diving_suit 耐压 400m）。 */
-    public static final int DIVING_SUIT_SAFE_DEPTH = 400;
+    /**
+     * 穿潜水服时的出舱安全深度。
+     *
+     * <p>原作 {@code Content/Items/Diving/divinggear.xml}：{@code PressureProtection="4000"}。
+     * 寒冷深穴关卡深度约 1000–2300 m（{@code InitialDepth 100000–200000 × 0.01 + Height 30000 × 0.01}），
+     * 常规潜水服覆盖整个首群系；重潜 6650 / 战斗 5750 是后续更深群系用的。</p>
+     */
+    public static final int DIVING_SUIT_SAFE_DEPTH = 4000;
     public static final float PLAYER_DAMAGE_PER_SECOND = 1.0F / 3.0F;
 
     /** 是否潜水服（按物品类型判断，旧胸甲槽兼容用）。 */

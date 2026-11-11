@@ -110,11 +110,6 @@ public final class DamageConversions {
         return plan;
     }
 
-    /** 溺水/无氧：每秒注入 12 强度缺氧（原作 cause 注入量级 10–12，见底表 §2.5）。 */
-    public static double hypoxiaPerSecond() {
-        return 12.0;
-    }
-
     /**
      * 投射物（箭/三叉戟/雪球等）：**按命中高度鉴定部位**（用户指令，参考硬核生存模组做法）。
      * heightRatio = 命中点在玩家包围盒里的相对高度（0=脚，1=头顶）：

@@ -23,8 +23,18 @@ public class EquipmentInventory extends SimpleContainer {
     private static final String ITEMS_TAG = "Items";
     private static final String SLOT_TAG = "Slot";
 
+    /** 腰带槽（背包/工具带）变化时通知外层重新绑定 BagContainer。 */
+    private java.util.function.Consumer<ItemStack> bagListener = stack -> {
+    };
+
     public EquipmentInventory() {
         super(SIZE);
+    }
+
+    /** 设置腰带槽变化回调（通常是 BagManager 的绑定逻辑）。 */
+    public void setBagListener(java.util.function.Consumer<ItemStack> listener) {
+        this.bagListener = listener == null ? stack -> {
+        } : listener;
     }
 
     @Override
@@ -40,8 +50,22 @@ public class EquipmentInventory extends SimpleContainer {
         ItemStack copy = stack.isEmpty() ? ItemStack.EMPTY : stack.copy();
         if (!copy.isEmpty()) {
             copy.setCount(1);
+            stripLegacyDamage(copy);
         }
         super.setItem(slot, copy);
+        if (slot == EquipmentSlotType.BAG.slotIndex()) {
+            bagListener.accept(copy);
+        }
+    }
+
+    /**
+     * 潜水服从 2026-11-11 起不再是可损耗的 {@code ArmorItem}（原作没有护甲值/耐久），
+     * 旧存档里的 {@code Damage} 标记没有意义，留着会让物品栏按 maxDamage=0 画出错误耐久条。
+     */
+    static void stripLegacyDamage(ItemStack stack) {
+        if (!stack.isEmpty() && stack.getItem() instanceof com.opamb.barotrauma.item.DivingSuitItem) {
+            stack.removeTagKey("Damage");
+        }
     }
 
     @Override
@@ -89,9 +113,13 @@ public class EquipmentInventory extends SimpleContainer {
             }
             ItemStack stack = ItemStack.of(itemTag);
             if (!stack.isEmpty()) {
-                super.setItem(slot, stack.copyWithCount(1));
+                stack.setCount(1);
+                stripLegacyDamage(stack);
+                super.setItem(slot, stack);
             }
         }
+        // 读档完成后腰带槽可能已经有背包，通知外层绑定内容。
+        bagListener.accept(getStackInSlot(EquipmentSlotType.BAG));
     }
 
     /** 死亡/换维度克隆时复制（装备不随死亡掉落）。 */

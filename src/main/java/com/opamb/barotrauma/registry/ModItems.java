@@ -34,9 +34,13 @@ public final class ModItems {
     public static final RegistryObject<Item> DIVING_KNIFE = ITEMS.register("diving_knife",
             () -> new DivingKnifeItem(Tiers.IRON, 2, -2.2F, new Item.Properties()));
 
-    /** 焊接工具：右键持续修船壳，耐久就是燃料（原版燃料罐 200 点，这里放宽到 400）。 */
+    /** 焊接工具：右键持续修船壳；燃料来自子格里的焊接油箱。 */
     public static final RegistryObject<Item> WELDING_TOOL = ITEMS.register("welding_tool",
-            () -> new WeldingToolItem(new Item.Properties().stacksTo(1).durability(400)));
+            () -> new WeldingToolItem(new Item.Properties().stacksTo(1)));
+
+    /** 焊接油箱：焊接工具的燃料，耐久 200（原作 weldingfueltank 同款）。 */
+    public static final RegistryObject<Item> WELDING_FUEL_TANK = ITEMS.register("welding_fuel_tank",
+            () -> new Item(new Item.Properties().stacksTo(1).durability(200)));
 
     /** 潜艇装甲板的方块物品。 */
     public static final RegistryObject<Item> SUBMARINE_PLATING =
@@ -115,9 +119,9 @@ public final class ModItems {
     /** 补给箱（物品）：DELIVERY 任务的货物，接任务时发，送到 B 中继站交付。 */
     public static final RegistryObject<Item> SUPPLY_CRATE = ITEMS.register("supply_crate",
             () -> new Item(new Item.Properties()));
-    /** 潜水服（胸甲槽）：穿戴后出舱安全深度 300→400m。 */
+    /** 潜水服（潜水服槽）：穿戴后出舱安全深度 300→400m；原作 fireproof，不可堆叠。 */
     public static final RegistryObject<Item> DIVING_SUIT = ITEMS.register("diving_suit",
-            () -> new DivingSuitItem(new Item.Properties()));
+            () -> new DivingSuitItem(new Item.Properties().stacksTo(1).fireResistant()));
     /** 深潜许可：解锁 320m 以深任务的接取（商店有售，不消耗）。 */
     public static final RegistryObject<Item> DEEP_PERMIT = ITEMS.register("deep_permit",
             () -> new Item(new Item.Properties()));

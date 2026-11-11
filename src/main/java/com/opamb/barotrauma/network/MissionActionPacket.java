@@ -121,7 +121,9 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             return;
         }
         if (mission.requiresDeepPermit()
-                && player.getInventory().countItem(ModItems.DEEP_PERMIT.get().asItem()) == 0) {
+                && player.getInventory().countItem(ModItems.DEEP_PERMIT.get().asItem()) == 0
+                && !com.opamb.barotrauma.equipment.BagManager.contents(player).stream()
+                        .anyMatch(stack -> stack.is(ModItems.DEEP_PERMIT.get()))) {
             player.sendSystemMessage(Component.literal(
                     "该任务目标超过 " + Mission.DEEP_PERMIT_DEPTH + "m，需要「深潜许可」（商店有售）")
                     .withStyle(ChatFormatting.RED));
@@ -168,10 +170,14 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
         switch (mission.type) {
             case SALVAGE -> consumed = player.getInventory()
                     .clearOrCountMatchingItems(stack -> stack.is(ModItems.BLACK_BOX.get().asItem()),
-                            1, player.getInventory()) > 0;
+                            1, player.getInventory()) > 0
+                    || com.opamb.barotrauma.equipment.BagManager.removeOne(player,
+                            stack -> stack.is(ModItems.BLACK_BOX.get().asItem()));
             case DELIVERY, URGENT_DELIVERY -> consumed = player.getInventory()
                     .clearOrCountMatchingItems(stack -> stack.is(ModItems.SUPPLY_CRATE.get().asItem()),
-                            1, player.getInventory()) > 0;
+                            1, player.getInventory()) > 0
+                    || com.opamb.barotrauma.equipment.BagManager.removeOne(player,
+                            stack -> stack.is(ModItems.SUPPLY_CRATE.get().asItem()));
             default -> { /* RECON 无货物 */ }
         }
         if (!consumed) {
