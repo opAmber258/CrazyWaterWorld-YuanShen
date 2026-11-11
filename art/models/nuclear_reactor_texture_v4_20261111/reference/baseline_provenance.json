@@ -1,0 +1,6 @@
+{
+  "source": "F:\\BarotraumaMinecraft\\art-vault\\production\\nuclear_reactor_texture_v3_20261111\\nuclear_reactor.bbmodel",
+  "source_sha256": "8d7c2bbcecde752701c8e7abe20b28ea923b21aee33e8594107bf87e20b3a181",
+  "scope": "texture only; freeze geometry, UV, groups, all transforms; independent asymmetry retained",
+  "feedback": "recover readable material/color hierarchy; eliminate camouflage; user removed previous color restrictions"
+}

@@ -1,0 +1,92 @@
+{
+  "blockbench_version": "5.2.2",
+  "project_reopened": true,
+  "native_export_reproduced_exactly": true,
+  "format": "bedrock",
+  "geometry_name": "nuclear_reactor",
+  "cubes": 113,
+  "bones": 9,
+  "textures": [
+    {
+      "width": 512,
+      "height": 512,
+      "uv_width": 512,
+      "uv_height": 512,
+      "loaded": true
+    }
+  ],
+  "world_bbox": {
+    "min": [
+      -15.24705982208252,
+      -0.04366999864578247,
+      -12.949999809265137
+    ],
+    "max": [
+      15.24705982208252,
+      19.905856262408882,
+      6.150000095367432
+    ],
+    "size": [
+      30.49411964416504,
+      19.949526261054665,
+      19.09999990463257
+    ]
+  },
+  "bbox_method": "union of cube mesh geometry bounding boxes transformed by cube world matrices; no selection helpers",
+  "groups": [
+    {
+      "name": "nuclear_reactor",
+      "cubes": 0,
+      "child_groups": 8
+    },
+    {
+      "name": "base_frame",
+      "cubes": 5,
+      "child_groups": 0
+    },
+    {
+      "name": "reactor_housing",
+      "cubes": 11,
+      "child_groups": 0
+    },
+    {
+      "name": "coolant_left",
+      "cubes": 14,
+      "child_groups": 0
+    },
+    {
+      "name": "coolant_right",
+      "cubes": 14,
+      "child_groups": 0
+    },
+    {
+      "name": "heat_exchangers",
+      "cubes": 26,
+      "child_groups": 0
+    },
+    {
+      "name": "front_instruments",
+      "cubes": 13,
+      "child_groups": 0
+    },
+    {
+      "name": "lower_machinery",
+      "cubes": 24,
+      "child_groups": 0
+    },
+    {
+      "name": "rear_service",
+      "cubes": 6,
+      "child_groups": 0
+    }
+  ],
+  "animations": 0,
+  "visual_review": {
+    "front": "inspected",
+    "back": "inspected",
+    "side": "inspected",
+    "oblique": "inspected",
+    "uv_checker": "UV inherited unchanged from inspected v3; per-face equality verified independently"
+  },
+  "minecraft_runtime_tested": false
+}

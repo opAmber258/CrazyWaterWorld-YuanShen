@@ -1,0 +1,44 @@
+{
+  "input": "F:\\BarotraumaMinecraft\\art-vault\\production\\nuclear_reactor_texture_v4_20261111\\nuclear_reactor.bbmodel",
+  "kind": "bbmodel",
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance."
+  ],
+  "identifier": "nuclear_reactor",
+  "uv_space": {
+    "width": 512,
+    "height": 512,
+    "source": "project resolution"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "elements": 113,
+    "cubes": 113,
+    "groups": 9,
+    "declared_faces": 678,
+    "rotated_cubes": 30,
+    "animations": null,
+    "missing_uv_faces": 0,
+    "missing_texture_faces": 0
+  },
+  "bounds": [
+    [
+      -15.24706,
+      -0.04367,
+      -12.95
+    ],
+    [
+      15.24706,
+      19.77335,
+      6.15
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 0
+}

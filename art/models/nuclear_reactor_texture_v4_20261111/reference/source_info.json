@@ -1,0 +1,42 @@
+{
+  "game_installation_observed": "F:\\SteamLibrary\\steamapps\\common\\Barotrauma",
+  "identifier": "reactor1",
+  "names": {
+    "zh": {
+      "file": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+      "tag": "entityname.reactor1",
+      "value": "核反应堆"
+    },
+    "en": {
+      "file": "Content/Texts/English/EnglishVanilla.xml",
+      "tag": "entityname.reactor1",
+      "value": "Nuclear Reactor"
+    }
+  },
+  "item_definition": {
+    "file": "Content/Items/Reactor/reactor.xml",
+    "attributes": {
+      "name": "",
+      "identifier": "reactor1",
+      "tags": "reactor",
+      "type": "Reactor",
+      "scale": "0.5",
+      "linkable": "true",
+      "category": "Machine",
+      "damagedbyexplosions": "true",
+      "explosiondamagemultiplier": "0.2"
+    },
+    "sprite": {
+      "texture": "reactor.png",
+      "sourcerect": "0,0,528,336",
+      "origin": "0.5,0.45",
+      "depth": "0.8"
+    }
+  },
+  "hashes": {
+    "Content/Items/Reactor/reactor.xml": "37eded912e5681da477401b1160a5ce998de29329ebb5de059cfa53c0861296c",
+    "Content/Items/Reactor/reactor.png": "a0cbdca16e07387c404d79aa4fa530e93c71456663226a90e077c5aa07656fe5"
+  },
+  "style_reference": "curated/engine_20261111_v2/preview_oblique.png; restrained contrast and pixel-detail hierarchy only",
+  "original_geometry_and_texture": true
+}

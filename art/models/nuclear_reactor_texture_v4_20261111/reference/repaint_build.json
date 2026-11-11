@@ -1,0 +1,12 @@
+{
+  "geometry_and_UV_preserved_exactly": true,
+  "cubes": 113,
+  "atlas": [
+    512,
+    512
+  ],
+  "islands": 585,
+  "material_direction": "warm ivory jackets, gray enamel, dark iron/teal base, heat-darkened warm pipes; restrained location-specific aging",
+  "blanket_random_texture": false,
+  "colors": 45
+}

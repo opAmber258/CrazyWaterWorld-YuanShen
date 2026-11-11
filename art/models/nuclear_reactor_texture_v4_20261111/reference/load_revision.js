@@ -1,0 +1,12 @@
+const fs=require('fs'),path=require('path');
+const dir=globalThis.REACTOR_ASSET_DIR;
+const filename=path.join(dir,'nuclear_reactor.bbmodel');
+const source=JSON.parse(fs.readFileSync(filename,'utf8'));
+Codecs.project.load(source,{path:filename});
+Project.name='nuclear_reactor_texture_v4';
+Project.saved=true;
+await new Promise(resolve=>setTimeout(resolve,500));
+Canvas.updateAll();
+fs.writeFileSync(filename,Codecs.project.compile());
+fs.writeFileSync(path.join(dir,'nuclear_reactor.geo.json'),Codecs.bedrock.compile());
+return {name:Project.name,uuid:Project.uuid,cubes:Cube.all.length,bones:Group.all.length,textures:Texture.all.map(t=>({loaded:t.img.complete,width:t.width,height:t.height}))};

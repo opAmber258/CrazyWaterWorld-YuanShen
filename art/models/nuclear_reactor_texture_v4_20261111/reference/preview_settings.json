@@ -1,0 +1,67 @@
+{
+  "renderer": "Blockbench native MediaPreview, Canvas.withoutGizmos",
+  "width": 1200,
+  "height": 900,
+  "views": {
+    "front": {
+      "projection": "orthographic",
+      "position": [
+        0,
+        9.931093131881553,
+        56.256266030093045
+      ],
+      "target": [
+        0,
+        9.93109313188155,
+        -3.3999998569488525
+      ],
+      "zoom": 0.7048714728411085,
+      "fov": null
+    },
+    "back": {
+      "projection": "orthographic",
+      "position": [
+        7.30578550676493e-15,
+        9.931093131881553,
+        -63.05626574399075
+      ],
+      "target": [
+        0,
+        9.93109313188155,
+        -3.3999998569488525
+      ],
+      "zoom": 0.7048714728411085,
+      "fov": null
+    },
+    "side": {
+      "projection": "orthographic",
+      "position": [
+        59.6562658870419,
+        9.931093131881553,
+        -3.399999856948849
+      ],
+      "target": [
+        0,
+        9.93109313188155,
+        -3.3999998569488525
+      ],
+      "zoom": 0.7048714728411085,
+      "fov": null
+    },
+    "oblique": {
+      "projection": "perspective",
+      "position": [
+        31.65144512334618,
+        23.5655618003999,
+        45.29453110204527
+      ],
+      "target": [
+        0,
+        9.93109313188155,
+        -3.3999998569488525
+      ],
+      "zoom": null,
+      "fov": 36
+    }
+  }
+}

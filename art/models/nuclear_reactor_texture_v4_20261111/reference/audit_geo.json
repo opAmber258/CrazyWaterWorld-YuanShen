@@ -1,0 +1,40 @@
+{
+  "input": "F:\\BarotraumaMinecraft\\art-vault\\production\\nuclear_reactor_texture_v4_20261111\\nuclear_reactor.geo.json",
+  "kind": "bedrock_geometry",
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance."
+  ],
+  "identifier": "geometry.nuclear_reactor",
+  "uv_space": {
+    "width": 512,
+    "height": 512,
+    "source": "Bedrock description"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "geometries": 1,
+    "bones": 9,
+    "cubes": 113,
+    "declared_faces": 678
+  },
+  "bounds": [
+    [
+      -15.24706,
+      -0.04367,
+      -12.95
+    ],
+    [
+      15.24706,
+      19.773349999999997,
+      6.150000000000002
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 0
+}

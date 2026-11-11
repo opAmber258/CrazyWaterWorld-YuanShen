@@ -1,0 +1,256 @@
+{
+ "asset": "核反应堆 NuclearReactor",
+ "identifier": "nuclear_reactor",
+ "creation_source": "人工 + AI（TakaraMiyuki + GPT 6.1 Sol）",
+ "format": "bedrock",
+ "format_version": "1.12.0",
+ "geometry_identifier": "geometry.nuclear_reactor",
+ "cubes": 113,
+ "bones": 9,
+ "declared_faces": 678,
+ "triangles_upper_bound": 1356,
+ "animations": 0,
+ "geometry_preserved_exactly": true,
+ "UV_preserved_exactly": true,
+ "bbox_BB": {
+  "min": [
+   -15.24706,
+   -0.04367,
+   -12.95
+  ],
+  "max": [
+   15.24706,
+   19.905856306802818,
+   6.15
+  ],
+  "size": [
+   30.49412,
+   19.949526306802817,
+   19.1
+  ]
+ },
+ "size_blocks": [
+  1.9058825,
+  1.246845394175176,
+  1.19375
+ ],
+ "texture": {
+  "size": [
+   512,
+   512
+  ],
+  "mode": "RGBA",
+  "sha256": "fd18969cceaba40c6653e8be391fa1fd1f37dd7fce3188f17e4d728944ed1837",
+  "embedded_png_identical": true,
+  "palette_colors": 44
+ },
+ "UV": {
+  "target_pixels_per_BB": 4,
+  "integer_UV_faces": 678,
+  "islands": 585,
+  "island_padding_pixels": 1,
+  "before_faces_anisotropy_over_2": 8,
+  "after_faces_anisotropy_over_2": 8,
+  "before_faces_anisotropy_over_1_25": 20,
+  "after_faces_anisotropy_over_1_25": 20,
+  "max_axis_quantization_error_pixels": 0.6399999999999988,
+  "all_faces_match_nearest_integer_density": true,
+  "limitation": "Sub-pixel-width geometry uses at least one whole texel. Geometry is preserved; exact square texels are not mathematically possible on all fractional-size faces."
+ },
+ "material_revision": {
+  "errors": [],
+  "independent_exposed_UV_rectangles": true,
+  "UV_preserved_exactly": true,
+  "exposed_faces": 584,
+  "bilateral_pairs_checked": 112,
+  "bilateral_repeats": 3,
+  "bilateral_repeated_wear_masks": 0,
+  "material_mean_sRGB_luma": {
+   "lower_iron_and_base": 68.37777341578096,
+   "painted_shell": 165.1784415200564,
+   "heat_darkened_pipes": 66.967093561275,
+   "ivory_jackets": 176.34208094545454
+  },
+  "aesthetic_acceptance": "pending user review; not determined by color count or numerical brightness"
+ },
+ "previews": {
+  "front": {
+   "size": [
+    1200,
+    900
+   ],
+   "alpha_bounds": [
+    170,
+    168,
+    1030,
+    732
+   ],
+   "sha256": "c98e7f170eb9c584a51521f3052ba1a02b4d68a8a8cfb580c091a3efb19730ca",
+   "projection": "orthographic"
+  },
+  "back": {
+   "size": [
+    1200,
+    900
+   ],
+   "alpha_bounds": [
+    170,
+    168,
+    1030,
+    732
+   ],
+   "sha256": "ca7a88986c08c598211d8d2cc702e78718ce397f9dda24f20af98f74db17fa22",
+   "projection": "orthographic"
+  },
+  "side": {
+   "size": [
+    1200,
+    900
+   ],
+   "alpha_bounds": [
+    330,
+    168,
+    870,
+    732
+   ],
+   "sha256": "f61f3db8783b4b8d9711c5f1fdc5dda844c9defa1c6e84cb18f03b0b626ba61c",
+   "projection": "orthographic"
+  },
+  "oblique": {
+   "size": [
+    1200,
+    900
+   ],
+   "alpha_bounds": [
+    215,
+    216,
+    1002,
+    840
+   ],
+   "sha256": "5757ab649b88262f8a51dc5d5d13a290d92f12cc22f645bb9e5b5f324195adba",
+   "projection": "perspective"
+  }
+ },
+ "blockbench": {
+  "blockbench_version": "5.2.2",
+  "project_reopened": true,
+  "native_export_reproduced_exactly": true,
+  "format": "bedrock",
+  "geometry_name": "nuclear_reactor",
+  "cubes": 113,
+  "bones": 9,
+  "textures": [
+   {
+    "width": 512,
+    "height": 512,
+    "uv_width": 512,
+    "uv_height": 512,
+    "loaded": true
+   }
+  ],
+  "world_bbox": {
+   "min": [
+    -15.24705982208252,
+    -0.04366999864578247,
+    -12.949999809265137
+   ],
+   "max": [
+    15.24705982208252,
+    19.905856262408882,
+    6.150000095367432
+   ],
+   "size": [
+    30.49411964416504,
+    19.949526261054665,
+    19.09999990463257
+   ]
+  },
+  "bbox_method": "union of cube mesh geometry bounding boxes transformed by cube world matrices; no selection helpers",
+  "groups": [
+   {
+    "name": "nuclear_reactor",
+    "cubes": 0,
+    "child_groups": 8
+   },
+   {
+    "name": "base_frame",
+    "cubes": 5,
+    "child_groups": 0
+   },
+   {
+    "name": "reactor_housing",
+    "cubes": 11,
+    "child_groups": 0
+   },
+   {
+    "name": "coolant_left",
+    "cubes": 14,
+    "child_groups": 0
+   },
+   {
+    "name": "coolant_right",
+    "cubes": 14,
+    "child_groups": 0
+   },
+   {
+    "name": "heat_exchangers",
+    "cubes": 26,
+    "child_groups": 0
+   },
+   {
+    "name": "front_instruments",
+    "cubes": 13,
+    "child_groups": 0
+   },
+   {
+    "name": "lower_machinery",
+    "cubes": 24,
+    "child_groups": 0
+   },
+   {
+    "name": "rear_service",
+    "cubes": 6,
+    "child_groups": 0
+   }
+  ],
+  "animations": 0,
+  "visual_review": {
+   "front": "inspected",
+   "back": "inspected",
+   "side": "inspected",
+   "oblique": "inspected",
+   "uv_checker": "UV inherited unchanged from inspected v3; per-face equality verified independently"
+  },
+  "minecraft_runtime_tested": false
+ },
+ "offline_errors": [],
+ "minecraft_runtime_tested": false,
+ "user_visual_acceptance": "pending",
+ "files_sha256": {
+  "nuclear_reactor.bbmodel": "260dbba38bdb1dc8b060d4eca1762108757f2766d29dc92fffbb774d9930de46",
+  "nuclear_reactor.geo.json": "7d3707e5e8050201a70ec04cb43218e2583940c04d14291eca5a440b253c73c3",
+  "nuclear_reactor_tex.png": "fd18969cceaba40c6653e8be391fa1fd1f37dd7fce3188f17e4d728944ed1837"
+ },
+ "display_name_zh": "核反应堆",
+ "display_name_en": "NuclearReactor",
+ "official_names": {
+  "entity_key": "entityname.reactor1",
+  "zh_value": "核反应堆",
+  "en_value": "Nuclear Reactor",
+  "zh_source": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+  "en_source": "Content/Texts/English/EnglishVanilla.xml"
+ },
+ "contributors": {
+  "human": [
+   "TakaraMiyuki"
+  ],
+  "ai": [
+   {
+    "name": "GPT 6.1 Sol",
+    "tool": "Codex",
+    "role": "贴图重绘（Python/Pillow）与 UV 校验、Blockbench 5.2.2 导出与预览"
+   }
+  ],
+  "division": "人工修改几何并确定美术方向与验收；AI 在冻结的 113-cube / 678 面基线上重绘像素材质，未改几何与 UV"
+ }
+}

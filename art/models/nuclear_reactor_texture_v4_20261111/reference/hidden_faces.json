@@ -1,0 +1,472 @@
+[
+  {
+    "cube": "front_skirt",
+    "face": "north",
+    "occluder": "foundation_beam"
+  },
+  {
+    "cube": "equipment_support",
+    "face": "down",
+    "occluder": "foundation_beam"
+  },
+  {
+    "cube": "top_shoulders",
+    "face": "down",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "left_edge",
+    "face": "east",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "right_edge",
+    "face": "west",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "upper_front_plate",
+    "face": "north",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "hatch_left_jamb",
+    "face": "north",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "hatch_right_jamb",
+    "face": "north",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "window_header",
+    "face": "north",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "window_sill",
+    "face": "north",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "window_sill",
+    "face": "east",
+    "occluder": "hatch_right_jamb"
+  },
+  {
+    "cube": "window_sill",
+    "face": "west",
+    "occluder": "hatch_left_jamb"
+  },
+  {
+    "cube": "lower_pressure_box",
+    "face": "up",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "lower_reactor_core",
+    "face": "down",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_cooling_fin_1",
+    "face": "north",
+    "occluder": "left_radiator_recess"
+  },
+  {
+    "cube": "left_cooling_fin_2",
+    "face": "north",
+    "occluder": "left_radiator_recess"
+  },
+  {
+    "cube": "left_cooling_fin_3",
+    "face": "north",
+    "occluder": "left_radiator_recess"
+  },
+  {
+    "cube": "left_cooling_fin_4",
+    "face": "north",
+    "occluder": "left_radiator_recess"
+  },
+  {
+    "cube": "left_cooling_fin_5",
+    "face": "north",
+    "occluder": "left_radiator_recess"
+  },
+  {
+    "cube": "left_cooling_fin_6",
+    "face": "north",
+    "occluder": "left_radiator_recess"
+  },
+  {
+    "cube": "left_cooling_fin_7",
+    "face": "north",
+    "occluder": "left_radiator_recess"
+  },
+  {
+    "cube": "left_cooling_fin_8",
+    "face": "north",
+    "occluder": "left_radiator_recess"
+  },
+  {
+    "cube": "left_mid_crossbar",
+    "face": "east",
+    "occluder": "left_ceramic_sleeve_cross"
+  },
+  {
+    "cube": "left_end_cover",
+    "face": "east",
+    "occluder": "left_edge"
+  },
+  {
+    "cube": "right_radiator_recess",
+    "face": "north",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "right_top_rail",
+    "face": "west",
+    "occluder": "right_upper_bend_0"
+  },
+  {
+    "cube": "right_cooling_fin_1",
+    "face": "north",
+    "occluder": "right_radiator_recess"
+  },
+  {
+    "cube": "right_cooling_fin_2",
+    "face": "north",
+    "occluder": "right_radiator_recess"
+  },
+  {
+    "cube": "right_cooling_fin_3",
+    "face": "north",
+    "occluder": "right_radiator_recess"
+  },
+  {
+    "cube": "right_cooling_fin_4",
+    "face": "north",
+    "occluder": "right_radiator_recess"
+  },
+  {
+    "cube": "right_cooling_fin_5",
+    "face": "north",
+    "occluder": "right_radiator_recess"
+  },
+  {
+    "cube": "right_cooling_fin_6",
+    "face": "north",
+    "occluder": "right_radiator_recess"
+  },
+  {
+    "cube": "right_cooling_fin_7",
+    "face": "north",
+    "occluder": "right_radiator_recess"
+  },
+  {
+    "cube": "right_cooling_fin_8",
+    "face": "north",
+    "occluder": "right_radiator_recess"
+  },
+  {
+    "cube": "right_mid_crossbar",
+    "face": "west",
+    "occluder": "right_ceramic_sleeve_cross"
+  },
+  {
+    "cube": "right_end_cover",
+    "face": "west",
+    "occluder": "right_edge"
+  },
+  {
+    "cube": "left_upper_bend_0",
+    "face": "north",
+    "occluder": "upper_front_plate"
+  },
+  {
+    "cube": "left_ceramic_sleeve_cross",
+    "face": "up",
+    "occluder": "left_sleeve_clamp_71"
+  },
+  {
+    "cube": "left_ceramic_sleeve_cross",
+    "face": "down",
+    "occluder": "left_sleeve_clamp_177"
+  },
+  {
+    "cube": "left_sleeve_clamp_71",
+    "face": "north",
+    "occluder": "upper_front_plate"
+  },
+  {
+    "cube": "left_sleeve_clamp_177",
+    "face": "north",
+    "occluder": "hatch_left_jamb"
+  },
+  {
+    "cube": "left_lower_bend_0",
+    "face": "north",
+    "occluder": "hatch_left_jamb"
+  },
+  {
+    "cube": "left_lower_bend_0",
+    "face": "down",
+    "occluder": "left_sleeve_clamp_177"
+  },
+  {
+    "cube": "right_upper_bend_0",
+    "face": "north",
+    "occluder": "upper_front_plate"
+  },
+  {
+    "cube": "right_ceramic_sleeve_cross",
+    "face": "up",
+    "occluder": "right_sleeve_clamp_71"
+  },
+  {
+    "cube": "right_ceramic_sleeve_cross",
+    "face": "down",
+    "occluder": "right_sleeve_clamp_177"
+  },
+  {
+    "cube": "right_sleeve_clamp_71",
+    "face": "north",
+    "occluder": "upper_front_plate"
+  },
+  {
+    "cube": "right_sleeve_clamp_177",
+    "face": "north",
+    "occluder": "hatch_right_jamb"
+  },
+  {
+    "cube": "right_lower_bend_0",
+    "face": "north",
+    "occluder": "hatch_right_jamb"
+  },
+  {
+    "cube": "right_lower_bend_0",
+    "face": "down",
+    "occluder": "right_sleeve_clamp_177"
+  },
+  {
+    "cube": "circular_port_back",
+    "face": "north",
+    "occluder": "upper_front_plate"
+  },
+  {
+    "cube": "port_rim_facet_1",
+    "face": "north",
+    "occluder": "circular_port_back"
+  },
+  {
+    "cube": "port_rim_facet_2",
+    "face": "north",
+    "occluder": "circular_port_back"
+  },
+  {
+    "cube": "port_rim_facet_3",
+    "face": "north",
+    "occluder": "circular_port_back"
+  },
+  {
+    "cube": "port_rim_facet_4",
+    "face": "north",
+    "occluder": "circular_port_back"
+  },
+  {
+    "cube": "port_rim_facet_5",
+    "face": "north",
+    "occluder": "circular_port_back"
+  },
+  {
+    "cube": "port_rim_facet_6",
+    "face": "north",
+    "occluder": "circular_port_back"
+  },
+  {
+    "cube": "port_rim_facet_7",
+    "face": "north",
+    "occluder": "circular_port_back"
+  },
+  {
+    "cube": "port_rim_facet_8",
+    "face": "north",
+    "occluder": "circular_port_back"
+  },
+  {
+    "cube": "lower_operator_strip",
+    "face": "north",
+    "occluder": "window_sill"
+  },
+  {
+    "cube": "left_motor_head",
+    "face": "north",
+    "occluder": "left_motor_body"
+  },
+  {
+    "cube": "left_lower_motor_pipe",
+    "face": "west",
+    "occluder": "left_motor_head"
+  },
+  {
+    "cube": "left_motor_ring_52",
+    "face": "north",
+    "occluder": "left_motor_body"
+  },
+  {
+    "cube": "left_motor_ring_52",
+    "face": "down",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_motor_ring_92",
+    "face": "north",
+    "occluder": "left_motor_body"
+  },
+  {
+    "cube": "left_motor_ring_92",
+    "face": "down",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_support_foot",
+    "face": "north",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_support_foot",
+    "face": "south",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_support_foot",
+    "face": "east",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_support_foot",
+    "face": "west",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_support_foot",
+    "face": "up",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_support_foot",
+    "face": "down",
+    "occluder": "foundation_beam"
+  },
+  {
+    "cube": "right_motor_body",
+    "face": "down",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "right_motor_head",
+    "face": "north",
+    "occluder": "right_motor_body"
+  },
+  {
+    "cube": "right_lower_motor_pipe",
+    "face": "west",
+    "occluder": "right_motor_head"
+  },
+  {
+    "cube": "right_motor_ring_52",
+    "face": "north",
+    "occluder": "right_motor_body"
+  },
+  {
+    "cube": "right_motor_ring_52",
+    "face": "down",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "right_motor_ring_92",
+    "face": "north",
+    "occluder": "right_motor_body"
+  },
+  {
+    "cube": "right_motor_ring_92",
+    "face": "down",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "right_support_foot",
+    "face": "north",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "right_support_foot",
+    "face": "south",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "right_support_foot",
+    "face": "east",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "right_support_foot",
+    "face": "west",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "right_support_foot",
+    "face": "up",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "right_support_foot",
+    "face": "down",
+    "occluder": "foundation_beam"
+  },
+  {
+    "cube": "four_fuel_rod_sockets",
+    "face": "down",
+    "occluder": "left_motor_body"
+  },
+  {
+    "cube": "right_aux_pipe_2",
+    "face": "up",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "core_service_box",
+    "face": "north",
+    "occluder": "lower_reactor_core"
+  },
+  {
+    "cube": "core_service_box",
+    "face": "down",
+    "occluder": "equipment_support"
+  },
+  {
+    "cube": "left_rear_access",
+    "face": "south",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "left_rear_handle",
+    "face": "south",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "right_rear_access",
+    "face": "south",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "right_rear_handle",
+    "face": "south",
+    "occluder": "main_case"
+  },
+  {
+    "cube": "rear_lower_access",
+    "face": "south",
+    "occluder": "lower_pressure_box"
+  }
+]

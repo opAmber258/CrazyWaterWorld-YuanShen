@@ -1,0 +1,21 @@
+{
+  "errors": [],
+  "warnings": [],
+  "geometry_preserved_exactly": true,
+  "checks": {
+    "cube_export_equivalence": 113,
+    "face_uv_export_equivalence": 678,
+    "embedded_external_png_equal": true,
+    "UV_density_quantized_consistently": true,
+    "UV_gutters_no_overlap": true,
+    "native_reopen_export_equal": true,
+    "exposed_faces_have_independent_islands": true,
+    "UV_preserved_exactly": true,
+    "bilateral_repeats": 3
+  },
+  "limitations": [
+    "Sub-pixel-width geometry uses at least one whole texel. Geometry is preserved; exact square texels are not mathematically possible on all fractional-size faces.",
+    "Editor and offline checks only; no Minecraft runtime test.",
+    "Intentional solid sleeve/bend overlaps are preserved from the user model."
+  ]
+}
