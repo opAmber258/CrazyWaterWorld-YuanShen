@@ -1,0 +1,25 @@
+{
+  "consulted_on": "2026-11-11",
+  "minecraft_model_references": [
+    {
+      "title": "Crocodile - minecraft",
+      "author": "!RadHer",
+      "url": "https://sketchfab.com/3d-models/crocodile-minecraft-21e46c7059d845ff8978a5cb2595bab3",
+      "reference_scope": "Published thumbnail: simple cuboid tail transitions, clear dorsal silhouette, sparse pixel colour clusters.",
+      "observed_via": "Sketchfab public model metadata and thumbnail API",
+      "geometry_or_texture_reused": false
+    },
+    {
+      "title": "Crocodile - Minecraft animal #BlockBench",
+      "author": "W'Projects",
+      "url": "https://sketchfab.com/3d-models/crocodile-minecraft-animal-blockbench-073c04c844654a8cbbc9fff138715cab",
+      "reference_scope": "Published thumbnail: stepped body masses, cuboid open mouth and teeth, mottled olive palette.",
+      "observed_via": "Sketchfab public model metadata and thumbnail API",
+      "geometry_or_texture_reused": false
+    }
+  ],
+  "primary_anatomy": "Local Barotrauma Content/Characters/Crawler/crawler.png and CrawlerDefaultRagdoll.xml",
+  "wiki": "https://barotraumagame.com/wiki/Crawler",
+  "pose_reference": "https://regalis11.github.io/BaroModDoc/Editors/CharacterEditor.html",
+  "scope": "Only crawler is delivered. Other authors model files and thumbnails are not included."
+}

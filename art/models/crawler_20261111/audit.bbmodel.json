@@ -1,0 +1,49 @@
+{
+  "input": "outputs\\crawler_20261111\\crawler.bbmodel",
+  "kind": "bbmodel",
+  "errors": [],
+  "warnings": [
+    {
+      "code": "missing_texture",
+      "message": "8 declared faces have no texture reference"
+    }
+  ],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance."
+  ],
+  "identifier": "crawler",
+  "uv_space": {
+    "width": 256,
+    "height": 256,
+    "source": "project resolution"
+  },
+  "texture_size": {
+    "width": 256,
+    "height": 256
+  },
+  "metrics": {
+    "elements": 91,
+    "cubes": 91,
+    "groups": 16,
+    "declared_faces": 546,
+    "rotated_cubes": 46,
+    "animations": null,
+    "missing_uv_faces": 0,
+    "missing_texture_faces": 8
+  },
+  "bounds": [
+    [
+      -9.425,
+      -0.82776,
+      -13.15
+    ],
+    [
+      9.425,
+      17.3,
+      32.6
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 1
+}

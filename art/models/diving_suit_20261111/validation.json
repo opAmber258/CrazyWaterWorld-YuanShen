@@ -1,0 +1,165 @@
+{
+  "asset": "潜水服 DivingSuit",
+  "source": "AI / Codex + Blockbench MCP",
+  "blockbench": "5.2.2",
+  "mcp": "1.10.1",
+  "format": "bedrock",
+  "format_version": "1.12.0",
+  "identifier": "geometry.diving_suit",
+  "cubes": 64,
+  "bones": 6,
+  "declared_faces": 331,
+  "disabled_internal_faces": 53,
+  "single_texture_fallback_faces": 0,
+  "texture_size": [
+    256,
+    256
+  ],
+  "transformed_bounds": [
+    [
+      -8.76,
+      -0.25,
+      -5.438496109229824
+    ],
+    [
+      8.76,
+      33.05,
+      4.55
+    ]
+  ],
+  "size_bb": [
+    17.52,
+    33.3,
+    9.988496109229825
+  ],
+  "size_blocks": [
+    1.095,
+    2.08125,
+    0.624281006826864
+  ],
+  "coverage": {
+    "armorHead": {
+      "classic_box": [
+        [
+          -4,
+          24,
+          -4
+        ],
+        [
+          4,
+          32,
+          4
+        ]
+      ],
+      "uncovered_cells": 0,
+      "passed": true
+    },
+    "armorBody": {
+      "classic_box": [
+        [
+          -4,
+          12,
+          -2
+        ],
+        [
+          4,
+          24,
+          2
+        ]
+      ],
+      "uncovered_cells": 0,
+      "passed": true
+    },
+    "armorRightArm": {
+      "classic_box": [
+        [
+          -8,
+          12,
+          -2
+        ],
+        [
+          -4,
+          24,
+          2
+        ]
+      ],
+      "uncovered_cells": 0,
+      "passed": true
+    },
+    "armorLeftArm": {
+      "classic_box": [
+        [
+          4,
+          12,
+          -2
+        ],
+        [
+          8,
+          24,
+          2
+        ]
+      ],
+      "uncovered_cells": 0,
+      "passed": true
+    },
+    "armorRightLeg": {
+      "classic_box": [
+        [
+          -4,
+          0,
+          -2
+        ],
+        [
+          0,
+          12,
+          2
+        ]
+      ],
+      "uncovered_cells": 0,
+      "passed": true
+    },
+    "armorLeftLeg": {
+      "classic_box": [
+        [
+          0,
+          0,
+          -2
+        ],
+        [
+          4,
+          12,
+          2
+        ]
+      ],
+      "uncovered_cells": 0,
+      "passed": true
+    }
+  },
+  "checks": {
+    "player_body_coverage": true,
+    "embedded_texture_matches_png": true,
+    "uv_within_atlas": true,
+    "positive_cube_sizes": true,
+    "identifier": true,
+    "cube_counts_match": true,
+    "texture_rgba_power_of_two": true,
+    "four_previews": true
+  },
+  "passed": true,
+  "editor_views_checked": [
+    "front",
+    "side",
+    "back",
+    "oblique"
+  ],
+  "project_reopen_checked": true,
+  "minecraft_tested": false,
+  "code_integrated": false,
+  "limitations": [
+    "Coverage is a geometric check of classic wide-arm base body boxes in neutral pose; not a renderer or skin-layer visibility test.",
+    "Slim, running, crouching, swimming and other equipment interactions need game testing.",
+    "Static audit AABBs omit rotated corners; transformed bounds above include the three X-rotated visor elements.",
+    "No draw-call or FPS measurements.",
+    "Native offscreen cleanup reported onContextMenu is not defined; tool registry showed only main viewport afterwards."
+  ]
+}

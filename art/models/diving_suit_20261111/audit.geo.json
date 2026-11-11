@@ -1,0 +1,40 @@
+{
+  "input": "outputs\\diving_suit_20261111\\diving_suit.geo.json",
+  "kind": "bedrock_geometry",
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance."
+  ],
+  "identifier": "geometry.diving_suit",
+  "uv_space": {
+    "width": 256,
+    "height": 256,
+    "source": "Bedrock description"
+  },
+  "texture_size": {
+    "width": 256,
+    "height": 256
+  },
+  "metrics": {
+    "geometries": 1,
+    "bones": 6,
+    "cubes": 64,
+    "declared_faces": 331
+  },
+  "bounds": [
+    [
+      -8.76,
+      -0.25,
+      -5.38
+    ],
+    [
+      8.76,
+      33.05,
+      4.55
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 0
+}

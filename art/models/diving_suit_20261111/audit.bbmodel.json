@@ -1,0 +1,49 @@
+{
+  "input": "outputs\\diving_suit_20261111\\diving_suit.bbmodel",
+  "kind": "bbmodel",
+  "errors": [],
+  "warnings": [
+    {
+      "code": "missing_texture",
+      "message": "53 declared faces have no texture reference"
+    }
+  ],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance."
+  ],
+  "identifier": "diving_suit",
+  "uv_space": {
+    "width": 256,
+    "height": 256,
+    "source": "project resolution"
+  },
+  "texture_size": {
+    "width": 256,
+    "height": 256
+  },
+  "metrics": {
+    "elements": 64,
+    "cubes": 64,
+    "groups": 6,
+    "declared_faces": 384,
+    "rotated_cubes": 3,
+    "animations": null,
+    "missing_uv_faces": 0,
+    "missing_texture_faces": 53
+  },
+  "bounds": [
+    [
+      -8.76,
+      -0.25,
+      -5.38
+    ],
+    [
+      8.76,
+      33.05,
+      4.55
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 1
+}

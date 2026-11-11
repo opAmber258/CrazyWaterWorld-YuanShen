@@ -1,0 +1,27 @@
+{
+  "method": "Blockbench 5.2.2 native OBJ compile, options scale=1; vertex coordinates are blocks (verified against the unrotated thorax width).",
+  "bounds_blocks": [
+    [
+      -0.630631472406032,
+      -0.0074676574088150816,
+      -0.8218749999999999
+    ],
+    [
+      0.630631472406032,
+      1.1163429452702198,
+      2.0375
+    ]
+  ],
+  "bounds_bb": [
+    [
+      -10.090103558496512,
+      -0.1194825185410413,
+      -13.149999999999999
+    ],
+    [
+      10.090103558496512,
+      17.861487124323517,
+      32.6
+    ]
+  ]
+}

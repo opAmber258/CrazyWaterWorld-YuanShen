@@ -1,0 +1,141 @@
+{
+  "asset": "藻鬃爬行者 Crawler",
+  "source": "AI / Codex + Blockbench MCP",
+  "blockbench_version": "5.2.2",
+  "mcp_version": "1.10.1",
+  "format": "bedrock",
+  "format_version": "1.12.0",
+  "identifier": "geometry.crawler",
+  "cubes": 91,
+  "bones": 16,
+  "declared_faces": 538,
+  "disabled_internal_faces": 8,
+  "texture_size": [
+    256,
+    256
+  ],
+  "nominal_px_per_bb": 3,
+  "transformed_bounds": [
+    [
+      -10.090103558496514,
+      -0.11948251854104192,
+      -13.15
+    ],
+    [
+      10.090103558496514,
+      17.861487124323517,
+      32.6
+    ]
+  ],
+  "size_bb": [
+    20.180207116993028,
+    17.980969642864558,
+    45.75
+  ],
+  "size_blocks": [
+    1.2612629448120642,
+    1.1238106026790349,
+    2.859375
+  ],
+  "bounds_native_obj_max_error_bb": 1.7763568394002505e-15,
+  "checks": {
+    "identifier": true,
+    "format": true,
+    "counts_match": true,
+    "hierarchy": true,
+    "component_budget": true,
+    "no_duplicate_cuboids_in_same_bone": true,
+    "positive_cube_dimensions": true,
+    "eight_eyes": true,
+    "six_tail_segments": true,
+    "sixteen_fangs": true,
+    "single_256_rgba_texture": true,
+    "embedded_texture_matches_png": true,
+    "uv_bounds": true,
+    "opaque_used_faces": true,
+    "texture_references": true,
+    "disabled_internal_faces": true,
+    "no_animations": true,
+    "native_obj_bounds_agree": true,
+    "uncropped_five_previews": true
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "visible_bbox": [
+        398,
+        253,
+        802,
+        612
+      ],
+      "margin_ok": true
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "visible_bbox": [
+        398,
+        253,
+        802,
+        612
+      ],
+      "margin_ok": true
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "visible_bbox": [
+        128,
+        253,
+        1043,
+        612
+      ],
+      "margin_ok": true
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "visible_bbox": [
+        280,
+        252,
+        1113,
+        847
+      ],
+      "margin_ok": true
+    },
+    "top": {
+      "size": [
+        1200,
+        900
+      ],
+      "visible_bbox": [
+        439,
+        84,
+        761,
+        816
+      ],
+      "margin_ok": true
+    }
+  },
+  "passed": true,
+  "project_reopen_checked": true,
+  "final_native_geometry_reexport_equal": true,
+  "minecraft_tested": false,
+  "mod_code_changed": false,
+  "limitations": [
+    "Neutral static pose only; no locomotion, bite, swimming, runtime bone mapping or collision tests.",
+    "Finite structural checks do not certify all geometry interactions or game compatibility.",
+    "Generic audit AABBs omit rotations; transformed bounds here are independently matched to the native OBJ exporter.",
+    "No draw call or FPS measurement.",
+    "MCP offscreen cleanup reported onContextMenu is not defined; tool list showed only main viewport afterwards."
+  ]
+}
