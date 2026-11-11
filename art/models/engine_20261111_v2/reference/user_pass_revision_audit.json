@@ -1,0 +1,16 @@
+{
+  "method": "additive revision from user-saved 75-cube project",
+  "baseline_manifest": "user_saved_geometry_manifest.json",
+  "baseline_aggregate_geometry_sha256": "ac970fe5a6e06afa195eb3583c0c5ae811540c9b51d7255158c15ed7bbdc2b81",
+  "base_elements_verified_unchanged": true,
+  "preserved_base_cubes": 75,
+  "added_elements": 44,
+  "final_elements": 119,
+  "final_groups": 8,
+  "pattern_islands": 118,
+  "shared_solid_islands": 28,
+  "faces": 714,
+  "atlas_size": 512,
+  "atlas_occupied_height": 327,
+  "max_pattern_aspect_error_percent": 0.0
+}

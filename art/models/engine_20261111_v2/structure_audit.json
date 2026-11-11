@@ -1,0 +1,307 @@
+{
+  "generated_at": "2026-11-11T13:54:10+08:00",
+  "tool": {
+    "name": "audit_static_model.py",
+    "source": "C:/Users/wegene Jo/.codex/skills/minecraft-modeling-prop-block/scripts/audit_static_model.py",
+    "scope": "Limited structural preflight; not a complete runtime or rendering test."
+  },
+  "bbmodel": {
+    "input": "F:\\BarotraumaMinecraft\\art-vault\\production\\engine_20261111_v2\\engine.bbmodel",
+    "kind": "bbmodel",
+    "errors": [],
+    "warnings": [],
+    "limitations": [
+      "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+      "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance."
+    ],
+    "identifier": "engine",
+    "uv_space": {
+      "width": 512,
+      "height": 512,
+      "source": "project resolution"
+    },
+    "texture_size": {
+      "width": 512,
+      "height": 512
+    },
+    "metrics": {
+      "elements": 119,
+      "cubes": 119,
+      "groups": 8,
+      "declared_faces": 714,
+      "rotated_cubes": 43,
+      "animations": null,
+      "missing_uv_faces": 0,
+      "missing_texture_faces": 0
+    },
+    "bounds": [
+      [
+        -45.593,
+        0,
+        -23
+      ],
+      [
+        43.1,
+        32,
+        24
+      ]
+    ],
+    "error_count": 0,
+    "warning_count": 0
+  },
+  "geo": {
+    "input": "F:\\BarotraumaMinecraft\\art-vault\\production\\engine_20261111_v2\\engine.geo.json",
+    "kind": "bedrock_geometry",
+    "errors": [],
+    "warnings": [],
+    "limitations": [
+      "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+      "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance."
+    ],
+    "identifier": "geometry.engine",
+    "uv_space": {
+      "width": 512,
+      "height": 512,
+      "source": "Bedrock description"
+    },
+    "texture_size": {
+      "width": 512,
+      "height": 512
+    },
+    "metrics": {
+      "geometries": 1,
+      "bones": 8,
+      "cubes": 119,
+      "declared_faces": 714
+    },
+    "bounds": [
+      [
+        -43.1,
+        0,
+        -23
+      ],
+      [
+        45.593,
+        32.0,
+        24
+      ]
+    ],
+    "error_count": 0,
+    "warning_count": 0
+  },
+  "uv_layout": {
+    "file": "reference/uv_layout.json",
+    "texture_size": 512,
+    "gap_px": 2,
+    "pattern_face_islands": 135,
+    "shared_solid_islands": 28,
+    "face_count": 714,
+    "pattern_overlap_count": 0,
+    "shared_overlap_count": 0,
+    "cross_overlap_count": 0,
+    "atlas_occupied_height": 354,
+    "max_pattern_aspect_error_percent": 0.0,
+    "alignment_examples": {
+      "fe7e4b87-66de-5f79-b7a7-8e6678f3f23e|north": {
+        "name": "main_shell",
+        "style": "shell_back",
+        "face_bb": [
+          43.8,
+          24
+        ],
+        "uv_px": [
+          110,
+          60
+        ],
+        "aspect_error_percent": 0.0,
+        "shared": false
+      },
+      "fe7e4b87-66de-5f79-b7a7-8e6678f3f23e|east": {
+        "name": "main_shell",
+        "style": "shell_side",
+        "face_bb": [
+          36,
+          24
+        ],
+        "uv_px": [
+          90,
+          60
+        ],
+        "aspect_error_percent": 0.0,
+        "shared": false
+      },
+      "02b54bd4-b951-5c79-a593-ac51d1298116|north": {
+        "name": "rear_backplate",
+        "style": "shell_back",
+        "face_bb": [
+          42.8,
+          24
+        ],
+        "uv_px": [
+          107,
+          60
+        ],
+        "aspect_error_percent": 0.0,
+        "shared": false
+      },
+      "8fc475c8-3760-5889-ad65-ac600bf98b4c|north": {
+        "name": "black_duct_shell",
+        "style": "black_back",
+        "face_bb": [
+          19.2,
+          26
+        ],
+        "uv_px": [
+          48,
+          65
+        ],
+        "aspect_error_percent": 0.0,
+        "shared": false
+      },
+      "8fc475c8-3760-5889-ad65-ac600bf98b4c|up": {
+        "name": "black_duct_shell",
+        "style": "black_roof",
+        "face_bb": [
+          19.2,
+          34
+        ],
+        "uv_px": [
+          48,
+          85
+        ],
+        "aspect_error_percent": 0.0,
+        "shared": false
+      },
+      "776dbec3-3345-d831-3a10-455fffaccf49|up": {
+        "name": "bevel_black_duct_roof_left",
+        "style": "aux_shell",
+        "face_bb": [
+          23.8,
+          34
+        ],
+        "uv_px": [
+          48,
+          68
+        ],
+        "aspect_error_percent": 0.0,
+        "shared": false
+      },
+      "8d444f2f-8c28-592e-9e03-4f71a0a6dce3|west": {
+        "name": "black_duct_side_service_door",
+        "style": "aux_service_door",
+        "face_bb": [
+          9.8,
+          9.8
+        ],
+        "uv_px": [
+          24,
+          24
+        ],
+        "aspect_error_percent": 0.0,
+        "shared": false
+      },
+      "1073e826-ea35-5d33-a840-581bc140594c|west": {
+        "name": "black_duct_side_vent",
+        "style": "aux_vent",
+        "face_bb": [
+          11.6,
+          7.4
+        ],
+        "uv_px": [
+          29,
+          19
+        ],
+        "aspect_error_percent": 0.0,
+        "shared": false
+      }
+    },
+    "note": "Pattern faces use independent dimension-matched islands. Narrow/hidden faces use shared 2x2 solid islands and are excluded from aspect-ratio scoring. Duplicate cube names are keyed by UUID."
+  },
+  "blockbench_world_bounds": {
+    "coordinate_note": "Blockbench editor world bounds after all user-preserved cube transforms and rotations.",
+    "min": [
+      -34.85,
+      0.0,
+      -23.0
+    ],
+    "max": [
+      34.25,
+      32.0,
+      24.0
+    ],
+    "size": [
+      69.1,
+      32.0,
+      47.0
+    ],
+    "center": [
+      -0.3,
+      16.0,
+      0.5
+    ],
+    "preserved_user_transform": true,
+    "recentered": false
+  },
+  "geometry_preservation": {
+    "baseline": "reference/user_saved_geometry_manifest_rev2.json",
+    "source": "user-saved engine_20261111_v2 at 2026-11-11 13:40:09 +08:00",
+    "preserved_cubes": 119,
+    "baseline_aggregate_geometry_sha256": "068e49808b229672eefcdd1b40a04ef786c59312208fe9ad1e497a281beeae85",
+    "verified_unchanged": true,
+    "elements": 119,
+    "duplicate_names_preserved": true,
+    "note": "This pass changed only UV mappings, palette and texture pixels. No cube from/to/rotation/origin was moved or normalized."
+  },
+  "texture_contrast": {
+    "previous_opaque_luminance": {
+      "min": 20,
+      "p05": 20,
+      "p50": 58,
+      "p95": 141,
+      "max": 193,
+      "stdev": 33.18,
+      "range": 173
+    },
+    "current_opaque_luminance": {
+      "min": 51,
+      "p05": 51,
+      "p50": 86,
+      "p95": 127,
+      "max": 175,
+      "stdev": 20.6,
+      "range": 124
+    },
+    "range_reduction_percent": 28.3,
+    "stdev_reduction_percent": 37.9,
+    "near_black_floor": "#2B312D",
+    "structural_line": "#444B45",
+    "bright_ceiling": "#B5B6A7",
+    "global_neutral_mix_percent": 7
+  },
+  "auxiliary_structure": {
+    "shell_uuid": "776dbec3-3345-d831-3a10-455fffaccf49",
+    "door_element": "black_duct_side_service_door",
+    "vent_element": "black_duct_side_vent",
+    "textured_face_count": 18,
+    "styles": [
+      "aux_shell",
+      "aux_service_door",
+      "aux_vent"
+    ],
+    "notes": [
+      "The duplicate shell cube is keyed by UUID because its name is shared with another bevel cube.",
+      "Shell faces use an olive-grey 2x2 service-panel texture with grouped edge wear.",
+      "Door and vent faces use readable dark-green panel textures rather than pure black."
+    ]
+  },
+  "metadata_identifier_note": {
+    "project_identifier": "engine",
+    "export_identifier": "geometry.engine",
+    "note": "The generic audit compares identifiers literally. The .bbmodel stores the raw project identifier; Bedrock export prefixes geometry."
+  },
+  "sha256": {
+    "engine.bbmodel": "79153494ddcd8fa19ee0567c03a835b9c2011a84756747aa08ac6699be2d00e2",
+    "engine.geo.json": "6bc97f3bd1f2ec3086878c9e7a61245594f0d90bf80bb5a531b87adc6d607612",
+    "engine_tex.png": "89c086c24dac79315a32f7801544876e8162232dba4003767adc8507d0c80973"
+  }
+}

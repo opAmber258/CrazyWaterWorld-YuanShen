@@ -1,0 +1,447 @@
+{
+ "asset": "engine",
+ "display_name_zh": "引擎",
+ "display_name_en": "Engine",
+ "date": "2026-11-11",
+ "revision": "v2_user_saved_rev2_texture_contrast",
+ "provenance": {
+  "source": "人工 + AI（说明分工）",
+  "division": "人类用户完成辅助设备舱和两块检修面板的几何手改；AI 在冻结的 119-cube 手改版上仅重建 UV、材质、贴图与导出检查。",
+  "tools": [
+   "Codex",
+   "Blockbench 5.2.2",
+   "Python 3.12",
+   "Pillow",
+   "Blockbench MCP Server 1.10.1"
+  ],
+  "hand_edited_baseline": "reference/user_saved_geometry_manifest_rev2.json"
+ },
+ "status": "blockbench_checked_and_exported",
+ "minecraft_client_tested": false,
+ "game_code_modified": false,
+ "preserved_prior_version": "F:/BarotraumaMinecraft/art-vault/production/engine_20261111",
+ "official_names": {
+  "entity_key": "entityname.engine",
+  "zh_source": "F:/SteamLibrary/steamapps/common/Barotrauma/Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml:2865",
+  "zh_value": "引擎",
+  "en_source": "F:/SteamLibrary/steamapps/common/Barotrauma/Content/Texts/English/EnglishVanilla.xml:2865",
+  "en_value": "Engine"
+ },
+ "source": {
+  "game": "Barotrauma",
+  "item_identifier": "engine",
+  "xml": "F:/SteamLibrary/steamapps/common/Barotrauma/Content/Items/Engine/engine.xml",
+  "sprite_sheet": "F:/SteamLibrary/steamapps/common/Barotrauma/Content/Items/Engine/Engines.png",
+  "source_rect": [
+   0,
+   0,
+   659,
+   317
+  ],
+  "item_scale": 0.5,
+  "reference_crop": "reference/engine_source_crop.png",
+  "reference_entries": [
+   "entityname.engine"
+  ]
+ },
+ "dimensions": {
+  "units": "Blockbench units (16 BB = 1 block)",
+  "nominal_footprint_blocks": [
+   4,
+   2,
+   3
+  ],
+  "blockbench_world_bbox_min": [
+   -34.85,
+   0.0,
+   -23.0
+  ],
+  "blockbench_world_bbox_max": [
+   34.25,
+   32.0,
+   24.0
+  ],
+  "blockbench_world_size_bb": [
+   69.1,
+   32.0,
+   47.0
+  ],
+  "blockbench_world_center": [
+   -0.3,
+   16.0,
+   0.5
+  ],
+  "generic_audit_raw_bbox_bb": [
+   [
+    -45.593,
+    0,
+    -23
+   ],
+   [
+    43.1,
+    32,
+    24
+   ]
+  ],
+  "generic_audit_raw_size_bb": [
+   88.693,
+   32,
+   47
+  ],
+  "front": "+Z (Blockbench)",
+  "ground_y": 0,
+  "centered_xz": false,
+  "recentered": false,
+  "preserved_user_transform": true,
+  "note": "The user-authored auxiliary housing and rotated components extend the evaluated world bounds. No transform normalization was applied. The generic audit raw envelope over-approximates rotations."
+ },
+ "model": {
+  "format": "Bedrock Entity",
+  "format_version": "1.12.0",
+  "bbmodel_identifier": "engine",
+  "geo_identifier": "geometry.engine",
+  "cubes": 119,
+  "bones": 8,
+  "declared_faces": 714,
+  "rotated_cubes": 43,
+  "animations": 0,
+  "groups": [
+   "engine",
+   "housing",
+   "front_vents",
+   "control_panel",
+   "black_duct",
+   "base_skirt",
+   "top_rigging",
+   "rear_rotor"
+  ],
+  "group_cube_counts": {
+   "housing": 18,
+   "front_vents": 9,
+   "control_panel": 8,
+   "black_duct": 34,
+   "base_skirt": 10,
+   "top_rigging": 9,
+   "rear_rotor": 31
+  },
+  "duplicate_names_preserved": true,
+  "duplicate_name_key": "UUID",
+  "uv_mode": "per-face islands with shared solid micro-islands"
+ },
+ "texture": {
+  "file": "engine_tex.png",
+  "size": [
+   512,
+   512
+  ],
+  "mode": "RGBA",
+  "alpha_extrema": [
+   0,
+   255
+  ],
+  "transparent_pixels": 132519,
+  "partial_alpha_pixels": 0,
+  "embedded_matches_external_png": true,
+  "pattern_face_islands": 135,
+  "shared_solid_islands": 28,
+  "atlas_gap_px": 2,
+  "atlas_occupied_height": 354,
+  "pattern_island_overlaps": 0,
+  "cross_island_overlaps": 0,
+  "max_pattern_aspect_error_percent": 0.0,
+  "style": "低饱和橄榄灰工业材质；结构线改深绿灰，黑风道保留深色身份但不再依赖纯黑描边；磨损只沿边角、接缝、把手和接触区成组分布。",
+  "palette": "reference/palette.json",
+  "uv_layout": "reference/uv_layout.json",
+  "generator": "reference/refine_texture_contrast_v3.py"
+ },
+ "contrast": {
+  "previous_opaque_luminance": {
+   "min": 20,
+   "p05": 20,
+   "p50": 58,
+   "p95": 141,
+   "max": 193,
+   "stdev": 33.18,
+   "range": 173
+  },
+  "current_opaque_luminance": {
+   "min": 51,
+   "p05": 51,
+   "p50": 86,
+   "p95": 127,
+   "max": 175,
+   "stdev": 20.6,
+   "range": 124
+  },
+  "range_reduction_percent": 28.3,
+  "stdev_reduction_percent": 37.9,
+  "near_black_floor": "#2B312D",
+  "structural_line": "#444B45",
+  "bright_ceiling": "#B5B6A7",
+  "global_neutral_mix_percent": 7
+ },
+ "auxiliary_structure": {
+  "shell_uuid": "776dbec3-3345-d831-3a10-455fffaccf49",
+  "door_element": "black_duct_side_service_door",
+  "vent_element": "black_duct_side_vent",
+  "textured_face_count": 18,
+  "styles": [
+   "aux_shell",
+   "aux_service_door",
+   "aux_vent"
+  ]
+ },
+ "previews": {
+  "resolution": [
+   1200,
+   900
+  ],
+  "background": "transparent RGBA",
+  "no_grid": true,
+  "no_ui": true,
+  "no_axes": true,
+  "all_required_subject_edges_have_margin": true,
+  "views": [
+   {
+    "file": "preview_front.png",
+    "size": [
+     1200,
+     900
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+     91,
+     214,
+     1109,
+     686
+    ],
+    "margins": [
+     91,
+     214,
+     91,
+     214
+    ]
+   },
+   {
+    "file": "preview_back.png",
+    "size": [
+     1200,
+     900
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+     91,
+     214,
+     1109,
+     686
+    ],
+    "margins": [
+     91,
+     214,
+     91,
+     214
+    ]
+   },
+   {
+    "file": "preview_side.png",
+    "size": [
+     1200,
+     900
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+     91,
+     103,
+     1109,
+     797
+    ],
+    "margins": [
+     91,
+     103,
+     91,
+     103
+    ]
+   },
+   {
+    "file": "preview_oblique.png",
+    "size": [
+     1200,
+     900
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+     145,
+     215,
+     1032,
+     812
+    ],
+    "margins": [
+     145,
+     215,
+     168,
+     88
+    ]
+   }
+  ],
+  "supplemental_checks": [
+   {
+    "file": "reference/right_side_check.png",
+    "size": [
+     1200,
+     900
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+     183,
+     166,
+     1017,
+     734
+    ],
+    "margins": [
+     183,
+     166,
+     183,
+     166
+    ],
+    "alpha_extrema": [
+     0,
+     255
+    ]
+   },
+   {
+    "file": "reference/aux_structure_check.png",
+    "size": [
+     1200,
+     900
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+     440,
+     103,
+     1200,
+     814
+    ],
+    "margins": [
+     440,
+     103,
+     0,
+     86
+    ],
+    "alpha_extrema": [
+     0,
+     255
+    ]
+   },
+   {
+    "file": "reference/bevel_corner_check.png",
+    "size": [
+     1200,
+     900
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+     144,
+     56,
+     1200,
+     900
+    ],
+    "margins": [
+     144,
+     56,
+     0,
+     0
+    ],
+    "alpha_extrema": [
+     0,
+     255
+    ]
+   }
+  ],
+  "generator": [
+   "reference/render_previews_via_blockbench_mcp.py",
+   "reference/render_refinement_checks_via_blockbench_mcp.py"
+  ],
+  "note": "All images were rendered from the final Blockbench project. Required previews retain margins on all edges.",
+  "regenerated": "2026-11-11 18:41 (Blockbench 5.2.2 via MCP, Canvas.withoutGizmos)",
+  "regenerated_reason": "材质手改后预览过期（预览 13:52，材质 18:31），按约定重出以保证预览与当前几何/材质一致"
+ },
+ "checks": {
+  "blockbench_reopened": true,
+  "blockbench_saved": true,
+  "native_bedrock_export": true,
+  "geo_reopened_in_blockbench": true,
+  "geo_reopen_counts": {
+   "elements": 119,
+   "bones": 8
+  },
+  "bbmodel_audit": {
+   "expected_identifier": "engine",
+   "errors": 0,
+   "warnings": 0
+  },
+  "geo_audit": {
+   "expected_identifier": "geometry.engine",
+   "errors": 0,
+   "warnings": 0
+  },
+  "missing_texture_faces": 0,
+  "missing_uv_faces": 0,
+  "absolute_path_dependency_hits": 0,
+  "user_base_geometry_preserved": true,
+  "base_geometry_aggregate_sha256": "068e49808b229672eefcdd1b40a04ef786c59312208fe9ad1e497a281beeae85",
+  "auxiliary_structure_textured": true,
+  "right_side_fan_transform_preserved": true,
+  "near_black_structural_lines_reduced": true,
+  "preview_dimensions_exact": true,
+  "preview_alpha_margins_ok": true,
+  "texture_power_of_two": true,
+  "transparent_pixels_true_transparent": true,
+  "uv_pattern_overlap_count": 0,
+  "uv_cross_overlap_count": 0,
+  "key_pattern_aspect_error_max_percent": 0.0,
+  "static_geometry_no_animation": true
+ },
+ "revision_scope": {
+  "new_structure": "用户复制并改造的大型辅助设备舱，使用 UUID 区分同名 bevel cube。",
+  "shell_texture": "2×2 橄榄灰维护面板、压边、紧固件、纵向污带和下缘磨损。",
+  "panel_texture": "上方通风面、下方检修门均使用低对比度深绿灰材质。",
+  "global_contrast": "纯黑结构线抬升，亮边压低，全局 7% 中性灰混合。",
+  "preview": "四向预览排除 axes、grid、outline 和背景板。"
+ },
+ "sha256": {
+  "engine.bbmodel": "79153494ddcd8fa19ee0567c03a835b9c2011a84756747aa08ac6699be2d00e2",
+  "engine.geo.json": "6bc97f3bd1f2ec3086878c9e7a61245594f0d90bf80bb5a531b87adc6d607612",
+  "engine_tex.png": "89c086c24dac79315a32f7801544876e8162232dba4003767adc8507d0c80973",
+  "preview_front.png": "ed6f7f156d62e76bd792aff68d1d85e1acc80d94103943c10c0095078d81b482",
+  "preview_back.png": "1021ef36135d3f2f08ec4d055b282db4f1f6dcc77f187d6118950a7c73e19d04",
+  "preview_side.png": "b553eda450b0d192c7453360228c411f4285fe219b2db9d3ce297d81c56b6679",
+  "preview_oblique.png": "c49ed941935eb81693c64733dc1f0fcfe857326b614bf45c2dca2b750dd34885",
+  "reference/right_side_check.png": "834862ded9b71d138f3a0b58890105cd6624a74bf9661045a817139bd3a95a9c",
+  "reference/aux_structure_check.png": "630f4c4d0aab14a0d02d03510ff640dd6cddb563073560998ff62a5220926ce3",
+  "reference/bevel_corner_check.png": "3e258d6083b35d94c0e5d60aeb5b92abfcc30e4144b5b902465df3966be22776",
+  "bbmodel": "5b121ea46e434425a1fb28236faab142314bd073da9702c626df23d9061f0a25",
+  "geo": "6bc97f3bd1f2ec3086878c9e7a61245594f0d90bf80bb5a531b87adc6d607612",
+  "texture": "65def5a0bf94a711077ec92105a06e58b1e06e96728a2efd0b3ba337e89c5769"
+ },
+ "not_verified": [
+  "Minecraft / GeckoLib 游戏内渲染",
+  "资源包接入与贴图路径绑定",
+  "碰撞、交互、放置方向与运行时性能",
+  "非对称世界包围盒在游戏中的最终视觉效果"
+ ],
+ "validation_statement": "已在 Blockbench 检查并完成导出，未进入 Minecraft 验证。",
+ "history": [
+  {
+   "revision": "preview-regenerated-20261111",
+   "date": "2026-11-11",
+   "change": "四向预览按当前材质重新渲染；validation.previews 的 alpha_bbox/margins 同步更新",
+   "geometry_unchanged": true,
+   "files": [
+    "preview_front.png",
+    "preview_back.png",
+    "preview_side.png",
+    "preview_oblique.png"
+   ]
+  }
+ ]
+}
