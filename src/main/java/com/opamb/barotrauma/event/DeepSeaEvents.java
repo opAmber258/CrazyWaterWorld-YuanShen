@@ -636,8 +636,12 @@ public final class DeepSeaEvents {
                     buf.writeVarInt(SonarScan.DEFAULT_RANGE);
                 });
         // 命令打开的声纳页也要拿到当前任务状态，否则客户端缓存可能是空的/上一轮的。
+        // 任务池属于深海维度：玩家在别的维度执行命令时不能读当前维度的（空的）任务池。
+        ServerLevel deep = player.server.getLevel(
+                com.opamb.barotrauma.world.ModDimensions.THE_DEEP);
         com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
-                com.opamb.barotrauma.network.MissionStatePacket.build(player, level));
+                com.opamb.barotrauma.network.MissionStatePacket.build(
+                        player, deep != null ? deep : level));
         return 1;
     }
 

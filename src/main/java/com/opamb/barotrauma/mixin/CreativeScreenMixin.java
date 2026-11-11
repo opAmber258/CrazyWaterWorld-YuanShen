@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.mixin;
 
+import com.opamb.barotrauma.client.equipment.BagOverlay;
 import com.opamb.barotrauma.client.equipment.EquipmentScreenOverlay;
 import com.opamb.barotrauma.client.equipment.ItemSubSlotOverlay;
 import com.opamb.barotrauma.network.ItemSubSlotPacket;
@@ -61,7 +62,13 @@ public abstract class CreativeScreenMixin {
             return;
         }
         CreativeModeInventoryScreen screen = (CreativeModeInventoryScreen) (Object) this;
-        // 只补画装备槽边框；主背包区域保留原版格子（不盖住创造界面的角色预览）。
+        Player player = Minecraft.getInstance().player;
+        // 主背包 9..20 已经按容量重排，原版 3×9 底纹会露出"看起来能点"的空格；
+        // 用和生存界面相同的背包面板盖住（角色预览在 y<54，不会被盖）。
+        if (player != null) {
+            BagOverlay.renderIn(graphics, screen.getGuiLeft(), screen.getGuiTop(), player,
+                    9, 54, 162, 54);
+        }
         EquipmentScreenOverlay.renderSlots(graphics, screen.getMenu(),
                 screen.getGuiLeft(), screen.getGuiTop());
     }

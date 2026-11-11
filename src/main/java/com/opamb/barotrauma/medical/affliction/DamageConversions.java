@@ -20,8 +20,16 @@ public final class DamageConversions {
         FALL, FIRE, EXPLOSION, NONE
     }
 
-    /** 一次转化要注入的 (类型, 部位, 强度)。 */
-    public record Application(AfflictionType type, Limb limb, double strength) {
+    /**
+     * 一次转化要注入的 (类型, 部位, 强度)。
+     *
+     * <p>{@code armorLimb} 是"护甲按哪个部位结算"——通常等于 {@code limb}；头部投射物命中
+     * 为了遵守"头部不做外伤"把病症记在躯干，但头盔仍应按头部生效，所以单独带一个部位。</p>
+     */
+    public record Application(AfflictionType type, Limb limb, double strength, Limb armorLimb) {
+        public Application(AfflictionType type, Limb limb, double strength) {
+            this(type, limb, strength, limb);
+        }
     }
 
     /** 摔落：1 HP → 5 强度钝器伤（= 5 vitality）。摔伤只伤双腿（用户指令：按来源鉴定部位）。 */
@@ -112,9 +120,12 @@ public final class DamageConversions {
 
     /**
      * 投射物（箭/三叉戟/雪球等）：**按命中高度鉴定部位**（用户指令，参考硬核生存模组做法）。
-     * heightRatio = 命中点在玩家包围盒里的相对高度（0=脚，1=头顶）：
+     * heightRatio 由调用方换算成 **0=头顶、1=脚底**：
      * ≤0.55 → 胸（**头部不做外伤**——用户指令）、≤0.70 手臂、其余腿。
      * 穿刺必出血 {@link #PROJECTILE_BLEED_PER_HP}/HP（原作枪械/猎叉出血 100%，出血挂同一部位）。
+     *
+     * <p>头部命中虽然把病症记在躯干，但护甲部位单独记成 {@link Limb#HEAD}，
+     * 这样头盔的钝器/出血倍率能生效（{@link #HEAD_ARMOR_RATIO} 以上才按躯干/四肢算）。</p>
      */
     public static List<Application> fromProjectile(double damageHp, double heightRatio, boolean hitFromLeft) {
         List<Application> plan = new ArrayList<>();
@@ -122,10 +133,16 @@ public final class DamageConversions {
             return plan;
         }
         Limb limb = limbByHeightRatio(heightRatio, hitFromLeft);
-        plan.add(new Application(AfflictionType.BLUNT_TRAUMA, limb, damageHp * PROJECTILE_BLUNT_PER_HP));
-        plan.add(new Application(AfflictionType.BLEEDING, limb, damageHp * PROJECTILE_BLEED_PER_HP));
+        Limb armorLimb = heightRatio <= HEAD_ARMOR_RATIO ? Limb.HEAD : limb;
+        plan.add(new Application(AfflictionType.BLUNT_TRAUMA, limb,
+                damageHp * PROJECTILE_BLUNT_PER_HP, armorLimb));
+        plan.add(new Application(AfflictionType.BLEEDING, limb,
+                damageHp * PROJECTILE_BLEED_PER_HP, armorLimb));
         return plan;
     }
+
+    /** 投射物命中高度 ≤ 这个比例算头部（1.8 格高玩家的头约在顶部 25%）。 */
+    public static final double HEAD_ARMOR_RATIO = 0.25;
 
     /** 相对高度 → 部位；手臂/腿按 hitFromLeft 分左右。头部命中并入胸部（v1 头部无外伤）。 */
     public static Limb limbByHeightRatio(double heightRatio, boolean hitFromLeft) {
