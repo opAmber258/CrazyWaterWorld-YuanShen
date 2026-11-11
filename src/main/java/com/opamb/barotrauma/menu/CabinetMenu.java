@@ -36,12 +36,13 @@ public class CabinetMenu extends AbstractContainerMenu {
         this(id, inventory, pos, null);
     }
 
-    private CabinetMenu(int id, Inventory inventory, BlockPos pos, @Nullable CabinetBlock.Kind kind) {
+    private CabinetMenu(int id, Inventory inventory, BlockPos pos, @Nullable CabinetBlock.Kind requestedKind) {
         super(ModMenus.CABINET.get(), id);
         this.pos = pos;
         // 客户端由服务端下发种类（物理船上船坞区块可能未同步，自己猜会槽位错位）；
         // 服务端 createMenu 路径没有种类，按方块实体/方块状态解析。
-        this.kind = kind != null ? kind : resolveKind(inventory, pos);
+        // 注意：后面一律读 this.kind——三参构造器传进来的 requestedKind 是 null。
+        this.kind = requestedKind != null ? requestedKind : resolveKind(inventory, pos);
 
         CabinetBlockEntity cabinet = null;
         if (inventory.player.level().getBlockEntity(pos) instanceof CabinetBlockEntity be) {

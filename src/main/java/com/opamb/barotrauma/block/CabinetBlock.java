@@ -260,7 +260,11 @@ public class CabinetBlock extends Block implements EntityBlock {
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState,
                          boolean isMoving) {
-        if (!level.isClientSide && !state.is(newState.getBlock()) && !REMOVING.get()) {
+        // VS2 装配时先拆 BE 再拆方块、且不保证先处理主方块；装配期间跳过掉库存/拆分片，
+        // 否则装配快照恢复后会复制柜内物品。
+        boolean assembling = com.opamb.barotrauma.ship.vs.VsSupport.available()
+                && com.opamb.barotrauma.ship.vs.VsBridge.isAssembling();
+        if (!level.isClientSide && !state.is(newState.getBlock()) && !REMOVING.get() && !assembling) {
             REMOVING.set(Boolean.TRUE);
             try {
                 int part = state.getValue(PART);

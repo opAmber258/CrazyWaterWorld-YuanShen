@@ -52,9 +52,12 @@ class MissionSavedDataFailureTest {
         data.abandon(player);
         assertNull(data.activeMission(player), "放弃后不应再占用该任务");
         assertEquals(Mission.State.FAILED, data.missions().get(mission.id).state(), "FAILED 不提前回池");
-        assertFalse(data.accept(UUID.randomUUID(), mission.id, 0L), "FAILED 不可被接取");
+        // 固定 UUID：测试输入可复现（随机 UUID 无法按固定随机源重放）。
+        UUID otherPlayer = UUID.fromString("00000000-0000-0000-0000-0000000000a1");
+        UUID anotherPlayer = UUID.fromString("00000000-0000-0000-0000-0000000000a2");
+        assertFalse(data.accept(otherPlayer, mission.id, 0L), "FAILED 不可被接取");
         assertEquals(1, data.resetFailed());
-        assertTrue(data.accept(UUID.randomUUID(), mission.id, 0L), "本轮抵达后回池可接取");
+        assertTrue(data.accept(anotherPlayer, mission.id, 0L), "本轮抵达后回池可接取");
     }
 
     @Test

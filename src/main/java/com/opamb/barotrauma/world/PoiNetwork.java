@@ -83,6 +83,9 @@ public final class PoiNetwork {
                 }
                 case SALVAGE -> out.add(new Mission(id++, MissionType.SALVAGE,
                         WRECK_A, 20, Math.max(1, spec.reward())));
+                // 说明：当前 SALVAGE 的实际目标是 WRECK_A 里的黑匣子（MissionProgress 只认
+                // BLACK_BOX），终端显示名已在 lang 里改成"打捞沉船黑匣子"。等洞穴异星遗物的
+                // 生成/交付实装后，再把 lang 名恢复成原版"打捞一件异星遗物"。
                 default -> {
                     // 目录里已登记、但对应功能还没实装的任务不生成
                 }

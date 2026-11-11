@@ -118,7 +118,9 @@ public final class EquipmentData {
         if (stack.isEmpty()) {
             return;
         }
-        if (!inventory.add(stack)) {
+        // add() 只表示"放进去了一部分"，不保证 stack 已空（背包容量不足时会留余量）。
+        inventory.add(stack);
+        if (!stack.isEmpty()) {
             player.drop(stack, false);
         }
     }

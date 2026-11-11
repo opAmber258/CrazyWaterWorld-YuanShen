@@ -103,7 +103,7 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 case BUY_OXYGEN -> handleBuyItem(player, level, wallet, COST_OXYGEN,
                         new ItemStack(ModItems.OXYGEN_TANK.get()));
                 case BUY_WELDER -> handleBuyItem(player, level, wallet, COST_WELDER,
-                        new ItemStack(ModItems.WELDING_TOOL.get()));
+                        weldingToolWithFuel());
                 case BUY_UPGRADE -> handleUpgrade(player, level, wallet);
                 case BUY_ENGINE_UPGRADE -> handleEngineUpgrade(player, level, wallet);
                 case BUY_DEEP_PERMIT -> handleBuyItem(player, level, wallet, COST_DEEP_PERMIT,
@@ -273,6 +273,14 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 "已购买 " + stack.getHoverName().getString() + "（-" + cost + " credits）")
                 .withStyle(ChatFormatting.GREEN));
         sendState(player, level);
+    }
+
+    /** 商店出售的焊接工具自带一罐满燃料，买来即可使用（油箱仍可单独制作）。 */
+    private static ItemStack weldingToolWithFuel() {
+        ItemStack welder = new ItemStack(ModItems.WELDING_TOOL.get());
+        com.opamb.barotrauma.equipment.ItemSubSlot.set(welder,
+                new ItemStack(ModItems.WELDING_FUEL_TANK.get()));
+        return welder;
     }
 
     /** 船体加固：每级 +20%，上限 3 级。 */

@@ -454,7 +454,7 @@ public final class MedicalEvents {
         for (DamageConversions.Application application : plan) {
             double strength = application.strength();
             if (armorWearer != null && strength > 0.0D) {
-                strength *= ArmorModifiers.damageMultiplier(armorWearer, application.type());
+                strength *= ArmorModifiers.damageMultiplier(armorWearer, application.type(), application.limb());
             }
             container.add(application.type(), application.limb(), strength);
         }

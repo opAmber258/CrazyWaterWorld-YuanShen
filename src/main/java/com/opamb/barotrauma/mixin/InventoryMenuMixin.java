@@ -89,23 +89,29 @@ public abstract class InventoryMenuMixin {
         boolean movedAny;
         if (index == 0) {
             // 合成结果：背包 → 热键栏，并触发 onQuickCraft。
-            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false)
-                    || accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
+            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false);
+            if (!stack.isEmpty()) {
+                movedAny |= accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
+            }
             if (!movedAny) {
                 return ItemStack.EMPTY;
             }
             slot.onQuickCraft(stack, original);
         } else if (index < 5) {
             // 2×2 合成输入。
-            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false)
-                    || accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
+            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false);
+            if (!stack.isEmpty()) {
+                movedAny |= accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
+            }
             if (!movedAny) {
                 return ItemStack.EMPTY;
             }
         } else if (EquipmentSlotType.byMenuIndex(index) != null) {
             // 从装备槽拿出：只进背包/热键栏。
-            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false)
-                    || accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
+            movedAny = accessor.barotrauma$moveItemStackTo(stack, bagStart, bagEnd, false);
+            if (!stack.isEmpty()) {
+                movedAny |= accessor.barotrauma$moveItemStackTo(stack, hotbarStart, hotbarEnd, false);
+            }
             if (!movedAny) {
                 return ItemStack.EMPTY;
             }

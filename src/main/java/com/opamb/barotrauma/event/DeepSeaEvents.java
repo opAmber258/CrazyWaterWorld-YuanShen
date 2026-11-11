@@ -635,6 +635,9 @@ public final class DeepSeaEvents {
                     buf.writeBlockPos(anchor);
                     buf.writeVarInt(SonarScan.DEFAULT_RANGE);
                 });
+        // 命令打开的声纳页也要拿到当前任务状态，否则客户端缓存可能是空的/上一轮的。
+        com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
+                com.opamb.barotrauma.network.MissionStatePacket.build(player, level));
         return 1;
     }
 

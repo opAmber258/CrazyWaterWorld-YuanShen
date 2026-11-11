@@ -141,6 +141,8 @@ public final class ModBlocks {
                 .strength(8.0F, 300.0F)
                 .sound(SoundType.METAL)
                 .noOcclusion()
+                // 多格柜形状随 part 变化：不让无上下文查询缓存空世界里的空形状。
+                .dynamicShape()
                 .isViewBlocking((state, level, pos) -> false)
                 .isSuffocating((state, level, pos) -> false)
                 // 多格柜的分片自愈（CabinetBlock.randomTick）：清孤儿分片、补齐整列。

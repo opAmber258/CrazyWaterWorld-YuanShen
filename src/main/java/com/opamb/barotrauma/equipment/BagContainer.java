@@ -109,6 +109,9 @@ public class BagContainer implements Container {
 
     @Override
     public void setChanged() {
+        // 原版容器合并（ItemStack.grow/shrink）只调 setChanged，不经过 setItem；
+        // 这里必须落盘，否则换包/重登会按旧 NBT 重载，合并的数量丢失。
+        save();
     }
 
     @Override

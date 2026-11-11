@@ -100,6 +100,22 @@ public abstract class CreativeScreenMixin {
             return;
         }
         AbstractContainerMenu menu = screen.getMenu();
+        // 装备背包 9..20：按容量排成 3×2 / 4×3，和生存界面一致；
+        // 超出容量的格子挪出屏幕（创造页签的包装槽不转发 isActive，不能只靠禁用）。
+        int capacity = com.opamb.barotrauma.equipment.BagManager.capacity(player);
+        com.opamb.barotrauma.equipment.BagLayout.Grid grid =
+                com.opamb.barotrauma.equipment.BagLayout.forCapacityIn(capacity, 9, 54, 162, 54);
+        for (int i = 0; i < com.opamb.barotrauma.equipment.BagLayout.MAX_SLOTS; i++) {
+            int index = com.opamb.barotrauma.equipment.BagSlots.START + i;
+            if (index >= menu.slots.size()) {
+                break;
+            }
+            if (i < capacity) {
+                barotrauma$move(menu.slots.get(index), grid.slotX(i), grid.slotY(i));
+            } else {
+                barotrauma$move(menu.slots.get(index), OFFSCREEN - i, OFFSCREEN);
+            }
+        }
         // 原版主背包 21..35 是禁用格：挪出屏幕，别让它们在创造物品栏里露出来。
         for (int k = 21; k < 36 && k < menu.slots.size(); k++) {
             barotrauma$move(menu.slots.get(k), OFFSCREEN - k, OFFSCREEN);
