@@ -1,5 +1,7 @@
 package com.opamb.barotrauma.item;
 
+import com.opamb.barotrauma.equipment.ItemSubSlot;
+import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -36,7 +38,10 @@ import java.util.List;
  * <p>官方数值（本机 {@code Content/Items/Tools/tools.xml}）：结构修复
  * {@code structurefixamount=2.0}/秒、燃料每秒 1 点、燃料罐 200 点；结构被焊接时
  * 用红→绿矩形显示剩余耐久。这里按“右键持续焊接”实现：每 2 tick 修
- * {@link #REPAIR_PER_APPLICATION} 点，燃料每 10 tick 扣 1 点。</p>
+ * {@link #REPAIR_PER_APPLICATION} 点，燃料每秒扣 1 点。</p>
+ *
+ * <p>燃料放在工具的悬停子格里（{@code ItemSubSlot}），必须是
+ * {@code welding_fuel_tank}；工具有没有油都从子格读，工具本体不再消耗耐久。</p>
  *
  * <p>物理船的船壳在世界里是空气，所以不能只依赖原版 {@code useOn}：
  * 服务端在 {@code onUseTick} 里问 {@link VsState#tryRepair}，由它沿玩家视线
@@ -46,8 +51,8 @@ public class WeldingToolItem extends Item {
 
     /** 每 2 tick（0.1 s）修多少血：25 HP/s，200 血的外壳约 8 秒。 */
     public static final float REPAIR_PER_APPLICATION = 2.5F;
-    /** 焊接时每多少 tick 扣 1 点燃料。 */
-    private static final int FUEL_INTERVAL = 10;
+    /** 焊接时每多少 tick 扣 1 点燃料（原作 1/s；油箱 200 点 = 200 秒）。 */
+    private static final int FUEL_INTERVAL = 20;
     private static final double REACH = 5.0D;
 
     public WeldingToolItem(Properties properties) {
@@ -57,7 +62,7 @@ public class WeldingToolItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (stack.getDamageValue() >= stack.getMaxDamage() - 1) {
+        if (!hasFuel(stack)) {
             player.displayClientMessage(Component.translatable("message.barotrauma.welding_empty")
                     .withStyle(ChatFormatting.RED), true);
             return InteractionResultHolder.fail(stack);
@@ -72,7 +77,7 @@ public class WeldingToolItem extends Item {
         if (player == null) {
             return InteractionResult.PASS;
         }
-        if (context.getItemInHand().getDamageValue() >= context.getItemInHand().getMaxDamage() - 1) {
+        if (!hasFuel(context.getItemInHand())) {
             player.displayClientMessage(Component.translatable("message.barotrauma.welding_empty")
                     .withStyle(ChatFormatting.RED), true);
             return InteractionResult.FAIL;
@@ -96,6 +101,14 @@ public class WeldingToolItem extends Item {
         if (!(living instanceof Player player)) {
             return;
         }
+        if (!hasFuel(stack)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(Component.translatable("message.barotrauma.welding_empty")
+                        .withStyle(ChatFormatting.RED), true);
+                player.stopUsingItem();
+            }
+            return;
+        }
         if (level.isClientSide) {
             if (player.tickCount % 2 == 0) {
                 spawnWeldParticles(level, player);
@@ -115,11 +128,36 @@ public class WeldingToolItem extends Item {
             return;
         }
         if (player.tickCount % FUEL_INTERVAL == 0) {
-            InteractionHand hand = player.getUsedItemHand();
-            stack.hurtAndBreak(1, player, p -> p.broadcastBreakEvent(hand));
+            consumeFuel(stack, player);
+            if (!hasFuel(stack)) {
+                player.stopUsingItem();
+            }
         }
-        if (stack.getDamageValue() >= stack.getMaxDamage()) {
-            player.stopUsingItem();
+    }
+
+    /** 子格里的焊接油箱还有燃料吗。 */
+    private static boolean hasFuel(ItemStack tool) {
+        ItemStack fuel = ItemSubSlot.get(tool);
+        return !fuel.isEmpty()
+                && fuel.is(ModItems.WELDING_FUEL_TANK.get())
+                && fuel.getDamageValue() < fuel.getMaxDamage();
+    }
+
+    /** 消耗 1 点燃料；油箱耗尽就从子格里消失。创造模式不消耗。 */
+    private static void consumeFuel(ItemStack tool, Player player) {
+        if (player.getAbilities().instabuild) {
+            return;
+        }
+        ItemStack fuel = ItemSubSlot.get(tool);
+        if (fuel.isEmpty() || !fuel.is(ModItems.WELDING_FUEL_TANK.get())) {
+            return;
+        }
+        int damage = fuel.getDamageValue() + 1;
+        if (damage >= fuel.getMaxDamage()) {
+            ItemSubSlot.set(tool, ItemStack.EMPTY);
+        } else {
+            fuel.setDamageValue(damage);
+            ItemSubSlot.set(tool, fuel);
         }
     }
 
@@ -164,6 +202,15 @@ public class WeldingToolItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.barotrauma.welding_tool").withStyle(ChatFormatting.GRAY));
+        ItemStack fuel = ItemSubSlot.get(stack);
+        if (fuel.isEmpty()) {
+            tooltip.add(Component.translatable("tooltip.barotrauma.welding_no_fuel")
+                    .withStyle(ChatFormatting.RED));
+        } else {
+            int left = Math.max(0, fuel.getMaxDamage() - fuel.getDamageValue());
+            tooltip.add(Component.translatable("tooltip.barotrauma.welding_fuel",
+                    left, fuel.getMaxDamage()).withStyle(ChatFormatting.GRAY));
+        }
         super.appendHoverText(stack, level, tooltip, flag);
     }
 }

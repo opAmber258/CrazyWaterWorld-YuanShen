@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "facing=north,part=0": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=north,part=1": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=north,part=2": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=north,part=3": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=east,part=0": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=east,part=1": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=east,part=2": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=east,part=3": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=south,part=0": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=south,part=1": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=south,part=2": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=south,part=3": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=west,part=0": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=west,part=1": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=west,part=2": {
+      "model": "barotrauma:block/diving_suit_locker"
+    },
+    "facing=west,part=3": {
+      "model": "barotrauma:block/diving_suit_locker"
+    }
+  }
+}

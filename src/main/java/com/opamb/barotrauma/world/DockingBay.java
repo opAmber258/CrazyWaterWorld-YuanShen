@@ -400,21 +400,6 @@ public final class DockingBay {
         ensureHatchRow(level, site, SUB_HATCH_Y);
         ensureBulkhead(level, site.x() - ROOM_HALF_X - 1, SIDE_DOOR_Y, site.z());
         ensureBulkhead(level, site.x() + ROOM_HALF_X + 1, SIDE_DOOR_Y, site.z());
-        ensureMissionTerminal(level, site);
-    }
-
-    /** 任务终端也靠 BE 渲染：旧存档/世界生成漏建时补一个。 */
-    private static void ensureMissionTerminal(ServerLevel level, Site site) {
-        BlockPos pos = OutpostBuilder.terminalPos(site);
-        level.getChunkAt(pos);
-        BlockState state = level.getBlockState(pos);
-        if (state.is(ModBlocks.MISSION_TERMINAL.get()) && level.getBlockEntity(pos) == null
-                && state.getBlock() instanceof net.minecraft.world.level.block.EntityBlock entityBlock) {
-            var be = entityBlock.newBlockEntity(pos, state);
-            if (be != null) {
-                level.setBlockEntity(be);
-            }
-        }
     }
 
     /** 主站 + 本轮正在下潜的副本（目的站和出发站）；给开局补实体、开合舱口用。 */

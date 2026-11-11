@@ -43,6 +43,12 @@ If you haven't already read `AGENTS.md`, read it now — it contains the project
 
 Then read this file fully before doing anything else in this session.
 
+## 交接快照（2026-11-10）
+
+**新会话先读仓库根 `STATUS.md` 顶部「2026-11-10」一节。** 那里是当前交接：任务目录 Phase 0 +
+任务界面迁到导航终端，代码全在工作区（14 改 + 6 未跟踪，**未提交、未 push、未 pull**），
+L1 203 项通过，等实机验收和用户的「提交」授权。本文件以下只保留长期项目状态。
+
 ## 合作者下次开工提醒：先读模块还原路线
 
 开工前请阅读 [潜渊症八大模块协作路线](../docs/BAROTRAUMA_MODULE_ROADMAP.md)。它结合官方 Wiki 与仓库现状，包含白话职责、完整子步骤、首轮交付、接口边界及夜间 `/goal` 模板。
@@ -56,13 +62,14 @@ Then read this file fully before doing anything else in this session.
 **Working:**
 - 1.20.1 Forge mod builds and loads; air-ocean deep dimension, outposts, and starter submarine generate.
 - VS2 physical ships: launch, dock, thruster control, breach reconciliation, sonar proxy, and water-state sync.
-- **Minimum gameplay loop (2026-11-04, local work merged on top of `8751a00`, uncommitted):** mission terminal (main outpost `8,-63,0` + B relay station at `320,-300`), 5 missions (salvage×3 / recon / delivery), credits + shop (repair/oxygen/welder/hull upgrade), deterministic POI wrecks, sonar-screen「下潜/靠泊」buttons, first-login guidance + objective HUD, pressure/collision threats.
+- **Minimum gameplay loop:** credits + shop (repair/oxygen/welder/hull upgrade), deterministic POI wrecks, sonar-screen「下潜/靠泊」buttons, first-login guidance + objective HUD, pressure/collision threats. **Missions are handled in the navigation terminal's third tab `任务` (2026-11-10)**; the `mission_terminal` block is deprecated and no longer world-generated (still registered, so old saves keep loading).
 - **Persistence:** `data/ShipSavedData` (assembled snapshot + hull damage + shipId + proxy), block-ship hull damage in block-entity NBT, VS2 world-load adoption (`VsPilot.adoptFromSave` + shipyard chunk force-load). `.smoketest-persist` PASS (`船=true 耐久记录=2`), `.smoketest-mission` PASS.
 - Per-compartment scalar water simulation, breach inflow splash/bubbles, ballast, pumps, reactor, and `/barotrauma ship flood` diagnostics.
 - Per-block hull durability (plating 200 / glass 100), melee + explosion + block-ship collision damage, welding-tool repair, camera-facing billboard bars (readable at any view angle), vanilla-style cracks (all 6 faces, outside-visible), damage-scaled leak splashes, and `ShipHullDamagePacket` sync.
 - Sonar screen/hologram, depth HUD, underwater fog, movement drag, and oxygen/drowning survival.
 - **Minerals creative tab (2026-11-10):** `barotrauma:minerals` tab with 60 items — 34 ores/minerals (incl. the four alien materials and paralyxis) + 26 materials (copper/iron/lead/etc.). Textures are cropped from the game's `Minerals.png` / `AlienMaterials.png` / `Crystal.png` at 64×64; names come from the official zh/en `entityname.*` texts.
 - **Hatch/door fixes (2026-11-10):** hatch `isViewBlocking`/`isSuffocating` are always false (the 1px lid used to trigger the in-block fullscreen overlay), hatch models render single-sided, the deck hatch sits mid-block again, the bulkhead door keeps a full-width 1px collision plate (no sideways squeeze), and `hatch_ladder` keeps the middle ladder collision when closed. Small pump gained `FACING`; the welding-tool item model dropped its `item/handheld` parent (generated-model flattening produced 0 quads).
+- **Mission catalog (2026-11-10, uncommitted):** `data/barotrauma/missions/cold_caverns.json` registers all 83 original Cold Caverns missions across 9 kinds, with zh/en names from the game's `missionname.*` texts. `MissionFeature` is the single gate — only `CARGO_ITEMS` and `SALVAGE_ITEM` are on, so `MissionCatalog.offers()` yields 5 entries (4 cargo + `salvageartifactcave`); `PoiNetwork.definitions()` is generated from that list, and `/barotrauma campaign missions` prints the catalog. Delivery pays in full only within 8 blocks of `POST_B_TERMINAL`.
 - **Bulkhead door (`barotrauma:bulkhead_door`, 1×2) and deck hatch (`barotrauma:hatch`, 3×1)**, GeckoLib
   rendered, toggled by right-clicking the fixed frame (the open state's pick shape is frame-only, so
   the doorway does not block attacks). The door was redrawn 2026-11-04: 15 axis-aligned cuboids,
@@ -88,6 +95,7 @@ Then read this file fully before doing anything else in this session.
 - Migration of old saves containing real water or removed `hull_plug` blocks.
 
 **Known issues:**
+- **Mission catalog entries beyond cargo/salvage have no completion check.** Flipping a `MissionFeature` makes those missions appear in the terminal, but only CARGO and SALVAGE settle; `MissionCatalog.offers()` ids are list-order based (`1..n`), so reordering invalidates mission ids already stored in saves.
 - **OPEN (not yet confirmed in game): east/west-facing bulkhead doors close by right-clicking the frame.** Shapes now rotate with `FACING`; the old symptom was "only the door centre reacts".
 - **OPEN: the drain pump still empties a whole connected compartment** ("只要在一个房间都会抽" per user). The `[pump]` log (every 20 ticks) in `ShipSimulation` is intentionally kept for this.
 - **Do not read "cannot sink inside the ship" as a swim bug.** 2026-11-04: the player stood on the cabin floor while the breached ship sank (world y falling, assembly coordinates constant). On VS2 physical ships `getBlockState` at the ship's world position is always air and `getBlockCollisions` does not see the hull; map back with `pos - VsState.offset*` before concluding anything.

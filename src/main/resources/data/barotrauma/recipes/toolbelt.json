@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:organicfiber"
+    },
+    {
+      "item": "barotrauma:organicfiber"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:toolbelt"
+  }
+}

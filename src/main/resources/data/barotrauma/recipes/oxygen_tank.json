@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:aluminium"
+    },
+    {
+      "item": "barotrauma:aluminium"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:oxygen_tank"
+  }
+}

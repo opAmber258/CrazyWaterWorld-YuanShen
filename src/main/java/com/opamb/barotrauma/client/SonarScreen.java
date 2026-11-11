@@ -1,5 +1,8 @@
 package com.opamb.barotrauma.client;
 
+import com.opamb.barotrauma.mission.Mission;
+import com.opamb.barotrauma.network.MissionActionPacket;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.opamb.barotrauma.campaign.CampaignMap;
 import com.opamb.barotrauma.campaign.RoundPhase;
@@ -262,8 +265,10 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             drawHelmBox(graphics, mouseX, mouseY);
             drawDockButton(graphics, mouseX, mouseY);
             drawBottomHint(graphics);
-        } else {
+        } else if (page == 1) {
             drawCorePage(graphics);
+        } else {
+            drawMissionPage(graphics, mouseX, mouseY);
         }
         drawTabs(graphics, mouseX, mouseY);
     }
@@ -300,7 +305,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     private void drawTabs(GuiGraphics graphics, int mouseX, int mouseY) {
         int x = leftPos + LEFT_X;
         int y = topPos + TAB_Y;
-        String[] labels = {"声纳", "核心"};
+        String[] labels = {"声纳", "核心", "任务"};
         for (int i = 0; i < labels.length; i++) {
             boolean active = page == i;
             boolean hover = mouseX >= x && mouseX < x + TAB_W && mouseY >= y && mouseY < y + TAB_H;
@@ -309,6 +314,106 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             graphics.drawCenteredString(font, labels[i], x + TAB_W / 2, y + 3,
                     active ? TEXT : DIM);
             x += TAB_W + 2;
+        }
+    }
+
+    // ------------------------------------------------------------------ 任务页
+
+    /** 任务行高。 */
+    private static final int MISSION_ROW_H = 26;
+
+    /**
+     * 任务页：导航终端同时作为接单/交付界面（旧的任务终端方块已弃用）。
+     * 数据来自 {@link ClientMissionCache}，操作走 {@link MissionActionPacket}，
+     * 终端位置用导航终端（船核心）自己的方块坐标。
+     */
+    private void drawMissionPage(GuiGraphics graphics, int mouseX, int mouseY) {
+        int x = leftPos + LEFT_X;
+        int y = topPos + STATUS_Y;
+        int w = COL_X + COL_W - LEFT_X;
+        int h = PANEL_H - STATUS_Y - 22;
+        graphics.fill(x, y, x + w, y + h, BOX_BG);
+        graphics.fill(x, y, x + w, y + 1, BOX_EDGE);
+        graphics.drawString(font, "任 务", x + 8, y + 6, ACCENT, false);
+
+        var missions = ClientMissionCache.offered();
+        if (missions.isEmpty()) {
+            graphics.drawString(font, "暂无任务（靠泊哨站后从导航终端查看）",
+                    x + 8, y + 22, DIM, false);
+            return;
+        }
+        int lineY = y + 22;
+        int bottom = y + h - 6;
+        for (Mission mission : missions) {
+            if (lineY + MISSION_ROW_H > bottom) {
+                graphics.drawString(font, "…", x + 8, lineY, DIM, false);
+                break;
+            }
+            drawMissionRow(graphics, x + 6, lineY, w - 12, mouseX, mouseY, mission);
+            lineY += MISSION_ROW_H;
+        }
+    }
+
+    private void drawMissionRow(GuiGraphics graphics, int x, int y, int w,
+                                int mouseX, int mouseY, Mission mission) {
+        graphics.fill(x, y, x + w, y + MISSION_ROW_H - 2, BTN_BG);
+        graphics.fill(x, y, x + w, y + 1, BOX_EDGE);
+
+        var spec = com.opamb.barotrauma.mission.MissionCatalog.offer(mission.id);
+        String name = spec == null ? ("任务 #" + mission.id)
+                : net.minecraft.network.chat.Component.translatable(spec.nameKey()).getString();
+        int dist = (int) Math.sqrt(minecraft.player.blockPosition().distSqr(mission.target));
+        graphics.drawString(font, name + " · 奖励 " + mission.reward + " · " + dist + "m",
+                x + 6, y + 4, TEXT, false);
+
+        String state = switch (mission.state()) {
+            case OFFERED -> "可接取";
+            case ACTIVE -> "进行中";
+            case READY -> "已达成，回终端交付";
+            case DONE -> "已完成";
+            case FAILED -> "已超时失败";
+        };
+        int stateColor = mission.state() == Mission.State.READY ? 0xFF6FD07A
+                : mission.state() == Mission.State.FAILED ? 0xFFC8483C : DIM;
+        graphics.drawString(font, state, x + 6, y + 14, stateColor, false);
+
+        boolean mine = ClientMissionCache.active() != null
+                && ClientMissionCache.active().id == mission.id;
+        String button = mine
+                ? (mission.state() == Mission.State.READY ? "交付" : "放弃")
+                : (mission.isTaken() ? "已被接走" : "接取");
+        boolean enabled = mission.state() != Mission.State.DONE && (!mission.isTaken() || mine);
+        int bx = x + w - 70;
+        boolean hover = enabled && mouseX >= bx && mouseX < bx + 62
+                && mouseY >= y + 4 && mouseY < y + 20;
+        graphics.fill(bx, y + 4, bx + 62, y + 20,
+                !enabled ? 0xFF1A211C : hover ? BTN_ON : 0xFF2F3A2F);
+        graphics.drawCenteredString(font, button, bx + 31, y + 8,
+                enabled ? TEXT : 0xFF5A6256);
+    }
+
+    private void handleMissionClick(double mouseX, double mouseY) {
+        int x = leftPos + LEFT_X + 6;
+        int lineY = topPos + STATUS_Y + 22;
+        int w = COL_X + COL_W - LEFT_X - 12;
+        var active = ClientMissionCache.active();
+        for (Mission mission : ClientMissionCache.offered()) {
+            int bx = x + w - 70;
+            if (mouseX >= bx && mouseX < bx + 62 && mouseY >= lineY + 4 && mouseY < lineY + 20) {
+                boolean mine = active != null && active.id == mission.id;
+                boolean enabled = mission.state() != Mission.State.DONE
+                        && (!mission.isTaken() || mine);
+                if (enabled) {
+                    int action = mine
+                            ? (mission.state() == Mission.State.READY
+                                    ? MissionActionPacket.TURN_IN : MissionActionPacket.ABANDON)
+                            : MissionActionPacket.ACCEPT;
+                    ModNetwork.CHANNEL.sendToServer(
+                            new MissionActionPacket(action, mission.id, menu.sonarPos()));
+                }
+                return;
+            }
+            lineY += MISSION_ROW_H;
         }
     }
 
@@ -1150,7 +1255,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             int tabX = leftPos + LEFT_X;
             int tabY = topPos + TAB_Y;
             if (mouseY >= tabY && mouseY < tabY + TAB_H) {
-                for (int i = 0; i < 2; i++) {
+                for (int i = 0; i < 3; i++) {
                     int x0 = tabX + i * (TAB_W + 2);
                     if (mouseX >= x0 && mouseX < x0 + TAB_W) {
                         page = i;
@@ -1158,6 +1263,13 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                     }
                 }
             }
+        }
+        // 任务页只处理任务行按钮
+        if (page == 2) {
+            if (button == 0) {
+                handleMissionClick(mouseX, mouseY);
+            }
+            return super.mouseClicked(mouseX, mouseY, button);
         }
         // 核心页只展示数据，不响应示波器拖拽之类的操作
         if (page == 1) {

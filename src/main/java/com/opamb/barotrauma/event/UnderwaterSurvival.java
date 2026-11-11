@@ -18,10 +18,12 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 空气海域的呼吸规则：水下消耗氧气，回到哨站/未进水船舱后恢复。
+ * 空气海域的玩家状态：游泳姿态同步、深水挤压、摔落豁免。
  *
- * <p>因为海里没有真实水，原版不会自动扣氧气；这里补上同一套节奏
- * （约 15 秒耗尽，之后每约 1 秒掉 2 点伤害）。</p>
+ * <p>呼吸不再走原版空气值：{@link #onLivingBreathe} 把玩家的空气永远维持在满，
+ * 原版氧气条/溺水伤害/受击晃屏因此都不会出现。真正的缺氧是医疗服务系统里的
+ * {@code oxygenlow}，由 {@code MedicalEvents} 按原作 {@code CharacterHealth.UpdateOxygen}
+ * 的 -5/+10 每秒增减。</p>
  */
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class UnderwaterSurvival {
@@ -37,7 +39,7 @@ public final class UnderwaterSurvival {
     /** 每个玩家上一次同步给客户端的“脚部浸没”状态（变化才发包）。 */
     private static final java.util.Map<UUID, Boolean> lastSwimSync = new java.util.HashMap<>();
 
-    /** 服务端每 tick：同步游泳姿态、消耗氧气并处理深水挤压。 */
+    /** 服务端每 tick：同步游泳姿态、恢复空气值并处理深水挤压。 */
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
@@ -82,11 +84,6 @@ public final class UnderwaterSurvival {
         if (!blockShipDry && OceanEnvironment.isOceanWaterAt(player.level(), player.getEyePosition())) {
             // 空气海域没有真实水，玩家落底时不能吃摔落伤害；持续清零坠落距离。
             player.resetFallDistance();
-            player.setAirSupply(player.getAirSupply() - 1);
-            if (player.getAirSupply() <= -20) {
-                player.setAirSupply(0);
-                player.hurt(player.damageSources().drown(), 2.0F);
-            }
             // P3：深水挤压——300m 以下裸潜每 3 秒 1 点（任务最深 600m，出舱拿黑匣子要快）
             double depth = -player.getEyePosition().y;
             pressureAccumulator++;
@@ -102,6 +99,27 @@ public final class UnderwaterSurvival {
         } else {
             refill(player);
         }
+    }
+
+    /**
+     * 原版空气值不再参与缺氧判定。
+     *
+     * <p>用户指令：删掉原版氧气条，缺氧只走医疗服务系统。这里把所有玩家的
+     * {@code LivingBreatheEvent} 都改成"能呼吸、回满空气"——原版空气值永远满，
+     * 于是不会出现氧气泡条、{@code LivingDrownEvent}、溺水扣血和受击晃屏。</p>
+     *
+     * <p>真正的氧气模型在 {@code MedicalEvents}：按原作
+     * {@code CharacterHealth.UpdateOxygen} 的 -5 / +10 每秒增减 {@code oxygenlow}
+     * 强度（潜水服没瓶、泡在海里、真实水里都算"无可用氧"）。</p>
+     */
+    @SubscribeEvent
+    public static void onLivingBreathe(net.minecraftforge.event.entity.living.LivingBreatheEvent event) {
+        if (!(event.getEntity() instanceof Player)) {
+            return;
+        }
+        event.setCanBreathe(true);
+        event.setCanRefillAir(true);
+        event.setConsumeAirAmount(0);
     }
 
     /** 空气海域里取消原版摔落伤害（玩家实际落点是海底）。 */

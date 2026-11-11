@@ -117,10 +117,14 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
             case DELIVERY -> "运输";
             case URGENT_DELIVERY -> "紧急运输";
         };
+        // 终端任务改成原版目录后，优先显示原版任务名（如“打捞一件异星遗物”）。
+        var spec = com.opamb.barotrauma.mission.MissionCatalog.offer(mission.id);
+        String label = spec == null ? type
+                : net.minecraft.network.chat.Component.translatable(spec.nameKey()).getString();
         String timed = mission.deadlineTicks > 0 ? " · 限时" : "";
         String gated = mission.requiresDeepPermit() ? " · 需许可" : "";
         int dist = (int) Math.sqrt(minecraft.player.blockPosition().distSqr(mission.target));
-        String title = String.format("#%d %s%s%s · 奖励 %d · 目标 %s %dm", mission.id, type,
+        String title = String.format("#%d %s%s%s · 奖励 %d · 目标 %s %dm", mission.id, label,
                 timed, gated, mission.reward, coord(mission), dist);
         graphics.drawString(font, title, x + 14, y + 4, TEXT, false);
 

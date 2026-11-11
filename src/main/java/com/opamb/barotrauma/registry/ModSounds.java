@@ -35,6 +35,9 @@ public final class ModSounds {
     /** 吉他单音：长按演奏用，靠 pitch 变调。 */
     public static final RegistryObject<SoundEvent> GUITAR_NOTE = register("guitar_note");
 
+    /** 氧气瓶余量报警：原作 {@code Content/Items/WarningBeepSlow.ogg}（罐子剩余 <5% 时循环）。 */
+    public static final RegistryObject<SoundEvent> LOW_OXYGEN_BEEP = register("low_oxygen_beep");
+
     private ModSounds() {
     }
 

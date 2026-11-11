@@ -103,7 +103,7 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 case BUY_OXYGEN -> handleBuyItem(player, level, wallet, COST_OXYGEN,
                         new ItemStack(ModItems.OXYGEN_TANK.get()));
                 case BUY_WELDER -> handleBuyItem(player, level, wallet, COST_WELDER,
-                        new ItemStack(ModItems.WELDING_TOOL.get()));
+                        weldingToolWithFuel());
                 case BUY_UPGRADE -> handleUpgrade(player, level, wallet);
                 case BUY_ENGINE_UPGRADE -> handleEngineUpgrade(player, level, wallet);
                 case BUY_DEEP_PERMIT -> handleBuyItem(player, level, wallet, COST_DEEP_PERMIT,
@@ -121,7 +121,9 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             return;
         }
         if (mission.requiresDeepPermit()
-                && player.getInventory().countItem(ModItems.DEEP_PERMIT.get().asItem()) == 0) {
+                && player.getInventory().countItem(ModItems.DEEP_PERMIT.get().asItem()) == 0
+                && !com.opamb.barotrauma.equipment.BagManager.contents(player).stream()
+                        .anyMatch(stack -> stack.is(ModItems.DEEP_PERMIT.get()))) {
             player.sendSystemMessage(Component.literal(
                     "该任务目标超过 " + Mission.DEEP_PERMIT_DEPTH + "m，需要「深潜许可」（商店有售）")
                     .withStyle(ChatFormatting.RED));
@@ -168,10 +170,14 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
         switch (mission.type) {
             case SALVAGE -> consumed = player.getInventory()
                     .clearOrCountMatchingItems(stack -> stack.is(ModItems.BLACK_BOX.get().asItem()),
-                            1, player.getInventory()) > 0;
+                            1, player.getInventory()) > 0
+                    || com.opamb.barotrauma.equipment.BagManager.removeOne(player,
+                            stack -> stack.is(ModItems.BLACK_BOX.get().asItem()));
             case DELIVERY, URGENT_DELIVERY -> consumed = player.getInventory()
                     .clearOrCountMatchingItems(stack -> stack.is(ModItems.SUPPLY_CRATE.get().asItem()),
-                            1, player.getInventory()) > 0;
+                            1, player.getInventory()) > 0
+                    || com.opamb.barotrauma.equipment.BagManager.removeOne(player,
+                            stack -> stack.is(ModItems.SUPPLY_CRATE.get().asItem()));
             default -> { /* RECON 无货物 */ }
         }
         if (!consumed) {
@@ -180,9 +186,12 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
             sendState(player, level);
             return;
         }
-        boolean atEndpoint = terminalPos != null
-                && terminalPos.distSqr(com.opamb.barotrauma.world.PoiNetwork.POST_B_TERMINAL)
-                        <= DELIVERY_ENDPOINT_RADIUS_SQR;
+        // 任务终端已弃用，交付改在导航终端（船核心）上操作；用玩家当前世界位置判终点，
+        // 物理船（方块坐标在船坞坐标系）也不会算错。
+        boolean atEndpoint = player.position().distanceToSqr(
+                net.minecraft.world.phys.Vec3.atCenterOf(
+                        com.opamb.barotrauma.world.PoiNetwork.POST_B_TERMINAL))
+                <= DELIVERY_ENDPOINT_RADIUS_SQR;
         double fraction = mission.rewardFraction(atEndpoint);
         int payout = (int) Math.round(mission.reward * fraction);
         wallet.addCredits(payout);
@@ -264,6 +273,14 @@ public record MissionActionPacket(int action, int missionId, BlockPos terminalPo
                 "已购买 " + stack.getHoverName().getString() + "（-" + cost + " credits）")
                 .withStyle(ChatFormatting.GREEN));
         sendState(player, level);
+    }
+
+    /** 商店出售的焊接工具自带一罐满燃料，买来即可使用（油箱仍可单独制作）。 */
+    private static ItemStack weldingToolWithFuel() {
+        ItemStack welder = new ItemStack(ModItems.WELDING_TOOL.get());
+        com.opamb.barotrauma.equipment.ItemSubSlot.set(welder,
+                new ItemStack(ModItems.WELDING_FUEL_TANK.get()));
+        return welder;
     }
 
     /** 船体加固：每级 +20%，上限 3 级。 */

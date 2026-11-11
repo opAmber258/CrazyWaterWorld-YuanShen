@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:ballisticfiber"
+    },
+    {
+      "item": "barotrauma:ballisticfiber"
+    },
+    {
+      "item": "barotrauma:ballisticfiber"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:body_armor"
+  }
+}

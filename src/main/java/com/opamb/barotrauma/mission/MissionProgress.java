@@ -67,8 +67,7 @@ public final class MissionProgress {
             if (mission.state() == Mission.State.READY
                     && (mission.type == MissionType.DELIVERY
                         || mission.type == MissionType.URGENT_DELIVERY)
-                    && player.getInventory().countItem(
-                            com.opamb.barotrauma.registry.ModItems.SUPPLY_CRATE.get().asItem()) == 0) {
+                    && countWithBag(player, ModItems.SUPPLY_CRATE.get().asItem()) == 0) {
                 data.demoteToActive(mission);
                 com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
                         com.opamb.barotrauma.network.MissionStatePacket.build(player, deep));
@@ -83,11 +82,10 @@ public final class MissionProgress {
             switch (mission.type) {
                 case RECON -> ready = player.blockPosition().distSqr(mission.target)
                         <= (double) mission.radius * mission.radius;
-                case SALVAGE -> ready = player.getInventory()
-                        .countItem(ModItems.BLACK_BOX.get().asItem()) > 0;
+                case SALVAGE -> ready = countWithBag(player, ModItems.BLACK_BOX.get().asItem()) > 0;
                 // 运送类"达成"= 携带补给箱即可回终端交付；全额/半额由交付终端位置决定。
-                case DELIVERY, URGENT_DELIVERY -> ready = player.getInventory()
-                        .countItem(com.opamb.barotrauma.registry.ModItems.SUPPLY_CRATE.get().asItem()) > 0;
+                case DELIVERY, URGENT_DELIVERY ->
+                        ready = countWithBag(player, ModItems.SUPPLY_CRATE.get().asItem()) > 0;
             }
             if (ready) {
                 data.markReady(mission);
@@ -97,5 +95,16 @@ public final class MissionProgress {
                         "任务目标达成！回哨站终端交付（奖励 " + mission.reward + " credits）"), false);
             }
         }
+    }
+
+    /** 热键栏/主背包 + 装备背包里的物品数量（装备背包内容不在 player inventory 里）。 */
+    private static int countWithBag(ServerPlayer player, net.minecraft.world.item.Item item) {
+        int count = player.getInventory().countItem(item);
+        for (ItemStack stack : com.opamb.barotrauma.equipment.BagManager.contents(player)) {
+            if (stack.is(item)) {
+                count += stack.getCount();
+            }
+        }
+        return count;
     }
 }

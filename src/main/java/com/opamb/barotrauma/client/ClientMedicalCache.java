@@ -34,6 +34,33 @@ public final class ClientMedicalCache {
         SNAPSHOTS.remove(player);
     }
 
+    /**
+     * 从已同步的病症行里读某类型的强度（找不到返回 0）。
+     *
+     * <p>行格式：{@code id|strength}（全身）或 {@code id|LIMB|strength}（部位），
+     * 与 {@code AfflictionContainer.rows()} 一致；治疗行以 {@code t|...} 开头，
+     * 不会和类型 id 撞上。</p>
+     */
+    public static double strength(UUID player, String typeId) {
+        Snapshot snapshot = SNAPSHOTS.get(player);
+        if (snapshot == null) {
+            return 0.0;
+        }
+        for (String row : snapshot.rows()) {
+            int bar = row.indexOf('|');
+            if (bar < 0 || !row.substring(0, bar).equals(typeId)) {
+                continue;
+            }
+            int last = row.lastIndexOf('|');
+            try {
+                return Double.parseDouble(row.substring(last + 1));
+            } catch (NumberFormatException ignored) {
+                return 0.0;
+            }
+        }
+        return 0.0;
+    }
+
     /** 退出登录时清空全部快照，避免下次进入世界读到上一局的旧数据。 */
     public static void clearAll() {
         SNAPSHOTS.clear();

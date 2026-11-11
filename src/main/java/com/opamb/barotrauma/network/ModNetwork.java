@@ -10,9 +10,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class ModNetwork {
 
-    // 3：ReactorActionPacket 插在注册序列中间，后面所有包的 ID 都后移一位，
-    // 旧版本必须被握手拒绝，否则会把包解码成错误类型。
-    private static final String PROTOCOL = "3";
+    // 4：新增 ItemSubSlotPacket（潜水服氧气瓶/焊接工具油箱子格）。
+    private static final String PROTOCOL = "4";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -67,6 +66,9 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(CthulhuGazePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(CthulhuGazePacket::encode).decoder(CthulhuGazePacket::decode)
                 .consumerNetworkThread(CthulhuGazePacket::handle).add();
+        CHANNEL.messageBuilder(ItemSubSlotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ItemSubSlotPacket::encode).decoder(ItemSubSlotPacket::decode)
+                .consumerNetworkThread(ItemSubSlotPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

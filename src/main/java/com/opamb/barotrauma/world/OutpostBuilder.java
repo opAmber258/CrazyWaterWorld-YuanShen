@@ -208,13 +208,7 @@ public final class OutpostBuilder {
             placeDoor(chunk, site.x(), ModDimensions.OUTPOST_SPAWN_Y, site.z() + layout.halfZ());
         }
 
-        // 任务终端：位置随变体走，接任务/交付/商店都在这里
-        int terminalX = site.x() + layout.terminalX();
-        int terminalZ = site.z() + layout.terminalZ();
-        if (inChunk(pos, terminalX, terminalZ)) {
-            setWithBe(chunk, new BlockPos(terminalX, ModDimensions.OUTPOST_SPAWN_Y - 1, terminalZ),
-                    com.opamb.barotrauma.registry.ModBlocks.MISSION_TERMINAL.get().defaultBlockState());
-        }
+        // 任务终端已弃用：接单/交付/商店改在导航终端（船核心）上操作。
 
         // 对接通道：站内地板开洞、向下 3长×4宽×6高的垂直气密通道、底部水平对接舱口
         DockingBay.buildStation(chunk, site);

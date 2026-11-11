@@ -180,7 +180,7 @@ public final class MedicalScreen extends Screen {
                 if (TreatmentRenderer.strengthOf(snapshot.rows(), entry.getKey(), selectedLimb) > 0) {
                     for (Supplier<? extends Item> supplier : entry.getValue()) {
                         Item item = supplier.get();
-                        if (!drugs.contains(item) && minecraft.player.getInventory().hasAnyOf(java.util.Set.of(item))) {
+                        if (!drugs.contains(item) && hasAnywhere(minecraft.player, item)) {
                             drugs.add(item);
                         }
                     }
@@ -329,5 +329,18 @@ public final class MedicalScreen extends Screen {
             }
         }
         return null;
+    }
+
+    /** 背包 + 装备背包里是否有这件药品（装备背包内容不在 player inventory 里）。 */
+    private static boolean hasAnywhere(net.minecraft.world.entity.player.Player player, Item item) {
+        if (player.getInventory().hasAnyOf(java.util.Set.of(item))) {
+            return true;
+        }
+        for (ItemStack stack : com.opamb.barotrauma.equipment.BagManager.contents(player)) {
+            if (stack.is(item)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

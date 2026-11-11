@@ -27,6 +27,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.DEEP_PERMIT.get());
                         output.accept(ModItems.DIVING_KNIFE.get());
                         output.accept(ModItems.WELDING_TOOL.get());
+                        output.accept(ModItems.WELDING_FUEL_TANK.get());
                         output.accept(ModItems.SUBMARINE_PLATING.get());
                         output.accept(ModItems.HULL_GLASS.get());
                         output.accept(ModItems.TEST_HULL.get());
@@ -41,6 +42,13 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.BALLAST_PUMP.get());
                         output.accept(ModItems.REACTOR.get());
                         output.accept(ModItems.ENGINE.get());
+                        output.accept(ModItems.MEDIUM_STEEL_CABINET.get());
+                        output.accept(ModItems.MEDIUM_WINDOWED_STEEL_CABINET.get());
+                        output.accept(ModItems.CRATE_SHELF.get());
+                        output.accept(ModItems.DIVING_SUIT_LOCKER.get());
+                        // 氧气瓶架 / 组合柜：模型未完成，暂不进创造栏（避免出现缺失模型的紫黑块）
+                        // output.accept(ModItems.OXYGEN_TANK_SHELF.get());
+                        // output.accept(ModItems.DIVING_SUIT_STATION.get());
                         output.accept(ModItems.URANIUM_FUEL_ROD.get());
                         output.accept(ModItems.THORIUM_FUEL_ROD.get());
                         output.accept(ModItems.FULGURIUM_FUEL_ROD.get());

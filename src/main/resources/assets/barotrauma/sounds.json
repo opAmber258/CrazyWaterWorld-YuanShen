@@ -36,5 +36,11 @@
     "sounds": [
       "barotrauma:instrument/guitar_note"
     ]
+  },
+  "low_oxygen_beep": {
+    "subtitle": "subtitles.barotrauma.low_oxygen_beep",
+    "sounds": [
+      "barotrauma:alarm/warning_beep"
+    ]
   }
 }

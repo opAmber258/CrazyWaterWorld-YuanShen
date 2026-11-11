@@ -3,11 +3,187 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-08（医疗出血来源方案 A 落地；对接舱/副本站为 2026-11-07 最后一轮，均待实机验收）。
+> 上次更新：2026-11-11（装备/背包/潜水服氧气重做 + 缺氧改医疗系统，见下方最新一节；
+> 已提交 `8679e0c`，未推送）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
 > ⚠️ 2026-11-04 那条"按 Shift 不沉 = 人站在舱底，非代码问题"的定性**是错的**，
 > 已在 §10.57.1 纠正：是原版潜行边缘保护在 VS2 船上把水平位移清零。
+
+## 2026-11-11 装备/背包/潜水服氧气重做（已提交 8679e0c）
+
+> **交接摘要：新会话从这一节开始读。** 改动已提交到 `feat/containers-20261111`
+> （8679e0c），尚未推送。
+
+### 1. 主背包 27 格 → 装备扩容
+- 菜单 9..20 改 `BagSlot`（工具带 6 / 背包 12，内容存物品 NBT），21..35 改
+  `DisabledSlot`；拾取/Shift/箱子统一走 `BagManager`，容量变化时客户端重建格子
+  （`BagSlots.rebuildClient`）。
+- `BagOverlay` 只画格子和深色底，不再画背包剪影。
+- 创造模式"物品栏"标签页用 `CreativeScreenMixin` 改坐标兼容（不能替换 `SlotWrapper`）。
+
+### 2. 悬停子格
+- `ItemSubSlot`（潜水服→氧气瓶、焊接工具→焊接油箱）+ `ItemSubSlotOverlay`：
+  从宿主正上方滑出/收回（带位置与透明度动画），`ItemSubSlotPacket` 服务端交换。
+
+### 3. 潜水服 / 焊接工具
+- 潜水服按原作 `OxygenAvailable=-100` 语义：无可用瓶**任何位置**都缺氧；瓶每秒 -1、
+  剩余 <5% 每 12 tick 播 `WarningBeepSlow`（原作 0.57s 循环）；没瓶也响（用户要求）；
+  耐压 4000；只陆上减速（`PlayerFovMixin` 把减速从 FOV 里剔除）。
+- 焊接工具改用焊接油箱（耐久 200），每 20 tick 耗 1，工具本身无耐久。
+
+### 4. 缺氧改医疗系统（不再用原版空气值）
+- `UnderwaterSurvival.onLivingBreathe` 对所有玩家恒 `canBreathe/refill`，空气恒满：
+  原版气泡条、`LivingDrownEvent`、溺水伤害、受击晃屏都不会再触发。
+- `MedicalEvents`：`oxygenlow` 每秒 -10（有氧）/+5（无氧），强度 = 100-OxygenAmount，
+  上限 200；可用氧判定见 `oxygenAvailable`（穿服只看瓶；没穿服泡海里/真实水无氧）。
+- `GuiMixin` 兜底隐藏原版氧气条；`HypoxiaVignette` 按 `oxygenlow` 强度画边框变暗
+  （强度 50 拉满，对应原作 OxygenAmount 50）；`ClientMedicalCache.strength` 解析同步行。
+
+### 5. 其它
+- 护甲改原作 `damagemodifier` 倍率（见下一节）；容器菜单距离支持物理船（`VsDistance`）。
+
+**验证**：`./gradlew compileJava test` 通过；客户端实机跑过，用户验收中。**未推送**。
+
+## 2026-11-11 护甲改原作倍率模型 + 柜子物理船修复（已提交 8679e0c）
+
+> 本节改动已随 `8679e0c` 提交，尚未推送。
+
+### 1. 护甲：删掉原版护甲值（原作没有）
+
+- 查证本机 Barotrauma 1.13.5：`armorvalue="20.0"` 在代码中**没有任何读取方**；真正生效的是
+  `Wearable` 的 `<damagemodifier>`（按病症 `damagemultiplier`，个别 `probabilitymultiplier`）。
+- 潜水服：blunttrauma/bleeding ×0.9、burn ×0.75、radiationsickness ×0.75（唯一的概率项
+  huskinfection ×0.5 本模组没有）；防弹头盔：钝器 ×0.3、出血 ×0.1；防弹衣：钝器 ×0.3、
+  出血 ×0.2、烧伤 ×0.9。多件连乘（头盔+防弹衣钝器 = 0.09）。
+- 代码：新增 `equipment/ArmorModifierTable`（纯 Java，单测锁数值）+ `ArmorModifiers`
+  （读槽位 / 写 tooltip）；`MedicalEvents` 在伤害换算成病症后按倍率缩放（压力/环境伤害不吃）；
+  删除 `EquipmentItem.armorPoints`、`EquipmentData.armorPoints`、`EquipmentEffects.onLivingHurt`。
+- `DivingSuitItem` 不再是 `ArmorItem`（无原版护甲、无 400 耐久）；`ModItems.DIVING_SUIT`
+  改为 `stacksTo(1).fireResistant()`；旧存档胸甲槽兼容仍由 `ShipPressure` 双读 + 登录迁移。
+- 语言：删除 `tooltip.barotrauma.equipment.armor`，新增 `tooltip.barotrauma.equipment.resist`
+  与 `affliction.barotrauma.*` 名称键（zh/en + `docs/equipment_lang_keys.json` 同步）。
+- 行为变化：旧存档穿在原版护甲槽的**原版盔甲**（铁甲等）登录时会被迁到背包/脚下（不消失）。
+
+### 2. 柜子（容器）
+
+- **物理船（VS2 装配）上菜单会被秒关**：`CabinetMenu.stillValid` 原来算世界坐标距离，
+  而交互坐标在船坞里差上万格。新增 `ship/vs/VsDistance`（VS2 船感知距离，没装 VS2 自动退回），
+  stillValid 改用它；服务端同时要求方块实体还在（拆掉后不能再往鬼容器里塞东西）。
+- 打开界面时把容器种类写进网络包（`CabinetBlock.use` + `CabinetMenu` buf 构造器 +
+  `ModMenus` 工厂），客户端不再自己猜种类，避免槽位错位。
+- 组合柜 Shift 点击氧气瓶进不了下方 3 格：去掉 `slots.get(0).mayPlace` 门槛，
+  `moveItemStackTo` 自己按槽位过滤。
+- `CabinetBlock.Kind` 增加 `cells > MAX_PART + 1` 的启动断言（组合柜刚好 4 格用满）；
+  修正 `playerWillDestroy` 的过时掉落表注释。
+
+### 3. 验证 / 未做
+
+- `./gradlew compileJava` / `test` 通过：**207 项测试 0 失败**（新增 `ArmorModifierTableTest` 4 项）。
+- 未做：`oxygen_tank_shelf` / `diving_suit_station` 仍缺模型（blockstate/掉落表已有）；
+  漏斗可往 3 个"移动容器格"塞 64 个（Container 无按槽上限，需实现 per-slot `IItemHandler`）；
+  潜水服与原作一样不能和防弹衣同穿，但我们的槽位没做互斥（可叠乘 0.9×0.3）。
+
+## 2026-11-10 晚 六个容器模型全部删除（新会话重做）
+
+- **美术文件全删**：`art/models/containers_20261110`、`containers_20261110_v2`、`containers_review`、
+  `containers_final` 四个目录已移除（含 .bbmodel、geo、贴图、图标、预览、审计报告）。
+- **游戏内资源也删了**：`geo/block/`、`textures/block/`、`textures/item/`、`blockstates/`、
+  `models/block/`、`models/item/`、`animations/block/` 下这六个 id 的文件全部移除。
+- **方块代码保留**：`CabinetBlock` / `CabinetBlockEntity` / `CabinetMenu` / `CabinetScreen` /
+  `CabinetRenderer`、注册项、创造栏、语言键都还在。模型补回来之前，这六个方块进游戏是**无模型**状态
+  （碰撞与容器逻辑正常）。
+- Blockbench 已关闭，没有残留工程标签。
+- 下一步：新会话用 `minecraft-modeling-prop-block` 重做；`CabinetBlock.Kind` 里的
+  width/height/depth 仍是 v1 数值（12.19/29.46/8 等），换新模型时要同步改成 16 宽那套尺寸。
+
+## 2026-11-10 寒冷深穴任务目录 + 任务界面迁到导航终端（未提交，待实机验收）
+
+> **交接摘要：新会话从这一节开始读。** 代码全在工作区、**未提交、未推送、未 pull**。
+
+### 1. 任务目录（Phase 0：全部登记，按功能开关发布）
+
+- 数据文件 `src/main/resources/data/barotrauma/missions/cold_caverns.json`：原版寒冷深穴
+  **83 条**任务（MONSTER 25 / CARGO 13 / MINERAL 13 / ESCORT 10 / ABANDONED 10 / NEST 6 /
+  BEACON 3 / PIRATE 2 / SALVAGE 1），`spawnType` 里 76 条 none、7 条 cave。
+  字段：`id / kind / text / nameZh / nameEn / reward / difficulty / minLevelDifficulty /
+  maxLevelDifficulty / spawnType / fromType / toType`；名称取自原作
+  `Content/Texts/{SimplifiedChinese,English}/*Vanilla.xml` 的 `missionname.*`。
+- 代码：`mission/MissionSpec`（record）、`MissionKind`（映射原版 `CargoMission` 等元素名）、
+  `MissionFeature`（底层功能开关）、`MissionCatalog`（读 JSON + 过滤发布）。
+- **`MissionFeature` 是唯一的总闸**：`CARGO_ITEMS` / `SALVAGE_ITEM` = true，其余
+  BEACON / MINERALS / CREATURES / NEST / WRECKS / RUINS / ESCORT / ABANDONED / PIRATES /
+  THALAMUS = false。打开一项，目录里对应任务自动进入终端发布列表。
+- `MissionCatalog.offers()` = 已实装功能 + `spawnType ∈ {none, cave}` + 4 条货运白名单，
+  当前正好 **5 条**：
+  | kind | id | 中文名 | reward |
+  | --- | --- | --- | --- |
+  | CARGO | cargochemicals | 化学品运输 | 500 |
+  | CARGO | cargoconstructionminerals | 矿业中心建材运输 | 500 |
+  | CARGO | cargomeditems | 医疗物资运输 | 500 |
+  | CARGO | cargovolatilecompoundn | 易爆货物 | JSON 里 0，代码按限时紧急任务兜成 800 |
+  | SALVAGE | salvageartifactcave | 打捞一件异星遗物 | 3500 |
+
+### 2. 任务池与世界生成
+
+- `PoiNetwork.definitions()` 不再写死 5 条，改为遍历 `MissionCatalog.offers()` 生成：
+  普通货运 → `DELIVERY`（交付点 `POST_B_TERMINAL`）；`cargovolatilecompoundn` →
+  `URGENT_DELIVERY`（24000 tick 限时）；遗物打捞 → `WRECK_A` 的 `SALVAGE`。
+- **任务终端方块不再由世界生成放置**：`OutpostBuilder`、`DockingBay`、`PoiNetwork`
+  里的放置调用已删（`OutpostBuilder` 留了「任务终端已弃用」注释）。
+  方块本体、`MissionMenu`、`MissionScreen` 仍注册着——老存档里已有的终端不会变缺失方块，
+  只是新世界不再生成。
+
+### 3. 任务界面搬进导航终端
+
+- `client/SonarScreen` 新增第三页签「任务」（`labels = {"声纳","核心","任务"}`）：
+  `drawMissionPage` / `drawMissionRow` / `handleMissionClick`，接单/交付/放弃都发
+  `MissionActionPacket(ACCEPT/TURN_IN/ABANDON, mission.id, menu.sonarPos())`。
+- `NavigationTerminalBlock.use` 打开 `SonarMenu` 时额外下发 `MissionStatePacket`，
+  否则任务页拿不到任务列表。
+- **交付判定改成玩家世界坐标**：`MissionActionPacket` 里
+  `player.position().distanceToSqr(Vec3.atCenterOf(PoiNetwork.POST_B_TERMINAL)) <= 64`
+  （8 格内）→ 全额报酬，否则 50%。不再用 `terminalPos`——VS2 船上终端坐标不可靠。
+- `client/MissionScreen`（旧终端方块的界面）没删，行标题改成优先显示
+  `MissionCatalog.offer(id)` 的原版任务名。
+
+### 4. 命令与测试
+
+- 新增 `/barotrauma campaign missions`：打印目录统计（按 kind 计数）+ 当前发布条目。
+- 新增 `MissionCatalogTest`：目录 ≥80 条、offers 只含已实装且 spawn none/cave、按 id 反查。
+- 适配旧测试：`MissionSavedDataFailureTest` / `MissionDepthTest` 改成按 `MissionType`
+  动态找任务（别再写死 id=6）；`DeepPermitPolicyTest` 期望值按深度推。
+- **验证**：`./gradlew test --offline` → **203 项 0 失败**（2026-11-10 20:01，
+  `build/test-results/test`，34 个 XML）。本轮**没跑** `build` / L2 GameTest / L3 冒烟。
+- 客户端：改完后起过一次 `runClient`，日志正常进游戏；**用户还没回报任务页签的实际效果**。
+
+### 5. Git 状态
+
+- 分支 `main`，HEAD `3cb1d71`（PR #50 合并后）。
+- 工作区脏：**14 个修改 + 6 个未跟踪**，全部是本轮任务目录/导航终端改动。
+  未跟踪：`mission/MissionSpec|MissionKind|MissionFeature|MissionCatalog.java`、
+  `resources/data/barotrauma/missions/`、`test/.../MissionCatalogTest.java`。
+- **未提交、未 push、未 pull**。提交/推送/拉取都要用户明确授权。
+
+### 6. 下一步（按顺序）
+
+1. **实机验收**：靠泊哨站 → 右键导航终端 → 第三页签「任务」应列出上面 5 条；
+   接单、到 B 中继站终端 8 格内交付、报酬到账；旧任务终端方块不再生成。
+2. 用户说「提交」后才走发布流程：补 `.mex/ROUTER.md`（本轮已同步）→ `test` → 任务分支 →
+   push → PR → 审过合并 → 删分支。
+3. 之后按功能逐个打开 `MissionFeature` 并把对应的完成判定接上（现在只有 CARGO / SALVAGE 有结算）：
+   BEACON → MINERALS → WRECKS/RUINS（现有沉船/遗迹可直接复用）→ CREATURES/NEST →
+   ESCORT/ABANDONED/PIRATES → THALAMUS。**只翻 flag 不写完成判定，任务会接单但无法完成。**
+
+### 7. 本轮特有的坑
+
+- `offers()` 的数值 id 是**列表序 +1**，跟 JSON 里的字符串 id 无关；任务存档存的是数值 id，
+  **改 offers 顺序会让老存档里的任务错位**。要增删条目就追加到末尾或做迁移。
+- `MissionCatalog` 用 `getResourceAsStream("/data/...")`，单测和服务端都能读；改 JSON 不用重新生成。
+- `cargovolatilecompoundn` 的 JSON `reward` 是 0，报酬由 `PoiNetwork` 的 `Math.max(800, ...)` 兜底，
+  不是漏填。
+- 两个任务界面并存（导航终端里的 `SonarScreen` 任务页 + 旧 `MissionScreen`），改文案别只改一边。
+- 交付全额判定在 8 格内，调半径改 `MissionActionPacket.DELIVERY_ENDPOINT_RADIUS_SQR`。
 
 ## 2026-11-08 出血来源方案 A 落地 + 倒地流失按原版语义移除（L1 全绿，待实机验收）
 

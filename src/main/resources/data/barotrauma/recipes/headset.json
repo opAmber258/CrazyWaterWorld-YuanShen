@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:silicon"
+    },
+    {
+      "item": "barotrauma:copper"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:headset"
+  }
+}

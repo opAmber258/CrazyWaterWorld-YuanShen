@@ -57,16 +57,41 @@ public final class PoiNetwork {
 
     // ------------------------------------------------------------------ 任务池
 
-    /** 任务池（id 即数组序 + 1）。目标坐标必须和上面的 POI 常量一致。 */
+    /**
+     * 任务池：从 {@link MissionCatalog#offers()} 生成（id 即列表序 + 1）。
+     *
+     * <p>目前只有“货运”和“洞穴遗物打捞”两类功能的依赖已实装，所以终端只发布这两类；
+     * 其余原版任务仍登记在目录里，等生物/信标/沉船遗迹等系统落地后再打开。</p>
+     */
     public static List<Mission> definitions() {
-        return List.of(
-                new Mission(1, MissionType.SALVAGE, WRECK_A, 20, 80),
-                new Mission(2, MissionType.SALVAGE, WRECK_B, 20, 200),
-                new Mission(3, MissionType.SALVAGE, WRECK_C, 20, 500),
-                new Mission(4, MissionType.RECON, RECON_POINT, 14, 120),
-                new Mission(5, MissionType.DELIVERY, POST_B_TERMINAL, 12, 150),
-                // 紧急运送：接取后 30 分钟（24000 刻）内送到 B 中继站，奖励更高
-                new Mission(6, MissionType.URGENT_DELIVERY, POST_B_TERMINAL, 12, 260, 24000L));
+        List<Mission> out = new java.util.ArrayList<>();
+        int id = 1;
+        for (com.opamb.barotrauma.mission.MissionSpec spec
+                : com.opamb.barotrauma.mission.MissionCatalog.offers()) {
+            switch (spec.kind()) {
+                case CARGO -> {
+                    // 挥发性化学品按原版“危险货物”处理成限时紧急运送（30 分钟）。
+                    boolean urgent = "cargovolatilecompoundn".equals(spec.id());
+                    int reward = Math.max(urgent ? 800 : 500, spec.reward());
+                    if (urgent) {
+                        out.add(new Mission(id++, MissionType.URGENT_DELIVERY,
+                                POST_B_TERMINAL, 12, reward, 24000L));
+                    } else {
+                        out.add(new Mission(id++, MissionType.DELIVERY,
+                                POST_B_TERMINAL, 12, reward));
+                    }
+                }
+                case SALVAGE -> out.add(new Mission(id++, MissionType.SALVAGE,
+                        WRECK_A, 20, Math.max(1, spec.reward())));
+                // 说明：当前 SALVAGE 的实际目标是 WRECK_A 里的黑匣子（MissionProgress 只认
+                // BLACK_BOX），终端显示名已在 lang 里改成"打捞沉船黑匣子"。等洞穴异星遗物的
+                // 生成/交付实装后，再把 lang 名恢复成原版"打捞一件异星遗物"。
+                default -> {
+                    // 目录里已登记、但对应功能还没实装的任务不生成
+                }
+            }
+        }
+        return List.copyOf(out);
     }
 
     // ------------------------------------------------------------------ 区块写入
@@ -158,10 +183,7 @@ public final class PoiNetwork {
                 }
             }
         }
-        if (inChunkXZ(chunk, POST_B_TERMINAL.getX(), POST_B_TERMINAL.getZ())) {
-            chunk.setBlockState(POST_B_TERMINAL,
-                    ModBlocks.MISSION_TERMINAL.get().defaultBlockState(), false);
-        }
+        // B 中继站的任务终端已弃用；POST_B_TERMINAL 仍作为交付判定的坐标锚点。
     }
 
     private static boolean inChunkXZ(ChunkAccess chunk, int x, int z) {

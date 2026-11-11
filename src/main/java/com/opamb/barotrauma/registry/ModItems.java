@@ -34,9 +34,13 @@ public final class ModItems {
     public static final RegistryObject<Item> DIVING_KNIFE = ITEMS.register("diving_knife",
             () -> new DivingKnifeItem(Tiers.IRON, 2, -2.2F, new Item.Properties()));
 
-    /** 焊接工具：右键持续修船壳，耐久就是燃料（原版燃料罐 200 点，这里放宽到 400）。 */
+    /** 焊接工具：右键持续修船壳；燃料来自子格里的焊接油箱。 */
     public static final RegistryObject<Item> WELDING_TOOL = ITEMS.register("welding_tool",
-            () -> new WeldingToolItem(new Item.Properties().stacksTo(1).durability(400)));
+            () -> new WeldingToolItem(new Item.Properties().stacksTo(1)));
+
+    /** 焊接油箱：焊接工具的燃料，耐久 200（原作 weldingfueltank 同款）。 */
+    public static final RegistryObject<Item> WELDING_FUEL_TANK = ITEMS.register("welding_fuel_tank",
+            () -> new Item(new Item.Properties().stacksTo(1).durability(200)));
 
     /** 潜艇装甲板的方块物品。 */
     public static final RegistryObject<Item> SUBMARINE_PLATING =
@@ -71,6 +75,20 @@ public final class ModItems {
     /** 引擎方块物品（18 格多块，放的时候自动铺满 3×2×3）。 */
     public static final RegistryObject<Item> ENGINE = blockItem("engine", ModBlocks.ENGINE);
 
+    // ---- 潜渊症容器 ----
+    public static final RegistryObject<Item> MEDIUM_STEEL_CABINET =
+            blockItem("medium_steel_cabinet", ModBlocks.MEDIUM_STEEL_CABINET);
+    public static final RegistryObject<Item> MEDIUM_WINDOWED_STEEL_CABINET =
+            blockItem("medium_windowed_steel_cabinet", ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET);
+    public static final RegistryObject<Item> CRATE_SHELF =
+            blockItem("crate_shelf", ModBlocks.CRATE_SHELF);
+    public static final RegistryObject<Item> DIVING_SUIT_LOCKER =
+            blockItem("diving_suit_locker", ModBlocks.DIVING_SUIT_LOCKER);
+    public static final RegistryObject<Item> OXYGEN_TANK_SHELF =
+            blockItem("oxygen_tank_shelf", ModBlocks.OXYGEN_TANK_SHELF);
+    public static final RegistryObject<Item> DIVING_SUIT_STATION =
+            blockItem("diving_suit_station", ModBlocks.DIVING_SUIT_STATION);
+
     // ---- 核燃料棒（耐久 = 原作 Condition 上限） ----
     /** 铀燃料棒：80 点。 */
     public static final RegistryObject<Item> URANIUM_FUEL_ROD = ITEMS.register("uranium_fuel_rod",
@@ -101,9 +119,9 @@ public final class ModItems {
     /** 补给箱（物品）：DELIVERY 任务的货物，接任务时发，送到 B 中继站交付。 */
     public static final RegistryObject<Item> SUPPLY_CRATE = ITEMS.register("supply_crate",
             () -> new Item(new Item.Properties()));
-    /** 潜水服（胸甲槽）：穿戴后出舱安全深度 300→400m。 */
+    /** 潜水服（潜水服槽）：穿戴后出舱安全深度 300→400m；原作 fireproof，不可堆叠。 */
     public static final RegistryObject<Item> DIVING_SUIT = ITEMS.register("diving_suit",
-            () -> new DivingSuitItem(new Item.Properties()));
+            () -> new DivingSuitItem(new Item.Properties().stacksTo(1).fireResistant()));
     /** 深潜许可：解锁 320m 以深任务的接取（商店有售，不消耗）。 */
     public static final RegistryObject<Item> DEEP_PERMIT = ITEMS.register("deep_permit",
             () -> new Item(new Item.Properties()));

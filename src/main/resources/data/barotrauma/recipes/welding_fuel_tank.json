@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:aluminium"
+    },
+    {
+      "item": "barotrauma:aluminium"
+    },
+    {
+      "item": "barotrauma:rubber"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:welding_fuel_tank"
+  }
+}

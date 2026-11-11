@@ -31,10 +31,27 @@ public final class VsBridge {
     private VsBridge() {
     }
 
+    /**
+     * 装配进行中。VS2 的装配循环会先 {@code removeBlockEntity} 再 {@code removeBlock}，
+     * 而且不保证先处理主方块；柜体的 {@code onRemove} 如果在装配途中掉库存，
+     * 装配快照恢复后又有一份，就会复制物品。装配期间必须跳过拆除副作用。
+     */
+    private static boolean assembling;
+
+    /** 当前是否在 {@link #assemble} 里（柜体 onRemove 用）。 */
+    public static boolean isAssembling() {
+        return assembling;
+    }
+
     /** 把一批方块收成一艘 VS2 刚体船。返回的船在世界的中心由 VS2 自己算。 */
     public static ServerShip assemble(ServerLevel level, Collection<BlockPos> blocks) {
         Set<BlockPos> set = new LinkedHashSet<>(blocks);
-        return ShipAssembler.assembleToShip(level, set, 1.0D);
+        assembling = true;
+        try {
+            return ShipAssembler.assembleToShip(level, set, 1.0D);
+        } finally {
+            assembling = false;
+        }
     }
 
     /**
