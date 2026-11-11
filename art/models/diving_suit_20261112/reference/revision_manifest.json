@@ -1,0 +1,13 @@
+{
+  "revision": "user edited, 2026-11-12",
+  "user_geometry_and_uv_preserved": true,
+  "external_texture_bytes_preserved": true,
+  "files": {
+    "diving_suit.bbmodel": "15e03ead5d0383f8a4266cf81702e23fc604e1f779ffd2796bc336b8a91dc7b7",
+    "diving_suit_tex.png": "eb4f69feb25e614588ebbc0f98a74cfad1215c540de0234770bad18f68113c9d",
+    "preview_back.png": "67486b9de553be28fc58786831e7c95258427d4b0e8299d5de2a4c87c6c2f1e3",
+    "preview_front.png": "5f8c9c8fcd8266ed79ecaf8545eb7616677856d737178c2fb87a0f843990fa60",
+    "preview_oblique.png": "3ff9fc72d8e9fb6370b2c7c85670ff59b47a67e34220096f7394c8360da8de54",
+    "preview_side.png": "e9b5094e9807e9e15a659222ed8ecd3b4a8cc39b7cc60211b9e0b3d43100844c"
+  }
+}

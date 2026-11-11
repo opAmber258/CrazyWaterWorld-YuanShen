@@ -34,7 +34,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-10
+last_updated: 2026-11-12
 ---
 
 # Session Bootstrap
@@ -58,6 +58,8 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 这是随 Git 分享的开工阅读入口，不是自动通知；合作者获取包含本提醒的提交后才能看到。
 
 ## Current Project State
+
+- **潜水服护甲美术资产（2026-11-12）**：`art/models/diving_suit_20261112/` 收录人工微调后的潜水服 DivingSuit（人工 + AI：TakaraMiyuki + Codex / GPT-6.1 Sol）。104 cubes / 8 bones / 610 faces，256² 单贴图；几何与四张 1200×900 预览由 Blockbench 5.2.2 原生重出。已通过离线结构、内嵌贴图一致性、工程重开与导出一致性检查；按用户明确要求直推 main。仅美术交付，未接入游戏，客户端未测试；待资产评选。详细来源、尺寸与验证见资产 README/validation。
 
 **Working:**
 - 1.20.1 Forge mod builds and loads; air-ocean deep dimension, outposts, and starter submarine generate.

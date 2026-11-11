@@ -1,0 +1,184 @@
+{
+  "asset": "潜水服 DivingSuit",
+  "production": "Human + AI: TakaraMiyuki + Codex / GPT-6.1 Sol; Blockbench 5.2.2 MCP 1.10.1",
+  "date": "2026-11-12",
+  "status": "pass",
+  "checks": {
+    "identifier": true,
+    "format_version_matches_curated_bedrock": true,
+    "bone_set": true,
+    "bone_count": true,
+    "cube_count": true,
+    "nonempty_bones": true,
+    "unique_element_ids": true,
+    "each_cube_owned_once": true,
+    "positive_sizes": true,
+    "no_duplicate_geometry": true,
+    "neutral_saved_pose": true,
+    "embedded_texture": true,
+    "portable_texture": true,
+    "texture_rgba_power_of_two": true,
+    "embedded_bitmap_matches_png": true,
+    "no_partial_alpha": true,
+    "uv_in_bounds": true,
+    "uv_visible_regions_opaque": true,
+    "preview_front": true,
+    "preview_back": true,
+    "preview_side": true,
+    "preview_oblique": true,
+    "sampled_fit_head": true,
+    "sampled_fit_body": true,
+    "sampled_fit_right_arm": true,
+    "sampled_fit_left_arm": true,
+    "sampled_fit_right_leg": true,
+    "sampled_fit_left_leg": true,
+    "native_export_after_reopen_equal": true,
+    "temporary_pose_restored": true
+  },
+  "errors": [],
+  "bounds_blockbench_units": {
+    "min": [
+      -9.359532283076335,
+      -0.075,
+      -6.43
+    ],
+    "max": [
+      9.359532283076335,
+      33.85,
+      5.8
+    ],
+    "size": [
+      18.71906456615267,
+      33.925000000000004,
+      12.23
+    ]
+  },
+  "dimensions_blocks_at_16_units_per_block": [
+    1.169941535384542,
+    2.1203125000000003,
+    0.764375
+  ],
+  "cost": {
+    "editor_cubes": 104,
+    "export_cubes": 104,
+    "bones": 8,
+    "declared_faces": 610,
+    "triangles_upper_bound": 1220,
+    "removed_covered_faces": 14,
+    "textures": 1,
+    "texture_size": [
+      256,
+      256
+    ],
+    "texture_pixels": 65536,
+    "frames": 1,
+    "partial_alpha_pixels": 0,
+    "mesh_elements": 0
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "foreground_bounds": [
+        405,
+        99,
+        795,
+        806
+      ],
+      "mode": "RGBA"
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "foreground_bounds": [
+        405,
+        99,
+        795,
+        806
+      ],
+      "mode": "RGBA"
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "foreground_bounds": [
+        479,
+        99,
+        734,
+        806
+      ],
+      "mode": "RGBA"
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "foreground_bounds": [
+        418,
+        126,
+        770,
+        789
+      ],
+      "mode": "RGBA"
+    }
+  },
+  "neutral_steve_surface_sampling": {
+    "head": {
+      "sample_count": 6146,
+      "uncovered_count": 0,
+      "uncovered_examples": []
+    },
+    "body": {
+      "sample_count": 5634,
+      "uncovered_count": 0,
+      "uncovered_examples": []
+    },
+    "right_arm": {
+      "sample_count": 3586,
+      "uncovered_count": 0,
+      "uncovered_examples": []
+    },
+    "left_arm": {
+      "sample_count": 3586,
+      "uncovered_count": 0,
+      "uncovered_examples": []
+    },
+    "right_leg": {
+      "sample_count": 3586,
+      "uncovered_count": 0,
+      "uncovered_examples": []
+    },
+    "left_leg": {
+      "sample_count": 3586,
+      "uncovered_count": 0,
+      "uncovered_examples": []
+    }
+  },
+  "live": {
+    "reexport_equal": true,
+    "pose_restored": true,
+    "revision": "user-edited 2026-11-12",
+    "current_revision": "Hand-edited model reopened and reexported; previews regenerated 2026-11-12"
+  },
+  "runtime": {
+    "intended": "Minecraft Java 1.20.1 Forge, wearable armor geometry prepared for GeckoLib-style bone mapping",
+    "client_tested": false,
+    "game_integration_included": false,
+    "animation_files": 0,
+    "slim_arms_tested": false
+  },
+  "limitations": [
+    "Generic audit is not a complete Bedrock/GeckoLib schema validator.",
+    "Player surface sampling is finite and neutral; it is not a proof for all animation mods or equipment combinations.",
+    "Pose test belongs to the initial version; current hand-edited revision has neutral fit sampling only. No game client or FPS measurement.",
+    "Opaque stylized visor intentionally conceals the player face.",
+    "Built-in lamp is a painted detail; dynamic lighting and oxygen behavior require game integration."
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "source": "Blockbench native offscreen renderer",
+  "size": [
+    1200,
+    900
+  ],
+  "views": [
+    {
+      "name": "front",
+      "requested": {
+        "view": "diving_suit_native_render",
+        "position": [
+          0,
+          17,
+          -90
+        ],
+        "target": [
+          0,
+          17,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 0.52,
+        "fov": 32,
+        "format": "png"
+      },
+      "applied": {
+        "id": "diving_suit_native_render",
+        "kind": "offscreen",
+        "active": false,
+        "width": 1200,
+        "height": 900,
+        "antialias": true,
+        "camera": {
+          "projection": "orthographic",
+          "position": [
+            0,
+            17,
+            -90
+          ],
+          "target": [
+            0,
+            17,
+            0
+          ],
+          "fov": 45,
+          "zoom": 0.52,
+          "locked_angle": null
+        }
+      }
+    },
+    {
+      "name": "back",
+      "requested": {
+        "view": "diving_suit_native_render",
+        "position": [
+          0,
+          17,
+          90
+        ],
+        "target": [
+          0,
+          17,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 0.52,
+        "fov": 32,
+        "format": "png"
+      },
+      "applied": {
+        "id": "diving_suit_native_render",
+        "kind": "offscreen",
+        "active": false,
+        "width": 1200,
+        "height": 900,
+        "antialias": true,
+        "camera": {
+          "projection": "orthographic",
+          "position": [
+            0,
+            17,
+            90
+          ],
+          "target": [
+            0,
+            17,
+            0
+          ],
+          "fov": 45,
+          "zoom": 0.52,
+          "locked_angle": null
+        }
+      }
+    },
+    {
+      "name": "side",
+      "requested": {
+        "view": "diving_suit_native_render",
+        "position": [
+          90,
+          17,
+          0
+        ],
+        "target": [
+          0,
+          17,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 0.52,
+        "fov": 32,
+        "format": "png"
+      },
+      "applied": {
+        "id": "diving_suit_native_render",
+        "kind": "offscreen",
+        "active": false,
+        "width": 1200,
+        "height": 900,
+        "antialias": true,
+        "camera": {
+          "projection": "orthographic",
+          "position": [
+            90,
+            17,
+            0
+          ],
+          "target": [
+            0,
+            17,
+            0
+          ],
+          "fov": 45,
+          "zoom": 0.52,
+          "locked_angle": null
+        }
+      }
+    },
+    {
+      "name": "oblique",
+      "requested": {
+        "view": "diving_suit_native_render",
+        "position": [
+          44,
+          32,
+          -70
+        ],
+        "target": [
+          0,
+          17,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 0.52,
+        "fov": 32,
+        "format": "png"
+      },
+      "applied": {
+        "id": "diving_suit_native_render",
+        "kind": "offscreen",
+        "active": false,
+        "width": 1200,
+        "height": 900,
+        "antialias": true,
+        "camera": {
+          "projection": "perspective",
+          "position": [
+            44,
+            32,
+            -70
+          ],
+          "target": [
+            0,
+            17,
+            0
+          ],
+          "fov": 32,
+          "zoom": 0.52,
+          "locked_angle": null
+        }
+      }
+    }
+  ],
+  "cleanup_warning": "Native controls.dispose error after disposal; Preview registry absence verified."
+}
