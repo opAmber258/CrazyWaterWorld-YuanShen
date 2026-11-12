@@ -1,0 +1,2549 @@
+{
+  "identifier": "underwater_scooter",
+  "name": "水下助推器 UnderwaterScooter",
+  "scale": 0.8,
+  "origin_convention": "+X nose/spotlight, -X propeller/operator, +Y up",
+  "bounding_box": {
+    "min": [
+      -6.96,
+      3.965995952148749e-06,
+      -3.304
+    ],
+    "max": [
+      7.856,
+      8.703200904250728,
+      3.304
+    ],
+    "size": [
+      14.815999999999999,
+      8.703196938254775,
+      6.608
+    ]
+  },
+  "groups": [
+    "housing",
+    "nose",
+    "motor",
+    "guard",
+    "rotor",
+    "handle_right",
+    "handle_left",
+    "controls",
+    "wiring"
+  ],
+  "cubes": [
+    {
+      "name": "yellow_shell_vertical",
+      "group": "housing",
+      "from": [
+        -0.64,
+        1.12361,
+        -2.08
+      ],
+      "to": [
+        5.84,
+        6.88361,
+        2.08
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        2.6,
+        4.00361,
+        0.0
+      ],
+      "material": "yellow_panel",
+      "face_materials": {
+        "east": "yellow_end",
+        "west": "yellow_end",
+        "up": "yellow_top",
+        "down": "yellow_top"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "yellow_shell_horizontal",
+      "group": "housing",
+      "from": [
+        -0.64,
+        1.92361,
+        -2.88
+      ],
+      "to": [
+        5.84,
+        6.08361,
+        2.88
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        2.6,
+        4.00361,
+        0.0
+      ],
+      "material": "yellow_panel",
+      "face_materials": {
+        "east": "yellow_end",
+        "west": "yellow_end",
+        "up": "yellow_top",
+        "down": "yellow_top"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "yellow_shell_bevel_-1_-1",
+      "group": "housing",
+      "from": [
+        -0.64,
+        1.35792,
+        -2.64569
+      ],
+      "to": [
+        5.84,
+        2.4893,
+        -1.51431
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        2.6,
+        1.92361,
+        -2.08
+      ],
+      "material": "yellow_bevel",
+      "face_materials": {
+        "east": "yellow_end",
+        "west": "yellow_end",
+        "up": "yellow_top",
+        "down": "yellow_top"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "yellow_shell_bevel_-1_1",
+      "group": "housing",
+      "from": [
+        -0.64,
+        1.35792,
+        1.51431
+      ],
+      "to": [
+        5.84,
+        2.4893,
+        2.64569
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        2.6,
+        1.92361,
+        2.08
+      ],
+      "material": "yellow_bevel",
+      "face_materials": {
+        "east": "yellow_end",
+        "west": "yellow_end",
+        "up": "yellow_top",
+        "down": "yellow_top"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "yellow_shell_bevel_1_-1",
+      "group": "housing",
+      "from": [
+        -0.64,
+        5.51792,
+        -2.64569
+      ],
+      "to": [
+        5.84,
+        6.6493,
+        -1.51431
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        2.6,
+        6.08361,
+        -2.08
+      ],
+      "material": "yellow_bevel",
+      "face_materials": {
+        "east": "yellow_end",
+        "west": "yellow_end",
+        "up": "yellow_top",
+        "down": "yellow_top"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "yellow_shell_bevel_1_1",
+      "group": "housing",
+      "from": [
+        -0.64,
+        5.51792,
+        1.51431
+      ],
+      "to": [
+        5.84,
+        6.6493,
+        2.64569
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        2.6,
+        6.08361,
+        2.08
+      ],
+      "material": "yellow_bevel",
+      "face_materials": {
+        "east": "yellow_end",
+        "west": "yellow_end",
+        "up": "yellow_top",
+        "down": "yellow_top"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "rear_collar_vertical",
+      "group": "housing",
+      "from": [
+        -0.944,
+        1.04361,
+        -2.12
+      ],
+      "to": [
+        -0.528,
+        6.96361,
+        2.12
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -0.736,
+        4.00361,
+        0.0
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "rear_collar_horizontal",
+      "group": "housing",
+      "from": [
+        -0.944,
+        1.88361,
+        -2.96
+      ],
+      "to": [
+        -0.528,
+        6.12361,
+        2.96
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -0.736,
+        4.00361,
+        0.0
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "rear_collar_bevel_-1_-1",
+      "group": "housing",
+      "from": [
+        -0.944,
+        1.28964,
+        -2.71397
+      ],
+      "to": [
+        -0.528,
+        2.47758,
+        -1.52603
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        -0.736,
+        1.88361,
+        -2.12
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "rear_collar_bevel_-1_1",
+      "group": "housing",
+      "from": [
+        -0.944,
+        1.28964,
+        1.52603
+      ],
+      "to": [
+        -0.528,
+        2.47758,
+        2.71397
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        -0.736,
+        1.88361,
+        2.12
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "rear_collar_bevel_1_-1",
+      "group": "housing",
+      "from": [
+        -0.944,
+        5.52964,
+        -2.71397
+      ],
+      "to": [
+        -0.528,
+        6.71758,
+        -1.52603
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        -0.736,
+        6.12361,
+        -2.12
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "rear_collar_bevel_1_1",
+      "group": "housing",
+      "from": [
+        -0.944,
+        5.52964,
+        1.52603
+      ],
+      "to": [
+        -0.528,
+        6.71758,
+        2.71397
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        -0.736,
+        6.12361,
+        2.12
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "front_band_vertical",
+      "group": "nose",
+      "from": [
+        5.568,
+        1.04361,
+        -2.12
+      ],
+      "to": [
+        5.984,
+        6.96361,
+        2.12
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        5.776,
+        4.00361,
+        0.0
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "front_band_horizontal",
+      "group": "nose",
+      "from": [
+        5.568,
+        1.88361,
+        -2.96
+      ],
+      "to": [
+        5.984,
+        6.12361,
+        2.96
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        5.776,
+        4.00361,
+        0.0
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "front_band_bevel_-1_-1",
+      "group": "nose",
+      "from": [
+        5.568,
+        1.28964,
+        -2.71397
+      ],
+      "to": [
+        5.984,
+        2.47758,
+        -1.52603
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        5.776,
+        1.88361,
+        -2.12
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "front_band_bevel_-1_1",
+      "group": "nose",
+      "from": [
+        5.568,
+        1.28964,
+        1.52603
+      ],
+      "to": [
+        5.984,
+        2.47758,
+        2.71397
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        5.776,
+        1.88361,
+        2.12
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "front_band_bevel_1_-1",
+      "group": "nose",
+      "from": [
+        5.568,
+        5.52964,
+        -2.71397
+      ],
+      "to": [
+        5.984,
+        6.71758,
+        -1.52603
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        5.776,
+        6.12361,
+        -2.12
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "front_band_bevel_1_1",
+      "group": "nose",
+      "from": [
+        5.568,
+        5.52964,
+        1.52603
+      ],
+      "to": [
+        5.984,
+        6.71758,
+        2.71397
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        5.776,
+        6.12361,
+        2.12
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "steel_flat",
+        "west": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "head_cowl_vertical",
+      "group": "nose",
+      "from": [
+        5.984,
+        1.42761,
+        -1.824
+      ],
+      "to": [
+        7.64,
+        6.57961,
+        1.824
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        6.812,
+        4.00361,
+        0.0
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "head_cowl_horizontal",
+      "group": "nose",
+      "from": [
+        5.984,
+        2.17961,
+        -2.576
+      ],
+      "to": [
+        7.64,
+        5.82761,
+        2.576
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        6.812,
+        4.00361,
+        0.0
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "head_cowl_bevel_-1_-1",
+      "group": "nose",
+      "from": [
+        5.984,
+        1.64787,
+        -2.35574
+      ],
+      "to": [
+        7.64,
+        2.71135,
+        -1.29226
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        6.812,
+        2.17961,
+        -1.824
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "head_cowl_bevel_-1_1",
+      "group": "nose",
+      "from": [
+        5.984,
+        1.64787,
+        1.29226
+      ],
+      "to": [
+        7.64,
+        2.71135,
+        2.35574
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        6.812,
+        2.17961,
+        1.824
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "head_cowl_bevel_1_-1",
+      "group": "nose",
+      "from": [
+        5.984,
+        5.29587,
+        -2.35574
+      ],
+      "to": [
+        7.64,
+        6.35935,
+        -1.29226
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        6.812,
+        5.82761,
+        -1.824
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "head_cowl_bevel_1_1",
+      "group": "nose",
+      "from": [
+        5.984,
+        5.29587,
+        1.29226
+      ],
+      "to": [
+        7.64,
+        6.35935,
+        2.35574
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        6.812,
+        5.82761,
+        1.824
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "spotlight_lens",
+      "group": "nose",
+      "from": [
+        7.648,
+        2.60361,
+        -1.4
+      ],
+      "to": [
+        7.856,
+        5.40361,
+        1.4
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        7.752,
+        4.00361,
+        0.0
+      ],
+      "material": "steel",
+      "face_materials": {
+        "east": "lamp"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "battery_hatch",
+      "group": "housing",
+      "from": [
+        0.08,
+        6.89961,
+        -1.32
+      ],
+      "to": [
+        4.72,
+        7.10761,
+        1.32
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        2.4,
+        7.00361,
+        0.0
+      ],
+      "material": "yellow_top",
+      "face_materials": {
+        "up": "battery"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "battery_latch",
+      "group": "housing",
+      "from": [
+        4.272,
+        7.11561,
+        -0.44
+      ],
+      "to": [
+        4.944,
+        7.32361,
+        0.44
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        4.608,
+        7.21961,
+        0.0
+      ],
+      "material": "darksteel",
+      "face_materials": {
+        "up": "steel"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "motor_casing_vertical",
+      "group": "motor",
+      "from": [
+        -4.32,
+        1.96361,
+        -1.464
+      ],
+      "to": [
+        -0.88,
+        6.04361,
+        1.464
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -2.6,
+        4.00361,
+        0.0
+      ],
+      "material": "darksteel",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "motor_casing_horizontal",
+      "group": "motor",
+      "from": [
+        -4.32,
+        2.53961,
+        -2.04
+      ],
+      "to": [
+        -0.88,
+        5.46761,
+        2.04
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -2.6,
+        4.00361,
+        0.0
+      ],
+      "material": "darksteel",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "motor_casing_bevel_-1_-1",
+      "group": "motor",
+      "from": [
+        -4.32,
+        2.13232,
+        -1.87129
+      ],
+      "to": [
+        -0.88,
+        2.9469,
+        -1.05671
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        -2.6,
+        2.53961,
+        -1.464
+      ],
+      "material": "darksteel",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "motor_casing_bevel_-1_1",
+      "group": "motor",
+      "from": [
+        -4.32,
+        2.13232,
+        1.05671
+      ],
+      "to": [
+        -0.88,
+        2.9469,
+        1.87129
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        -2.6,
+        2.53961,
+        1.464
+      ],
+      "material": "darksteel",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "motor_casing_bevel_1_-1",
+      "group": "motor",
+      "from": [
+        -4.32,
+        5.06032,
+        -1.87129
+      ],
+      "to": [
+        -0.88,
+        5.8749,
+        -1.05671
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        -2.6,
+        5.46761,
+        -1.464
+      ],
+      "material": "darksteel",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "motor_casing_bevel_1_1",
+      "group": "motor",
+      "from": [
+        -4.32,
+        5.06032,
+        1.05671
+      ],
+      "to": [
+        -0.88,
+        5.8749,
+        1.87129
+      ],
+      "rotation": [
+        -45,
+        0,
+        0
+      ],
+      "origin": [
+        -2.6,
+        5.46761,
+        1.464
+      ],
+      "material": "darksteel",
+      "face_materials": {
+        "east": "graphite_flat",
+        "west": "graphite_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "service_cover_vertical",
+      "group": "motor",
+      "from": [
+        -3.504,
+        3.05961,
+        1.968
+      ],
+      "to": [
+        -0.816,
+        4.94761,
+        2.312
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -2.16,
+        4.00361,
+        2.14
+      ],
+      "material": "steel",
+      "face_materials": {
+        "south": "steel_flat",
+        "north": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "service_cover_horizontal",
+      "group": "motor",
+      "from": [
+        -3.104,
+        2.65961,
+        1.968
+      ],
+      "to": [
+        -1.216,
+        5.34761,
+        2.312
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -2.16,
+        4.00361,
+        2.14
+      ],
+      "material": "steel",
+      "face_materials": {
+        "south": "steel_flat",
+        "north": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "service_cover_bevel_-1_-1",
+      "group": "motor",
+      "from": [
+        -3.38684,
+        2.77677,
+        1.968
+      ],
+      "to": [
+        -2.82116,
+        3.34245,
+        2.312
+      ],
+      "rotation": [
+        0,
+        0,
+        -45
+      ],
+      "origin": [
+        -3.104,
+        3.05961,
+        2.14
+      ],
+      "material": "steel",
+      "face_materials": {
+        "south": "steel_flat",
+        "north": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "service_cover_bevel_-1_1",
+      "group": "motor",
+      "from": [
+        -3.38684,
+        4.66477,
+        1.968
+      ],
+      "to": [
+        -2.82116,
+        5.23045,
+        2.312
+      ],
+      "rotation": [
+        0,
+        0,
+        45
+      ],
+      "origin": [
+        -3.104,
+        4.94761,
+        2.14
+      ],
+      "material": "steel",
+      "face_materials": {
+        "south": "steel_flat",
+        "north": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "service_cover_bevel_1_-1",
+      "group": "motor",
+      "from": [
+        -1.49884,
+        2.77677,
+        1.968
+      ],
+      "to": [
+        -0.93316,
+        3.34245,
+        2.312
+      ],
+      "rotation": [
+        0,
+        0,
+        45
+      ],
+      "origin": [
+        -1.216,
+        3.05961,
+        2.14
+      ],
+      "material": "steel",
+      "face_materials": {
+        "south": "steel_flat",
+        "north": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "service_cover_bevel_1_1",
+      "group": "motor",
+      "from": [
+        -1.49884,
+        4.66477,
+        1.968
+      ],
+      "to": [
+        -0.93316,
+        5.23045,
+        2.312
+      ],
+      "rotation": [
+        0,
+        0,
+        -45
+      ],
+      "origin": [
+        -1.216,
+        4.94761,
+        2.14
+      ],
+      "material": "steel",
+      "face_materials": {
+        "south": "steel_flat",
+        "north": "steel_flat"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "service_recess",
+      "group": "motor",
+      "from": [
+        -3.104,
+        3.05961,
+        2.32
+      ],
+      "to": [
+        -1.216,
+        4.94761,
+        2.48
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -2.16,
+        4.00361,
+        2.4
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "south": "service"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "left_motor_cover",
+      "group": "motor",
+      "from": [
+        -3.2,
+        3.00361,
+        -2.28
+      ],
+      "to": [
+        -1.28,
+        5.00361,
+        -2.048
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -2.24,
+        4.00361,
+        -2.164
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "north": "controls"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "drive_shaft",
+      "group": "motor",
+      "from": [
+        -6.32,
+        3.52361,
+        -0.48
+      ],
+      "to": [
+        -4.16,
+        4.48361,
+        0.48
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -5.24,
+        4.00361,
+        0.0
+      ],
+      "material": "graphite",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_guard_01",
+      "group": "guard",
+      "from": [
+        -6.96,
+        6.75561,
+        -1.29897
+      ],
+      "to": [
+        -5.824,
+        7.13961,
+        1.29897
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -6.392,
+        6.94761,
+        0.0
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_guard_02",
+      "group": "guard",
+      "from": [
+        -6.96,
+        5.89333,
+        0.78275
+      ],
+      "to": [
+        -5.824,
+        6.27733,
+        3.3807
+      ],
+      "rotation": [
+        45,
+        0,
+        0
+      ],
+      "origin": [
+        -6.392,
+        6.08533,
+        2.08172
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_guard_03",
+      "group": "guard",
+      "from": [
+        -6.96,
+        3.81161,
+        1.64503
+      ],
+      "to": [
+        -5.824,
+        4.19561,
+        4.24297
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "origin": [
+        -6.392,
+        4.00361,
+        2.944
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_guard_04",
+      "group": "guard",
+      "from": [
+        -6.96,
+        1.72989,
+        0.78275
+      ],
+      "to": [
+        -5.824,
+        2.11389,
+        3.3807
+      ],
+      "rotation": [
+        135,
+        0,
+        0
+      ],
+      "origin": [
+        -6.392,
+        1.92189,
+        2.08172
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_guard_05",
+      "group": "guard",
+      "from": [
+        -6.96,
+        0.86761,
+        -1.29897
+      ],
+      "to": [
+        -5.824,
+        1.25161,
+        1.29897
+      ],
+      "rotation": [
+        180,
+        0,
+        0
+      ],
+      "origin": [
+        -6.392,
+        1.05961,
+        0.0
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_guard_06",
+      "group": "guard",
+      "from": [
+        -6.96,
+        1.72989,
+        -3.3807
+      ],
+      "to": [
+        -5.824,
+        2.11389,
+        -0.78275
+      ],
+      "rotation": [
+        225,
+        0,
+        0
+      ],
+      "origin": [
+        -6.392,
+        1.92189,
+        -2.08172
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_guard_07",
+      "group": "guard",
+      "from": [
+        -6.96,
+        3.81161,
+        -4.24297
+      ],
+      "to": [
+        -5.824,
+        4.19561,
+        -1.64503
+      ],
+      "rotation": [
+        270,
+        0,
+        0
+      ],
+      "origin": [
+        -6.392,
+        4.00361,
+        -2.944
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_guard_08",
+      "group": "guard",
+      "from": [
+        -6.96,
+        5.89333,
+        -3.3807
+      ],
+      "to": [
+        -5.824,
+        6.27733,
+        -0.78275
+      ],
+      "rotation": [
+        315,
+        0,
+        0
+      ],
+      "origin": [
+        -6.392,
+        6.08533,
+        -2.08172
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "guard_stay_0",
+      "group": "guard",
+      "from": [
+        -5.96,
+        4.56361,
+        -0.136
+      ],
+      "to": [
+        -5.712,
+        6.80361,
+        0.136
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -5.84,
+        5.68361,
+        0.0
+      ],
+      "material": "darksteel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "guard_stay_180",
+      "group": "guard",
+      "from": [
+        -5.96,
+        1.20361,
+        -0.136
+      ],
+      "to": [
+        -5.712,
+        3.44361,
+        0.136
+      ],
+      "rotation": [
+        180,
+        0,
+        0
+      ],
+      "origin": [
+        -5.84,
+        2.32361,
+        0.0
+      ],
+      "material": "darksteel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "guard_stay_90",
+      "group": "guard",
+      "from": [
+        -5.96,
+        2.88361,
+        1.544
+      ],
+      "to": [
+        -5.712,
+        5.12361,
+        1.816
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "origin": [
+        -5.84,
+        4.00361,
+        1.68
+      ],
+      "material": "darksteel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "guard_stay_270",
+      "group": "guard",
+      "from": [
+        -5.96,
+        2.88361,
+        -1.816
+      ],
+      "to": [
+        -5.712,
+        5.12361,
+        -1.544
+      ],
+      "rotation": [
+        270,
+        0,
+        0
+      ],
+      "origin": [
+        -5.84,
+        4.00361,
+        -1.68
+      ],
+      "material": "darksteel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_blade_1",
+      "group": "rotor",
+      "from": [
+        -6.496,
+        4.38761,
+        -0.56
+      ],
+      "to": [
+        -6.16,
+        6.51561,
+        0.56
+      ],
+      "rotation": [
+        28,
+        0,
+        0
+      ],
+      "origin": [
+        -6.328,
+        4.00361,
+        0.0
+      ],
+      "material": "rotor",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_blade_2",
+      "group": "rotor",
+      "from": [
+        -6.496,
+        4.38761,
+        -0.56
+      ],
+      "to": [
+        -6.16,
+        6.51561,
+        0.56
+      ],
+      "rotation": [
+        118,
+        0,
+        0
+      ],
+      "origin": [
+        -6.328,
+        4.00361,
+        0.0
+      ],
+      "material": "rotor",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_blade_3",
+      "group": "rotor",
+      "from": [
+        -6.496,
+        4.38761,
+        -0.56
+      ],
+      "to": [
+        -6.16,
+        6.51561,
+        0.56
+      ],
+      "rotation": [
+        208,
+        0,
+        0
+      ],
+      "origin": [
+        -6.328,
+        4.00361,
+        0.0
+      ],
+      "material": "rotor",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_blade_4",
+      "group": "rotor",
+      "from": [
+        -6.496,
+        4.38761,
+        -0.56
+      ],
+      "to": [
+        -6.16,
+        6.51561,
+        0.56
+      ],
+      "rotation": [
+        298,
+        0,
+        0
+      ],
+      "origin": [
+        -6.328,
+        4.00361,
+        0.0
+      ],
+      "material": "rotor",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "propeller_hub",
+      "group": "rotor",
+      "from": [
+        -6.704,
+        3.36361,
+        -0.64
+      ],
+      "to": [
+        -5.936,
+        4.64361,
+        0.64
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -6.32,
+        4.00361,
+        0.0
+      ],
+      "material": "steel",
+      "face_materials": {
+        "west": "service"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "right_front_socket",
+      "group": "handle_right",
+      "from": [
+        -1.408,
+        5.00361,
+        2.328
+      ],
+      "to": [
+        -0.736,
+        6.01961,
+        3.192
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -1.072,
+        5.51161,
+        2.76
+      ],
+      "material": "brass",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "right_upper_arm",
+      "group": "handle_right",
+      "from": [
+        -4.576,
+        5.60361,
+        2.44
+      ],
+      "to": [
+        -1.064,
+        6.16361,
+        3.08
+      ],
+      "rotation": [
+        0,
+        0,
+        -34
+      ],
+      "origin": [
+        -1.2,
+        5.84361,
+        2.76
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "right_rubber_grip",
+      "group": "handle_right",
+      "from": [
+        -5.944,
+        7.20361,
+        2.28
+      ],
+      "to": [
+        -3.72,
+        8.06761,
+        3.24
+      ],
+      "rotation": [
+        0,
+        0,
+        -34
+      ],
+      "origin": [
+        -4.84,
+        7.63561,
+        2.76
+      ],
+      "material": "rubber",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "right_grip_heel",
+      "group": "handle_right",
+      "from": [
+        -6.168,
+        7.08361,
+        2.216
+      ],
+      "to": [
+        -5.72,
+        8.02761,
+        3.304
+      ],
+      "rotation": [
+        0,
+        0,
+        -34
+      ],
+      "origin": [
+        -4.84,
+        7.63561,
+        2.76
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "right_lower_return",
+      "group": "handle_right",
+      "from": [
+        -7.13342,
+        1.74761,
+        2.488
+      ],
+      "to": [
+        -4.50658,
+        2.25961,
+        3.032
+      ],
+      "rotation": [
+        0,
+        0,
+        -81.46923439005187
+      ],
+      "origin": [
+        -5.82,
+        2.00361,
+        2.76
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "right_lower_rail",
+      "group": "handle_right",
+      "from": [
+        -5.75152,
+        0.36761,
+        2.488
+      ],
+      "to": [
+        -2.72848,
+        0.87961,
+        3.032
+      ],
+      "rotation": [
+        0,
+        0,
+        -7.32640666016955
+      ],
+      "origin": [
+        -4.24,
+        0.62361,
+        2.76
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "right_lower_mount",
+      "group": "handle_right",
+      "from": [
+        -3.54319,
+        1.10761,
+        2.488
+      ],
+      "to": [
+        -1.33681,
+        1.61961,
+        3.032
+      ],
+      "rotation": [
+        0,
+        0,
+        66.5014343240479
+      ],
+      "origin": [
+        -2.44,
+        1.36361,
+        2.76
+      ],
+      "material": "brass",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "right_perforated_plate",
+      "group": "handle_right",
+      "from": [
+        -6.264,
+        3.12361,
+        2.36
+      ],
+      "to": [
+        -4.12,
+        4.96361,
+        3.16
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -5.192,
+        4.04361,
+        2.76
+      ],
+      "material": "steel",
+      "face_materials": {
+        "south": "vent"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "left_front_socket",
+      "group": "handle_left",
+      "from": [
+        -1.408,
+        5.00361,
+        -3.192
+      ],
+      "to": [
+        -0.736,
+        6.01961,
+        -2.328
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -1.072,
+        5.51161,
+        -2.76
+      ],
+      "material": "brass",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "left_upper_arm",
+      "group": "handle_left",
+      "from": [
+        -4.576,
+        5.60361,
+        -3.08
+      ],
+      "to": [
+        -1.064,
+        6.16361,
+        -2.44
+      ],
+      "rotation": [
+        0,
+        0,
+        -34
+      ],
+      "origin": [
+        -1.2,
+        5.84361,
+        -2.76
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "left_rubber_grip",
+      "group": "handle_left",
+      "from": [
+        -5.944,
+        7.20361,
+        -3.24
+      ],
+      "to": [
+        -3.72,
+        8.06761,
+        -2.28
+      ],
+      "rotation": [
+        0,
+        0,
+        -34
+      ],
+      "origin": [
+        -4.84,
+        7.63561,
+        -2.76
+      ],
+      "material": "rubber",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "left_grip_heel",
+      "group": "handle_left",
+      "from": [
+        -6.168,
+        7.08361,
+        -3.304
+      ],
+      "to": [
+        -5.72,
+        8.02761,
+        -2.216
+      ],
+      "rotation": [
+        0,
+        0,
+        -34
+      ],
+      "origin": [
+        -4.84,
+        7.63561,
+        -2.76
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "left_lower_return",
+      "group": "handle_left",
+      "from": [
+        -7.13342,
+        1.74761,
+        -3.032
+      ],
+      "to": [
+        -4.50658,
+        2.25961,
+        -2.488
+      ],
+      "rotation": [
+        0,
+        0,
+        -81.46923439005187
+      ],
+      "origin": [
+        -5.82,
+        2.00361,
+        -2.76
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "left_lower_rail",
+      "group": "handle_left",
+      "from": [
+        -5.75152,
+        0.36761,
+        -3.032
+      ],
+      "to": [
+        -2.72848,
+        0.87961,
+        -2.488
+      ],
+      "rotation": [
+        0,
+        0,
+        -7.32640666016955
+      ],
+      "origin": [
+        -4.24,
+        0.62361,
+        -2.76
+      ],
+      "material": "steel",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "left_lower_mount",
+      "group": "handle_left",
+      "from": [
+        -3.54319,
+        1.10761,
+        -3.032
+      ],
+      "to": [
+        -1.33681,
+        1.61961,
+        -2.488
+      ],
+      "rotation": [
+        0,
+        0,
+        66.5014343240479
+      ],
+      "origin": [
+        -2.44,
+        1.36361,
+        -2.76
+      ],
+      "material": "brass",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "left_perforated_plate",
+      "group": "handle_left",
+      "from": [
+        -6.264,
+        3.12361,
+        -3.16
+      ],
+      "to": [
+        -4.12,
+        4.96361,
+        -2.36
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -5.192,
+        4.04361,
+        -2.76
+      ],
+      "material": "steel",
+      "face_materials": {
+        "north": "vent"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "control_console",
+      "group": "controls",
+      "from": [
+        -1.936,
+        5.93961,
+        -0.992
+      ],
+      "to": [
+        -0.656,
+        6.40361,
+        0.992
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -1.296,
+        6.17161,
+        0.0
+      ],
+      "material": "graphite",
+      "face_materials": {
+        "up": "controls"
+      },
+      "disabled_faces": []
+    },
+    {
+      "name": "safety_trigger",
+      "group": "controls",
+      "from": [
+        -2.656,
+        6.50761,
+        2.328
+      ],
+      "to": [
+        -2.064,
+        6.77961,
+        3.184
+      ],
+      "rotation": [
+        0,
+        0,
+        -34
+      ],
+      "origin": [
+        -2.36,
+        6.64361,
+        2.76
+      ],
+      "material": "red",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "power_cable_1",
+      "group": "wiring",
+      "from": [
+        -5.07246,
+        1.31561,
+        -1.896
+      ],
+      "to": [
+        -3.80754,
+        1.65161,
+        -1.56
+      ],
+      "rotation": [
+        0,
+        0,
+        -71.56505117707799
+      ],
+      "origin": [
+        -4.44,
+        1.48361,
+        -1.728
+      ],
+      "material": "cable",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "power_cable_2",
+      "group": "wiring",
+      "from": [
+        -4.35246,
+        0.35561,
+        -1.896
+      ],
+      "to": [
+        -3.08754,
+        0.69161,
+        -1.56
+      ],
+      "rotation": [
+        0,
+        0,
+        -34.69515353123397
+      ],
+      "origin": [
+        -3.72,
+        0.52361,
+        -1.728
+      ],
+      "material": "cable",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "power_cable_3",
+      "group": "wiring",
+      "from": [
+        -3.21612,
+        0.13561,
+        -1.896
+      ],
+      "to": [
+        -1.98388,
+        0.47161,
+        -1.56
+      ],
+      "rotation": [
+        0,
+        0,
+        13.134022306396327
+      ],
+      "origin": [
+        -2.6,
+        0.30361,
+        -1.728
+      ],
+      "material": "cable",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "power_cable_4",
+      "group": "wiring",
+      "from": [
+        -2.35472,
+        0.91561,
+        -1.896
+      ],
+      "to": [
+        -0.84528,
+        1.25161,
+        -1.56
+      ],
+      "rotation": [
+        0,
+        0,
+        57.9946167919165
+      ],
+      "origin": [
+        -1.6,
+        1.08361,
+        -1.728
+      ],
+      "material": "cable",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "cable_ferrule_1",
+      "group": "wiring",
+      "from": [
+        -4.912,
+        1.81161,
+        -2.016
+      ],
+      "to": [
+        -4.368,
+        2.35561,
+        -1.44
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -4.64,
+        2.08361,
+        -1.728
+      ],
+      "material": "brass",
+      "face_materials": {},
+      "disabled_faces": []
+    },
+    {
+      "name": "cable_ferrule_2",
+      "group": "wiring",
+      "from": [
+        -1.472,
+        1.45161,
+        -2.016
+      ],
+      "to": [
+        -0.928,
+        1.99561,
+        -1.44
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "origin": [
+        -1.2,
+        1.72361,
+        -1.728
+      ],
+      "material": "brass",
+      "face_materials": {},
+      "disabled_faces": []
+    }
+  ],
+  "tiles": {
+    "yellow_panel": [
+      1,
+      1,
+      25,
+      17
+    ],
+    "yellow_top": [
+      27,
+      1,
+      51,
+      13
+    ],
+    "battery": [
+      27,
+      15,
+      47,
+      27
+    ],
+    "vent": [
+      1,
+      19,
+      17,
+      31
+    ],
+    "lamp": [
+      49,
+      15,
+      61,
+      27
+    ],
+    "service": [
+      1,
+      33,
+      13,
+      45
+    ],
+    "controls": [
+      1,
+      47,
+      15,
+      55
+    ],
+    "rotor": [
+      53,
+      1,
+      61,
+      13
+    ],
+    "darksteel": [
+      15,
+      33,
+      27,
+      41
+    ],
+    "graphite": [
+      17,
+      43,
+      29,
+      51
+    ],
+    "steel": [
+      17,
+      53,
+      29,
+      61
+    ],
+    "rubber": [
+      29,
+      29,
+      45,
+      35
+    ],
+    "yellow_bevel": [
+      29,
+      37,
+      53,
+      41
+    ],
+    "yellow_end": [
+      55,
+      29,
+      63,
+      37
+    ],
+    "cable": [
+      1,
+      57,
+      13,
+      61
+    ],
+    "brass": [
+      47,
+      29,
+      51,
+      33
+    ],
+    "graphite_flat": [
+      19,
+      19,
+      23,
+      23
+    ],
+    "recess": [
+      19,
+      25,
+      23,
+      29
+    ],
+    "red": [
+      55,
+      39,
+      59,
+      43
+    ],
+    "rubber_flat": [
+      31,
+      45,
+      35,
+      49
+    ],
+    "steel_flat": [
+      31,
+      51,
+      35,
+      55
+    ],
+    "steel_light": [
+      31,
+      57,
+      35,
+      61
+    ]
+  }
+}

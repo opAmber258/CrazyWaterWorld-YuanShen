@@ -1,0 +1,30 @@
+{
+  "item_identifier": "underwaterscooter",
+  "names": {
+    "SimplifiedChinese": {
+      "file": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+      "key": "entityname.underwaterscooter",
+      "value": "水下助推器"
+    },
+    "English": {
+      "file": "Content/Texts/English/EnglishVanilla.xml",
+      "key": "entityname.underwaterscooter",
+      "value": "Underwater Scooter"
+    }
+  },
+  "item_definition": "Content/Items/Diving/divinggear.xml",
+  "scale": "0.5",
+  "sprite": {
+    "texture": "Scooter.png",
+    "depth": "0.55",
+    "sourcerect": "0,0,140,102"
+  },
+  "inventory": {
+    "texture": "Content/Items/InventoryIconAtlas.png",
+    "sourcerect": "256,128,67,62",
+    "origin": "0.5,0.5"
+  },
+  "wiki": "https://barotraumagame.com/wiki/Underwater_Scooter",
+  "reference_use": "Original sprite visual reference only. New geometry and pixel atlas authored independently.",
+  "source_sha256": "bee007a35b1d95764eed692bb46ea71334e1f11d88000a32973c5c37203c2910"
+}

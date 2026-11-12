@@ -1,0 +1,179 @@
+{
+  "source_sha256": "8b0eb16a75c9a14aa8b04c2223e606880746c1dc63d266e426c591788726bd88",
+  "removed_faces": 24,
+  "proofs": [
+    {
+      "cube": "yellow_shell_vertical",
+      "uuid": "09c25fa2-8daf-252c-5ab4-cde479f90e46",
+      "face": "east",
+      "occluder": "front_band_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "yellow_shell_vertical",
+      "uuid": "09c25fa2-8daf-252c-5ab4-cde479f90e46",
+      "face": "west",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "yellow_shell_horizontal",
+      "uuid": "d5cfdeab-23d5-f79d-988f-b27134bd0951",
+      "face": "east",
+      "occluder": "front_band_horizontal",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "yellow_shell_horizontal",
+      "uuid": "d5cfdeab-23d5-f79d-988f-b27134bd0951",
+      "face": "west",
+      "occluder": "rear_collar_horizontal",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "head_cowl_vertical",
+      "uuid": "67156f05-9187-1332-05a7-d78c79bf1b1d",
+      "face": "west",
+      "occluder": "front_band_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "head_cowl_horizontal",
+      "uuid": "51c3b65d-6bb8-7fe3-03d8-0041370af82a",
+      "face": "west",
+      "occluder": "front_band_horizontal",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "motor_casing_vertical",
+      "uuid": "240c82e1-4014-6469-5299-b26be6b8070c",
+      "face": "east",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "motor_casing_horizontal",
+      "uuid": "8aeb074a-d4d0-fa83-657f-adcee616d370",
+      "face": "east",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "motor_casing_bevel_-1_-1",
+      "uuid": "3872d7f6-c118-0d01-6903-893f8e749344",
+      "face": "east",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "motor_casing_bevel_-1_1",
+      "uuid": "1e129403-fc95-fa87-8792-8fb23bda00d4",
+      "face": "east",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "motor_casing_bevel_1_-1",
+      "uuid": "8ccfcf16-2b9c-cba9-c8f4-94c96f82cd6e",
+      "face": "east",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "motor_casing_bevel_1_1",
+      "uuid": "4fd31792-7ae1-552f-1529-963427a54a2e",
+      "face": "east",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "service_cover_vertical",
+      "uuid": "6fd38cb3-e930-9990-fa9c-e6795fbe6045",
+      "face": "east",
+      "occluder": "rear_collar_horizontal",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "service_cover_horizontal",
+      "uuid": "8fd337ab-7e0b-1c17-a647-a7db8868cdaa",
+      "face": "north",
+      "occluder": "motor_casing_horizontal",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "service_cover_bevel_-1_-1",
+      "uuid": "a291b3cd-6a31-61b4-ea8d-1d35aa907551",
+      "face": "north",
+      "occluder": "motor_casing_horizontal",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "service_cover_bevel_-1_1",
+      "uuid": "e1b3fb13-5043-2259-d85f-7576c4a0d9f4",
+      "face": "north",
+      "occluder": "motor_casing_horizontal",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "drive_shaft",
+      "uuid": "ec37a88f-7278-a243-a2ec-7afc9de19d98",
+      "face": "east",
+      "occluder": "motor_casing_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "drive_shaft",
+      "uuid": "ec37a88f-7278-a243-a2ec-7afc9de19d98",
+      "face": "west",
+      "occluder": "propeller_hub",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "guard_stay_90",
+      "uuid": "561b5d2d-f301-109c-8e2a-71ea66ec7688",
+      "face": "up",
+      "occluder": "right_perforated_plate",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "guard_stay_270",
+      "uuid": "ea3e8a64-74d8-5f16-8a3d-b5bf7ec9e709",
+      "face": "up",
+      "occluder": "left_perforated_plate",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "control_console",
+      "uuid": "039fd8c4-aacc-d035-9222-4ebdf09364b0",
+      "face": "east",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "power_cable_1",
+      "uuid": "32e73a32-017a-c57c-1f54-b1bfada41bf3",
+      "face": "west",
+      "occluder": "cable_ferrule_1",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "power_cable_4",
+      "uuid": "47a5736e-969e-b246-dc95-1590b7fc99f1",
+      "face": "east",
+      "occluder": "cable_ferrule_2",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    },
+    {
+      "cube": "cable_ferrule_2",
+      "uuid": "3b0172ee-ebd7-6ba4-49c3-e0974f5a2896",
+      "face": "east",
+      "occluder": "rear_collar_vertical",
+      "proof": "All four face corners, offset 0.0001 units outward, strictly inside one closed opaque cuboid."
+    }
+  ],
+  "limitations": [
+    "Static model with no animations or rotated groups.",
+    "Only coverage by one fully opaque cuboid is accepted. Union coverage and partial occlusion are retained.",
+    "Rendering comparison is required separately."
+  ]
+}

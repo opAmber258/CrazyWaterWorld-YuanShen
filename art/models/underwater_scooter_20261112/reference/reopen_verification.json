@@ -1,0 +1,75 @@
+{
+  "checks": {
+    "native_reopen": true,
+    "cube_count_preserved": true,
+    "geometry_export_exact": true,
+    "embedded_texture_pixels_exact": true,
+    "no_external_texture_paths": true,
+    "eight_native_renders_pixel_identical": false,
+    "other_open_projects_preserved": true
+  },
+  "result": {
+    "old_project": "3701b7da-9ad1-9c80-1738-c09009f4b089",
+    "new_project": "cb390add-ad14-2810-46ab-e4dbad346b41",
+    "name": "underwater_scooter",
+    "format": "bedrock",
+    "textures": 1,
+    "cubes": 83
+  },
+  "render_comparison": [
+    {
+      "name": "preview_back.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_bottom.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_front.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_nose.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_oblique.png",
+      "changed_pixels": 168,
+      "pixel_identical": false
+    },
+    {
+      "name": "preview_oblique_nose.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_side.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_top.png",
+      "changed_pixels": 8,
+      "pixel_identical": false
+    }
+  ],
+  "other_projects": [
+    {
+      "uuid": "8cee6f54-fbf0-20ef-9174-83c09fac3a4d",
+      "name": "diving_suit"
+    },
+    {
+      "uuid": "204613f5-32ba-7d8a-82d5-4d8eb9143c24",
+      "name": "diving_suit"
+    },
+    {
+      "uuid": "cb390add-ad14-2810-46ab-e4dbad346b41",
+      "name": "underwater_scooter"
+    }
+  ]
+}

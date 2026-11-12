@@ -1,0 +1,13 @@
+{
+  "faces_checked": 474,
+  "all_face_pixels_exact": true,
+  "mismatches": [],
+  "before_atlas": [
+    128,
+    128
+  ],
+  "after_atlas": [
+    64,
+    64
+  ]
+}

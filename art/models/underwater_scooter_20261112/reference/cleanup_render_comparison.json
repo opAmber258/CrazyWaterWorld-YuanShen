@@ -1,0 +1,141 @@
+{
+  "comparison_inputs_valid": true,
+  "all_pixel_identical": false,
+  "phases": "Original 128px textured model before face cleanup vs 64px packed model after native reopen. Not a strict unchanged-appearance acceptance claim.",
+  "samples": [
+    {
+      "name": "preview_back.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": null,
+      "foreground_mean_absolute_rgba_error_0_255": null,
+      "changed_fraction_foreground": null,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_bottom.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": null,
+      "foreground_mean_absolute_rgba_error_0_255": null,
+      "changed_fraction_foreground": null,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_front.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": null,
+      "foreground_mean_absolute_rgba_error_0_255": null,
+      "changed_fraction_foreground": null,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_nose.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": null,
+      "foreground_mean_absolute_rgba_error_0_255": null,
+      "changed_fraction_foreground": null,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_oblique.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 176,
+      "changed_bbox": [
+        475,
+        354,
+        900,
+        731
+      ],
+      "mean_absolute_rgba_error_0_255": 0.003049074074074074,
+      "max_channel_error": 117,
+      "foreground_pixels": null,
+      "foreground_mean_absolute_rgba_error_0_255": null,
+      "changed_fraction_foreground": null,
+      "pixel_identical": false
+    },
+    {
+      "name": "preview_oblique_nose.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 18,
+      "changed_bbox": [
+        736,
+        361,
+        812,
+        384
+      ],
+      "mean_absolute_rgba_error_0_255": 6.087962962962963e-05,
+      "max_channel_error": 7,
+      "foreground_pixels": null,
+      "foreground_mean_absolute_rgba_error_0_255": null,
+      "changed_fraction_foreground": null,
+      "pixel_identical": false
+    },
+    {
+      "name": "preview_side.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": null,
+      "foreground_mean_absolute_rgba_error_0_255": null,
+      "changed_fraction_foreground": null,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_top.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": null,
+      "foreground_mean_absolute_rgba_error_0_255": null,
+      "changed_fraction_foreground": null,
+      "pixel_identical": true
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Native perspective captures can differ at a small number of pixels despite exact geometry export and exact per-face texture pixels. No full-image strict identity claimed."
+  ]
+}

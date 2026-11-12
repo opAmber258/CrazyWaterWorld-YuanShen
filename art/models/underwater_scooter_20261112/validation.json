@@ -1,0 +1,283 @@
+{
+  "asset_name": "水下助推器 UnderwaterScooter",
+  "identifier": "underwater_scooter",
+  "date": "2026-11-12",
+  "source": "AI / Codex (GPT-6), local Blockbench 5.2.2, MCP 1.10.1",
+  "format_version": "1.12.0",
+  "editor": {
+    "cubes": 83,
+    "bones_including_root": 10,
+    "preview_draw_calls": "not_measured"
+  },
+  "export": {
+    "cubes": 83,
+    "bones": 10,
+    "declared_faces": 474,
+    "triangles_if_two_per_quad": 948,
+    "hidden_faces_disabled": 24
+  },
+  "bounds_blockbench_units": {
+    "min": [
+      -6.96,
+      3.988611913530171e-06,
+      -3.304
+    ],
+    "max": [
+      7.856,
+      8.703200904250728,
+      3.304
+    ],
+    "size": [
+      14.815999999999999,
+      8.703196915638815,
+      6.608
+    ]
+  },
+  "bounds_converted_bedrock_units": {
+    "min": [
+      -6.96,
+      3.988611913530171e-06,
+      -3.304
+    ],
+    "max": [
+      7.856,
+      8.703200904250728,
+      3.3040000000000003
+    ],
+    "size": [
+      14.815999999999999,
+      8.703196915638815,
+      6.6080000000000005
+    ]
+  },
+  "dimensions_blocks": {
+    "length_X": 0.926,
+    "height_Y": 0.54395,
+    "depth_Z": 0.413
+  },
+  "texture": {
+    "dimensions": [
+      64,
+      64
+    ],
+    "mode": "RGBA",
+    "textures": 1,
+    "total_pixels": 4096,
+    "opaque_pixels": 2304,
+    "partial_alpha_pixels": 0,
+    "rgba_base_bytes": 16384,
+    "animation_frames": 1,
+    "layers": "single opaque material; unused atlas area transparent"
+  },
+  "animation": {
+    "exported": false,
+    "geometry_copies": 1,
+    "rotor_bone": "rotor"
+  },
+  "checks": {
+    "required_files_present": true,
+    "bedrock_model_format": true,
+    "geometry_identifier_correct": true,
+    "native_export_format_version": true,
+    "editor_export_cube_counts_equal": true,
+    "all_sizes_positive": true,
+    "all_uv_within_atlas": true,
+    "bone_parents_valid": true,
+    "editor_and_geometry_bounds_match": true,
+    "embedded_png_pixels_match_external": true,
+    "no_absolute_texture_dependencies": true,
+    "rgba_power_of_two_texture": true,
+    "transparent_pixels_zero_rgb": true,
+    "no_partial_alpha_texture": true,
+    "eight_previews_1200x900_and_unclipped": true,
+    "no_fully_duplicate_cubes": true,
+    "atlas_repack_face_pixels_exact": true,
+    "native_reopen": true,
+    "cube_count_preserved": true,
+    "geometry_export_exact": true,
+    "embedded_texture_pixels_exact": true,
+    "other_open_projects_preserved": true
+  },
+  "all_required_offline_checks_passed": true,
+  "previews": [
+    {
+      "file": "preview_front.png",
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bounds": [
+        214,
+        223,
+        985,
+        676
+      ],
+      "projection": "orthographic",
+      "not_clipped": true
+    },
+    {
+      "file": "preview_back.png",
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bounds": [
+        215,
+        224,
+        986,
+        677
+      ],
+      "projection": "orthographic",
+      "not_clipped": true
+    },
+    {
+      "file": "preview_side.png",
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bounds": [
+        401,
+        188,
+        799,
+        711
+      ],
+      "projection": "orthographic",
+      "not_clipped": true
+    },
+    {
+      "file": "preview_oblique.png",
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bounds": [
+        192,
+        254,
+        927,
+        774
+      ],
+      "projection": "perspective",
+      "not_clipped": true
+    },
+    {
+      "file": "preview_nose.png",
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bounds": [
+        401,
+        188,
+        799,
+        711
+      ],
+      "projection": "orthographic",
+      "not_clipped": true
+    },
+    {
+      "file": "preview_top.png",
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bounds": [
+        214,
+        278,
+        985,
+        622
+      ],
+      "projection": "orthographic",
+      "not_clipped": true
+    },
+    {
+      "file": "preview_bottom.png",
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bounds": [
+        214,
+        278,
+        985,
+        622
+      ],
+      "projection": "orthographic",
+      "not_clipped": true
+    },
+    {
+      "file": "preview_oblique_nose.png",
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bounds": [
+        235,
+        202,
+        928,
+        710
+      ],
+      "projection": "perspective",
+      "not_clipped": true
+    }
+  ],
+  "native_reopen_render_measurements": [
+    {
+      "name": "preview_back.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_bottom.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_front.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_nose.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_oblique.png",
+      "changed_pixels": 168,
+      "pixel_identical": false
+    },
+    {
+      "name": "preview_oblique_nose.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_side.png",
+      "changed_pixels": 0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_top.png",
+      "changed_pixels": 8,
+      "pixel_identical": false
+    }
+  ],
+  "limits": [
+    "Minecraft client, hand poses, gameplay propulsion and lighting were not tested or integrated.",
+    "Generic structural audit is not a complete Bedrock/GeckoLib schema certification.",
+    "Reopen preserved geometry JSON and texture pixels exactly. Orthographic images were pixel-identical; two perspective views differed at 168 and 8 pixels. No strict full-image identity is claimed.",
+    "Blockbench offscreen-view deletion reported the known controls.dispose warning after deletion. Absence was verified in both view registries; listener disposal was not certified."
+  ],
+  "sha256": {
+    "underwater_scooter.bbmodel": "15434352ae9fd71f39e3a4bf058bf3fb72d3ab5f611df43965e32dba26ada261",
+    "underwater_scooter.geo.json": "d955ea7fe65eef6e5658e00344a789fa01d212f3ab01433a9b01b2cbcc9f632c",
+    "underwater_scooter_tex.png": "7d1c8a583f8823b49738cb839e05d9b809e2afab00361d2f6528432b2fad4abc",
+    "README.md": "b9b191a316bf8657c996d020ddab8de49c469bdca6943a6b95e0c05f70af2749",
+    "reference/palette.json": "3f73fd268556aecc5f5a6482eaf1023fe1c951551526e867c3f2bb92c07d6fad",
+    "preview_front.png": "92c64fefe89df04a07856fb7f48ab5c78f1c21fcaef67c658828759c37060f09",
+    "preview_back.png": "fdd3a07c0d11d7c763fa777eed7bff462e24397f2972e47bfee566016c41eb54",
+    "preview_side.png": "4d9ba86ec3d4c5d4f344326f67bda341baede61c7cd6836ebecbdb4401319f82",
+    "preview_oblique.png": "873fa2a3818979c3993b5a2c4b5d2ecdc33b18221c89c78aa4927f78a02c2900"
+  }
+}

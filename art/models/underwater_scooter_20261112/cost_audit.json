@@ -1,0 +1,23 @@
+{
+  "metrics": {
+    "components": 83,
+    "declared_faces": 474,
+    "texture_pixels": 4096,
+    "textures": 1,
+    "inverted_components": 0,
+    "partial_alpha_textures": 0
+  },
+  "declared_template_lanes": [],
+  "budget_violations": [],
+  "within_declared_budgets": true,
+  "structural_errors": [],
+  "dependencies_complete": true,
+  "custom_fields_for_review": [
+    "bedrock_animation_mode"
+  ],
+  "limitations": [
+    "Lane estimate assumes the supplied input contains one geometry template per lane; not inferred or verified motion",
+    "No arbitrary custom animation expansion, active-state visibility, draw calls, overdraw or FPS measurement",
+    "Unknown custom fields require separate inspection; budget pass is not delivery approval"
+  ]
+}
