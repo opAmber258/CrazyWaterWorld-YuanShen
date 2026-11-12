@@ -2,7 +2,7 @@
   "asset": "小型泵 SmallPump",
   "identifier": "small_pump",
   "date": "2026-11-12",
-  "status": "complete",
+  "status": "incomplete",
   "creation_source": "人工（Han-xing-official）",
   "contributors": {
     "human": [
@@ -37,7 +37,9 @@
     "preview_oblique": true,
     "preview_size_1200x900": true,
     "preview_transparent_background": true,
-    "no_animation_in_scope": true
+    "no_animation_in_scope": true,
+    "project_visible_box_matches_export": true,
+    "visible_bounds_export_reproducible": true
   },
   "errors": [],
   "zero_thickness_planes": {
@@ -206,5 +208,34 @@
   "limitations": [
     "通用审计不是完整的 Bedrock/GeckoLib schema 校验器。",
     "未在游戏客户端内实测渲染，UV 串位与轴心以 Blockbench 视口截图为准。"
-  ]
+  ],
+  "status_reason": "bbmodel_reopens 为 pending-manual：尚未在 Blockbench 5.2.2 GUI 内重开已提交的工程。其余 24 项检查通过，待该项完成后改回 complete。",
+  "visible_bounds_export": {
+    "project_visible_box": [
+      2,
+      2.5,
+      0.75
+    ],
+    "computed_by_blockbench": {
+      "width": 2,
+      "height": 2.5,
+      "offset_y": 0.75
+    },
+    "matches_geo_description": true,
+    "method": "按 Blockbench 5.2.2 js/io/formats/bedrock.js calculateVisibleBox() 逐步复算：cube 网格 AABB 先加 Vector3(8,8,8)，width=ceil(radius*2/16)，height/offset 由 floor/ceil(y/16) 与工程 visible_box 取并集",
+    "raw_mesh_aabb": {
+      "x": [
+        -4.0105,
+        4.0105
+      ],
+      "y": [
+        0.0,
+        8.5
+      ],
+      "z": [
+        -8.0,
+        8.0
+      ]
+    }
+  }
 }

@@ -203,6 +203,10 @@ mod 标识沿用仓库既有 `small_pump`，与 `SmallPumpBlock` / `SmallPumpBlo
 | 无未使用 cube / 孤立骨骼 | ✅ 38 cube 全部在骨骼下，无游离元素；5 个空父级骨骼已说明 |
 | cube 尺寸为正 | ✅ 计入 inflate 后全部为正；12 个零厚度贴片已在第 4 节说明 |
 | geo 与 bbmodel 一致 | ✅ 反算回工程坐标逐 cube 比对，38/38 完全相等 |
+| 工程可见包围盒与导出一致 | ✅ 工程 `visible_box` 已设为 `[2, 2.5, 0.75]`，按 `calculateVisibleBox()` 复算导出同为 width 2 / height 2.5 / offset 0.75，与 `geo.json` 描述完全相同 |
 | `reference/` 齐备 | ✅ 原作裁切 + 出处记录 + 调色板 + 调色板元信息，无待入库脚本 |
+| 工程可在 Blockbench 5.2.2 重开 | ⏳ **待验收**：尚未做 GUI 重开确认，`bbmodel_reopens` 记为 `pending-manual` |
 
 结构化记录见 `validation.json`，结构审计原始报告见 `structure_audit.json`。
+
+> **当前交付状态：`incomplete`（待验收）。** 24 项检查通过，唯一未完成项是在 Blockbench 5.2.2 中重开本工程确认内嵌贴图、骨骼与几何正常。该项完成后 `validation.json` 的 `status` 会改回 `complete`，`bbmodel_reopens` 改为 `true`。
