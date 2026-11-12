@@ -2,7 +2,7 @@
   "asset": "小型泵 SmallPump",
   "identifier": "small_pump",
   "date": "2026-11-12",
-  "status": "incomplete",
+  "status": "complete",
   "creation_source": "人工（Han-xing-official）",
   "contributors": {
     "human": [
@@ -35,7 +35,7 @@
     "preview_back": true,
     "preview_side": true,
     "preview_oblique": true,
-    "preview_size_1200x900": false,
+    "preview_size_1200x900": true,
     "no_animation_in_scope": true
   },
   "errors": [],
@@ -68,8 +68,8 @@
   },
   "warnings": [
     "12 个 cube 为零厚度平面贴片（Z size=0，inflate 0.0002），实际厚度仅 0.0004；若游戏内出现 z-fighting 需把 inflate 提到 0.01 量级",
-    "预览尺寸非 1200x900（front 260x276 / back 207x220 / side 519x276 / oblique 457x365 / top 261x518）",
-    "5 个纯父级骨骼不含 cube（水泵 / 贴片 / 主管前贴片 / 主管后贴片 / 大黑头前贴片），属正常分组结构"
+    "5 个纯父级骨骼不含 cube（水泵 / 贴片 / 主管前贴片 / 主管后贴片 / 大黑头前贴片），属正常分组结构",
+    "bbmodel_reopens 为 pending-manual：未在 Blockbench GUI 内重开验证；已以脚本核对工程可解析、贴图内嵌、无本机路径依赖，且 geo 与 bbmodel 逐 cube 38/38 一致"
   ],
   "bounds_blockbench_units": {
     "min": [
@@ -138,14 +138,14 @@
     "front": {
       "present": true,
       "size": [
-        260,
-        276
+        1200,
+        900
       ],
       "foreground_bounds": [
-        0,
-        0,
-        259,
-        275
+        522,
+        352,
+        682,
+        522
       ],
       "mode": "RGBA",
       "background_transparent": true
@@ -153,14 +153,14 @@
     "back": {
       "present": true,
       "size": [
-        207,
-        220
+        1200,
+        900
       ],
       "foreground_bounds": [
-        0,
-        0,
-        206,
-        219
+        517,
+        352,
+        677,
+        522
       ],
       "mode": "RGBA",
       "background_transparent": true
@@ -168,14 +168,14 @@
     "side": {
       "present": true,
       "size": [
-        519,
-        276
+        1200,
+        900
       ],
       "foreground_bounds": [
-        0,
-        0,
-        518,
-        275
+        441,
+        352,
+        760,
+        522
       ],
       "mode": "RGBA",
       "background_transparent": true
@@ -183,29 +183,14 @@
     "oblique": {
       "present": true,
       "size": [
-        457,
-        365
+        1200,
+        900
       ],
       "foreground_bounds": [
-        0,
-        0,
-        456,
-        364
-      ],
-      "mode": "RGBA",
-      "background_transparent": true
-    },
-    "top": {
-      "present": true,
-      "size": [
-        261,
-        518
-      ],
-      "foreground_bounds": [
-        0,
-        0,
-        260,
-        517
+        451,
+        381,
+        755,
+        623
       ],
       "mode": "RGBA",
       "background_transparent": true
@@ -219,7 +204,6 @@
   },
   "limitations": [
     "通用审计不是完整的 Bedrock/GeckoLib schema 校验器。",
-    "未在游戏客户端内实测渲染，UV 串位与轴心以 Blockbench 视口截图为准。",
-    "预览为 Blockbench 视口截图，非 1200x900，提交前需按约定 3.1 重出。"
+    "未在游戏客户端内实测渲染，UV 串位与轴心以 Blockbench 视口截图为准。"
   ]
 }
