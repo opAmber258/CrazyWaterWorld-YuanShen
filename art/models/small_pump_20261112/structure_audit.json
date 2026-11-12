@@ -1,0 +1,59 @@
+{
+  "asset": "small_pump",
+  "date": "2026-11-12",
+  "source": "小型泵4.0 - Converted.bbmodel (Blockbench 5.0, model_format bedrock_block)",
+  "export_path": "small_pump.geo.json (format_version 1.12.0, identifier geometry.small_pump)",
+  "counts": {
+    "bones_total": 18,
+    "bones_with_cubes": 13,
+    "bones_empty_parent": 5,
+    "cubes": 38,
+    "faces": 228,
+    "loose_cubes": 0
+  },
+  "empty_parent_bones": [
+    "水泵",
+    "贴片",
+    "主管后贴片",
+    "主管前贴片",
+    "大黑头前贴片"
+  ],
+  "findings": [
+    {
+      "level": "info",
+      "code": "EMPTY_PARENT_BONES",
+      "detail": "5 个骨骼仅作父级分组，不含 cube；非孤立骨骼。"
+    },
+    {
+      "level": "info",
+      "code": "NO_LOOSE_CUBES",
+      "detail": "38 个 cube 全部在骨骼下，无游离元素。"
+    },
+    {
+      "level": "info",
+      "code": "NO_DUPLICATE_BONE_NAMES",
+      "detail": "18 个骨骼名唯一。"
+    },
+    {
+      "level": "info",
+      "code": "NO_ANIMATION",
+      "detail": "工程内 0 条动画，本轮为静态交付。"
+    },
+    {
+      "level": "warn",
+      "code": "ZERO_THICKNESS_PLANES",
+      "detail": "12 个 cube 某轴 size=0，靠 inflate 0.0002 撑出 0.0004 厚度；建议必要时提高到 0.01 以避免 z-fighting。"
+    },
+    {
+      "level": "warn",
+      "code": "PREVIEW_SIZE",
+      "detail": "预览非 1200x900。"
+    },
+    {
+      "level": "warn",
+      "code": "SOURCE_FORMAT",
+      "detail": "源工程为 bedrock_block 格式，本次交付的 bbmodel 已改为 bedrock（Bedrock Entity）。"
+    }
+  ],
+  "conclusion": "geometry ok; four-view previews complete; delivery pending preview size (1200x900)"
+}

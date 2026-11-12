@@ -1,0 +1,77 @@
+{
+  "asset": "small_pump",
+  "note": "原版参照物出处。裁切未做任何重绘，仅按 pump.xml 声明的 sourcerect 原样截取。",
+  "game": "Barotrauma",
+  "game_install_relative_paths": {
+    "atlas": "Content/Items/Pump/Pumps.png",
+    "item_definition": "Content/Items/Pump/pump.xml",
+    "text_zh": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+    "text_en": "Content/Texts/English/EnglishVanilla.xml"
+  },
+  "atlas": {
+    "file": "Pumps.png",
+    "size": [
+      1024,
+      640
+    ],
+    "color_type": "indexed (PNG color type 3)"
+  },
+  "sprite": {
+    "entity_identifier": "smallpump",
+    "sourcerect": [
+      1,
+      264,
+      133,
+      89
+    ],
+    "sourcerect_format": "x, y, width, height",
+    "origin": [
+      0.5,
+      0.5
+    ],
+    "depth": 0.8,
+    "scale": 0.5,
+    "world_size_px": [
+      66.5,
+      44.5
+    ],
+    "broken_sprites": [
+      {
+        "sourcerect": [
+          134,
+          264,
+          133,
+          89
+        ],
+        "maxcondition": 80
+      },
+      {
+        "sourcerect": [
+          267,
+          264,
+          133,
+          89
+        ],
+        "maxcondition": 0
+      }
+    ]
+  },
+  "item_definition": {
+    "path": "Content/Items/Pump/pump.xml",
+    "line": 68,
+    "identifier": "smallpump",
+    "category": "Machine",
+    "tags": "pump",
+    "linkable": true,
+    "allowrotatingineditor": true
+  },
+  "name_lookup": {
+    "key": "entityname.smallpump",
+    "zh": "小型泵",
+    "en": "Small Pump",
+    "zh_source": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml:2885",
+    "en_source": "Content/Texts/English/EnglishVanilla.xml:2885"
+  },
+  "crop_file": "official_sprite_smallpump.png",
+  "reproduce": "从游戏安装目录取 Pumps.png，按 sourcerect=(1,264,133,89) 裁切即得 crop_file；无其他处理步骤。"
+}

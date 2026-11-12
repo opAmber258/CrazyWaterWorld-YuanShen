@@ -1,0 +1,225 @@
+{
+  "asset": "小型泵 SmallPump",
+  "identifier": "small_pump",
+  "date": "2026-11-12",
+  "status": "incomplete",
+  "creation_source": "人工（Han-xing-official）",
+  "contributors": {
+    "human": [
+      "Han-xing-official"
+    ],
+    "ai": [],
+    "division": "全部环节由人工完成：建模、贴图绘制、预览截图。未使用 AI 生成。"
+  },
+  "display_name_zh": "小型泵",
+  "display_name_en": "SmallPump",
+  "production": "Human only: Han-xing-official; Blockbench 5.2.2",
+  "checks": {
+    "bbmodel_reopens": "pending-manual",
+    "bbmodel_self_contained": true,
+    "embedded_texture": true,
+    "texture_rgba_power_of_two": true,
+    "texture_matches_source_png": true,
+    "no_partial_alpha": true,
+    "uv_in_bounds": true,
+    "identifier": true,
+    "format_version_matches_project": true,
+    "bone_count": true,
+    "cube_count": true,
+    "no_duplicate_bones": true,
+    "parent_references_valid": true,
+    "each_cube_owned_once": true,
+    "positive_sizes": true,
+    "geo_matches_bbmodel": true,
+    "preview_front": true,
+    "preview_back": true,
+    "preview_side": true,
+    "preview_oblique": true,
+    "preview_size_1200x900": false,
+    "no_animation_in_scope": true
+  },
+  "errors": [],
+  "zero_thickness_planes": {
+    "count": 12,
+    "detail": "某轴 size=0 的平面贴片，厚度由 inflate 提供；本例 inflate 0.0002 → 实际厚度 0.0004",
+    "sample": [
+      {
+        "axis": [
+          2
+        ],
+        "inflate": 0.0002,
+        "effective_thickness": 0.0004
+      },
+      {
+        "axis": [
+          2
+        ],
+        "inflate": 0.0002,
+        "effective_thickness": 0.0004
+      },
+      {
+        "axis": [
+          2
+        ],
+        "inflate": 0.0002,
+        "effective_thickness": 0.0004
+      }
+    ]
+  },
+  "warnings": [
+    "12 个 cube 为零厚度平面贴片（Z size=0，inflate 0.0002），实际厚度仅 0.0004；若游戏内出现 z-fighting 需把 inflate 提到 0.01 量级",
+    "预览尺寸非 1200x900（front 260x276 / back 207x220 / side 519x276 / oblique 457x365 / top 261x518）",
+    "5 个纯父级骨骼不含 cube（水泵 / 贴片 / 主管前贴片 / 主管后贴片 / 大黑头前贴片），属正常分组结构"
+  ],
+  "bounds_blockbench_units": {
+    "min": [
+      -4.0105,
+      0.0,
+      -8.0
+    ],
+    "max": [
+      4.0105,
+      8.5,
+      8.0
+    ],
+    "size": [
+      8.0211,
+      8.5,
+      16.0
+    ],
+    "note": "已计入 cube 旋转与 inflate 的渲染包围盒"
+  },
+  "dimensions_blocks_at_16_units_per_block": [
+    0.5013,
+    0.5313,
+    1.0
+  ],
+  "cost": {
+    "editor_cubes": 38,
+    "export_cubes": 38,
+    "bones": 18,
+    "declared_faces": 228,
+    "triangles_upper_bound": 456,
+    "rotated_cubes": 27,
+    "inflated_cubes": 20,
+    "textures": 1,
+    "texture_size": [
+      64,
+      64
+    ],
+    "texture_colors_used": 225,
+    "partial_alpha_pixels": 0,
+    "frames": 1
+  },
+  "uv": {
+    "u": [
+      0,
+      63
+    ],
+    "v": [
+      0,
+      57
+    ],
+    "texture": [
+      64,
+      64
+    ]
+  },
+  "visible_bounds": {
+    "width": 2,
+    "height": 2.5,
+    "offset": [
+      0,
+      0.75,
+      0
+    ]
+  },
+  "previews": {
+    "front": {
+      "present": true,
+      "size": [
+        260,
+        276
+      ],
+      "foreground_bounds": [
+        0,
+        0,
+        259,
+        275
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    },
+    "back": {
+      "present": true,
+      "size": [
+        207,
+        220
+      ],
+      "foreground_bounds": [
+        0,
+        0,
+        206,
+        219
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    },
+    "side": {
+      "present": true,
+      "size": [
+        519,
+        276
+      ],
+      "foreground_bounds": [
+        0,
+        0,
+        518,
+        275
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    },
+    "oblique": {
+      "present": true,
+      "size": [
+        457,
+        365
+      ],
+      "foreground_bounds": [
+        0,
+        0,
+        456,
+        364
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    },
+    "top": {
+      "present": true,
+      "size": [
+        261,
+        518
+      ],
+      "foreground_bounds": [
+        0,
+        0,
+        260,
+        517
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    }
+  },
+  "runtime": {
+    "intended": "Minecraft Java GeckoLib 静态装置几何（block entity 渲染）",
+    "client_tested": false,
+    "game_integration_included": false,
+    "animation_files": 0
+  },
+  "limitations": [
+    "通用审计不是完整的 Bedrock/GeckoLib schema 校验器。",
+    "未在游戏客户端内实测渲染，UV 串位与轴心以 Blockbench 视口截图为准。",
+    "预览为 Blockbench 视口截图，非 1200x900，提交前需按约定 3.1 重出。"
+  ]
+}
