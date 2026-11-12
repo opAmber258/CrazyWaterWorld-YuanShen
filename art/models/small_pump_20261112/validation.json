@@ -1,0 +1,277 @@
+{
+  "asset": "小型泵 SmallPump",
+  "identifier": "small_pump",
+  "date": "2026-11-12",
+  "status": "complete",
+  "creation_source": "人工（Han-xing-official）",
+  "contributors": {
+    "human": [
+      "Han-xing-official"
+    ],
+    "ai": [],
+    "division": "全部环节由人工完成：建模、贴图绘制、预览截图。未使用 AI 生成。"
+  },
+  "display_name_zh": "小型泵",
+  "display_name_en": "SmallPump",
+  "production": "Human only: Han-xing-official; Blockbench 5.2.2",
+  "checks": {
+    "bbmodel_reopens": true,
+    "native_reexport_matches_committed_geo": true,
+    "bbmodel_self_contained": true,
+    "embedded_texture": true,
+    "texture_rgba_power_of_two": true,
+    "texture_matches_source_png": true,
+    "no_partial_alpha": true,
+    "uv_in_bounds": true,
+    "identifier": true,
+    "format_version_matches_project": true,
+    "bone_count": true,
+    "cube_count": true,
+    "no_duplicate_bones": true,
+    "parent_references_valid": true,
+    "each_cube_owned_once": true,
+    "positive_sizes": true,
+    "geo_matches_bbmodel": true,
+    "preview_front": true,
+    "preview_back": true,
+    "preview_side": true,
+    "preview_oblique": true,
+    "preview_size_1200x900": true,
+    "preview_transparent_background": true,
+    "no_animation_in_scope": true,
+    "project_visible_box_matches_export": true,
+    "visible_bounds_export_reproducible": true
+  },
+  "errors": [],
+  "zero_thickness_planes": {
+    "count": 12,
+    "detail": "某轴 size=0 的平面贴片，厚度由 inflate 提供；本例 inflate 0.0002 → 实际厚度 0.0004",
+    "sample": [
+      {
+        "axis": [
+          2
+        ],
+        "inflate": 0.0002,
+        "effective_thickness": 0.0004
+      },
+      {
+        "axis": [
+          2
+        ],
+        "inflate": 0.0002,
+        "effective_thickness": 0.0004
+      },
+      {
+        "axis": [
+          2
+        ],
+        "inflate": 0.0002,
+        "effective_thickness": 0.0004
+      }
+    ]
+  },
+  "warnings": [
+    "12 个 cube 为零厚度平面贴片（Z size=0，inflate 0.0002），实际厚度仅 0.0004；若游戏内出现 z-fighting 需把 inflate 提到 0.01 量级",
+    "5 个纯父级骨骼不含 cube（水泵 / 贴片 / 主管前贴片 / 主管后贴片 / 大黑头前贴片），属正常分组结构",
+    "工程为 Blockbench 5.x 工程格式（骨骼存于独立 groups 表），用 4.x 打开会静默丢失骨骼名与 pivot（18 根全读成 bone、pivot 归零）；重开与重导出须用 5.2.x 及以上"
+  ],
+  "bounds_blockbench_units": {
+    "min": [
+      -4.0105,
+      0.0,
+      -8.0
+    ],
+    "max": [
+      4.0105,
+      8.5,
+      8.0
+    ],
+    "size": [
+      8.0211,
+      8.5,
+      16.0
+    ],
+    "note": "已计入 cube 旋转与 inflate 的渲染包围盒"
+  },
+  "dimensions_blocks_at_16_units_per_block": [
+    0.5013,
+    0.5313,
+    1.0
+  ],
+  "cost": {
+    "editor_cubes": 38,
+    "export_cubes": 38,
+    "bones": 18,
+    "declared_faces": 228,
+    "triangles_upper_bound": 456,
+    "rotated_cubes": 27,
+    "inflated_cubes": 20,
+    "textures": 1,
+    "texture_size": [
+      64,
+      64
+    ],
+    "texture_colors_used": 225,
+    "partial_alpha_pixels": 0,
+    "frames": 1
+  },
+  "uv": {
+    "u": [
+      0,
+      63
+    ],
+    "v": [
+      0,
+      57
+    ],
+    "texture": [
+      64,
+      64
+    ]
+  },
+  "visible_bounds": {
+    "width": 2,
+    "height": 2.5,
+    "offset": [
+      0,
+      0.75,
+      0
+    ]
+  },
+  "previews": {
+    "front": {
+      "present": true,
+      "size": [
+        1200,
+        900
+      ],
+      "foreground_bounds": [
+        522,
+        352,
+        682,
+        522
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    },
+    "back": {
+      "present": true,
+      "size": [
+        1200,
+        900
+      ],
+      "foreground_bounds": [
+        517,
+        352,
+        677,
+        522
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    },
+    "side": {
+      "present": true,
+      "size": [
+        1200,
+        900
+      ],
+      "foreground_bounds": [
+        441,
+        352,
+        760,
+        522
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    },
+    "oblique": {
+      "present": true,
+      "size": [
+        1200,
+        900
+      ],
+      "foreground_bounds": [
+        451,
+        381,
+        755,
+        623
+      ],
+      "mode": "RGBA",
+      "background_transparent": true
+    }
+  },
+  "runtime": {
+    "intended": "Minecraft Java GeckoLib 静态装置几何（block entity 渲染）",
+    "client_tested": false,
+    "game_integration_included": false,
+    "animation_files": 0
+  },
+  "limitations": [
+    "通用审计不是完整的 Bedrock/GeckoLib schema 校验器。",
+    "未在游戏客户端内实测渲染，UV 串位与轴心以 Blockbench 视口截图为准。"
+  ],
+  "status_reason": "验收完成：26 项全部通过。两项人工验收于 2026-11-12 在 Blockbench 5.2.2（Windows x64 便携版，独立 userData）内完成——① 重开工程无异常，18 骨骼 / 38 cube / 1 张 64×64 内嵌贴图 / Visible box 2·2.5·0.75；② 原生 Export Bedrock Geometry 输出与仓库 geo 逐字段 0 差异，仓库 geo 已替换为该原生导出原件（sha256 2a9fc222…），重出可字节级复现。",
+  "visible_bounds_export": {
+    "project_visible_box": [
+      2,
+      2.5,
+      0.75
+    ],
+    "computed_by_blockbench": {
+      "width": 2,
+      "height": 2.5,
+      "offset_y": 0.75
+    },
+    "matches_geo_description": true,
+    "method": "按 Blockbench 5.2.2 js/io/formats/bedrock.js calculateVisibleBox() 逐步复算：cube 网格 AABB 先加 Vector3(8,8,8)，width=ceil(radius*2/16)，height/offset 由 floor/ceil(y/16) 与工程 visible_box 取并集",
+    "raw_mesh_aabb": {
+      "x": [
+        -4.0105,
+        4.0105
+      ],
+      "y": [
+        0.0,
+        8.5
+      ],
+      "z": [
+        -8.0,
+        8.0
+      ]
+    }
+  },
+  "manual_acceptance": {
+    "date": "2026-11-12",
+    "app": "Blockbench 5.2.2 Desktop (Windows x64)",
+    "project_reopens": true,
+    "reopen_findings": {
+      "format": "bedrock（Bedrock 版实体）",
+      "bones": 18,
+      "cubes": 38,
+      "texture": {
+        "name": "小型泵4.0.png",
+        "size": [
+          64,
+          64
+        ],
+        "embedded": true
+      },
+      "project_visible_box": [
+        2,
+        2.5,
+        0.75
+      ],
+      "error_dialogs": 0,
+      "parenting_sample": "cube「横向」挂在骨骼「主罐」下",
+      "note": "骨骼名与 pivot 全部正确恢复（水泵 / 主罐 / 斜边2 …），无缺贴图提示"
+    },
+    "native_reexport": {
+      "codec": "bedrock（Bedrock Model）",
+      "method": "应用内 Codecs.bedrock.compile({})，与 GUI「Export Bedrock Geometry」同一导出路径",
+      "diff_field_count": 0,
+      "compared": "description（identifier / texture_width / texture_height / visible_bounds 三项）+ 18 骨骼（name / parent / pivot / rotation）+ 38 cube（origin / size / uv / rotation / inflate / mirror）逐字段",
+      "output_sha256": "2a9fc222ebc0ccd8e992658622004d0e487260c5116d4be98ed7f5772d32b886",
+      "committed_geo_is_native_output": true
+    },
+    "version_caveat": "本工程为 Blockbench 5.x 工程格式（骨骼数据存放于独立 groups 表）。用 4.12.5 打开会静默丢失骨骼名与 pivot（18 根全读成 bone、pivot 归零），不可用于验收或再导出；需 5.2.x 及以上版本。"
+  }
+}

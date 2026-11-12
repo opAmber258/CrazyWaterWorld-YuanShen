@@ -1,0 +1,36 @@
+{
+  "source_texture": "small_pump_tex.png",
+  "texture_size": [
+    64,
+    64
+  ],
+  "unique_colors_total": 225,
+  "opaque_pixels": 1756,
+  "semi_transparent_pixels": 0,
+  "uv_coverage_of_opaque_pixels": 1.0,
+  "uv_unused_opaque_pixels": 0,
+  "method": "按饱和度与明度自动分档后取分位代表色，非人工指定；steel_* 每组为暗→亮排列，saturated_primaries 按像素数降序",
+  "note": "saturated_primaries 组成员为 6 种纯 RGB 色（#00ffff #ff00ff #ff0000 #00ff00 #ffff00 #0000ff），合计 703 像素、占不透明像素 40.0%，全部落在 UV 覆盖区内。用途是在编辑时区分相邻部件；实测 67 个使用该类颜色的面中有 47 个被其他 cube 包覆，其余多为与相邻 cube 共面贴合的内侧面，装配后不参与外观呈现。",
+  "groups": {
+    "steel_dark": {
+      "unique_colors": 28,
+      "pixels": 387,
+      "share": 0.2204
+    },
+    "steel_mid": {
+      "unique_colors": 52,
+      "pixels": 216,
+      "share": 0.123
+    },
+    "steel_light": {
+      "unique_colors": 139,
+      "pixels": 450,
+      "share": 0.2563
+    },
+    "saturated_primaries": {
+      "unique_colors": 6,
+      "pixels": 703,
+      "share": 0.4003
+    }
+  }
+}
