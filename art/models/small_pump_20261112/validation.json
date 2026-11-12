@@ -36,6 +36,7 @@
     "preview_side": true,
     "preview_oblique": true,
     "preview_size_1200x900": true,
+    "preview_transparent_background": true,
     "no_animation_in_scope": true
   },
   "errors": [],

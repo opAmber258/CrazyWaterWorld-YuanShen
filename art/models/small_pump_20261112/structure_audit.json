@@ -45,9 +45,9 @@
       "detail": "12 个 cube 某轴 size=0，靠 inflate 0.0002 撑出 0.0004 厚度；建议必要时提高到 0.01 以避免 z-fighting。"
     },
     {
-      "level": "warn",
+      "level": "info",
       "code": "PREVIEW_SIZE",
-      "detail": "预览非 1200x900。"
+      "detail": "四张预览均为 1200x900。"
     },
     {
       "level": "warn",
@@ -55,5 +55,5 @@
       "detail": "源工程为 bedrock_block 格式，本次交付的 bbmodel 已改为 bedrock（Bedrock Entity）。"
     }
   ],
-  "conclusion": "geometry ok; four-view previews complete; delivery pending preview size (1200x900)"
+  "conclusion": "geometry ok; four-view previews complete; preview size 1200x900"
 }
