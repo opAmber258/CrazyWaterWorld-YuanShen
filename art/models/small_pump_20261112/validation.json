@@ -16,6 +16,7 @@
   "production": "Human only: Han-xing-official; Blockbench 5.2.2",
   "checks": {
     "bbmodel_reopens": "pending-manual",
+    "native_reexport_matches_committed_geo": "pending-manual",
     "bbmodel_self_contained": true,
     "embedded_texture": true,
     "texture_rgba_power_of_two": true,
@@ -72,7 +73,7 @@
   "warnings": [
     "12 个 cube 为零厚度平面贴片（Z size=0，inflate 0.0002），实际厚度仅 0.0004；若游戏内出现 z-fighting 需把 inflate 提到 0.01 量级",
     "5 个纯父级骨骼不含 cube（水泵 / 贴片 / 主管前贴片 / 主管后贴片 / 大黑头前贴片），属正常分组结构",
-    "bbmodel_reopens 为 pending-manual：未在 Blockbench GUI 内重开验证；已以脚本核对工程可解析、贴图内嵌、无本机路径依赖，且 geo 与 bbmodel 逐 cube 38/38 一致"
+    "bbmodel_reopens 与 native_reexport_matches_committed_geo 均为 pending-manual：未在 Blockbench GUI 内重开，也未做原生重导出比对；已以脚本核对工程可解析、贴图内嵌、无本机路径依赖，且 geo 与 bbmodel 逐 cube 38/38 一致"
   ],
   "bounds_blockbench_units": {
     "min": [
@@ -209,7 +210,7 @@
     "通用审计不是完整的 Bedrock/GeckoLib schema 校验器。",
     "未在游戏客户端内实测渲染，UV 串位与轴心以 Blockbench 视口截图为准。"
   ],
-  "status_reason": "bbmodel_reopens 为 pending-manual：尚未在 Blockbench 5.2.2 GUI 内重开已提交的工程。其余 24 项检查通过，待该项完成后改回 complete。",
+  "status_reason": "两项人工验收未完成：①bbmodel_reopens —— 尚未在 Blockbench 5.2.2 GUI 内重开已提交的工程；②native_reexport_matches_committed_geo —— 尚未用原生 Export Bedrock Geometry 重导出并与仓库内 geo 逐字段比对。其余 24 项通过，两项完成后改回 complete；只做重开、未做重导出比对不算完成。",
   "visible_bounds_export": {
     "project_visible_box": [
       2,

@@ -205,8 +205,11 @@ mod 标识沿用仓库既有 `small_pump`，与 `SmallPumpBlock` / `SmallPumpBlo
 | geo 与 bbmodel 一致 | ✅ 反算回工程坐标逐 cube 比对，38/38 完全相等 |
 | 工程可见包围盒与导出一致 | ✅ 工程 `visible_box` 已设为 `[2, 2.5, 0.75]`，按 `calculateVisibleBox()` 复算导出同为 width 2 / height 2.5 / offset 0.75，与 `geo.json` 描述完全相同 |
 | `reference/` 齐备 | ✅ 原作裁切 + 出处记录 + 调色板 + 调色板元信息，无待入库脚本 |
-| 工程可在 Blockbench 5.2.2 重开 | ⏳ **待验收**：尚未做 GUI 重开确认，`bbmodel_reopens` 记为 `pending-manual` |
+| 工程可在 Blockbench 5.2.2 重开并原生重导出 | ⏳ **待验收**：GUI 重开确认与原生重导出比对均未做，`bbmodel_reopens`、`native_reexport_matches_committed_geo` 记为 `pending-manual` |
 
 结构化记录见 `validation.json`，结构审计原始报告见 `structure_audit.json`。
 
-> **当前交付状态：`incomplete`（待验收）。** 24 项检查通过，唯一未完成项是在 Blockbench 5.2.2 中重开本工程确认内嵌贴图、骨骼与几何正常。该项完成后 `validation.json` 的 `status` 会改回 `complete`，`bbmodel_reopens` 改为 `true`。
+> **当前交付状态：`incomplete`（待验收）。** 24 项检查通过，剩两项人工验收：
+> ① 在 Blockbench 5.2.2 中重开本工程，确认内嵌贴图、骨骼与几何正常；
+> ② 在该版本内用原生 `Export Bedrock Geometry` 重导出，与仓库内 `small_pump.geo.json` 逐字段比对一致（证明「重出即可复现」，而非只靠离线复算）。
+> 两项完成后 `validation.json` 的 `status` 改回 `complete`，`bbmodel_reopens` 与 `native_reexport_matches_committed_geo` 改为 `true`；只做 GUI 重开、未做重导出比对，不视为验收完成。
