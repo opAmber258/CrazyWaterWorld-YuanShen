@@ -1,0 +1,29 @@
+{
+  "project": {
+    "name": "crawler",
+    "uuid": "2a60d2ad-5009-5af0-ac79-af5125f524bb",
+    "save_path": "C:\\Users\\opAmb\\Documents\\Codex\\2026-11-11\\w-w\\outputs\\crawler_20261111\\crawler.bbmodel"
+  },
+  "format": {
+    "id": "bedrock",
+    "name": "Bedrock 版实体"
+  },
+  "resolution": {
+    "texture_width": 256,
+    "texture_height": 256
+  },
+  "counts": {
+    "cubes": 91,
+    "meshes": 0,
+    "groups": 16,
+    "textures": 1,
+    "outliner_elements": 91
+  },
+  "root_groups": [
+    {
+      "name": "root",
+      "uuid": "43c8fbac-348e-20ff-04a4-8e3c32a114ca",
+      "children": 1
+    }
+  ]
+}
