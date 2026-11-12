@@ -1,0 +1,52 @@
+{
+  "path": "diving_suit_v2_glass_r4.bbmodel",
+  "profile": "generic",
+  "kind": "bbmodel",
+  "structural_errors_absent": true,
+  "dependencies_complete": true,
+  "counts": {
+    "elements": 218,
+    "plane_elements": 1,
+    "inverted_elements": 0,
+    "rotated_elements": 124,
+    "declared_export_faces": 1198,
+    "excluded_elements": 1
+  },
+  "textures": {
+    "0": {
+      "size": [
+        256,
+        256
+      ],
+      "pixels": 65536,
+      "rgba_base_bytes": 262144,
+      "transparent_pixels": 38876,
+      "partial_alpha_pixels": 804,
+      "frame_size": [
+        256,
+        256
+      ],
+      "frame_count": 1,
+      "animation_metadata_checked": false,
+      "uv_size": [
+        256,
+        256
+      ]
+    }
+  },
+  "texture_pixels": 65536,
+  "errors": [],
+  "warnings": [
+    {
+      "code": "translucency_review",
+      "where": "0",
+      "detail": "Partial alpha exists; inspect target render pass and sorting."
+    }
+  ],
+  "limitations": [
+    "No Minecraft client render or FPS measurement",
+    "No full schema validation or arbitrary overlap/hidden-face proof",
+    "No custom animation expansion, bone transform baking or outline pairing verification",
+    "Pack version, item definitions and display contexts require separate checks"
+  ]
+}

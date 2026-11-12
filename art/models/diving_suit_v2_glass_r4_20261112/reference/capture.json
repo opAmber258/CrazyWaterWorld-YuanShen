@@ -1,0 +1,364 @@
+{
+  "source": "Blockbench native offscreen renderer",
+  "preview_materials": "Temporary native material clones: opaque/cutout shell and player, translucent glass with depth test and no depth write, glass drawn last. Original materials restored.",
+  "restored": true,
+  "views": [
+    {
+      "label": "asset",
+      "name": "front",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          0,
+          17.5,
+          -90
+        ],
+        "target": [
+          0,
+          17.5,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 0.5,
+        "fov": 32,
+        "format": "png"
+      }
+    },
+    {
+      "label": "asset",
+      "name": "back",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          0,
+          17.5,
+          90
+        ],
+        "target": [
+          0,
+          17.5,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 0.5,
+        "fov": 32,
+        "format": "png"
+      }
+    },
+    {
+      "label": "asset",
+      "name": "side",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          90,
+          17.5,
+          0
+        ],
+        "target": [
+          0,
+          17.5,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 0.5,
+        "fov": 32,
+        "format": "png"
+      }
+    },
+    {
+      "label": "asset",
+      "name": "oblique",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          44,
+          34,
+          -74
+        ],
+        "target": [
+          0,
+          17.5,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 0.5,
+        "fov": 32,
+        "format": "png"
+      }
+    },
+    {
+      "label": "empty",
+      "name": "front",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          0,
+          28.5,
+          -90
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 1.2,
+        "fov": 25,
+        "format": "png"
+      }
+    },
+    {
+      "label": "empty",
+      "name": "lower_back",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          18,
+          13,
+          40
+        ],
+        "target": [
+          0,
+          25,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 1.2,
+        "fov": 22,
+        "format": "png"
+      }
+    },
+    {
+      "label": "empty",
+      "name": "lower_front",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          24,
+          12,
+          -45
+        ],
+        "target": [
+          0,
+          25,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 1.2,
+        "fov": 22,
+        "format": "png"
+      }
+    },
+    {
+      "label": "empty",
+      "name": "rear_oblique",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          28,
+          33,
+          50
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 1.2,
+        "fov": 24,
+        "format": "png"
+      }
+    },
+    {
+      "label": "empty",
+      "name": "upper_back",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          26,
+          43,
+          48
+        ],
+        "target": [
+          0,
+          29,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 1.2,
+        "fov": 24,
+        "format": "png"
+      }
+    },
+    {
+      "label": "aperture",
+      "name": "front",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          0,
+          28.5,
+          -90
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 1.2,
+        "fov": 25,
+        "format": "png"
+      }
+    },
+    {
+      "label": "aperture",
+      "name": "oblique",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          28,
+          38,
+          -55
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 1.2,
+        "fov": 22,
+        "format": "png"
+      }
+    },
+    {
+      "label": "worn",
+      "name": "front",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          0,
+          28.5,
+          -90
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 1.2,
+        "fov": 25,
+        "format": "png"
+      }
+    },
+    {
+      "label": "worn",
+      "name": "oblique",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          28,
+          38,
+          -55
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 1.2,
+        "fov": 22,
+        "format": "png"
+      }
+    },
+    {
+      "label": "worn",
+      "name": "side",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          90,
+          28.5,
+          0
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 1.2,
+        "fov": 25,
+        "format": "png"
+      }
+    },
+    {
+      "label": "worn",
+      "name": "rear_oblique",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          28,
+          33,
+          50
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 1.2,
+        "fov": 24,
+        "format": "png"
+      }
+    },
+    {
+      "label": "turn",
+      "name": "front",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          0,
+          28.5,
+          -90
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "orthographic",
+        "zoom": 1.2,
+        "fov": 25,
+        "format": "png"
+      }
+    },
+    {
+      "label": "turn",
+      "name": "oblique",
+      "camera": {
+        "view": "diving_suit_glass_check",
+        "position": [
+          28,
+          38,
+          -55
+        ],
+        "target": [
+          0,
+          28.5,
+          0
+        ],
+        "projection": "perspective",
+        "zoom": 1.2,
+        "fov": 22,
+        "format": "png"
+      }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "asset_id": "diving_suit_v2_glass_r4",
+  "source_variant": "approved v2 / r4",
+  "publication_date": "2026-11-12",
+  "core_sha256": {
+    "diving_suit_v2_glass_r4.bbmodel": "656242a9f719ea28b9099fc1c7bab55621b2638dabb0e549194d9c4d1240645a",
+    "diving_suit_v2_glass_r4.geo.json": "58da7f22cb5d786c3219975c3d938678a809ea77183b7ac9fbfdf915834b510c",
+    "diving_suit_v2_glass_r4_tex.png": "66c78632cdfe6377cbc7e6fc57962f8df323278bc17a71cc597fb7cc1623c29e",
+    "preview_front.png": "076c2d11b04e90ce7fbae9a8a4c6606e63794842d957cd11d731d007903117d8",
+    "preview_back.png": "5456b62188537f82ec5f259abeae77a74620f16016b41e72b1088c6f4d3f0495",
+    "preview_side.png": "52f3109c819033455a6f67007ee2f016bf8e0194d191c2796dee9d24df037bd1",
+    "preview_oblique.png": "fa7d6d233a73df58b9e797f0620e375b64f199525ff406e9798249069189c93f"
+  },
+  "source_copy_exact": true,
+  "capture": "Existing accepted Blockbench native captures retained: model and texture unchanged after final export. Publication checks exact file copies and native snapshot/spec consistency.",
+  "material_requirements": "two-sided cutout shell plus separate translucent visor",
+  "runtime_tested": false,
+  "one_off_scripts_omitted": [
+    "source-snapshot session setup",
+    "historical cap reconstruction and editing helpers requiring a particular live source UUID"
+  ],
+  "baseline_reference": "reference/baseline_live.bbmodel"
+}

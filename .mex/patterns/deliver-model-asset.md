@@ -16,7 +16,7 @@ edges:
     condition: when the asset must be wired into Java resources or registered blocks/items
   - target: patterns/run-tests.md
     condition: when the asset needs integration verification beyond art review
-last_updated: 2026-11-10
+last_updated: 2026-11-12
 mex:
   id: mx_01M71QR5WFYRJP79BPJRV1HS3F
   type: pattern
@@ -118,6 +118,7 @@ art/models/<标识>_<YYYYMMDD>/
 | 现象 | 原因 |
 | --- | --- |
 | 讨论里图片不更新 | 缺 `?v=` 或未递增 |
+| 总包围盒正常但封片局部外翻 | 对照相邻斜壁检查可见表面与厚度方向；带 alpha 裁形时检查实际不透明像素范围，不能只看整个模型的包围盒 |
 | 顶面/细节消失 | 预览渲染器 up 面法线反了，或正交深度方向写反 |
 | 资产无法评选 | 缺贴图/预览（四件套不全） |
 | PR 被要求返工 | 命名无出处、预览与几何不一致、混入代码改动 |

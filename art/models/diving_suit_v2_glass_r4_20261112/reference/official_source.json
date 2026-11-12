@@ -1,0 +1,182 @@
+{
+  "names": {
+    "SimplifiedChinese": {
+      "file": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+      "tag": "entityname.divingsuit",
+      "value": "潜水服"
+    },
+    "English": {
+      "file": "Content/Texts/English/EnglishVanilla.xml",
+      "tag": "entityname.divingsuit",
+      "value": "Diving Suit"
+    }
+  },
+  "item_file": "Content/Items/Diving/divinggear.xml",
+  "identifier": "divingsuit",
+  "item_scale": "0.5",
+  "inventory_icon": {
+    "texture": "Content/Items/InventoryIconAtlas2.png",
+    "sourcerect": "0,256,128,128",
+    "origin": "0.5,0.5"
+  },
+  "helmet_wearable": {
+    "name": "Diving Suit Helmet Wearable",
+    "texture": "Content/Items/Jobgear/headgears.png",
+    "limb": "Head",
+    "inheritlimbdepth": "true",
+    "inheritscale": "true",
+    "ignorelimbscale": "true",
+    "scale": "0.65",
+    "hidelimb": "false",
+    "alphaclipotherwearables": "true",
+    "sourcerect": "5,4,92,94",
+    "origin": "0.5,0.5"
+  },
+  "body_wearables": [
+    {
+      "name": "Regular Diving Suit Torso",
+      "texture": "reg_DivingSuit.png",
+      "limb": "Torso",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Right Hand",
+      "texture": "reg_DivingSuit.png",
+      "limb": "RightHand",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Left Hand",
+      "texture": "reg_DivingSuit.png",
+      "limb": "LeftHand",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Right Upper Arm",
+      "texture": "reg_DivingSuit.png",
+      "limb": "RightArm",
+      "depthlimb": "RightForearm",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Left Upper Arm",
+      "texture": "reg_DivingSuit.png",
+      "limb": "LeftArm",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Right Lower Arm",
+      "texture": "reg_DivingSuit.png",
+      "limb": "RightForearm",
+      "depthlimb": "RightArm",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Left Lower Arm",
+      "texture": "reg_DivingSuit.png",
+      "limb": "LeftForearm",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Waist",
+      "texture": "reg_DivingSuit.png",
+      "limb": "Waist",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Right Thigh",
+      "texture": "reg_DivingSuit.png",
+      "limb": "RightThigh",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Left Thigh",
+      "texture": "reg_DivingSuit.png",
+      "limb": "LeftThigh",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Right Leg",
+      "texture": "reg_DivingSuit.png",
+      "limb": "RightLeg",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Left Leg",
+      "texture": "reg_DivingSuit.png",
+      "limb": "LeftLeg",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Left Shoe",
+      "texture": "reg_DivingSuit.png",
+      "limb": "LeftFoot",
+      "sound": "footstep_armor_heavy",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    },
+    {
+      "name": "Regular Diving Suit Right Shoe",
+      "texture": "reg_DivingSuit.png",
+      "limb": "RightFoot",
+      "sound": "footstep_armor_heavy",
+      "hidelimb": "true",
+      "inherittexturescale": "true",
+      "hideotherwearables": "true",
+      "inheritorigin": "true",
+      "inheritsourcerect": "true"
+    }
+  ],
+  "usage": "Visual research only; geometry and atlas authored from scratch. Item scale is not used as Minecraft player scaling."
+}

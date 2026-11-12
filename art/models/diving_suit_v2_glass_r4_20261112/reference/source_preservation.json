@@ -1,0 +1,18 @@
+{
+  "status": "verified_before_publish",
+  "baseline_sha256": "a3b542d81f7faf1aa262a6a7e0b12d09299e1b3493d8a967ef254c651795a0a6",
+  "original_files_sha256": {
+    "diving_suit_v2_glass_r3.bbmodel": "4a1a1233920e8ede59ae6098264d727c2334b70bc8c96567cd0c92fdc248d0ae",
+    "diving_suit_v2_glass_r3.geo.json": "a565367b3ee49cbf5d55d9263c86b1a13ef37834fb20a2b042f5b988b21fa5b2",
+    "diving_suit_v2_glass_r3_tex.png": "2c5b3684308acc808e8dbe27e2626ce0595459e49f898539acbabdde0a9114f6",
+    "material_manifest.json": "7e9df77de6578568f79f8c8e12c00626d7b2acfd43c1c5b84ed3893af69f478b",
+    "preview_back.png": "bc22c6577ebd55233bbcb5031966ea6f8515b9a40ad2fe6db5a498859b79d0db",
+    "preview_front.png": "fb433428196ffaf7f980078dadc66ea6edef0f900cfb147fd8deabf9d729aed1",
+    "preview_oblique.png": "abb3c8f4ea8978b3187e36cc5f07e7c74c5b9d305465fde01e5574a57ce8380a",
+    "preview_side.png": "60f06dff2368048273c8b120007996d021aaad1e2eeb4f1a934832d034a58328",
+    "README.md": "1ad3544a21a6d0da116df5bb774fc292f4e3f5db104bd74dae3938c9193a64a3",
+    "structure_audit.json": "6afb13b128e015ab8975ae7fab7c97958254fa6b9d67d1252be80192212eb5b5",
+    "validation.json": "a15463cbbcb9dc8813fbd46c2d3cb62854fb230a7296e39683a35f60ae479cf9"
+  },
+  "verification": "Production validate_flush.py confirmed r3 source files were untouched before publication; baseline bytes are included for portable comparison."
+}

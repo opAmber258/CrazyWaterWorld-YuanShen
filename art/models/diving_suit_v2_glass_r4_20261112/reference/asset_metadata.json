@@ -1,0 +1,21 @@
+{
+  "asset_id": "diving_suit_v2_glass_r4",
+  "display_name_zh": "潜水服",
+  "display_name_en": "Diving Suit",
+  "version": "v2 final / r4",
+  "creation_source": "人工 + AI（TakaraMiyuki + GPT-6 / Codex）",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex + Blockbench 5.2.2 / MCP 1.10.1",
+        "role": "v2 几何、像素纹理、UV、原生导出、预览、修正与发布检查"
+      }
+    ],
+    "division": "人工选择参考并手动微调 v1 工程与贴图、逐轮反馈并验收 v2；AI 保留人工基线，完成 v2 结构扩展、中空透明面罩和封角返修以及交付。"
+  },
+  "runtime_tested": false
+}

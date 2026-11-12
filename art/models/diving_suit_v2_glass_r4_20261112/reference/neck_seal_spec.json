@@ -1,0 +1,137 @@
+{
+  "parts": [
+    {
+      "name": "helmet_neck_seal_core0",
+      "from": [
+        -4.15,
+        23.65,
+        -3.95
+      ],
+      "to": [
+        4.15,
+        24.3,
+        3.95
+      ],
+      "origin": [
+        0,
+        23.975,
+        0
+      ]
+    },
+    {
+      "name": "helmet_neck_seal_core1",
+      "from": [
+        -3.95,
+        23.65,
+        -4.15
+      ],
+      "to": [
+        3.95,
+        24.3,
+        4.15
+      ],
+      "origin": [
+        0,
+        23.975,
+        0
+      ]
+    },
+    {
+      "name": "helmet_neck_seal_facet_-1_-1",
+      "from": [
+        -4.091421356237309,
+        23.65,
+        -4.091421356237309
+      ],
+      "to": [
+        -3.8085786437626905,
+        24.3,
+        -3.8085786437626905
+      ],
+      "origin": [
+        -3.95,
+        23.975,
+        -3.95
+      ],
+      "rotation": [
+        0,
+        45,
+        0
+      ]
+    },
+    {
+      "name": "helmet_neck_seal_facet_-1_1",
+      "from": [
+        -4.091421356237309,
+        23.65,
+        3.8085786437626905
+      ],
+      "to": [
+        -3.8085786437626905,
+        24.3,
+        4.091421356237309
+      ],
+      "origin": [
+        -3.95,
+        23.975,
+        3.95
+      ],
+      "rotation": [
+        0,
+        45,
+        0
+      ]
+    },
+    {
+      "name": "helmet_neck_seal_facet_1_-1",
+      "from": [
+        3.8085786437626905,
+        23.65,
+        -4.091421356237309
+      ],
+      "to": [
+        4.091421356237309,
+        24.3,
+        -3.8085786437626905
+      ],
+      "origin": [
+        3.95,
+        23.975,
+        -3.95
+      ],
+      "rotation": [
+        0,
+        45,
+        0
+      ]
+    },
+    {
+      "name": "helmet_neck_seal_facet_1_1",
+      "from": [
+        3.8085786437626905,
+        23.65,
+        3.8085786437626905
+      ],
+      "to": [
+        4.091421356237309,
+        24.3,
+        4.091421356237309
+      ],
+      "origin": [
+        3.95,
+        23.975,
+        3.95
+      ],
+      "rotation": [
+        0,
+        45,
+        0
+      ]
+    }
+  ],
+  "purpose": "A separate narrow dark seal covers the player lower skin edge. Pressure shell caps remain flush; no cap bulge is used for head clearance.",
+  "top_y": 24.3,
+  "outer_halfwidth": 4.15,
+  "corner_l1_limit": 8.1,
+  "new_cubes": 0
+}

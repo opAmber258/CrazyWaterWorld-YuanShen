@@ -1,0 +1,11 @@
+{
+  "status": "integration_spec_only_not_runtime_configuration",
+  "target": "Minecraft Java 1.20.1 Forge / GeckoLib 4",
+  "texture": "diving_suit_v2_glass_r4_tex.png",
+  "player_head": {"render_actual_player_skin": true, "preview_reference_must_not_render_in_game": true},
+  "passes": [
+    {"name": "shell", "geometry": "all exported geometry excluding helmetVisor", "render_type": "entity_cutout_no_cull", "depth_test": true, "depth_write": true, "cull": false, "reason": "Hollow shell and inset cap lining must remain visible through thin pixel-mask joints."},
+    {"name": "glass", "geometry": "helmetVisor only", "render_type": "entity_translucent_with_texture_alpha", "after": ["actual_player", "shell"], "depth_test": true, "depth_write": "verify_in_target_renderer", "alpha_values": [100, 128, 145, 155]}
+  ],
+  "notes": ["Keep the actual player head visible.", "Skip the visor in the shell pass to prevent duplicate rendering.", "The editor texture uses render_sides=double; runtime no-cull must be configured separately.", "This manifest does not activate Java rendering behavior."]
+}

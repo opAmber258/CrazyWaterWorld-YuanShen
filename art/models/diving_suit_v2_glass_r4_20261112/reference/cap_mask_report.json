@@ -1,0 +1,10 @@
+{
+  "tile": [
+    58,
+    84,
+    122,
+    148
+  ],
+  "cleared_edge_pixels": 96,
+  "rule": "All four corners of every retained opaque texel lie inside the ideal triangular mask; no geometric triangle enlargement."
+}

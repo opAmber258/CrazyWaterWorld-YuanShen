@@ -1,0 +1,352 @@
+{
+  "status": "pass",
+  "checks": [
+    {
+      "name": "all_opaque_cap_texel_footprints_within_shell",
+      "pass": true,
+      "detail": {
+        "before_max_support_plane_excess_units": 0.9452855874386614,
+        "after_max_support_plane_excess_units": 1.2506053082006474e-08,
+        "numerical_tolerance": 0.0001,
+        "opaque_texels_per_face": 1984,
+        "coverage": "Convex hull of all four corners of every opaque texel; tested on both actual native cap faces against all shell support planes."
+      }
+    },
+    {
+      "name": "baseline_really_had_protrusion",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "outward_faces_on_support_planes",
+      "pass": true,
+      "detail": [
+        {
+          "name": "helmet_top_flush_-1_-1",
+          "outer_plane_error": 8.940761167385162e-10
+        },
+        {
+          "name": "helmet_lower_flush_-1_-1_0",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_lower_flush_-1_-1_1",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_lower_flush_-1_-1_2",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_top_flush_-1_1",
+          "outer_plane_error": 8.940761167385162e-10
+        },
+        {
+          "name": "helmet_lower_flush_-1_1_0",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_lower_flush_-1_1_1",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_lower_flush_-1_1_2",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_top_flush_1_-1",
+          "outer_plane_error": 8.940761167385162e-10
+        },
+        {
+          "name": "helmet_lower_flush_1_-1_0",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_lower_flush_1_-1_1",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_lower_flush_1_-1_2",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_top_flush_1_1",
+          "outer_plane_error": 8.940761167385162e-10
+        },
+        {
+          "name": "helmet_lower_flush_1_1_0",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_lower_flush_1_1_1",
+          "outer_plane_error": 8.940709375249549e-10
+        },
+        {
+          "name": "helmet_lower_flush_1_1_2",
+          "outer_plane_error": 8.940709375249549e-10
+        }
+      ]
+    },
+    {
+      "name": "all_cap_thickness_inward",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "no_triangle_enlargement",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "all_caps_have_interior_and_exterior_faces",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "counts_and_budget",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "identifier",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "all_other_original_elements_exact",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "eight_sided_frame_preserved",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "aperture_and_glass_geometry_preserved",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "bone_pivots_unchanged",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "bounds_not_expanded",
+      "pass": true,
+      "detail": {
+        "before": {
+          "min": [
+            -9.500715827620342,
+            -0.075,
+            -6.92
+          ],
+          "max": [
+            9.500715827620342,
+            34.57308971716303,
+            6.28
+          ],
+          "size": [
+            19.001431655240683,
+            34.64808971716303,
+            13.2
+          ]
+        },
+        "after": {
+          "min": [
+            -9.500715827620342,
+            -0.075,
+            -6.92
+          ],
+          "max": [
+            9.500715827620342,
+            34.55,
+            6.28
+          ],
+          "size": [
+            19.001431655240683,
+            34.625,
+            13.2
+          ]
+        }
+      }
+    },
+    {
+      "name": "no_negative_dimensions",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "no_duplicate_geometry",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "single_ownership",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "all_uv_inbounds",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "existing_neck_seal_covers_player_lower_skin",
+      "pass": true,
+      "detail": {
+        "lower_head_samples": 1089,
+        "covered": 1089,
+        "new_cubes": 0
+      }
+    },
+    {
+      "name": "two_sided_shell_metadata",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "reference_head_excluded",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "portable_texture",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "only_cap_mask_pixels_changed",
+      "pass": true,
+      "detail": {
+        "changed_pixels": 96
+      }
+    },
+    {
+      "name": "glass_pixels_exact",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "transparent_rgb_zero",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "native_reopen_matches",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "poses_and_materials_restored",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "four_root_previews",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "feedback_angle_previews",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "prior_front_seam_no_skin_colored_pixels",
+      "pass": true,
+      "detail": {
+        "region": [
+          430,
+          590,
+          660,
+          690
+        ],
+        "skin_colored_pixels": 0,
+        "scope": "Fixed provided example skin and this fixed camera only; not a generic skin detector."
+      }
+    },
+    {
+      "name": "baseline_and_source_preservation_record",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "native_snapshot_geometry_matches_current_spec",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "native_export_complete",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "delivery_files_complete",
+      "pass": true,
+      "detail": null
+    }
+  ],
+  "stats": {
+    "editor_cubes": 218,
+    "export_cubes": 217,
+    "export_bones": 9,
+    "quads": 1198,
+    "triangle_upper_bound": 2396,
+    "texture_size": [
+      256,
+      256
+    ],
+    "bbox": {
+      "min": [
+        -9.500715827620342,
+        -0.075,
+        -6.92
+      ],
+      "max": [
+        9.500715827620342,
+        34.55,
+        6.28
+      ],
+      "size": [
+        19.001431655240683,
+        34.625,
+        13.2
+      ]
+    }
+  },
+  "cleanup": {
+    "old_caps_removed": 16,
+    "new_caps": 16,
+    "new_neck_cubes": 0,
+    "cap_visible_faces": 32,
+    "duplicate_geometry": 0,
+    "note": "Inner and outer cap faces retained for hollow shell lining; no stacked full-model copies or enlarged cap triangles."
+  },
+  "limitations": [
+    "No Minecraft runtime test.",
+    "Thin cap plates use binary-alpha triangular masks; they are not arbitrary triangular meshes.",
+    "Two-sided cutout shell and separately blended glass must be configured by the integrator.",
+    "Texel-footprint proof covers current cap surfaces, not all animation collisions."
+  ],
+  "asset_id": "diving_suit_v2_glass_r4",
+  "display_name_zh": "潜水服",
+  "display_name_en": "Diving Suit",
+  "version": "v2 final / r4",
+  "creation_source": "人工 + AI（TakaraMiyuki + GPT-6 / Codex）",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex + Blockbench 5.2.2 / MCP 1.10.1",
+        "role": "v2 几何、像素纹理、UV、原生导出、预览、修正与发布检查"
+      }
+    ],
+    "division": "人工选择参考并手动微调 v1 工程与贴图、逐轮反馈并验收 v2；AI 保留人工基线，完成 v2 结构扩展、中空透明面罩和封角返修以及交付。"
+  },
+  "runtime_tested": false
+}
