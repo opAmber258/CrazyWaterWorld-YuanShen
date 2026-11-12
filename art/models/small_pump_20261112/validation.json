@@ -2,7 +2,7 @@
   "asset": "小型泵 SmallPump",
   "identifier": "small_pump",
   "date": "2026-11-12",
-  "status": "incomplete",
+  "status": "complete",
   "creation_source": "人工（Han-xing-official）",
   "contributors": {
     "human": [
@@ -15,8 +15,8 @@
   "display_name_en": "SmallPump",
   "production": "Human only: Han-xing-official; Blockbench 5.2.2",
   "checks": {
-    "bbmodel_reopens": "pending-manual",
-    "native_reexport_matches_committed_geo": "pending-manual",
+    "bbmodel_reopens": true,
+    "native_reexport_matches_committed_geo": true,
     "bbmodel_self_contained": true,
     "embedded_texture": true,
     "texture_rgba_power_of_two": true,
@@ -73,7 +73,7 @@
   "warnings": [
     "12 个 cube 为零厚度平面贴片（Z size=0，inflate 0.0002），实际厚度仅 0.0004；若游戏内出现 z-fighting 需把 inflate 提到 0.01 量级",
     "5 个纯父级骨骼不含 cube（水泵 / 贴片 / 主管前贴片 / 主管后贴片 / 大黑头前贴片），属正常分组结构",
-    "bbmodel_reopens 与 native_reexport_matches_committed_geo 均为 pending-manual：未在 Blockbench GUI 内重开，也未做原生重导出比对；已以脚本核对工程可解析、贴图内嵌、无本机路径依赖，且 geo 与 bbmodel 逐 cube 38/38 一致"
+    "工程为 Blockbench 5.x 工程格式（骨骼存于独立 groups 表），用 4.x 打开会静默丢失骨骼名与 pivot（18 根全读成 bone、pivot 归零）；重开与重导出须用 5.2.x 及以上"
   ],
   "bounds_blockbench_units": {
     "min": [
@@ -210,7 +210,7 @@
     "通用审计不是完整的 Bedrock/GeckoLib schema 校验器。",
     "未在游戏客户端内实测渲染，UV 串位与轴心以 Blockbench 视口截图为准。"
   ],
-  "status_reason": "两项人工验收未完成：①bbmodel_reopens —— 尚未在 Blockbench 5.2.2 GUI 内重开已提交的工程；②native_reexport_matches_committed_geo —— 尚未用原生 Export Bedrock Geometry 重导出并与仓库内 geo 逐字段比对。其余 24 项通过，两项完成后改回 complete；只做重开、未做重导出比对不算完成。",
+  "status_reason": "验收完成：26 项全部通过。两项人工验收于 2026-11-12 在 Blockbench 5.2.2（Windows x64 便携版，独立 userData）内完成——① 重开工程无异常，18 骨骼 / 38 cube / 1 张 64×64 内嵌贴图 / Visible box 2·2.5·0.75；② 原生 Export Bedrock Geometry 输出与仓库 geo 逐字段 0 差异，仓库 geo 已替换为该原生导出原件（sha256 2a9fc222…），重出可字节级复现。",
   "visible_bounds_export": {
     "project_visible_box": [
       2,
@@ -238,5 +238,40 @@
         8.0
       ]
     }
+  },
+  "manual_acceptance": {
+    "date": "2026-11-12",
+    "app": "Blockbench 5.2.2 Desktop (Windows x64)",
+    "project_reopens": true,
+    "reopen_findings": {
+      "format": "bedrock（Bedrock 版实体）",
+      "bones": 18,
+      "cubes": 38,
+      "texture": {
+        "name": "小型泵4.0.png",
+        "size": [
+          64,
+          64
+        ],
+        "embedded": true
+      },
+      "project_visible_box": [
+        2,
+        2.5,
+        0.75
+      ],
+      "error_dialogs": 0,
+      "parenting_sample": "cube「横向」挂在骨骼「主罐」下",
+      "note": "骨骼名与 pivot 全部正确恢复（水泵 / 主罐 / 斜边2 …），无缺贴图提示"
+    },
+    "native_reexport": {
+      "codec": "bedrock（Bedrock Model）",
+      "method": "应用内 Codecs.bedrock.compile({})，与 GUI「Export Bedrock Geometry」同一导出路径",
+      "diff_field_count": 0,
+      "compared": "description（identifier / texture_width / texture_height / visible_bounds 三项）+ 18 骨骼（name / parent / pivot / rotation）+ 38 cube（origin / size / uv / rotation / inflate / mirror）逐字段",
+      "output_sha256": "2a9fc222ebc0ccd8e992658622004d0e487260c5116d4be98ed7f5772d32b886",
+      "committed_geo_is_native_output": true
+    },
+    "version_caveat": "本工程为 Blockbench 5.x 工程格式（骨骼数据存放于独立 groups 表）。用 4.12.5 打开会静默丢失骨骼名与 pivot（18 根全读成 bone、pivot 归零），不可用于验收或再导出；需 5.2.x 及以上版本。"
   }
 }
