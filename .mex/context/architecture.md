@@ -15,7 +15,7 @@ edges:
   - target: context/tools.md
     condition: when changing texture generation, GameTest templates, or the AsmDump helper
 grounds_to: []
-last_updated: 2026-11-04
+last_updated: 2026-11-13
 mex:
   id: mx_01M6FTBTA32ESJGHB433FWZZZ3
   type: architecture
@@ -59,6 +59,7 @@ mex:
 - **`world/OceanEnvironment`** — 干湿判定的唯一入口：维度高度 + 哨站盒子 + 船内干燥区；客户端和服务端分别保存自己的 `DryZone`（`setClientDryZone` / `setServerDryZone`），不依赖 `FluidState`。
 - **`network/`** — 6 个包：`ShipActionPacket`（客户端→服务端）、`VesselPalettePacket`（船体渲染）、`SonarPingPacket` / `SonarDataPacket`（声纳）、`ShipWaterStatePacket`（水面包）、`ShipHullDamagePacket`（受损方块 + 剩余比例）。
 - **`event/`** — `DeepSeaEvents`（登录、命令、自检）、`UnderwaterSurvival`（空气海域的氧气/溺水）。
+- **`mission/` + `campaign/`** — 站务员 NPC（`NpcEntity`/`MissionNpc`）右键对话：`NpcTalkPacket` 请求活儿，服务端按站点发最多 3 条报价（任务模板 → 相邻目的地），`NpcDialoguePacket` 回任务列表；`MissionSavedData` 按站点保存报价与进行中任务，未接的留站、离站后重新靠泊刷新、完成复位可再发；`CampaignMapScreen` 只列当前站去所选目的地的报价并勾选；`MissionCargo` 把真箱子装进 `crate_shelf`（装配后的货架按船坞偏移读取），无货架时在玩家进艇后于脚边生成散箱，靠泊目的站按 98% 结算并清货；`MissionStatePacket` 下发当前站报价 + 进行中任务目的地，协议 8。
 
 ## External Dependencies
 
