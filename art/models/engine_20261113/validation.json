@@ -1,0 +1,180 @@
+{
+  "display_name_zh": "引擎",
+  "display_name_en": "Engine",
+  "creation_source": "AI（GPT 6.1 Sol）",
+  "contributors": {
+    "human": [],
+    "ai": [
+      {
+        "name": "GPT 6.1 Sol",
+        "tool": "Codex / Blockbench 5.2.2 / Blockbench MCP / Python / Pillow",
+        "role": "几何、UV、像素贴图、原生预览、导出与交付检查"
+      }
+    ],
+    "division": "AI 制作；用户提供题材、参考图、尺寸方向及发布和本地分类决定，未记录人工几何或贴图编辑。"
+  },
+  "asset": "引擎 Engine",
+  "identifier": "geometry.engine",
+  "production_source": "AI",
+  "date": "2026-11-13",
+  "delivery_scope": "local static art asset",
+  "status": "complete; candidate C, upstream selection pending",
+  "blockbench_version": "5.2.2",
+  "metrics": {
+    "cubes": 143,
+    "bones": 10,
+    "declared_faces": 858,
+    "bbox": {
+      "min": [
+        -43.3,
+        0.0,
+        -17.549999999999997
+      ],
+      "max": [
+        43.3,
+        42.0,
+        17.549999999999997
+      ],
+      "size_bb": [
+        86.6,
+        42.0,
+        35.099999999999994
+      ],
+      "size_blocks": [
+        5.4125,
+        2.625,
+        2.1937499999999996
+      ]
+    },
+    "texture": {
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "palette_colors_including_transparent": 19,
+      "sha256": "741cc8c669f5f904099f59bdba225940c6e6bcc3db335b12d1c9d9555758e3cf",
+      "density_min": 2.0,
+      "density_max": 4.0,
+      "unique_uv_islands": 156
+    }
+  },
+  "checks": {
+    "four_piece_package": true,
+    "identifier": true,
+    "embedded_and_external_png_identical": true,
+    "all_faces_uv_assigned_and_in_bounds": true,
+    "geometry_and_uv_export_equivalent": true,
+    "unique_uv_islands_nonoverlapping": true,
+    "native_geo_import_reexport_exact": true,
+    "reopened_bbmodel_export_exact": true,
+    "four_final_native_previews_reviewed": true,
+    "original_names_separately_verified": true
+  },
+  "audit": {
+    "independent_errors": [],
+    "independent_warnings": [
+      "Sub-unit thin edges round up to whole texels; their density exceeds the nominal 2 px/BB. Main panel islands keep the nominal density."
+    ],
+    "generic_bb_errors": [],
+    "generic_bb_warnings": [],
+    "generic_geo_errors": [],
+    "generic_geo_warnings": []
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        91,
+        203,
+        1109,
+        697
+      ],
+      "projection": "orthographic"
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        91,
+        203,
+        1109,
+        697
+      ],
+      "projection": "orthographic"
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        281,
+        68,
+        919,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        115,
+        203,
+        959,
+        777
+      ],
+      "projection": "perspective"
+    }
+  },
+  "files_sha256": {
+    "engine.bbmodel": "9f933efcc7f986c6104ad1056b6da65e73a81bfb059bab9bae9a23f3cf6f130d",
+    "engine.geo.json": "2b299ba42d8d33e79fb2de7d1bb1104b33549814cac832766fea6997b57b55fa",
+    "engine_tex.png": "741cc8c669f5f904099f59bdba225940c6e6bcc3db335b12d1c9d9555758e3cf",
+    "preview_front.png": "fe12a4f8daca2add59f894668e48f602d021824ddae8b3069058957d9ee51cda",
+    "preview_back.png": "b91deedf81d2fdf0b4975861e9e14b1aaf2306706fd5b0e0c0512aa016a3732b",
+    "preview_side.png": "bceb69ac84efac1df939086e80ef4abc9e40849f8d0a54a66faf20e4c8dbfc0f",
+    "preview_oblique.png": "e0293aa87339ea51cf2d73b82470724f59e40e0dd6802243f97d472501a3b2bb",
+    "README.md": "ad5b2a72781f91fc622dc642167bdfd7ba4804c0fcb83600b7794c930b6c2988",
+    "structure_audit.json": "af1b1584e3f1df7a3325f6f388ddecf24197970d8f4cf4efa30cb8694c95d39e"
+  },
+  "not_tested": [
+    "Minecraft runtime",
+    "GeckoLib runtime",
+    "collision and placement",
+    "emission and lighting",
+    "animation",
+    "propulsion and interactions",
+    "performance"
+  ],
+  "code_verify_checklist": {
+    "gradle_build": "not applicable: no runtime code changes",
+    "L1": "not applicable",
+    "world_generation_reset": "not applicable",
+    "registration_L2": "not applicable",
+    "client_server_class_loading": "not applicable",
+    "VS2_boundary": "not applicable",
+    "hull_registration": "not applicable",
+    "runtime_localizations": "not applicable: asset names checked against source"
+  },
+  "publishing": {
+    "authorized_direct_main": true,
+    "repository_asset_path": "art/models/engine_20261113/",
+    "discussion_url": "https://github.com/opAmber258/CrazyWaterWorld-YuanShen/discussions/39",
+    "candidate": "C",
+    "local_classification": "curated, explicitly requested by user; upstream selection pending"
+  },
+  "boundary": "已在 Blockbench 检查并完成导出，未进入 Minecraft 验证。"
+}

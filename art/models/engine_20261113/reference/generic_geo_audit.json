@@ -1,0 +1,41 @@
+{
+  "input": "F:\\BarotraumaMinecraft\\art-vault\\production\\engine_20261113\\engine.geo.json",
+  "kind": "bedrock_geometry",
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance.",
+    "Bounds are unrotated source-coordinate extents; bone/element transforms and inflate are not applied."
+  ],
+  "identifier": "geometry.engine",
+  "uv_space": {
+    "width": 512,
+    "height": 512,
+    "source": "Bedrock description"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "geometries": 1,
+    "bones": 10,
+    "cubes": 143,
+    "declared_faces": 858
+  },
+  "bounds": [
+    [
+      -43.3,
+      0,
+      -14
+    ],
+    [
+      43.300000000000004,
+      42.0,
+      15.4
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 0
+}

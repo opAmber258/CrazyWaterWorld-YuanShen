@@ -1,0 +1,45 @@
+{
+  "input": "F:\\BarotraumaMinecraft\\art-vault\\production\\engine_20261113\\engine.bbmodel",
+  "kind": "bbmodel",
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance.",
+    "Bounds are unrotated source-coordinate extents; bone/element transforms and inflate are not applied."
+  ],
+  "identifier": "engine",
+  "uv_space": {
+    "width": 512,
+    "height": 512,
+    "source": "project resolution"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "elements": 143,
+    "cubes": 143,
+    "groups": 10,
+    "declared_faces": 858,
+    "rotated_cubes": 65,
+    "animations": null,
+    "missing_uv_faces": 0,
+    "missing_texture_faces": 0
+  },
+  "bounds": [
+    [
+      -43.3,
+      0,
+      -14
+    ],
+    [
+      43.3,
+      42,
+      15.4
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 0
+}

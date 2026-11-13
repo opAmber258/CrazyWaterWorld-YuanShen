@@ -1,0 +1,21 @@
+{
+  "shell": "#798073",
+  "shell_light": "#8b9181",
+  "shell_dark": "#606b61",
+  "edge": "#a1a48d",
+  "seam": "#4d5852",
+  "dark": "#303c3b",
+  "dark_light": "#48534d",
+  "steel": "#68766f",
+  "steel_light": "#93a398",
+  "vent": "#82958a",
+  "vent_edge": "#a1b0a0",
+  "red": "#8e5046",
+  "red_light": "#aa6a54",
+  "rust": "#80634e",
+  "brass": "#a28a60",
+  "screen": "#273d3e",
+  "screen_line": "#557a73",
+  "signal": "#a9bca1",
+  "amber": "#c4a465"
+}

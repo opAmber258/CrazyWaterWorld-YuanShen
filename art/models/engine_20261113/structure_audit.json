@@ -1,0 +1,103 @@
+{
+  "errors": [],
+  "warnings": [
+    "Sub-unit thin edges round up to whole texels; their density exceeds the nominal 2 px/BB. Main panel islands keep the nominal density."
+  ],
+  "cubes": 143,
+  "bones": 10,
+  "declared_faces": 858,
+  "independent_bb_geo_geometry_and_uv_match": true,
+  "bbox": {
+    "min": [
+      -43.3,
+      0.0,
+      -17.549999999999997
+    ],
+    "max": [
+      43.3,
+      42.0,
+      17.549999999999997
+    ],
+    "size_bb": [
+      86.6,
+      42.0,
+      35.099999999999994
+    ],
+    "size_blocks": [
+      5.4125,
+      2.625,
+      2.1937499999999996
+    ]
+  },
+  "texture": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "palette_colors_including_transparent": 19,
+    "sha256": "741cc8c669f5f904099f59bdba225940c6e6bcc3db335b12d1c9d9555758e3cf",
+    "density_min": 2.0,
+    "density_max": 4.0,
+    "unique_uv_islands": 156
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        91,
+        203,
+        1109,
+        697
+      ],
+      "projection": "orthographic"
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        91,
+        203,
+        1109,
+        697
+      ],
+      "projection": "orthographic"
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        281,
+        68,
+        919,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        115,
+        203,
+        959,
+        777
+      ],
+      "projection": "perspective"
+    }
+  },
+  "native_import_reexport": true
+}

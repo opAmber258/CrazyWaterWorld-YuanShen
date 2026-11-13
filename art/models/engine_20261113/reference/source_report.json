@@ -1,0 +1,47 @@
+{
+  "identifier": "engine",
+  "scale": 0.5,
+  "sprite": {
+    "texture": "Engines.png",
+    "depth": "0.8",
+    "sourcerect": "0,0,659,317",
+    "canflipx": "true",
+    "origin": "0.5,0.5"
+  },
+  "localization": {
+    "chinese": {
+      "key": "entityname.engine",
+      "value": "引擎",
+      "file": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml"
+    },
+    "english": {
+      "key": "entityname.engine",
+      "value": "Engine",
+      "file": "Content/Texts/English/EnglishVanilla.xml"
+    }
+  },
+  "source_sha256": {
+    "definition": "30e658358748c745a3f591dd9721014a751e1ea75c0df416af191093bb0b5aa3",
+    "atlas": "f402243cd5a9f34f1b58029a73abe9d4e40e5cdc4a9a4178594c79c1b11bf6b8",
+    "chinese": "ff565d41c60800b6a06ebe690599706f25ce9eb25bb3ac68dbfc290e28ecdc0a",
+    "english": "0b4446db3185536816fdf0f356305652cc7481cdec71a7678b860a21fb358a59"
+  },
+  "paths_relative_to_game_root": {
+    "definition": "Content/Items/Engine/engine.xml",
+    "atlas": "Content/Items/Engine/Engines.png",
+    "chinese": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+    "english": "Content/Texts/English/EnglishVanilla.xml"
+  },
+  "proportion_assumptions": {
+    "reference_character_pixels": 120,
+    "minecraft_character_bb": 32,
+    "k_bb_per_pixel": 0.13333333333333333
+  },
+  "depth_and_back": "artistic inference; not present in original 2D sprite",
+  "sprite_alpha_bbox": [
+    0,
+    7,
+    656,
+    317
+  ]
+}

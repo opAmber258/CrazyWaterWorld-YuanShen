@@ -1,0 +1,10 @@
+{
+  "project": "engine",
+  "blockbench_version": "5.2.2",
+  "cubes": 143,
+  "bones": 10,
+  "textures": 1,
+  "format": "bedrock",
+  "exact_reopened_export_match": true,
+  "saved": true
+}

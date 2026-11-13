@@ -1,0 +1,1566 @@
+{
+  "pixels_per_bb_unit": 2,
+  "islands": [
+    {
+      "uv": [
+        2,
+        2,
+        124,
+        58
+      ],
+      "material": "shell",
+      "pattern": "rear_body"
+    },
+    {
+      "uv": [
+        126,
+        2,
+        248,
+        58
+      ],
+      "material": "shell",
+      "pattern": "body"
+    },
+    {
+      "uv": [
+        250,
+        2,
+        298,
+        58
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        300,
+        2,
+        422,
+        50
+      ],
+      "material": "shell",
+      "pattern": "top"
+    },
+    {
+      "uv": [
+        2,
+        60,
+        124,
+        108
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        126,
+        60,
+        236,
+        68
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        238,
+        60,
+        278,
+        68
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        280,
+        60,
+        390,
+        100
+      ],
+      "material": "shell_light",
+      "pattern": "top"
+    },
+    {
+      "uv": [
+        392,
+        60,
+        502,
+        100
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        2,
+        110,
+        122,
+        116
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        124,
+        110,
+        164,
+        116
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        166,
+        110,
+        286,
+        150
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        288,
+        110,
+        298,
+        162
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        300,
+        110,
+        310,
+        162
+      ],
+      "material": "shell",
+      "pattern": "end_panel"
+    },
+    {
+      "uv": [
+        312,
+        110,
+        352,
+        162
+      ],
+      "material": "shell",
+      "pattern": "end_panel"
+    },
+    {
+      "uv": [
+        354,
+        110,
+        394,
+        162
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        396,
+        110,
+        406,
+        150
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        408,
+        110,
+        414,
+        116
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        416,
+        110,
+        456,
+        116
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        458,
+        110,
+        464,
+        150
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        466,
+        110,
+        472,
+        115
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        2,
+        164,
+        42,
+        169
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        44,
+        164,
+        50,
+        204
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        52,
+        164,
+        162,
+        173
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        164,
+        164,
+        172,
+        173
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        174,
+        164,
+        180,
+        224
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        182,
+        164,
+        226,
+        224
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        228,
+        164,
+        234,
+        208
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        236,
+        164,
+        352,
+        172
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        354,
+        164,
+        470,
+        172
+      ],
+      "material": "shell_dark",
+      "pattern": "apron"
+    },
+    {
+      "uv": [
+        472,
+        164,
+        475,
+        172
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        2,
+        226,
+        118,
+        229
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        120,
+        226,
+        141,
+        269
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        143,
+        226,
+        164,
+        269
+      ],
+      "material": "dark",
+      "pattern": "door_back"
+    },
+    {
+      "uv": [
+        166,
+        226,
+        168,
+        269
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        170,
+        226,
+        191,
+        228
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        193,
+        226,
+        195,
+        270
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        197,
+        226,
+        199,
+        228
+      ],
+      "material": "shell_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        201,
+        226,
+        222,
+        228
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        224,
+        226,
+        226,
+        228
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        228,
+        226,
+        246,
+        229
+      ],
+      "material": "vent",
+      "pattern": null
+    },
+    {
+      "uv": [
+        248,
+        226,
+        266,
+        229
+      ],
+      "material": "vent",
+      "pattern": "slat"
+    },
+    {
+      "uv": [
+        268,
+        226,
+        271,
+        229
+      ],
+      "material": "vent",
+      "pattern": null
+    },
+    {
+      "uv": [
+        273,
+        226,
+        275,
+        232
+      ],
+      "material": "brass",
+      "pattern": null
+    },
+    {
+      "uv": [
+        277,
+        226,
+        279,
+        228
+      ],
+      "material": "brass",
+      "pattern": null
+    },
+    {
+      "uv": [
+        281,
+        226,
+        302,
+        239
+      ],
+      "material": "rust",
+      "pattern": null
+    },
+    {
+      "uv": [
+        304,
+        226,
+        325,
+        239
+      ],
+      "material": "rust",
+      "pattern": "bezel"
+    },
+    {
+      "uv": [
+        327,
+        226,
+        330,
+        239
+      ],
+      "material": "rust",
+      "pattern": null
+    },
+    {
+      "uv": [
+        332,
+        226,
+        353,
+        229
+      ],
+      "material": "rust",
+      "pattern": null
+    },
+    {
+      "uv": [
+        355,
+        226,
+        373,
+        236
+      ],
+      "material": "screen",
+      "pattern": null
+    },
+    {
+      "uv": [
+        375,
+        226,
+        393,
+        236
+      ],
+      "material": "screen",
+      "pattern": "instrument0"
+    },
+    {
+      "uv": [
+        395,
+        226,
+        396,
+        236
+      ],
+      "material": "screen",
+      "pattern": null
+    },
+    {
+      "uv": [
+        398,
+        226,
+        416,
+        227
+      ],
+      "material": "screen",
+      "pattern": null
+    },
+    {
+      "uv": [
+        418,
+        226,
+        436,
+        236
+      ],
+      "material": "screen",
+      "pattern": "instrument1"
+    },
+    {
+      "uv": [
+        438,
+        226,
+        456,
+        236
+      ],
+      "material": "screen",
+      "pattern": "instrument2"
+    },
+    {
+      "uv": [
+        458,
+        226,
+        488,
+        257
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        2,
+        272,
+        32,
+        303
+      ],
+      "material": "dark_light",
+      "pattern": "control_border"
+    },
+    {
+      "uv": [
+        34,
+        272,
+        38,
+        303
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        40,
+        272,
+        70,
+        276
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        72,
+        272,
+        100,
+        300
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        102,
+        272,
+        130,
+        300
+      ],
+      "material": "dark",
+      "pattern": "circuit"
+    },
+    {
+      "uv": [
+        132,
+        272,
+        133,
+        300
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        135,
+        272,
+        163,
+        273
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        165,
+        272,
+        197,
+        274
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        199,
+        272,
+        205,
+        274
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        207,
+        272,
+        239,
+        278
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        241,
+        272,
+        271,
+        298
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        273,
+        272,
+        303,
+        298
+      ],
+      "material": "shell_dark",
+      "pattern": "socket_bay"
+    },
+    {
+      "uv": [
+        305,
+        272,
+        307,
+        298
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        309,
+        272,
+        339,
+        274
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        341,
+        272,
+        345,
+        282
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        347,
+        272,
+        351,
+        282
+      ],
+      "material": "dark",
+      "pattern": "socket"
+    },
+    {
+      "uv": [
+        353,
+        272,
+        356,
+        282
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        358,
+        272,
+        362,
+        275
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        364,
+        272,
+        374,
+        274
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        376,
+        272,
+        381,
+        274
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        383,
+        272,
+        393,
+        277
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        395,
+        272,
+        398,
+        278
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        400,
+        272,
+        402,
+        278
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        404,
+        272,
+        407,
+        274
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        409,
+        272,
+        422,
+        302
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        424,
+        272,
+        437,
+        302
+      ],
+      "material": "shell",
+      "pattern": "end_panel"
+    },
+    {
+      "uv": [
+        439,
+        272,
+        440,
+        302
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        442,
+        272,
+        455,
+        273
+      ],
+      "material": "shell",
+      "pattern": null
+    },
+    {
+      "uv": [
+        457,
+        272,
+        469,
+        277
+      ],
+      "material": "dark_light",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        471,
+        272,
+        493,
+        277
+      ],
+      "material": "dark_light",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        495,
+        272,
+        507,
+        294
+      ],
+      "material": "dark_light",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        2,
+        305,
+        21,
+        311
+      ],
+      "material": "steel",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        23,
+        305,
+        49,
+        311
+      ],
+      "material": "steel",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        51,
+        305,
+        70,
+        331
+      ],
+      "material": "steel",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        72,
+        305,
+        84,
+        311
+      ],
+      "material": "shell_dark",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        86,
+        305,
+        115,
+        311
+      ],
+      "material": "shell_dark",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        117,
+        305,
+        129,
+        334
+      ],
+      "material": "shell_dark",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        131,
+        305,
+        134,
+        308
+      ],
+      "material": "steel_light",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        136,
+        305,
+        165,
+        308
+      ],
+      "material": "steel_light",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        167,
+        305,
+        170,
+        334
+      ],
+      "material": "steel_light",
+      "pattern": "duct"
+    },
+    {
+      "uv": [
+        172,
+        305,
+        207,
+        313
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        209,
+        305,
+        217,
+        313
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        219,
+        305,
+        225,
+        319
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        227,
+        305,
+        241,
+        319
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        243,
+        305,
+        257,
+        319
+      ],
+      "material": "dark_light",
+      "pattern": "hub"
+    },
+    {
+      "uv": [
+        259,
+        305,
+        263,
+        327
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        265,
+        305,
+        272,
+        327
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        274,
+        305,
+        281,
+        327
+      ],
+      "material": "steel",
+      "pattern": "blade"
+    },
+    {
+      "uv": [
+        283,
+        305,
+        287,
+        312
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        289,
+        305,
+        311,
+        347
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        313,
+        305,
+        335,
+        347
+      ],
+      "material": "shell_dark",
+      "pattern": "shroud_service"
+    },
+    {
+      "uv": [
+        337,
+        305,
+        340,
+        347
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        342,
+        305,
+        364,
+        308
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        366,
+        305,
+        378,
+        330
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        380,
+        305,
+        392,
+        330
+      ],
+      "material": "dark",
+      "pattern": "grille"
+    },
+    {
+      "uv": [
+        394,
+        305,
+        395,
+        330
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        397,
+        305,
+        409,
+        306
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        2,
+        349,
+        110,
+        354
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        112,
+        349,
+        122,
+        354
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        124,
+        349,
+        232,
+        359
+      ],
+      "material": "dark_light",
+      "pattern": "tray"
+    },
+    {
+      "uv": [
+        234,
+        349,
+        342,
+        359
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        344,
+        349,
+        440,
+        352
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        2,
+        361,
+        98,
+        364
+      ],
+      "material": "dark",
+      "pattern": "cable"
+    },
+    {
+      "uv": [
+        100,
+        361,
+        103,
+        364
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        105,
+        361,
+        119,
+        364
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        121,
+        361,
+        124,
+        373
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        126,
+        361,
+        139,
+        364
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        141,
+        361,
+        144,
+        366
+      ],
+      "material": "brass",
+      "pattern": null
+    },
+    {
+      "uv": [
+        146,
+        361,
+        155,
+        366
+      ],
+      "material": "brass",
+      "pattern": null
+    },
+    {
+      "uv": [
+        157,
+        361,
+        160,
+        370
+      ],
+      "material": "brass",
+      "pattern": null
+    },
+    {
+      "uv": [
+        162,
+        361,
+        165,
+        366
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        167,
+        361,
+        176,
+        366
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        178,
+        361,
+        181,
+        370
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        183,
+        361,
+        227,
+        405
+      ],
+      "material": "shell_dark",
+      "pattern": "rear_access"
+    },
+    {
+      "uv": [
+        229,
+        361,
+        273,
+        405
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        275,
+        361,
+        277,
+        405
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        279,
+        361,
+        323,
+        363
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        325,
+        361,
+        327,
+        369
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        329,
+        361,
+        343,
+        395
+      ],
+      "material": "dark_light",
+      "pattern": "rear_connect"
+    },
+    {
+      "uv": [
+        345,
+        361,
+        359,
+        395
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        361,
+        361,
+        363,
+        395
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        365,
+        361,
+        379,
+        363
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        381,
+        361,
+        485,
+        364
+      ],
+      "material": "dark",
+      "pattern": "cable"
+    },
+    {
+      "uv": [
+        2,
+        407,
+        106,
+        410
+      ],
+      "material": "dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        108,
+        407,
+        111,
+        411
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        113,
+        407,
+        117,
+        411
+      ],
+      "material": "steel",
+      "pattern": null
+    },
+    {
+      "uv": [
+        119,
+        407,
+        177,
+        408
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        179,
+        407,
+        187,
+        408
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        189,
+        407,
+        247,
+        415
+      ],
+      "material": "shell_dark",
+      "pattern": "roof_hatch"
+    },
+    {
+      "uv": [
+        249,
+        407,
+        307,
+        415
+      ],
+      "material": "shell_dark",
+      "pattern": null
+    },
+    {
+      "uv": [
+        309,
+        407,
+        431,
+        413
+      ],
+      "material": "red",
+      "pattern": null
+    },
+    {
+      "uv": [
+        2,
+        417,
+        124,
+        423
+      ],
+      "material": "red",
+      "pattern": "red_beam"
+    },
+    {
+      "uv": [
+        126,
+        417,
+        133,
+        423
+      ],
+      "material": "red",
+      "pattern": null
+    },
+    {
+      "uv": [
+        135,
+        417,
+        257,
+        424
+      ],
+      "material": "red",
+      "pattern": null
+    },
+    {
+      "uv": [
+        259,
+        417,
+        267,
+        421
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        269,
+        417,
+        313,
+        421
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        315,
+        417,
+        323,
+        461
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        325,
+        417,
+        337,
+        422
+      ],
+      "material": "dark_light",
+      "pattern": "foot"
+    },
+    {
+      "uv": [
+        339,
+        417,
+        347,
+        422
+      ],
+      "material": "dark_light",
+      "pattern": null
+    },
+    {
+      "uv": [
+        349,
+        417,
+        361,
+        425
+      ],
+      "material": "dark_light",
+      "pattern": null
+    }
+  ],
+  "atlas_used_height": 461
+}
