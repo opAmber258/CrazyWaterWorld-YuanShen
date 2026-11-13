@@ -1,0 +1,114 @@
+{
+  "front": {
+    "structuredContent": {
+      "view": {
+        "id": "cabinet_delivery",
+        "kind": "offscreen",
+        "active": false,
+        "width": 1200,
+        "height": 900,
+        "antialias": true,
+        "camera": {
+          "projection": "orthographic",
+          "position": [
+            0,
+            20,
+            100
+          ],
+          "target": [
+            0,
+            20,
+            0
+          ],
+          "fov": 45,
+          "zoom": 0.42,
+          "locked_angle": null
+        }
+      }
+    }
+  },
+  "back": {
+    "structuredContent": {
+      "view": {
+        "id": "cabinet_delivery",
+        "kind": "offscreen",
+        "active": false,
+        "width": 1200,
+        "height": 900,
+        "antialias": true,
+        "camera": {
+          "projection": "orthographic",
+          "position": [
+            0,
+            20,
+            -100
+          ],
+          "target": [
+            0,
+            20,
+            0
+          ],
+          "fov": 45,
+          "zoom": 0.42,
+          "locked_angle": null
+        }
+      }
+    }
+  },
+  "side": {
+    "structuredContent": {
+      "view": {
+        "id": "cabinet_delivery",
+        "kind": "offscreen",
+        "active": false,
+        "width": 1200,
+        "height": 900,
+        "antialias": true,
+        "camera": {
+          "projection": "orthographic",
+          "position": [
+            100,
+            20,
+            0
+          ],
+          "target": [
+            0,
+            20,
+            0
+          ],
+          "fov": 45,
+          "zoom": 0.42,
+          "locked_angle": null
+        }
+      }
+    }
+  },
+  "oblique": {
+    "structuredContent": {
+      "view": {
+        "id": "cabinet_delivery",
+        "kind": "offscreen",
+        "active": false,
+        "width": 1200,
+        "height": 900,
+        "antialias": true,
+        "camera": {
+          "projection": "perspective",
+          "position": [
+            64,
+            52,
+            94
+          ],
+          "target": [
+            0,
+            20,
+            0
+          ],
+          "fov": 32,
+          "zoom": 0.42,
+          "locked_angle": null
+        }
+      }
+    }
+  }
+}

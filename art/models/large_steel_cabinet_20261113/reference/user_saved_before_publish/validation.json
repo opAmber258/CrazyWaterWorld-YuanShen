@@ -1,0 +1,64 @@
+{
+  "asset": "large_steel_cabinet",
+  "status": "passed",
+  "bbox_bb": {
+    "min": [
+      -24.0,
+      0.0,
+      -6.9025
+    ],
+    "max": [
+      24.0,
+      40.0,
+      6.9025
+    ],
+    "size_xyz": [
+      48.0,
+      40.0,
+      13.805
+    ]
+  },
+  "size_blocks_xyz": [
+    3.0,
+    2.5,
+    0.8628125
+  ],
+  "cubes": 102,
+  "bones": 10,
+  "declared_faces": 612,
+  "texture": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "nominal_pixels_per_block": 32
+  },
+  "checks_total": 1003,
+  "failed_checks": [],
+  "warnings": [
+    "Shared UV tiles for identical plain material faces are intentional; editing one shared tile changes all matching faces.",
+    "Initial native save/reopen changed some numeric values by serialization rounding; normalized geometry and UV checks use 0.0001 BB tolerance.",
+    "Five door pivots are prepared for future animation, but no opening animation, interior presentation, interaction, collision or Minecraft runtime integration is delivered.",
+    "Window is opaque stylized dark glass on a closed door; true transparency and internal contents are outside this asset scope."
+  ],
+  "native_reopen": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"name\":\"large_steel_cabinet\",\"uuid\":\"f1978c2c-ff56-6d61-d491-c12f5f9ab8e5\",\"cubes\":102,\"bones\":10,\"textures\":1,\"saved\":true,\"path\":\"F:/BarotraumaMinecraft/art-vault/production/large_steel_cabinet_20261113/large_steel_cabinet.bbmodel\"}"
+      }
+    ]
+  },
+  "minecraft_tested": false,
+  "previews": "Native Blockbench 5.2.2 offscreen viewport: front/back/side orthographic; oblique perspective",
+  "sha256": {
+    "large_steel_cabinet.bbmodel": "62da329886afd3ffcda7b6bc3b1cdc752f16e5f974817bf24fe51d905c9c8dfc",
+    "large_steel_cabinet.geo.json": "270791e6f31d041696063fa333494bdc5d93eb30be3e9c3f811e0b6b8a24e88b",
+    "large_steel_cabinet_tex.png": "35ef2cae38b3d8ba7d5c23c8176057e4b255807c464b05c3bb16471fc1e88e9c",
+    "preview_back.png": "7b636c858c218f3cf1938170214c68eb9a9847273a469ead59e05af462ab6fa7",
+    "preview_front.png": "8f286e0e4242c105b45baa77d101ca385813696709ae5b1f468dcd7352a50dbb",
+    "preview_oblique.png": "7115d716b09ad214f92e3a2c7f56d9812d8fe4370c0d6d0763c6e90aee966238",
+    "preview_side.png": "86bc850a67bd02c6aff6a6f45cb8b5f3049484d110acc39d94ba8877d96fe980"
+  }
+}

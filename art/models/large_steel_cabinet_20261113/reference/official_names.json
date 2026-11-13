@@ -1,0 +1,10 @@
+{
+  "English": {
+    "source": "Texts/English/EnglishVanilla.xml",
+    "entry": "<entityname.steelcabinet>Large Steel Cabinet</entityname.steelcabinet>"
+  },
+  "SimplifiedChinese": {
+    "source": "Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+    "entry": "<entityname.steelcabinet>大型钢柜</entityname.steelcabinet>"
+  }
+}

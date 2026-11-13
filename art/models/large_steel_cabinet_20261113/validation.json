@@ -1,0 +1,65 @@
+{
+  "asset": "large_steel_cabinet",
+  "status": "passed",
+  "bbox_bb": {
+    "min": [
+      -24.0,
+      0.0,
+      -7.1025
+    ],
+    "max": [
+      24.0,
+      40.0,
+      6.9025
+    ],
+    "size_xyz": [
+      48.0,
+      40.0,
+      14.004999999999999
+    ]
+  },
+  "size_blocks_xyz": [
+    3.0,
+    2.5,
+    0.8753124999999999
+  ],
+  "cubes": 103,
+  "bones": 10,
+  "declared_faces": 618,
+  "texture": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "nominal_pixels_per_block": 32
+  },
+  "checks_total": 1004,
+  "failed_checks": [],
+  "warnings": [
+    "Shared UV tiles for identical plain material faces are intentional; editing one shared tile changes all matching faces.",
+    "Initial native save/reopen changed some numeric values by serialization rounding; normalized geometry and UV checks use 0.0001 BB tolerance.",
+    "Five door pivots are prepared for future animation, but no opening animation, interior presentation, interaction, collision or Minecraft runtime integration is delivered.",
+    "Window is opaque stylized dark glass on a closed door; true transparency and internal contents are outside this asset scope.",
+    "User-saved rear mount extension is preserved: Z center offset is -0.10000000000000009 BB. No automatic recentering was applied."
+  ],
+  "native_reopen": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"name\":\"large_steel_cabinet\",\"uuid\":\"08e57f1d-f2ab-6b97-f8df-cb5ba6e0ed0a\",\"cubes\":103,\"bones\":10,\"textures\":1,\"saved\":true,\"path\":\"F:/BarotraumaMinecraft/art-vault/production/large_steel_cabinet_20261113/large_steel_cabinet.bbmodel\"}"
+      }
+    ]
+  },
+  "minecraft_tested": false,
+  "previews": "Native Blockbench 5.2.2 offscreen viewport: front/back/side orthographic; oblique perspective",
+  "sha256": {
+    "large_steel_cabinet.bbmodel": "1c0d705c1faf7d0dccb90aefcbdd65b10486a418f0243ac29f4f5ab6ae80e490",
+    "large_steel_cabinet.geo.json": "3f54aeb36b4496127ecebc6bcf71bbdc78a7892db65e1c7b1c7038a867a0dae5",
+    "large_steel_cabinet_tex.png": "fa71984a681881a14ec333c27ffe9a00469bf1f145d9d3a4acc4aa0f3f7bb464",
+    "preview_back.png": "8c5fb680f2dca3295b33058167de938b92a8ad2ede05635c5703db8f8f414f78",
+    "preview_front.png": "166a222c8bca3d9838b88344cbcd5b5b74a5724c8decf307dab94443b4c08b9b",
+    "preview_oblique.png": "4d86bcfd7c9ed9a3c3ec1dcd9f727650ba86816b5dcea8415e955b0cf488f755",
+    "preview_side.png": "f9feb903840ec5ab40cfbae7a1d62206e083da149fca6963fb0348af1166fc5d"
+  }
+}
