@@ -97,8 +97,10 @@ public final class BagManager {
         int before = stack.getCount();
         BagContainer bag = container(player);
         var hotbar = player.getInventory();
-        // 背包类物品不能塞进背包（原作 toolbelt/backpack 也互相装不进去），只走热键栏。
-        boolean canUseBag = !stack.is(EquipmentTags.BAG);
+        // 背包类物品不能塞进背包（原作 toolbelt/backpack 也互相装不进去），
+        // 双手持物品（箱子）也只能进双手格，两者都只走热键栏。
+        boolean canUseBag = !stack.is(EquipmentTags.BAG)
+                && !com.opamb.barotrauma.item.TwoHanded.is(stack);
 
         // 1) 先合并到已有堆
         if (canUseBag) {

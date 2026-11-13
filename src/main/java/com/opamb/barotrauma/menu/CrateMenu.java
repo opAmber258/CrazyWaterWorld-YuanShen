@@ -69,6 +69,8 @@ public class CrateMenu extends AbstractContainerMenu {
     }
 
     private final int hostMenuIndex;
+    /** 打开界面时绑定的那件箱子；换箱子（哪怕容量相同）后界面必须关闭。 */
+    private final ItemStack hostStack;
     private final int crateCapacity;
     private final int crateColumns;
     private final int bagCapacity;
@@ -93,6 +95,7 @@ public class CrateMenu extends AbstractContainerMenu {
         Player player = inventory.player;
         this.hostMenuIndex = hostMenuIndex;
         ItemStack host = hostAt(player, hostMenuIndex);
+        this.hostStack = host;
         this.crateCapacity = host.getItem() instanceof CrateItem item ? item.capacity() : 0;
         this.crateColumns = columnsFor(crateCapacity);
         this.crate = new CrateContainer(host, crateCapacity);
@@ -123,7 +126,8 @@ public class CrateMenu extends AbstractContainerMenu {
         BagLayout.Grid grid = BagLayout.forCapacityIn(bagCapacity, 8, 84, 160, 54);
         this.bagStart = slots.size();
         for (int i = 0; i < bagCapacity; i++) {
-            addSlot(new BagSlot(bag, i, grid.slotX(i), grid.slotY(i), () -> bagCapacity, bagCapacity));
+            addSlot(new BagSlot(bag, i, grid.slotX(i), grid.slotY(i),
+                    () -> BagManager.capacity(player), bagCapacity));
         }
         this.bagEnd = slots.size();
         this.handsIndex = slots.size();
@@ -195,7 +199,9 @@ public class CrateMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player player) {
         ItemStack current = hostAt(player, hostMenuIndex);
-        return current.getItem() instanceof CrateItem crateItem
+        // 必须是打开界面时的同一份 ItemStack：换成另一个同容量箱子也要关。
+        return current == hostStack
+                && current.getItem() instanceof CrateItem crateItem
                 && crateItem.capacity() == crateCapacity;
     }
 

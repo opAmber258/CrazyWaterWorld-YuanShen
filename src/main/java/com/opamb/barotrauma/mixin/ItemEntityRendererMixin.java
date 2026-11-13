@@ -56,7 +56,14 @@ public abstract class ItemEntityRendererMixin {
     private static float modelMinZ(BakedModel model) {
         float min = Float.MAX_VALUE;
         var random = net.minecraft.util.RandomSource.create(0L);
-        for (net.minecraft.client.renderer.block.model.BakedQuad quad : model.getQuads(null, null, random)) {
+        // getQuads(null, null, ...) 只给“无剔除方向”的面；六个方向的面也要算，
+        // 否则全 cullface 的立方体会被当成薄片，最低点算错。
+        java.util.List<net.minecraft.client.renderer.block.model.BakedQuad> quads =
+                new java.util.ArrayList<>(model.getQuads(null, null, random));
+        for (net.minecraft.core.Direction direction : net.minecraft.core.Direction.values()) {
+            quads.addAll(model.getQuads(null, direction, random));
+        }
+        for (net.minecraft.client.renderer.block.model.BakedQuad quad : quads) {
             int[] vertices = quad.getVertices();
             for (int i = 0; i < 4; i++) {
                 float z = Float.intBitsToFloat(vertices[i * 8 + 2]);

@@ -355,6 +355,12 @@ public final class CampaignManager {
         if (resetFailed > 0) {
             BarotraumaMod.LOGGER.info("[campaign] 抵达目的地，重置 {} 条失败任务", resetFailed);
         }
+        // 任务包按“当前站”下发报价：必须等节点推进/失败重置之后再同步，
+        // 否则客户端拿到的是出发站的报价，到站后海图会缺任务。
+        for (ServerPlayer online : deep.getServer().getPlayerList().getPlayers()) {
+            ModNetwork.sendToPlayer(online,
+                    com.opamb.barotrauma.network.MissionStatePacket.build(online, deep));
+        }
     }
 
     /**
@@ -366,14 +372,23 @@ public final class CampaignManager {
      *   <li>侦察：途中到过目标点（READY）就完成，否则失败。</li>
      * </ul>
      *
+     * <p>按“任务持有者”遍历（含离线）：离线持有者的任务不能一直挂着占名额，
+     * 货运按船上的箱子结算，打捞/侦察无法核对背包时按失败处理。</p>
+     *
      * <p>无论成败都清掉任务货（原作任务结束会移除所有货物）。</p>
      */
     private static void settleMissions(ServerLevel deep, CampaignState wallet, int arrivedNode) {
         com.opamb.barotrauma.data.MissionSavedData data =
                 com.opamb.barotrauma.data.MissionSavedData.get(deep);
-        for (ServerPlayer player : deep.getServer().getPlayerList().getPlayers()) {
+        java.util.Set<java.util.UUID> holders =
+                new java.util.LinkedHashSet<>(data.playersWithActiveMissions());
+        for (ServerPlayer online : deep.getServer().getPlayerList().getPlayers()) {
+            holders.add(online.getUUID());
+        }
+        for (java.util.UUID owner : holders) {
+            ServerPlayer player = deep.getServer().getPlayerList().getPlayer(owner);
             for (com.opamb.barotrauma.mission.Mission mission
-                    : java.util.List.copyOf(data.activeMissions(player.getUUID()))) {
+                    : java.util.List.copyOf(data.activeMissions(owner))) {
                 // 任务绑定在某个目的地：只有在那个站靠泊才结算；旧存档没有绑定（-1）照旧。
                 if (mission.destinationNode() >= 0 && mission.destinationNode() != arrivedNode) {
                     continue;
@@ -384,6 +399,27 @@ public final class CampaignManager {
                 }
                 boolean cargo = mission.type == com.opamb.barotrauma.mission.MissionType.DELIVERY
                         || mission.type == com.opamb.barotrauma.mission.MissionType.URGENT_DELIVERY;
+                // 超时检查每 20 tick 才跑一次，靠泊可能卡在两次检查之间：这里补一次。
+                if (mission.isOverdue(deep.getGameTime())) {
+                    data.failMission(mission);
+                    if (cargo) {
+                        if (player != null) {
+                            com.opamb.barotrauma.mission.MissionCargo.clear(deep, player, mission);
+                        } else {
+                            com.opamb.barotrauma.mission.MissionCargo.clearShip(deep, mission);
+                        }
+                    }
+                    if (player != null) {
+                        player.sendSystemMessage(Component.literal(
+                                        "任务 #" + mission.id + " 超时失败（零报酬）")
+                                .withStyle(net.minecraft.ChatFormatting.RED));
+                    }
+                    continue;
+                }
+                if (player == null) {
+                    settleOffline(deep, wallet, data, owner, mission, cargo);
+                    continue;
+                }
                 int payout;
                 String detail;
                 boolean ok;
@@ -421,9 +457,44 @@ public final class CampaignManager {
                     com.opamb.barotrauma.mission.MissionCargo.clear(deep, player, mission);
                 }
             }
-            ModNetwork.sendToPlayer(player,
-                    com.opamb.barotrauma.network.MissionStatePacket.build(player, deep));
         }
+    }
+
+    /** 离线持有者的结算：货运只数船上的箱子，打捞/侦察无法核对背包时按失败处理。 */
+    private static void settleOffline(ServerLevel deep, CampaignState wallet,
+                                      com.opamb.barotrauma.data.MissionSavedData data,
+                                      java.util.UUID owner,
+                                      com.opamb.barotrauma.mission.Mission mission,
+                                      boolean cargo) {
+        boolean ok;
+        int payout;
+        String detail;
+        if (cargo) {
+            int delivered = com.opamb.barotrauma.mission.MissionCargo.countDeliveredOffline(
+                    deep, mission);
+            ok = mission.cargoTotal() > 0
+                    && com.opamb.barotrauma.mission.MissionCargo.deliveredEnough(
+                    mission, delivered);
+            payout = mission.cargoPayout();
+            detail = "货物 " + delivered + "/" + mission.cargoTotal() + " 箱";
+            com.opamb.barotrauma.mission.MissionCargo.clearShip(deep, mission);
+        } else if (mission.type == com.opamb.barotrauma.mission.MissionType.SALVAGE) {
+            ok = false;
+            payout = 0;
+            detail = "黑匣子（持有者离线，无法核对）";
+        } else {
+            ok = mission.state() == com.opamb.barotrauma.mission.Mission.State.READY;
+            payout = mission.reward;
+            detail = "侦察点（持有者离线）";
+        }
+        if (ok) {
+            wallet.addCredits(payout);
+            data.finish(owner, mission);
+        } else {
+            data.failMission(mission);
+        }
+        BarotraumaMod.LOGGER.info("[campaign] 离线持有者 {} 的任务 #{} 结算：{} · {}",
+                owner, mission.id, ok, detail);
     }
 
     /** 交付打捞：优先从背包扣一个黑匣子，其次装备背包；扣到返回 true。 */

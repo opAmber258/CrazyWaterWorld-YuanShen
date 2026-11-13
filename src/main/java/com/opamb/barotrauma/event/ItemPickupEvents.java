@@ -38,6 +38,13 @@ public final class ItemPickupEvents {
         if (stack.isEmpty()) {
             return;
         }
+        // 和原版拾取一致：别人丢的东西不能抢（Owner 不匹配就拒绝）。
+        if (itemEntity.getOwner() != null
+                && !itemEntity.getOwner().equals(player.getUUID())) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.FAIL);
+            return;
+        }
         ItemStack remaining = stack.copy();
         if (!player.getInventory().add(remaining)) {
             return;

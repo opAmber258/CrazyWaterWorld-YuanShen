@@ -227,9 +227,10 @@ public final class CampaignMapScreen extends Screen {
         MissionSpec spec = MissionCatalog.offer(mission.id);
         CargoManifest manifest = spec == null ? null : CargoManifest.forMission(spec.id());
         if (manifest != null) {
-            return "每箱 " + manifest.rewardPerCrate() + " mk";
+            return Component.translatable("campaign.barotrauma.reward_per_crate",
+                    manifest.rewardPerCrate()).getString();
         }
-        return mission.reward + " mk";
+        return Component.translatable("campaign.barotrauma.reward_flat", mission.reward).getString();
     }
 
     /** 用原作寒冷洞穴的地形切片平铺；三个变体轮着来，避免一眼重复。 */

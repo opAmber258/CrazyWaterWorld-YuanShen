@@ -127,6 +127,8 @@ public class BagContainer implements Container {
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return slot >= 0 && slot < capacity && !stack.is(EquipmentTags.BAG);
+        // 背包类物品不能互相装；双手持物品（箱子）只能拿在双手格。
+        return slot >= 0 && slot < capacity && !stack.is(EquipmentTags.BAG)
+                && !com.opamb.barotrauma.item.TwoHanded.is(stack);
     }
 }

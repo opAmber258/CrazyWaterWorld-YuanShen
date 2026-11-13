@@ -399,20 +399,29 @@ public final class BaroHud {
 
     /** 病症 id → HUD 图标短名/颜色（原作图标是位图，这里用两字标签代替）。 */
     private static Status describe(String id) {
-        return switch (id) {
-            case "blunttrauma" -> new Status("钝器", 0xFFC46A3A, 0, 0);
-            case "bleeding" -> new Status("出血", 0xFFD9433F, 0, 0);
-            case "burn" -> new Status("烧伤", 0xFFE07A2A, 0, 0);
-            case "bloodloss" -> new Status("失血", 0xFF9E2B2B, 0, 0);
-            case "oxygenlow" -> new Status("缺氧", 0xFF43B7C7, 0, 0);
-            case "stun" -> new Status("眩晕", 0xFFE0C44A, 0, 0);
-            case "opiateoverdose" -> new Status("阿片", 0xFF7BA05B, 0, 0);
-            case "opiateaddiction" -> new Status("成瘾", 0xFF8C8F52, 0, 0);
-            case "opiatewithdrawal" -> new Status("戒断", 0xFF9A8A55, 0, 0);
-            case "organdamage" -> new Status("内伤", 0xFFB060C0, 0, 0);
-            case "radiationsickness" -> new Status("辐射", 0xFF9BD13C, 0, 0);
-            default -> new Status("病症", 0xFFB0B6BB, 0, 0);
+        int color = switch (id) {
+            case "blunttrauma" -> 0xFFC46A3A;
+            case "bleeding" -> 0xFFD9433F;
+            case "burn" -> 0xFFE07A2A;
+            case "bloodloss" -> 0xFF9E2B2B;
+            case "oxygenlow" -> 0xFF43B7C7;
+            case "stun" -> 0xFFE0C44A;
+            case "opiateoverdose" -> 0xFF7BA05B;
+            case "opiateaddiction" -> 0xFF8C8F52;
+            case "opiatewithdrawal" -> 0xFF9A8A55;
+            case "organdamage" -> 0xFFB060C0;
+            case "radiationsickness" -> 0xFF9BD13C;
+            default -> 0xFFB0B6BB;
         };
+        String key = switch (id) {
+            case "blunttrauma", "bleeding", "burn", "bloodloss", "oxygenlow", "stun",
+                    "opiateoverdose", "opiateaddiction", "opiatewithdrawal",
+                    "organdamage", "radiationsickness" -> id;
+            default -> "unknown";
+        };
+        String label = net.minecraft.network.chat.Component
+                .translatable("hud.barotrauma.status." + key).getString();
+        return new Status(label, color, 0, 0);
     }
 
     /** 原作 {@code GradientLerp(vitality, Low, Medium, High)}。 */

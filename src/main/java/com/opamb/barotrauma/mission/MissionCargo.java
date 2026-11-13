@@ -180,17 +180,44 @@ public final class MissionCargo {
                 }
             }
         }
-        for (ServerPlayer online : level.getServer().getPlayerList().getPlayers()) {
-            total += countInventory(online, mission.id);
-        }
         // 散箱必须还在船核心附近才算交到；丢进海里/丢在半路的箱子自然不计。
         Vec3 center = coreWorld(level, player);
         if (center == null) {
             center = player.position();
         }
+        double radiusSqr = LOOSE_RADIUS * LOOSE_RADIUS;
+        for (ServerPlayer online : level.getServer().getPlayerList().getPlayers()) {
+            // 只统计已经随船抵达的玩家：留在出发站/别的维度的箱子不算交付。
+            if (online.level() != level
+                    || online.position().distanceToSqr(center) > radiusSqr) {
+                continue;
+            }
+            total += countInventory(online, mission.id);
+        }
         for (ItemEntity entity : looseCrates(level, center)) {
             if (isCargo(entity.getItem(), mission.id)) {
                 total++;
+            }
+        }
+        return Math.min(total, Math.max(1, mission.cargoTotal()));
+    }
+
+    /** 离线持有者的交付统计：只数船上的货架和船附近的散箱，不碰任何玩家背包。 */
+    public static int countDeliveredOffline(ServerLevel level, Mission mission) {
+        int total = 0;
+        for (CabinetBlockEntity shelf : shelves(level)) {
+            for (int slot = 0; slot < shelf.getContainerSize(); slot++) {
+                if (isCargo(shelf.getItem(slot), mission.id)) {
+                    total++;
+                }
+            }
+        }
+        Vec3 center = coreWorld(level);
+        if (center != null) {
+            for (ItemEntity entity : looseCrates(level, center)) {
+                if (isCargo(entity.getItem(), mission.id)) {
+                    total++;
+                }
             }
         }
         return Math.min(total, Math.max(1, mission.cargoTotal()));
@@ -213,6 +240,22 @@ public final class MissionCargo {
         for (ServerPlayer online : level.getServer().getPlayerList().getPlayers()) {
             clearInventory(online, mission.id);
         }
+        clearShipCrates(level, mission);
+    }
+
+    /** 只清船上的任务货（货架 + 地上的散箱），不碰玩家背包；离线结算用。 */
+    public static void clearShip(ServerLevel level, Mission mission) {
+        for (CabinetBlockEntity shelf : shelves(level)) {
+            for (int slot = 0; slot < shelf.getContainerSize(); slot++) {
+                if (isCargo(shelf.getItem(slot), mission.id)) {
+                    shelf.setItem(slot, ItemStack.EMPTY);
+                }
+            }
+        }
+        clearShipCrates(level, mission);
+    }
+
+    private static void clearShipCrates(ServerLevel level, Mission mission) {
         for (ItemEntity entity : allLooseCrates(level)) {
             if (isCargo(entity.getItem(), mission.id)) {
                 entity.discard();
@@ -224,12 +267,56 @@ public final class MissionCargo {
 
     /** 船上所有箱子货架的方块实体（按坐标排序，保证装载顺序稳定）。 */
     public static List<CabinetBlockEntity> shelves(ServerLevel level, ServerPlayer player) {
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, player.blockPosition(), 64.0D);
-        ShipState state = core == null ? null : core.state();
+        List<CabinetBlockEntity> assembled = assembledShelves(level);
+        if (assembled != null) {
+            return assembled;
+        }
+        ShipCoreBlockEntity core = ShipCores.nearestCore(
+                level, player.blockPosition(), 64.0D);
+        return core == null ? List.of() : shelvesOf(level, core, BlockPos.ZERO);
+    }
+
+    /** 不依赖玩家实体的货架列表（离线结算/清理用）。 */
+    public static List<CabinetBlockEntity> shelves(ServerLevel level) {
+        List<CabinetBlockEntity> assembled = assembledShelves(level);
+        if (assembled != null) {
+            return assembled;
+        }
+        Vec3 center = coreWorld(level);
+        ShipCoreBlockEntity core = center == null ? null
+                : ShipCores.nearestCore(level, BlockPos.containing(center), 64.0D);
+        return core == null ? List.of() : shelvesOf(level, core, BlockPos.ZERO);
+    }
+
+    /**
+     * 装配后的货架：方块被 VS2 搬到船坞，船核心的几何仍是装配时的世界坐标，
+     * 所以按“船坞核心 − 装配核心”的平移去读船坞里的方块实体。
+     *
+     * @return null = 没装配/船坞核心还没就绪，调用方退回世界查找
+     */
+    @Nullable
+    private static List<CabinetBlockEntity> assembledShelves(ServerLevel level) {
+        if (!com.opamb.barotrauma.ship.vs.VsState.active()) {
+            return null;
+        }
+        BlockPos yard = com.opamb.barotrauma.ship.vs.VsPilot.coreYardPos();
+        BlockPos original = com.opamb.barotrauma.ship.vs.VsPilot.corePos();
+        if (yard == null || original == null) {
+            return null;
+        }
+        if (level.getBlockEntity(yard) instanceof ShipCoreBlockEntity core) {
+            return shelvesOf(level, core, yard.subtract(original));
+        }
+        return null;
+    }
+
+    private static List<CabinetBlockEntity> shelvesOf(ServerLevel level, ShipCoreBlockEntity core,
+                                                      BlockPos translate) {
+        ShipState state = core.state();
         if (state == null) {
             return List.of();
         }
-        Set<BlockPos> blocks = state.collectBlocks(level);
+        Set<BlockPos> blocks = state.collectBlocks(level, translate);
         List<CabinetBlockEntity> out = new ArrayList<>();
         for (BlockPos pos : blocks) {
             if (level.getBlockEntity(pos) instanceof CabinetBlockEntity cabinet
@@ -244,13 +331,20 @@ public final class MissionCargo {
     /** 船核心的世界坐标（船坞里用船体位置 + 核心偏移）。 */
     @Nullable
     public static Vec3 coreWorld(ServerLevel level, ServerPlayer player) {
-        Vec3 ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
-        Vec3 offset = com.opamb.barotrauma.ship.vs.VsPilot.shipCoreOffset();
-        if (ship != null && offset != null) {
-            return ship.add(offset);
+        Vec3 world = coreWorld(level);
+        if (world != null) {
+            return world;
         }
         ShipCoreBlockEntity core = ShipCores.nearestCore(level, player.blockPosition(), 64.0D);
         return core == null ? null : Vec3.atCenterOf(core.getBlockPos());
+    }
+
+    /** 不依赖玩家实体的船核心世界坐标（离线结算用）。 */
+    @Nullable
+    public static Vec3 coreWorld(ServerLevel level) {
+        Vec3 ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
+        Vec3 offset = com.opamb.barotrauma.ship.vs.VsPilot.shipCoreOffset();
+        return ship != null && offset != null ? ship.add(offset) : null;
     }
 
     /** 散箱落点：停泊时掉在货架顶上，出航（物理船装配）时掉在玩家脚边。 */

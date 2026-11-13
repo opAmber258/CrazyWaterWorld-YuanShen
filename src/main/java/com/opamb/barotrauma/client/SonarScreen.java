@@ -363,7 +363,16 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                 : net.minecraft.network.chat.Component.translatable(spec.nameKey()).getString();
         int dist = (int) Math.sqrt(minecraft.player.blockPosition().distSqr(mission.target));
         int reward = mission.cargoTotal() > 0 ? mission.cargoPayout() : mission.reward;
-        graphics.drawString(font, name + " · 奖励 " + reward + " · " + dist + "m",
+        // 货运模板的目标坐标固定是旧 B 站，进入副本后距离没有意义：改显示本轮目的站。
+        boolean cargo = mission.type == com.opamb.barotrauma.mission.MissionType.DELIVERY
+                || mission.type == com.opamb.barotrauma.mission.MissionType.URGENT_DELIVERY;
+        String where = cargo
+                ? (mission.destinationNode() >= 0
+                ? net.minecraft.network.chat.Component.translatable(
+                        "campaign.barotrauma.node." + mission.destinationNode()).getString()
+                : "目的站")
+                : dist + "m";
+        graphics.drawString(font, name + " · 奖励 " + reward + " · " + where,
                 x + 6, y + 4, TEXT, false);
 
         String state = switch (mission.state()) {

@@ -36,6 +36,7 @@ public final class NpcDialogueScreen extends Screen {
     private Button primary;
     private Button secondary;
     private boolean waiting;
+    private long waitingSince;
 
     private NpcDialogueScreen(NpcDialoguePacket packet) {
         super(Component.translatable("entity.barotrauma.npc"));
@@ -49,7 +50,8 @@ public final class NpcDialogueScreen extends Screen {
             screen.packet = packet;
             screen.waiting = false;
             screen.rebuildWidgets();
-        } else {
+        } else if (packet.phase() == NpcDialoguePacket.GREETING) {
+            // 只有打招呼能新开对话；玩家已经关掉对话后的迟到应答直接丢弃。
             minecraft.setScreen(new NpcDialogueScreen(packet));
         }
     }
@@ -75,6 +77,7 @@ public final class NpcDialogueScreen extends Screen {
         } else {
             primary = addRenderableWidget(Button.builder(tr("ask"), button -> {
                 waiting = true;
+                waitingSince = System.currentTimeMillis();
                 button.active = false;
                 ModNetwork.CHANNEL.sendToServer(new NpcTalkPacket(NpcTalkPacket.ASK_FOR_WORK));
             }).bounds(left + PANEL_W - 184, buttonY, 104, 20).build());
@@ -157,6 +160,16 @@ public final class NpcDialogueScreen extends Screen {
         }
         return dest < 0 ? ""
                 : Component.translatable("campaign.barotrauma.node." + dest).getString();
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        // 服务端拒绝（例如被移出对话范围）时不会有回包：超时后恢复提问按钮。
+        if (waiting && System.currentTimeMillis() - waitingSince > 3000L) {
+            waiting = false;
+            rebuildWidgets();
+        }
     }
 
     @Override

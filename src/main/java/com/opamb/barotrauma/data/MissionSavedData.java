@@ -81,6 +81,17 @@ public final class MissionSavedData extends SavedData {
         return out;
     }
 
+    /** 所有还有进行中任务的玩家（含离线）；抵达结算要按持有者遍历。 */
+    public java.util.Set<UUID> playersWithActiveMissions() {
+        java.util.Set<UUID> out = new java.util.HashSet<>();
+        for (Map.Entry<UUID, List<Integer>> entry : active.entrySet()) {
+            if (entry.getValue() != null && !entry.getValue().isEmpty()) {
+                out.add(entry.getKey());
+            }
+        }
+        return out;
+    }
+
     /** 玩家进行中的第一条任务；没有返回 null。 */
     @Nullable
     public Mission activeMission(UUID player) {
@@ -242,7 +253,8 @@ public final class MissionSavedData extends SavedData {
      */
     public void abandon(UUID player, int missionId) {
         List<Integer> ids = active.get(player);
-        if (ids == null) {
+        // 先确认这条确实属于该玩家，避免误重置别人持有的任务。
+        if (ids == null || !ids.contains(missionId)) {
             return;
         }
         Mission mission = missions.get(missionId);
