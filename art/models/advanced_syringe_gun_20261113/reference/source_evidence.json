@@ -1,0 +1,37 @@
+{
+  "names": {
+    "SimplifiedChinese": {
+      "file": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+      "key": "entityname.advancedsyringegun",
+      "value": "高级注射器枪"
+    },
+    "English": {
+      "file": "Content/Texts/English/EnglishVanilla.xml",
+      "key": "entityname.advancedsyringegun",
+      "value": "Advanced Syringe Gun"
+    }
+  },
+  "entity_file": "Content/Items/Jobgear/Medic/medic_talent_items.xml",
+  "identifier": "advancedsyringegun",
+  "sprite": {
+    "texture": "Content/Items/JobGear/TalentGear.png",
+    "sourcerect": "354,429,145,78",
+    "depth": "0.7",
+    "origin": "0.5,0.5"
+  },
+  "variantof": "syringegun",
+  "inherited_scale": "0.5",
+  "item_container": {
+    "capacity": "2",
+    "maxstacksize": "8",
+    "itempos": "0,25",
+    "itemrotation": "-90",
+    "hideitems": "false",
+    "containedstateindicatorstyle": "syringe",
+    "ShowTotalStackCapacityInContainedStateIndicator": "true",
+    "containedstateindicatorslot": "0"
+  },
+  "integrated_health_scanner": true,
+  "wiki": "https://barotraumagame.com/wiki/Advanced_Syringe_Gun",
+  "note": "Installed XML is primary for local values. Wiki capacity differs: installed capacity=2, maxstacksize=8. Visual grid is not slot count."
+}

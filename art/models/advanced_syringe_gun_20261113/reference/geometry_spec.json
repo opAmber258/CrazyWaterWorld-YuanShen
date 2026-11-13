@@ -1,0 +1,1796 @@
+[
+  {
+    "group": "receiver",
+    "name": "breech_core",
+    "a": [
+      -6.8,
+      5.1,
+      -1.12
+    ],
+    "b": [
+      -1.25,
+      7.7,
+      1.12
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "receiver",
+    "name": "pressure_block",
+    "a": [
+      -7.75,
+      5.3,
+      -1.0
+    ],
+    "b": [
+      -6.45,
+      8.15,
+      1.0
+    ],
+    "mat": "steel",
+    "detail": "bands",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "receiver",
+    "name": "pressure_end",
+    "a": [
+      -8.2,
+      5.65,
+      -0.78
+    ],
+    "b": [
+      -7.75,
+      7.85,
+      0.78
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "receiver",
+    "name": "scanner_top",
+    "a": [
+      -6.45,
+      7.25,
+      -1.25
+    ],
+    "b": [
+      -1.45,
+      7.7,
+      1.25
+    ],
+    "mat": "teal",
+    "detail": "rail",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "receiver",
+    "name": "receiver_underside",
+    "a": [
+      -6.1,
+      4.85,
+      -0.83
+    ],
+    "b": [
+      -1.25,
+      5.3,
+      0.83
+    ],
+    "mat": "steel",
+    "detail": "slots",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "scanner",
+    "name": "left_scanner_cover",
+    "a": [
+      -6.35,
+      5.45,
+      -1.36
+    ],
+    "b": [
+      -2.0,
+      7.22,
+      -1.12
+    ],
+    "mat": "teal",
+    "detail": "controls",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "scanner",
+    "name": "left_health_display",
+    "a": [
+      -6.0,
+      7.29,
+      -1.45
+    ],
+    "b": [
+      -3.5,
+      7.65,
+      -1.36
+    ],
+    "mat": "scanner",
+    "detail": "pulse",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "scanner",
+    "name": "left_dial_0",
+    "a": [
+      -5.32,
+      6.05,
+      -1.61
+    ],
+    "b": [
+      -4.800000000000001,
+      6.57,
+      -1.37
+    ],
+    "mat": "steel",
+    "detail": "bolt",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "scanner",
+    "name": "left_dial_1",
+    "a": [
+      -3.75,
+      6.05,
+      -1.61
+    ],
+    "b": [
+      -3.23,
+      6.57,
+      -1.37
+    ],
+    "mat": "steel",
+    "detail": "bolt",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "scanner",
+    "name": "right_scanner_cover",
+    "a": [
+      -6.35,
+      5.45,
+      1.12
+    ],
+    "b": [
+      -2.0,
+      7.22,
+      1.36
+    ],
+    "mat": "teal",
+    "detail": "controls",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "scanner",
+    "name": "right_health_display",
+    "a": [
+      -6.0,
+      7.29,
+      1.36
+    ],
+    "b": [
+      -3.5,
+      7.65,
+      1.45
+    ],
+    "mat": "scanner",
+    "detail": "pulse",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "scanner",
+    "name": "right_dial_0",
+    "a": [
+      -5.32,
+      6.05,
+      1.37
+    ],
+    "b": [
+      -4.800000000000001,
+      6.57,
+      1.61
+    ],
+    "mat": "steel",
+    "detail": "bolt",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "scanner",
+    "name": "right_dial_1",
+    "a": [
+      -3.75,
+      6.05,
+      1.37
+    ],
+    "b": [
+      -3.23,
+      6.57,
+      1.61
+    ],
+    "mat": "steel",
+    "detail": "bolt",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "upper_spine",
+    "a": [
+      -1.8,
+      8.24,
+      -1.05
+    ],
+    "b": [
+      7.35,
+      8.65,
+      1.05
+    ],
+    "mat": "teal",
+    "detail": "rail",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "lower_spine",
+    "a": [
+      -1.65,
+      4.86,
+      -1.09
+    ],
+    "b": [
+      7.55,
+      5.28,
+      1.09
+    ],
+    "mat": "teal",
+    "detail": "rail",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "rear_column",
+    "a": [
+      -1.8,
+      5.25,
+      -1.08
+    ],
+    "b": [
+      -1.2,
+      8.24,
+      1.08
+    ],
+    "mat": "teal",
+    "detail": "rail",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "front_column",
+    "a": [
+      6.85,
+      5.25,
+      -1.08
+    ],
+    "b": [
+      7.55,
+      8.24,
+      1.08
+    ],
+    "mat": "teal",
+    "detail": "rail",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "cassette_backbone",
+    "a": [
+      -1.22,
+      5.3,
+      -0.2
+    ],
+    "b": [
+      6.88,
+      8.23,
+      0.2
+    ],
+    "mat": "socket",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "left_low_bead",
+    "a": [
+      -1.22,
+      5.27,
+      -1.12
+    ],
+    "b": [
+      6.86,
+      5.449999999999999,
+      -0.91
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "left_high_bead",
+    "a": [
+      -1.22,
+      8.02,
+      -1.12
+    ],
+    "b": [
+      6.86,
+      8.2,
+      -0.91
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "left_front_latch",
+    "a": [
+      6.89,
+      6.05,
+      -1.16
+    ],
+    "b": [
+      7.59,
+      7.25,
+      -0.92
+    ],
+    "mat": "dark",
+    "detail": "latch",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "right_low_bead",
+    "a": [
+      -1.22,
+      5.27,
+      0.91
+    ],
+    "b": [
+      6.86,
+      5.449999999999999,
+      1.12
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "right_high_bead",
+    "a": [
+      -1.22,
+      8.02,
+      0.91
+    ],
+    "b": [
+      6.86,
+      8.2,
+      1.12
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "right_front_latch",
+    "a": [
+      6.89,
+      6.05,
+      0.92
+    ],
+    "b": [
+      7.59,
+      7.25,
+      1.16
+    ],
+    "mat": "dark",
+    "detail": "latch",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_0_0",
+    "a": [
+      -1.1,
+      5.5,
+      -0.95
+    ],
+    "b": [
+      0.6799999999999999,
+      6.22,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_0_1",
+    "a": [
+      0.7999999999999998,
+      5.5,
+      -0.95
+    ],
+    "b": [
+      2.58,
+      6.22,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_0_2",
+    "a": [
+      2.6999999999999997,
+      5.5,
+      -0.95
+    ],
+    "b": [
+      4.4799999999999995,
+      6.22,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_0_3",
+    "a": [
+      4.6,
+      5.5,
+      -0.95
+    ],
+    "b": [
+      6.38,
+      6.22,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_1_0",
+    "a": [
+      -1.1,
+      6.32,
+      -0.95
+    ],
+    "b": [
+      0.6799999999999999,
+      7.04,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_1_1",
+    "a": [
+      0.7999999999999998,
+      6.32,
+      -0.95
+    ],
+    "b": [
+      2.58,
+      7.04,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_1_2",
+    "a": [
+      2.6999999999999997,
+      6.32,
+      -0.95
+    ],
+    "b": [
+      4.4799999999999995,
+      7.04,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_1_3",
+    "a": [
+      4.6,
+      6.32,
+      -0.95
+    ],
+    "b": [
+      6.38,
+      7.04,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_2_0",
+    "a": [
+      -1.1,
+      7.14,
+      -0.95
+    ],
+    "b": [
+      0.6799999999999999,
+      7.859999999999999,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_2_1",
+    "a": [
+      0.7999999999999998,
+      7.14,
+      -0.95
+    ],
+    "b": [
+      2.58,
+      7.859999999999999,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_2_2",
+    "a": [
+      2.6999999999999997,
+      7.14,
+      -0.95
+    ],
+    "b": [
+      4.4799999999999995,
+      7.859999999999999,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "amber_magazine",
+    "name": "cartridge_2_3",
+    "a": [
+      4.6,
+      7.14,
+      -0.95
+    ],
+    "b": [
+      6.38,
+      7.859999999999999,
+      0.95
+    ],
+    "mat": "amber",
+    "detail": "cartridge",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "upper_sight_line",
+    "a": [
+      -1.35,
+      8.66,
+      -0.35
+    ],
+    "b": [
+      5.75,
+      8.82,
+      0.35
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "cassette_frame",
+    "name": "lower_slide",
+    "a": [
+      0.9,
+      4.56,
+      -0.6
+    ],
+    "b": [
+      6.3,
+      4.86,
+      0.6
+    ],
+    "mat": "dark",
+    "detail": "slots",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "stock",
+    "name": "stock_rear_leg",
+    "a": [
+      -9.56,
+      -0.2,
+      -0.675
+    ],
+    "b": [
+      -8.74,
+      4.811237372146724,
+      0.675
+    ],
+    "mat": "rubber",
+    "detail": "grip",
+    "rotation": [
+      0,
+      0,
+      -12.094757077012108
+    ],
+    "pivot": [
+      -9.15,
+      -0.2,
+      0
+    ]
+  },
+  {
+    "group": "stock",
+    "name": "stock_top_strut",
+    "a": [
+      -8.375,
+      4.7,
+      -0.515
+    ],
+    "b": [
+      -7.824999999999999,
+      9.652272205765753,
+      0.515
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -91.73570458892839
+    ],
+    "pivot": [
+      -8.1,
+      4.7,
+      0
+    ]
+  },
+  {
+    "group": "stock",
+    "name": "stock_lower_strut",
+    "a": [
+      -9.350000000000001,
+      0.48,
+      -0.52
+    ],
+    "b": [
+      -8.75,
+      7.032205735475651,
+      0.52
+    ],
+    "mat": "dark",
+    "detail": "rail",
+    "rotation": [
+      0,
+      0,
+      -88.51326773795986
+    ],
+    "pivot": [
+      -9.05,
+      0.48,
+      0
+    ]
+  },
+  {
+    "group": "stock",
+    "name": "shoulder_heel",
+    "a": [
+      -9.775,
+      -0.42,
+      -0.775
+    ],
+    "b": [
+      -9.225,
+      0.5716148445843272,
+      0.775
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -21.90870482818188
+    ],
+    "pivot": [
+      -9.5,
+      -0.42,
+      0
+    ]
+  },
+  {
+    "group": "stock",
+    "name": "stock_coupling",
+    "a": [
+      -7.95,
+      4.6,
+      -0.88
+    ],
+    "b": [
+      -6.6,
+      5.45,
+      0.88
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "main_grip",
+    "a": [
+      -3.275,
+      0.35,
+      -0.86
+    ],
+    "b": [
+      -1.8249999999999997,
+      5.633937925449162,
+      0.86
+    ],
+    "mat": "rubber",
+    "detail": "grip",
+    "rotation": [
+      0,
+      0,
+      -29.47588900324574
+    ],
+    "pivot": [
+      -2.55,
+      0.35,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "grip_heel",
+    "a": [
+      -3.65,
+      0.22,
+      -0.955
+    ],
+    "b": [
+      -1.9499999999999997,
+      0.9456031973468694,
+      0.955
+    ],
+    "mat": "steel",
+    "detail": "bolt",
+    "rotation": [
+      0,
+      0,
+      -29.744881296942214
+    ],
+    "pivot": [
+      -2.8,
+      0.22,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "left_grip_inlay",
+    "a": [
+      -2.44,
+      1.2,
+      -0.97
+    ],
+    "b": [
+      -1.8199999999999998,
+      4.894996617048519,
+      -0.8500000000000001
+    ],
+    "mat": "dark",
+    "detail": "grip",
+    "rotation": [
+      0,
+      0,
+      -29.6871816391937
+    ],
+    "pivot": [
+      -2.13,
+      1.2,
+      -0.91
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "right_grip_inlay",
+    "a": [
+      -2.44,
+      1.2,
+      0.8500000000000001
+    ],
+    "b": [
+      -1.8199999999999998,
+      4.894996617048519,
+      0.97
+    ],
+    "mat": "dark",
+    "detail": "grip",
+    "rotation": [
+      0,
+      0,
+      -29.6871816391937
+    ],
+    "pivot": [
+      -2.13,
+      1.2,
+      0.91
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "guard_bottom",
+    "a": [
+      -6.26,
+      3.6,
+      -0.26
+    ],
+    "b": [
+      -6.0,
+      6.5600000000000005,
+      0.26
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -90.0
+    ],
+    "pivot": [
+      -6.13,
+      3.6,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "guard_rear",
+    "a": [
+      -6.27,
+      3.6,
+      -0.26
+    ],
+    "b": [
+      -5.99,
+      4.944804818551749,
+      0.26
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      20.456313763278015
+    ],
+    "pivot": [
+      -6.13,
+      3.6,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "guard_front",
+    "a": [
+      -3.31,
+      3.6,
+      -0.26
+    ],
+    "b": [
+      -3.03,
+      4.935440002396214,
+      0.26
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -20.606260613836827
+    ],
+    "pivot": [
+      -3.17,
+      3.6,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "trigger",
+    "a": [
+      -4.61,
+      3.95,
+      -0.18
+    ],
+    "b": [
+      -4.3500000000000005,
+      4.87892410884851,
+      0.18
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -14.335435419520154
+    ],
+    "pivot": [
+      -4.48,
+      3.95,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "forward_lever_upper",
+    "a": [
+      0.86,
+      3.1,
+      -0.24
+    ],
+    "b": [
+      1.1400000000000001,
+      4.884656829757475,
+      0.24
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      11.309932474020217
+    ],
+    "pivot": [
+      1.0,
+      3.1,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "forward_lever_middle",
+    "a": [
+      2.08,
+      1.1,
+      -0.24
+    ],
+    "b": [
+      2.3600000000000003,
+      3.442733446211925,
+      0.24
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      31.38319105635904
+    ],
+    "pivot": [
+      2.22,
+      1.1,
+      0
+    ]
+  },
+  {
+    "group": "grip_trigger",
+    "name": "forward_lever_tip",
+    "a": [
+      2.86,
+      0.28,
+      -0.24
+    ],
+    "b": [
+      3.14,
+      1.4117243480636086,
+      0.24
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      43.56790381583534
+    ],
+    "pivot": [
+      3.0,
+      0.28,
+      0
+    ]
+  },
+  {
+    "group": "rear_hose",
+    "name": "hose_segment_0",
+    "a": [
+      -8.34,
+      6.0,
+      -0.275
+    ],
+    "b": [
+      -7.859999999999999,
+      7.632482771731452,
+      0.275
+    ],
+    "mat": "rubber",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      62.65012421993014
+    ],
+    "pivot": [
+      -8.1,
+      6.0,
+      0
+    ]
+  },
+  {
+    "group": "rear_hose",
+    "name": "hose_segment_1",
+    "a": [
+      -9.790000000000001,
+      6.75,
+      -0.275
+    ],
+    "b": [
+      -9.31,
+      8.290292180074937,
+      0.275
+    ],
+    "mat": "rubber",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -13.134022306396375
+    ],
+    "pivot": [
+      -9.55,
+      6.75,
+      0
+    ]
+  },
+  {
+    "group": "rear_hose",
+    "name": "hose_segment_2",
+    "a": [
+      -9.44,
+      8.25,
+      -0.275
+    ],
+    "b": [
+      -8.959999999999999,
+      9.971917535772256,
+      0.275
+    ],
+    "mat": "rubber",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -64.1790080258107
+    ],
+    "pivot": [
+      -9.2,
+      8.25,
+      0
+    ]
+  },
+  {
+    "group": "rear_hose",
+    "name": "hose_segment_3",
+    "a": [
+      -7.890000000000001,
+      9.0,
+      -0.275
+    ],
+    "b": [
+      -7.41,
+      10.795132307101625,
+      0.275
+    ],
+    "mat": "rubber",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -102.8750015596125
+    ],
+    "pivot": [
+      -7.65,
+      9.0,
+      0
+    ]
+  },
+  {
+    "group": "rear_hose",
+    "name": "hose_segment_4",
+    "a": [
+      -6.140000000000001,
+      8.6,
+      -0.275
+    ],
+    "b": [
+      -5.66,
+      10.140292180074935,
+      0.275
+    ],
+    "mat": "rubber",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      -125.75388725443673
+    ],
+    "pivot": [
+      -5.9,
+      8.6,
+      0
+    ]
+  },
+  {
+    "group": "rear_hose",
+    "name": "hose_connector",
+    "a": [
+      -5.02,
+      7.4,
+      -0.48
+    ],
+    "b": [
+      -4.3,
+      7.95,
+      0.48
+    ],
+    "mat": "steel",
+    "detail": "bands",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "barrel_bridge",
+    "a": [
+      7.54,
+      7.2,
+      -0.57
+    ],
+    "b": [
+      9.35,
+      7.83,
+      0.57
+    ],
+    "mat": "steel",
+    "detail": "bands",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "foregrip_body",
+    "a": [
+      7.85,
+      2.55,
+      -0.77
+    ],
+    "b": [
+      8.95,
+      7.25,
+      0.77
+    ],
+    "mat": "dark",
+    "detail": "ribs",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "foregrip_heel",
+    "a": [
+      7.7,
+      2.4,
+      -0.89
+    ],
+    "b": [
+      9.1,
+      2.9,
+      0.89
+    ],
+    "mat": "teal",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "foregrip_top",
+    "a": [
+      7.65,
+      7.77,
+      -0.84
+    ],
+    "b": [
+      9.18,
+      8.26,
+      0.84
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "barrel_root",
+    "a": [
+      9.1,
+      7.3,
+      -0.47
+    ],
+    "b": [
+      9.65,
+      7.79,
+      0.47
+    ],
+    "mat": "dark",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_upper",
+    "a": [
+      9.65,
+      7.7,
+      -0.44
+    ],
+    "b": [
+      10.7,
+      7.88,
+      0.44
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_lower",
+    "a": [
+      9.65,
+      7.19,
+      -0.44
+    ],
+    "b": [
+      10.7,
+      7.37,
+      0.44
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_left",
+    "a": [
+      9.65,
+      7.37,
+      -0.44
+    ],
+    "b": [
+      10.7,
+      7.7,
+      -0.25
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_right",
+    "a": [
+      9.65,
+      7.37,
+      0.25
+    ],
+    "b": [
+      10.7,
+      7.7,
+      0.44
+    ],
+    "mat": "steel",
+    "detail": "plain",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "pivot": [
+      0,
+      0,
+      0
+    ]
+  }
+]

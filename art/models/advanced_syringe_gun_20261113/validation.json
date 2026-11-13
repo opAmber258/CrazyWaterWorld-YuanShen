@@ -1,0 +1,116 @@
+{
+  "asset": "高级注射器枪 AdvancedSyringeGun",
+  "identifier": "advanced_syringe_gun",
+  "date": "2026-11-13",
+  "passed": true,
+  "display_name_zh": "高级注射器枪",
+  "display_name_en": "Advanced Syringe Gun",
+  "creation_source": "人工 + AI（TakaraMiyuki + GPT-6）",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex + Blockbench 5.2.2",
+        "role": "初始几何、贴图、UV、原生预览、导出及验证"
+      }
+    ],
+    "division": "人工提供参考并保存机匣高度微调；AI 保留人工保存版本，重出几何、六向预览与验证。"
+  },
+  "format": "Bedrock Entity",
+  "geometry_version": "1.12.0",
+  "editor": "Blockbench 5.2.2",
+  "counts": {
+    "cubes": 69,
+    "bones": 8,
+    "declared_export_faces": 414,
+    "textures": 1,
+    "frames": 1,
+    "duplicate_cuboids": 0
+  },
+  "bounds_editor_units": {
+    "min": [
+      -7.826977514026638,
+      -0.4180883061490924,
+      -1.288
+    ],
+    "max": [
+      8.56,
+      7.387172834426351,
+      1.288
+    ],
+    "size": [
+      16.38697751402664,
+      7.8052611405754435,
+      2.576
+    ]
+  },
+  "bounds_blocks": [
+    1.024186094626665,
+    0.4878288212859652,
+    0.161
+  ],
+  "texture": {
+    "mode": "RGBA",
+    "size": [
+      64,
+      64
+    ],
+    "pixels": 4096,
+    "base_rgba_bytes": 16384,
+    "partial_alpha_pixels": 0,
+    "all_sampled_uv_opaque": true,
+    "embedded_equals_external": true
+  },
+  "previews": {
+    "names": [
+      "front",
+      "back",
+      "side",
+      "oblique",
+      "top",
+      "rear_oblique"
+    ],
+    "size": [
+      1200,
+      900
+    ],
+    "renderer": "Native Blockbench Preview / Three.js",
+    "orthographic": [
+      "front",
+      "back",
+      "side",
+      "top"
+    ],
+    "perspective": [
+      "oblique",
+      "rear_oblique"
+    ],
+    "ui": false,
+    "grid": false
+  },
+  "cleanup": {
+    "candidate_faces": 18,
+    "removed_faces": 0,
+    "reason": "Strict RGBA comparison differed in side and perspective samples; all candidates restored.",
+    "comparison": "reference/face_cleanup_comparison.json"
+  },
+  "native_reopen": "reference/native_reopen_validation.json",
+  "errors": [],
+  "checks": {
+    "native_reopen": true,
+    "native_geometry_roundtrip_exact": true,
+    "positive_dimensions": true,
+    "within_cost_budget": true,
+    "no_external_texture_dependency": true
+  },
+  "limits": [
+    "No Minecraft client test or game integration",
+    "No held/GUI/display runtime test or animation",
+    "No measured draw calls, overdraw, GPU memory or FPS",
+    "Not a complete Bedrock schema validator",
+    "Opaque amber is a pixel-art representation; 12 visible subdivisions do not encode inventory capacity"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": "5.2.2",
+  "format": "bedrock",
+  "cubes": 69,
+  "bones": 8,
+  "textures": [
+    {
+      "name": "advanced_syringe_gun_tex.png",
+      "width": 64,
+      "height": 64,
+      "error": 0
+    }
+  ],
+  "preexisting_projects": [
+    {
+      "name": "注射器枪 SyringeGun",
+      "uuid": "ae019803-9e06-67e5-8ed7-4fe04afd37c5",
+      "saved": true
+    }
+  ],
+  "current_project_uuid": "be8c1dd2-156d-32d0-3bb0-5363cfeaf270",
+  "note": "Native project codec loaded authored input into a new tab; existing projects retained."
+}

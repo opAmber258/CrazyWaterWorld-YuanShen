@@ -1,0 +1,30 @@
+{
+  "editor": "5.2.2",
+  "format": "bedrock",
+  "project": "advanced_syringe_gun",
+  "cubes": 69,
+  "bones": 8,
+  "texture_errors": [
+    0
+  ],
+  "texture_embedded": true,
+  "geometry_exact_roundtrip": true,
+  "elements_exact_roundtrip": true,
+  "groups_exact_roundtrip": true,
+  "texture_source_exact": true,
+  "native_world_bounds": {
+    "min": [
+      -7.826977515651911,
+      -0.41808830570428845,
+      -1.2879999876022339
+    ],
+    "max": [
+      8.5600004196167,
+      7.387172836053321,
+      1.2879999876022339
+    ]
+  },
+  "preexisting_projects_retained": true,
+  "temporary_previews": [],
+  "client_tested": false
+}

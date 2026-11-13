@@ -1,0 +1,15 @@
+{
+  "planned_max_cubes": 90,
+  "planned_max_faces": 540,
+  "planned_max_bones": 10,
+  "materials": 1,
+  "max_atlas_side": 128,
+  "actual_atlas_side": 64,
+  "actual_cubes": 69,
+  "actual_bones": 8,
+  "density_source_px_per_unit": 2,
+  "density_final_px_per_unit": 2.5,
+  "scale": 0.8,
+  "animation": false,
+  "method": "Continuous cuboids and rotated bars; texture-based small markings; one shared atlas"
+}

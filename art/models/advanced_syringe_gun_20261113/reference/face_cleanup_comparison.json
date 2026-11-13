@@ -1,0 +1,123 @@
+{
+  "comparison_inputs_valid": true,
+  "all_pixel_identical": false,
+  "background": [
+    32,
+    42,
+    45
+  ],
+  "samples": [
+    {
+      "name": "preview_back.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 176682,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_front.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 176737,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_oblique.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 34,
+      "changed_bbox": [
+        400,
+        324,
+        906,
+        564
+      ],
+      "mean_absolute_rgba_error_0_255": 1.3425925925925926e-05,
+      "max_channel_error": 9,
+      "foreground_pixels": 109880,
+      "foreground_mean_absolute_rgba_error_0_255": 0.00013196214051692756,
+      "changed_fraction_foreground": 0.00030942846741900253,
+      "pixel_identical": false
+    },
+    {
+      "name": "preview_rear_oblique.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 68,
+      "changed_bbox": [
+        657,
+        366,
+        873,
+        515
+      ],
+      "mean_absolute_rgba_error_0_255": 7.407407407407407e-05,
+      "max_channel_error": 20,
+      "foreground_pixels": 113754,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0007032719728537018,
+      "changed_fraction_foreground": 0.0005977811769256466,
+      "pixel_identical": false
+    },
+    {
+      "name": "preview_side.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 9,
+      "changed_bbox": [
+        576,
+        319,
+        648,
+        404
+      ],
+      "mean_absolute_rgba_error_0_255": 6.712962962962963e-06,
+      "max_channel_error": 6,
+      "foreground_pixels": 39932,
+      "foreground_mean_absolute_rgba_error_0_255": 0.00018155864970449765,
+      "changed_fraction_foreground": 0.00022538315135730742,
+      "pixel_identical": false
+    },
+    {
+      "name": "preview_top.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 87669,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "No perceptual acceptance inferred from small average errors",
+    "Only provided PNGs checked; full frame/view coverage must be documented",
+    "Camera, lights, viewport, frame time and renderer settings must match",
+    "Transparent hidden RGB differences are included in strict RGBA comparison"
+  ]
+}

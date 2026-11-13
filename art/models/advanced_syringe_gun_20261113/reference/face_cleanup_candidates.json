@@ -1,0 +1,110 @@
+[
+  {
+    "uuid": "502e2350-50cb-57f2-9ad8-95c2f5021ffa",
+    "name": "pressure_end",
+    "face": "east",
+    "occluder": "pressure_block"
+  },
+  {
+    "uuid": "a0fdaac0-cda7-5e78-a1f4-7b04ef25d840",
+    "name": "receiver_underside",
+    "face": "up",
+    "occluder": "breech_core"
+  },
+  {
+    "uuid": "f09e2a8b-fced-570a-8899-729c8aeeaed4",
+    "name": "left_scanner_cover",
+    "face": "south",
+    "occluder": "breech_core"
+  },
+  {
+    "uuid": "628e2d7f-2615-5a15-868f-06f6dc3de8cc",
+    "name": "right_scanner_cover",
+    "face": "north",
+    "occluder": "breech_core"
+  },
+  {
+    "uuid": "a79d62ed-e89c-55be-98c8-bbfe47e4fcbb",
+    "name": "front_column",
+    "face": "down",
+    "occluder": "lower_spine"
+  },
+  {
+    "uuid": "7f0d9736-33c1-54c4-8bab-2ca3e8bfa456",
+    "name": "cassette_backbone",
+    "face": "west",
+    "occluder": "rear_column"
+  },
+  {
+    "uuid": "7f0d9736-33c1-54c4-8bab-2ca3e8bfa456",
+    "name": "cassette_backbone",
+    "face": "east",
+    "occluder": "front_column"
+  },
+  {
+    "uuid": "29976407-e707-5c4c-a087-a7bfd877225b",
+    "name": "lower_slide",
+    "face": "up",
+    "occluder": "lower_spine"
+  },
+  {
+    "uuid": "33984130-81bf-5dd8-965c-2fd5f93b1680",
+    "name": "hose_connector",
+    "face": "down",
+    "occluder": "breech_core"
+  },
+  {
+    "uuid": "4657f3ab-d85b-5b5f-bc7a-9edb76182d68",
+    "name": "barrel_bridge",
+    "face": "west",
+    "occluder": "front_column"
+  },
+  {
+    "uuid": "94056e07-b5ca-5277-880e-dda296554202",
+    "name": "foregrip_body",
+    "face": "down",
+    "occluder": "foregrip_heel"
+  },
+  {
+    "uuid": "23abab95-34c2-5009-8b06-a17fce00246d",
+    "name": "barrel_root",
+    "face": "west",
+    "occluder": "barrel_bridge"
+  },
+  {
+    "uuid": "7c72d7d0-436c-5d8a-9371-2eb5f3aec3be",
+    "name": "muzzle_left",
+    "face": "west",
+    "occluder": "barrel_root"
+  },
+  {
+    "uuid": "7c72d7d0-436c-5d8a-9371-2eb5f3aec3be",
+    "name": "muzzle_left",
+    "face": "up",
+    "occluder": "muzzle_upper"
+  },
+  {
+    "uuid": "7c72d7d0-436c-5d8a-9371-2eb5f3aec3be",
+    "name": "muzzle_left",
+    "face": "down",
+    "occluder": "muzzle_lower"
+  },
+  {
+    "uuid": "f11442da-7126-5cc6-af61-c9887d0a54cd",
+    "name": "muzzle_right",
+    "face": "west",
+    "occluder": "barrel_root"
+  },
+  {
+    "uuid": "f11442da-7126-5cc6-af61-c9887d0a54cd",
+    "name": "muzzle_right",
+    "face": "up",
+    "occluder": "muzzle_upper"
+  },
+  {
+    "uuid": "f11442da-7126-5cc6-af61-c9887d0a54cd",
+    "name": "muzzle_right",
+    "face": "down",
+    "occluder": "muzzle_lower"
+  }
+]
