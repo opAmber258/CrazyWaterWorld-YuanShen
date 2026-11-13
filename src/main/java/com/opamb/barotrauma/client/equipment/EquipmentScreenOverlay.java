@@ -47,6 +47,21 @@ public final class EquipmentScreenOverlay {
                 graphics.drawString(font, hint, textX, y + 4, HINT_COLOR, false);
             }
         }
+        // 47：双手持独立栏位。
+        if (menu.slots.size() > com.opamb.barotrauma.equipment.HandsSlot.MENU_INDEX) {
+            Slot hands = menu.slots.get(com.opamb.barotrauma.equipment.HandsSlot.MENU_INDEX);
+            if (hands instanceof com.opamb.barotrauma.equipment.HandsSlot && hands.isActive()) {
+                int x = left + hands.x;
+                int y = top + hands.y;
+                graphics.fill(x - 1, y - 1, x + 17, y + 17, SLOT_BORDER);
+                graphics.fill(x, y, x + 16, y + 16, SLOT_FILL);
+                if (!hands.hasItem()) {
+                    String hint = "2H";
+                    graphics.drawString(font, hint, x + (16 - font.width(hint)) / 2, y + 4,
+                            HINT_COLOR, false);
+                }
+            }
+        }
     }
 
     /** 悬停空装备槽时显示"ID卡槽"这类提示。 */

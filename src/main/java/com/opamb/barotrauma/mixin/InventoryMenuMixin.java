@@ -55,6 +55,8 @@ public abstract class InventoryMenuMixin {
         }
         // 原版 27 格主背包 → 装备背包 + 禁用占位。
         BagSlots.install(menu, owner);
+        // 47：双手持独立栏位（绑在副手容器上，只收双手持物品）。
+        accessor.barotrauma$addSlot(new com.opamb.barotrauma.equipment.HandsSlot(owner.getInventory()));
     }
 
     @Inject(method = "quickMoveStack", at = @At("HEAD"), cancellable = true)
@@ -79,6 +81,21 @@ public abstract class InventoryMenuMixin {
         ItemStack stack = slot.getItem();
         ItemStack original = stack.copy();
         AbstractContainerMenuAccessor accessor = (AbstractContainerMenuAccessor) (Object) this;
+
+        // 双手持物品：Shift 点击只能进 47 号双手栏位；栏位占着就留在原地。
+        if (com.opamb.barotrauma.item.TwoHanded.is(stack)) {
+            int hands = com.opamb.barotrauma.equipment.HandsSlot.MENU_INDEX;
+            if (index == hands || !accessor.barotrauma$moveItemStackTo(stack, hands, hands + 1, false)) {
+                return ItemStack.EMPTY;
+            }
+            if (stack.isEmpty()) {
+                slot.setByPlayer(ItemStack.EMPTY);
+            } else {
+                slot.setChanged();
+            }
+            slot.onTake(player, stack);
+            return original;
+        }
 
         int bagCapacity = BagManager.capacity(player);
         int bagStart = BagSlots.START;

@@ -48,8 +48,10 @@ public class BagSlot extends Slot {
 
     @Override
     public boolean mayPlace(ItemStack stack) {
-        // BagContainer 本身不做物品类型限制；只禁背包类物品（原作 toolbelt/backpack 不能互相装）。
-        return bagIndex < capacityNow() && !stack.is(EquipmentTags.BAG);
+        // BagContainer 本身不做物品类型限制；禁背包类物品（原作 toolbelt/backpack 不能互相装），
+        // 也禁双手持物品（箱子只能拿在双手格，不能塞进装备背包）。
+        return bagIndex < capacityNow() && !stack.is(EquipmentTags.BAG)
+                && !com.opamb.barotrauma.item.TwoHanded.is(stack);
     }
 
     @Override

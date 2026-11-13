@@ -26,32 +26,21 @@ class CampaignSelectionTest {
         assertEquals("none", CampaignMap.node(2).faction());
         assertTrue(CampaignMap.node(2).services().isEmpty());
     }
-    @Test void optionalEmptyAndAllOfferedSelectionAllowed() {
-        assertTrue(CampaignMission.valid(RoundPhase.AT_NODE,0,0,1,List.of()));
-        assertTrue(CampaignMission.valid(RoundPhase.AT_NODE,0,0,1,
-                CampaignMission.offered(0,1).stream().map(CampaignMission::id).toList()));
+    @Test void 一趟任务上限与任务系统一致() {
+        // 海图勾选、下潜包、任务存档三处用的是同一个上限。
+        assertEquals(com.opamb.barotrauma.data.MissionSavedData.MAX_ACTIVE, CampaignMission.LIMIT);
     }
-    @Test void duplicateUnknownForeignAndTooManyMissionsRejected() {
-        String id = CampaignMission.offered(0,1).get(0).id();
-        assertFalse(CampaignMission.valid(RoundPhase.AT_NODE,0,0,1,List.of(id,id)));
-        assertFalse(CampaignMission.valid(RoundPhase.AT_NODE,0,0,1,List.of("missing")));
-        assertFalse(CampaignMission.valid(RoundPhase.AT_NODE,0,0,1,List.of("1_2_salvage")));
-        assertFalse(CampaignMission.valid(RoundPhase.AT_NODE,0,0,1,List.of(id,id,id,id)));
-    }
-    @Test void phaseOriginAndAdjacencyGuarded() {
-        assertFalse(CampaignMission.valid(RoundPhase.DIVING,0,0,1,List.of()));
-        assertFalse(CampaignMission.valid(RoundPhase.FAILED,0,0,1,List.of()));
-        assertFalse(CampaignMission.valid(RoundPhase.AT_NODE,1,0,2,List.of()));
-        assertFalse(CampaignMission.valid(RoundPhase.AT_NODE,0,0,4,List.of()));
-        assertFalse(CampaignMission.valid(RoundPhase.AT_NODE,0,0,-1,List.of()));
+    @Test void adjacentOnlyStillEnforcedByMap() {
+        assertTrue(CampaignMap.connects(0, 1));
+        assertFalse(CampaignMap.connects(0, 4));
     }
     @Test void selectedMissionsSurviveNbtAndCoreRollback() {
         CampaignState state = new CampaignState();
         state.takeSnapshot();
-        var ids = List.of(CampaignMission.offered(0,1).get(2).id());
-        state.selectMissions(ids); state.beginTravel(1,42);
+        // 旧字段仍会被写进 NBT，但载入时按“已弃用”清空；回档要能恢复航程状态。
+        state.selectMissions(List.of("0_1_salvage")); state.beginTravel(1,42);
         CampaignState copy = CampaignState.load(state.save(new CompoundTag()));
-        assertEquals(ids,copy.selectedMissions());
+        assertTrue(copy.selectedMissions().isEmpty(), "旧航线委托已弃用");
         assertEquals(RoundPhase.DIVING,copy.round().phase());
         assertTrue(copy.rollback()); assertTrue(copy.selectedMissions().isEmpty());
     }

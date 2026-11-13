@@ -195,6 +195,20 @@ public final class VsPilot {
     }
 
     /**
+     * 装配后船核心方块实体在船坞里的坐标（核心装配位 + 船坞偏移）。
+     *
+     * <p>VS2 把方块搬进刚体后，世界里的原坐标只剩空气；要读船上的方块实体
+     * （货架、泵等）必须按船坞坐标找。</p>
+     */
+    @Nullable
+    public static BlockPos coreYardPos() {
+        if (corePos == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        return corePos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+    }
+
+    /**
      * 刚体质量（kg）。GameTest 用它断言"方块到底有没有全部进刚体"——
      * 我们踩过的坑就是只有声纳一格进去了、质量只剩 300。
      */

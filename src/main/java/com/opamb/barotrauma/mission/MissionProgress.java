@@ -13,22 +13,36 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
 
 /**
- * 任务进度推进：每秒检查所有在线玩家的进行中任务是否达成（OFFERED/ACTIVE → READY）。
+ * 任务进度推进：每秒检查所有在线玩家的每条进行中任务（一趟最多 3 条）。
  *
  * <ul>
- *   <li>{@code RECON}：玩家进入目标半径；</li>
- *   <li>{@code SALVAGE}：背包里出现黑匣子；</li>
- *   <li>{@code DELIVERY} / {@code URGENT_DELIVERY}：交给 B 端终端时判定（在终端交付逻辑里），这里不推进。</li>
+ *   <li>{@code RECON}：玩家进入目标半径 → READY；</li>
+ *   <li>{@code SALVAGE}：背包里出现黑匣子 → READY；</li>
+ *   <li>{@code DELIVERY} / {@code URGENT_DELIVERY}：不在这里判定——货运走原版规则，
+ *       靠泊目的站时由 {@link MissionCargo} 统计船上还在的箱子后自动结算。</li>
  * </ul>
  *
- * <p>限时任务（{@code deadlineTicks > 0}）超时进入 FAILED，本轮抵达目的地后重置。</p>
- *
- * <p>状态变化时给任务主人补发一次状态包（其它同步靠终端打开/操作时推送）。</p>
+ * <p>所有任务都在靠泊目的站时统一结算（{@code CampaignManager.settleArrival}）。
+ * 限时任务超时进入 FAILED，并清掉船上还没交的货运；本轮抵达目的地后重置回可接取。</p>
  */
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class MissionProgress {
 
     private MissionProgress() {
+    }
+
+    /** 玩家进服时同步一次任务状态：海图/HUD 的客户端缓存否则要等到开终端才有数据。 */
+    @SubscribeEvent
+    public static void onLogin(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        ServerLevel deep = player.server.getLevel(com.opamb.barotrauma.world.ModDimensions.THE_DEEP);
+        if (deep == null) {
+            return;
+        }
+        com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
+                com.opamb.barotrauma.network.MissionStatePacket.build(player, deep));
     }
 
     @SubscribeEvent
@@ -46,53 +60,43 @@ public final class MissionProgress {
         }
         MissionSavedData data = MissionSavedData.get(deep);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            Mission mission = data.activeMission(player.getUUID());
-            if (mission == null) {
-                continue;
+            boolean changed = false;
+            for (Mission mission : data.activeMissions(player.getUUID())) {
+                // 限时任务超时：ACTIVE/READY 都判 FAILED（紧急运送必须在时限内交付）。
+                if ((mission.state() == Mission.State.ACTIVE
+                        || mission.state() == Mission.State.READY)
+                        && mission.isOverdue(deep.getGameTime())) {
+                    data.failMission(mission);
+                    // 超时的货运把船上/身上的任务箱清掉（原作任务结束会移除所有货物）。
+                    MissionCargo.clear(deep, player, mission);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "任务 #" + mission.id
+                                    + " 超时失败：未在时限内完成（零报酬，抵达目的地后可再次接取）"),
+                            false);
+                    changed = true;
+                    continue;
+                }
+                if (mission.state() != Mission.State.ACTIVE) {
+                    continue;
+                }
+                boolean ready = switch (mission.type) {
+                    case RECON -> player.blockPosition().distSqr(mission.target)
+                            <= (double) mission.radius * mission.radius;
+                    case SALVAGE -> countWithBag(player, ModItems.BLACK_BOX.get().asItem()) > 0;
+                    // 货运不在途中判定，靠泊时自动结算（CampaignManager.settleArrival）。
+                    case DELIVERY, URGENT_DELIVERY -> false;
+                };
+                if (ready) {
+                    data.markReady(mission);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "任务 #" + mission.id + " 目标达成！靠泊目的站后自动结算（"
+                                    + mission.reward + " mk）"), false);
+                    changed = true;
+                }
             }
-            // 限时任务超时：ACTIVE/READY 都判 FAILED（紧急运送必须在时限内交付）。
-            if ((mission.state() == Mission.State.ACTIVE
-                    || mission.state() == Mission.State.READY)
-                    && mission.isOverdue(deep.getGameTime())) {
-                data.failMission(mission);
+            if (changed) {
                 com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
                         com.opamb.barotrauma.network.MissionStatePacket.build(player, deep));
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                        "任务超时失败：未在时限内完成（零报酬，抵达目的地后可再次接取）"),
-                        false);
-                continue;
-            }
-            // 运送类已达成但补给箱丢了：退回 ACTIVE（保留认领人与时限），
-            // 玩家可回终端放弃后重新接取——accept 会补发补给箱（CodeRabbit 审查意见）。
-            if (mission.state() == Mission.State.READY
-                    && (mission.type == MissionType.DELIVERY
-                        || mission.type == MissionType.URGENT_DELIVERY)
-                    && countWithBag(player, ModItems.SUPPLY_CRATE.get().asItem()) == 0) {
-                data.demoteToActive(mission);
-                com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
-                        com.opamb.barotrauma.network.MissionStatePacket.build(player, deep));
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                        "补给箱丢失：任务退回进行中；可在终端放弃后重新接取（补发补给箱）"), false);
-                continue;
-            }
-            if (mission.state() != Mission.State.ACTIVE) {
-                continue;
-            }
-            boolean ready = false;
-            switch (mission.type) {
-                case RECON -> ready = player.blockPosition().distSqr(mission.target)
-                        <= (double) mission.radius * mission.radius;
-                case SALVAGE -> ready = countWithBag(player, ModItems.BLACK_BOX.get().asItem()) > 0;
-                // 运送类"达成"= 携带补给箱即可回终端交付；全额/半额由交付终端位置决定。
-                case DELIVERY, URGENT_DELIVERY ->
-                        ready = countWithBag(player, ModItems.SUPPLY_CRATE.get().asItem()) > 0;
-            }
-            if (ready) {
-                data.markReady(mission);
-                com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
-                        com.opamb.barotrauma.network.MissionStatePacket.build(player, deep));
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal(
-                        "任务目标达成！回哨站终端交付（奖励 " + mission.reward + " credits）"), false);
             }
         }
     }

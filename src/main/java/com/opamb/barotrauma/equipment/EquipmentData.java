@@ -92,7 +92,8 @@ public final class EquipmentData {
         }
 
         ItemStack offhand = inventory.offhand.get(0);
-        if (!offhand.isEmpty()) {
+        // 双手持物品就住在副手（双手栏位），不要当旧存档物品搬走。
+        if (!offhand.isEmpty() && !com.opamb.barotrauma.item.TwoHanded.is(offhand)) {
             ItemStack remaining = moveIntoEquipment(equipment, offhand);
             inventory.offhand.set(0, ItemStack.EMPTY);
             storeOrDrop(player, inventory, remaining);

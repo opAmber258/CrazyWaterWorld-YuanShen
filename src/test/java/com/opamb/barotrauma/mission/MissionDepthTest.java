@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 任务深度：时限、超时失败、部分奖励比例与本轮重置。 */
+/** 任务深度：时限、超时失败、货运箱数结算与 98% 阈值、本轮重置。 */
 class MissionDepthTest {
 
     private static Mission urgent() {
@@ -58,16 +58,38 @@ class MissionDepthTest {
     }
 
     @Test
-    void 运送类按交付终端结算全额或半额() {
+    void 货运按箱数乘单价结算且没有部分完成() {
         Mission delivery = new Mission(5, MissionType.DELIVERY,
-                new BlockPos(320, -301, 0), 12, 150);
+                new BlockPos(320, -301, 0), 12, 560);
+        // 货运不再有"送到别的站只给一半"的规则：只有 98% 达成或失败。
         assertEquals(1.0D, delivery.rewardFraction(true), 1.0E-9);
-        assertEquals(0.5D, delivery.rewardFraction(false), 1.0E-9);
-        assertEquals(1.0D, urgent().rewardFraction(true), 1.0E-9);
-        assertEquals(0.5D, urgent().rewardFraction(false), 1.0E-9);
+        assertEquals(1.0D, delivery.rewardFraction(false), 1.0E-9);
+        assertEquals(1.0D, urgent().rewardFraction(false), 1.0E-9);
         Mission recon = new Mission(4, MissionType.RECON,
                 new BlockPos(-60, -452, 150), 14, 120);
         assertEquals(1.0D, recon.rewardFraction(false), 1.0E-9);
-        assertEquals((int) Math.round(260 * 0.5D), 130);
+    }
+
+    @Test
+    void 货运报酬等于箱数乘每箱单价() {
+        Mission delivery = new Mission(5, MissionType.DELIVERY,
+                new BlockPos(320, -301, 0), 12, 560);
+        assertEquals(0, delivery.cargoPayout(), "还没装货时没有报酬");
+        delivery.setCargo(4, 140);
+        assertEquals(4, delivery.cargoTotal());
+        assertEquals(140, delivery.cargoPerCrate());
+        assertEquals(560, delivery.cargoPayout());
+    }
+
+    @Test
+    void 九十八百分比阈值等于箱箱必到() {
+        assertTrue(CargoManifest.deliveredEnough(4, 4));
+        assertFalse(CargoManifest.deliveredEnough(4, 3), "4 箱丢 1 箱 = 75%");
+        assertTrue(CargoManifest.deliveredEnough(20, 20));
+        assertFalse(CargoManifest.deliveredEnough(20, 19), "20 箱丢 1 箱 = 95%");
+        // 一次运到 50 箱以上时，丢 1 箱才刚好是 98%。
+        assertTrue(CargoManifest.deliveredEnough(50, 49));
+        assertFalse(CargoManifest.deliveredEnough(50, 48));
+        assertFalse(CargoManifest.deliveredEnough(0, 0), "没装货不算完成");
     }
 }

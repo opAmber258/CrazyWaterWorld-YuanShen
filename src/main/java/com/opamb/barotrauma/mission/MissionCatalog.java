@@ -24,8 +24,8 @@ public final class MissionCatalog {
     private static final String RESOURCE = "/data/barotrauma/missions/cold_caverns.json";
 
     /**
-     * 当前终端实际发布的货运条目：只挑三条有代表性、报酬为正的，
-     * 避免十几条同名机制的货运把终端塞满。其余仍在目录里登记。
+     * 当前终端实际发布的货运条目：4 条有代表性的（化学品/医疗/建材/挥发性炸药），
+     * 箱型、每箱报酬、箱内清单见 {@link CargoManifest}。其余仍在目录里登记。
      */
     private static final Set<String> CARGO_OFFERS = Set.of(
             "cargochemicals", "cargomeditems", "cargoconstructionminerals",

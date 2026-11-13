@@ -401,17 +401,27 @@ public final class ShipState {
      * 表现出来就是"船开走了，原地还留着一截"。所以扫包围盒里的所有船方块。</p>
      */
     public java.util.Set<net.minecraft.core.BlockPos> collectBlocks(net.minecraft.world.level.Level level) {
+        return collectBlocks(level, net.minecraft.core.BlockPos.ZERO);
+    }
+
+    /**
+     * 按坐标平移读船体方块。装配后方块被 VS2 搬到船坞，几何包围盒仍是装配时的
+     * 世界坐标；传 {@code translate = 船坞偏移} 才能读到船坞里的真实方块。
+     */
+    public java.util.Set<net.minecraft.core.BlockPos> collectBlocks(
+            net.minecraft.world.level.Level level, net.minecraft.core.BlockPos translate) {
         java.util.Set<net.minecraft.core.BlockPos> out = new java.util.HashSet<>();
         ShipGeometry.Bounds b = geometry.bounds();
-        for (net.minecraft.core.BlockPos pos : net.minecraft.core.BlockPos.betweenClosed(
+        for (net.minecraft.core.BlockPos raw : net.minecraft.core.BlockPos.betweenClosed(
                 b.minX() - 1, b.minY() - 1, b.minZ() - 1,
                 b.maxX() + 1, b.maxY() + 1, b.maxZ() + 1)) {
+            net.minecraft.core.BlockPos pos = raw.offset(translate);
             if (com.opamb.barotrauma.registry.ModShipBlocks.isShipBlock(level.getBlockState(pos))
-                    && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(pos)
-                    && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos)
+                    && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(raw)
+                    && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(raw)
                     // 对接时 padUp=1 把扫描上界抬到 -68，再向外扩 1 会够到 -67 的站内梯子；
                     // 那不是船体，收进去会让装配把站里的梯子一起带走。
-                    && !com.opamb.barotrauma.world.DockingBay.isStationLadder(pos)) {
+                    && !com.opamb.barotrauma.world.DockingBay.isStationLadder(raw)) {
                 out.add(pos.immutable());
             }
         }

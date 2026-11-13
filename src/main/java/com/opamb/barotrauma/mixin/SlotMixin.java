@@ -21,6 +21,19 @@ public abstract class SlotMixin {
     @Inject(method = "mayPlace", at = @At("HEAD"), cancellable = true)
     private void barotrauma$blockHiddenMainSlots(ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
         Slot slot = (Slot) (Object) this;
+        // 双手持物品不能放进热键栏/装备槽/背包（原作箱子是 container，但只能抱着或放货架）。
+        // 例外：创造模式物品栏没有 47 号的显示位，允许直接放热键栏——那边由
+        // TwoHanded.heldBy 的"主手也算抱着"分支接管。
+        if (com.opamb.barotrauma.item.TwoHanded.is(stack)
+                && !(slot instanceof com.opamb.barotrauma.equipment.HandsSlot)) {
+            boolean creativeHotbar = slot.container instanceof Inventory inv
+                    && inv.player != null && inv.player.isCreative()
+                    && slot.getContainerSlot() >= 0 && slot.getContainerSlot() < 9;
+            if (!creativeHotbar) {
+                cir.setReturnValue(false);
+                return;
+            }
+        }
         if (slot.container instanceof Inventory
                 && slot.getContainerSlot() >= 9 && slot.getContainerSlot() < 36) {
             cir.setReturnValue(false);

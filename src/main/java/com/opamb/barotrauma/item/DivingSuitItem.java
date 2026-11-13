@@ -11,6 +11,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
+import software.bernie.geckolib.animatable.GeoItem;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 
@@ -24,11 +28,28 @@ import java.util.List;
  *
  * <p>REQUIREMENTS §5.1/P3 的 {@code diving_suit}：首批任务控制在 300m 内，
  * 更深的打捞/侦察配合「深潜许可」+ 潜水服完成。</p>
+ *
+ * <p>穿戴模型是 GeckoLib 护甲（{@code art/models/diving_suit_20261112}）：
+ * 物品本身实现 {@link GeoItem} 给渲染器提供实例缓存，真正绘制由客户端
+ * {@code DivingSuitLayer} 在玩家身上完成——装备槽不是原版护甲槽，
+ * 不能走 {@code IClientItemExtensions} 的原版护甲替换。</p>
  */
-public class DivingSuitItem extends Item {
+public class DivingSuitItem extends Item implements GeoItem {
+
+    private final AnimatableInstanceCache animatableCache = GeckoLibUtil.createInstanceCache(this);
 
     public DivingSuitItem(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        // 没有内置动画：走动/摆臂由 GeoArmorRenderer 跟随玩家骨骼。
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.animatableCache;
     }
 
     @Override

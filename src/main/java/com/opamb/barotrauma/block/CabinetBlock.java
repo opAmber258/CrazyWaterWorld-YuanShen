@@ -1,10 +1,14 @@
 package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.CabinetBlockEntity;
+import com.opamb.barotrauma.item.TwoHanded;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
@@ -346,6 +350,9 @@ public class CabinetBlock extends Block implements EntityBlock {
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, BlockHitResult hit) {
+        if (kind == Kind.CRATE_SHELF) {
+            return useCrateShelf(state, level, pos, player, hit);
+        }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             BlockPos master = masterPos(pos, state);
             BlockState masterState = level.getBlockState(master);
@@ -362,6 +369,93 @@ public class CabinetBlock extends Block implements EntityBlock {
             return InteractionResult.PASS;
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /**
+     * 箱子货架：不打开 GUI，直接把双手抱着的货运箱放进准星对着的那一层；
+     * 空手右键取回对着的那一层，潜行右键一次全取。
+     */
+    private InteractionResult useCrateShelf(BlockState state, Level level, BlockPos pos,
+                                            Player player, BlockHitResult hit) {
+        if (level.isClientSide) {
+            // 客户端只负责挥手/发交互包，真正的增删在服务端。
+            return InteractionResult.SUCCESS;
+        }
+        BlockPos master = masterPos(pos, state);
+        BlockState masterState = level.getBlockState(master);
+        if (masterState.getBlock() != this || masterState.getValue(PART) != 0
+                || !(level.getBlockEntity(master) instanceof CabinetBlockEntity cabinet)) {
+            return InteractionResult.PASS;
+        }
+        // 准星点在货架上的高度决定层号（模型 y=0 是主方块底面，单位像素）。
+        int tier = CabinetBlockEntity.crateTierAt((hit.getLocation().y - master.getY()) * 16.0D);
+        ItemStack held = TwoHanded.heldBy(player);
+        if (!held.isEmpty()) {
+            if (!cabinet.getItem(tier).isEmpty()) {
+                player.displayClientMessage(Component.translatable(
+                        cabinet.firstEmptyCrateSlot() < 0
+                                ? "message.barotrauma.crate_shelf.full"
+                                : "message.barotrauma.crate_shelf.occupied"), true);
+                return InteractionResult.CONSUME;
+            }
+            if (!cabinet.canPlaceItem(tier, held)) {
+                player.displayClientMessage(
+                        Component.translatable("message.barotrauma.crate_shelf.full"), true);
+                return InteractionResult.CONSUME;
+            }
+            ItemStack placed = held.copyWithCount(1);
+            ItemStack remaining = held.copy();
+            remaining.shrink(1);
+            setHeldCrate(player, remaining);
+            cabinet.setItem(tier, placed);
+            level.playSound(null, master, SoundEvents.IRON_TRAPDOOR_CLOSE,
+                    SoundSource.BLOCKS, 0.7F, 0.8F);
+            return InteractionResult.CONSUME;
+        }
+        boolean any;
+        if (player.isShiftKeyDown()) {
+            any = false;
+            for (int slot = cabinet.getContainerSize() - 1; slot >= 0; slot--) {
+                any |= takeCrate(cabinet, slot, player);
+            }
+        } else {
+            any = takeCrate(cabinet, tier, player);
+        }
+        if (any) {
+            level.playSound(null, master, SoundEvents.IRON_TRAPDOOR_OPEN,
+                    SoundSource.BLOCKS, 0.7F, 0.9F);
+            return InteractionResult.CONSUME;
+        }
+        return InteractionResult.PASS;
+    }
+
+    /**
+     * 把某一层上的箱子塞回玩家背包，返回是否真的取到了。
+     * 双手都占着时（放不进背包）把箱子放回原层——不能丢到地上，否则点一下货架
+     * 就会把箱子甩出去。
+     */
+    private static boolean takeCrate(CabinetBlockEntity cabinet, int slot, Player player) {
+        ItemStack stack = cabinet.getItem(slot);
+        if (stack.isEmpty()) {
+            return false;
+        }
+        ItemStack taken = cabinet.removeItem(slot, stack.getCount());
+        if (!player.getInventory().add(taken)) {
+            if (!taken.isEmpty()) {
+                cabinet.setItem(slot, taken);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /** 把玩家手上抱着的那份箱子写回去（副手，或创造模式热键栏选中格）。 */
+    private static void setHeldCrate(Player player, ItemStack stack) {
+        if (TwoHanded.is(player.getInventory().offhand.get(0))) {
+            player.setItemInHand(InteractionHand.OFF_HAND, stack);
+        } else {
+            player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        }
     }
 
     /** 贴墙薄片：模型背面在方块后沿，板从后沿往前占模型深度。 */

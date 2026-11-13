@@ -1,0 +1,7 @@
+{
+  "parent": "barotrauma:item/crate_base",
+  "textures": {
+    "0": "barotrauma:item/explosivecrate",
+    "particle": "barotrauma:item/explosivecrate"
+  }
+}

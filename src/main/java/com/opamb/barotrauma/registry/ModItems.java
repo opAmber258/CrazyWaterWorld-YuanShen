@@ -116,7 +116,32 @@ public final class ModItems {
     /** 黑匣子（物品）：打捞任务的交付物，沉船里的 black_box_block 掉落。 */
     public static final RegistryObject<Item> BLACK_BOX = ITEMS.register("black_box",
             () -> new Item(new Item.Properties()));
-    /** 补给箱（物品）：DELIVERY 任务的货物，接任务时发，送到 B 中继站交付。 */
+    // ---- 原作货运箱：全部是双手持（Holdable slots="RightHand+LeftHand"） ----
+    /** 金属箱（metalcrate，20 格）。 */
+    public static final RegistryObject<Item> METAL_CRATE = crate("metalcrate", 20);
+    /** 保险金属箱（securemetalcrate，20 格）。 */
+    public static final RegistryObject<Item> SECURE_METAL_CRATE = crate("securemetalcrate", 20);
+    /** 医疗箱（mediccrate，12 格）。 */
+    public static final RegistryObject<Item> MEDIC_CRATE = crate("mediccrate", 12);
+    /** 炸药收纳箱（explosivecrate，12 格）。 */
+    public static final RegistryObject<Item> EXPLOSIVE_CRATE = crate("explosivecrate", 12);
+    /** 化学药剂箱（chemicalcrate，12 格）。 */
+    public static final RegistryObject<Item> CHEMICAL_CRATE = crate("chemicalcrate", 12);
+    /** 密封供给箱（sealedsupplycrate）：原作没有容器，只能整箱搬运。 */
+    public static final RegistryObject<Item> SEALED_SUPPLY_CRATE = crate("sealedsupplycrate", 0);
+    /** 磁悬浮货箱（magneticsuspensioncrate）：11 格物品 + 1 个电池子格（电池格暂未做）。 */
+    public static final RegistryObject<Item> MAGNETIC_SUSPENSION_CRATE = crate("magneticsuspensioncrate", 11);
+
+    private static RegistryObject<Item> crate(String id, int capacity) {
+        return ITEMS.register(id, () -> new com.opamb.barotrauma.item.CrateItem(
+                new Item.Properties().stacksTo(1), capacity));
+    }
+
+    /**
+     * 补给箱（物品）：旧版 DELIVERY 任务的货物（接任务发一个）。
+     *
+     * <p>货运改成原版规则后不再发放，保留注册只为兼容旧存档里已经存在的补给箱。</p>
+     */
     public static final RegistryObject<Item> SUPPLY_CRATE = ITEMS.register("supply_crate",
             () -> new Item(new Item.Properties()));
     /** 潜水服（潜水服槽）：穿戴后出舱安全深度 300→400m；原作 fireproof，不可堆叠。 */
@@ -217,6 +242,32 @@ public final class ModItems {
     public static final RegistryObject<Item> RUBBER = mineral("rubber");
     public static final RegistryObject<Item> FLASH_POWDER = mineral("flashpowder");
     public static final RegistryObject<Item> SCRAP = mineral("scrap");
+
+    // ---- 货运任务占位物品 ----
+    // 原版 CargoMission 的箱内清单用到这些化学品/爆炸物：先只做占位（没有任何用途），
+    // 保证任务箱内容和原版一致，等以后真正需要时再实现功能。
+
+    /** 硫酸（原作 sulphuricacid）。 */
+    public static final RegistryObject<Item> SULPHURIC_ACID = cargoPlaceholder("sulphuricacid");
+    /** 窒死毒剂（原作 morbusine）。 */
+    public static final RegistryObject<Item> MORBUSINE = cargoPlaceholder("morbusine");
+    /** 水合氯醛（原作 chloralhydrate）。 */
+    public static final RegistryObject<Item> CHLORAL_HYDRATE = cargoPlaceholder("chloralhydrate");
+    /** 挥发性叠氮化合物（原作 volatilecompoundn）。 */
+    public static final RegistryObject<Item> VOLATILE_COMPOUND_N =
+            cargoPlaceholder("volatilecompoundn");
+    /** 雷管（原作 detonator）。 */
+    public static final RegistryObject<Item> DETONATOR = cargoPlaceholder("detonator");
+
+    /** 货运占位物品（创造模式"材料"页签用）。 */
+    public static final java.util.List<RegistryObject<Item>> CARGO_PLACEHOLDER_ITEMS =
+            java.util.List.of(SULPHURIC_ACID, MORBUSINE, CHLORAL_HYDRATE,
+                    VOLATILE_COMPOUND_N, DETONATOR);
+
+    /** 注册一个货运占位物品：纯材料，默认堆叠 64，无任何功能。 */
+    private static RegistryObject<Item> cargoPlaceholder(String name) {
+        return ITEMS.register(name, () -> new Item(new Item.Properties()));
+    }
 
     /** 注册一个矿物物品：纯材料，默认堆叠 64。 */
     private static RegistryObject<Item> mineral(String name) {

@@ -1,0 +1,12 @@
+{
+  "replace": false,
+  "values": [
+    "barotrauma:metalcrate",
+    "barotrauma:securemetalcrate",
+    "barotrauma:mediccrate",
+    "barotrauma:explosivecrate",
+    "barotrauma:chemicalcrate",
+    "barotrauma:sealedsupplycrate",
+    "barotrauma:magneticsuspensioncrate"
+  ]
+}

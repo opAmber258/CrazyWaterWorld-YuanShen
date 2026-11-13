@@ -62,6 +62,8 @@ public final class ClientSetup {
                     com.opamb.barotrauma.registry.ModMenus.ENGINE.get(), EngineScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.CABINET.get(), CabinetScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.CRATE.get(), CrateScreen::new);
         });
     }
 
@@ -90,5 +92,22 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.BULKHEAD_DOOR.get(),
                 context -> new BulkheadDoorRenderer());
         event.registerEntityRenderer(com.opamb.barotrauma.registry.ModEntities.VESSEL.get(), VesselRenderer::new);
+        event.registerEntityRenderer(com.opamb.barotrauma.registry.ModEntities.NPC.get(), NpcRenderer::new);
+    }
+
+    /**
+     * 给所有玩家渲染器追加潜水服护甲层（经典/slim 两种皮肤各一份）。
+     *
+     * <p>潜水服在自定义装备槽里，原版护甲层不会渲染它，只能自己挂一层。</p>
+     */
+    @SubscribeEvent
+    public static void onAddLayers(EntityRenderersEvent.AddLayers event) {
+        for (String skin : event.getSkins()) {
+            net.minecraft.client.renderer.entity.EntityRenderer<? extends net.minecraft.world.entity.player.Player> renderer =
+                    event.getSkin(skin);
+            if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer playerRenderer) {
+                playerRenderer.addLayer(new DivingSuitLayer(playerRenderer));
+            }
+        }
     }
 }

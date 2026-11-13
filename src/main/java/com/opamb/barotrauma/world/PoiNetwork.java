@@ -72,7 +72,13 @@ public final class PoiNetwork {
                 case CARGO -> {
                     // 挥发性化学品按原版“危险货物”处理成限时紧急运送（30 分钟）。
                     boolean urgent = "cargovolatilecompoundn".equals(spec.id());
-                    int reward = Math.max(urgent ? 800 : 500, spec.reward());
+                    // 终端显示“装满 4 格货架”的理论报酬；实际结算按接取时真装了几箱算
+                    // （见 MissionCargo.spawn / Mission.cargoPayout）。
+                    com.opamb.barotrauma.mission.CargoManifest manifest =
+                            com.opamb.barotrauma.mission.CargoManifest.forMission(spec.id());
+                    int reward = manifest == null ? Math.max(1, spec.reward())
+                            : manifest.rewardPerCrate() * Math.min(manifest.maxCrates(),
+                            com.opamb.barotrauma.mission.CargoManifest.TYPICAL_SHELF_CRATES);
                     if (urgent) {
                         out.add(new Mission(id++, MissionType.URGENT_DELIVERY,
                                 POST_B_TERMINAL, 12, reward, 24000L));

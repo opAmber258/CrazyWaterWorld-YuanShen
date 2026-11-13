@@ -24,6 +24,22 @@ public final class ModEntities {
                     .clientTrackingRange(10)
                     .build(new ResourceLocation(BarotraumaMod.MOD_ID, "vessel").toString()));
 
+    /** 哨站站务员：玩家人形、站桩、右键发任务。 */
+    public static final RegistryObject<EntityType<com.opamb.barotrauma.entity.NpcEntity>> NPC =
+            ENTITIES.register("npc", () -> EntityType.Builder
+                    .<com.opamb.barotrauma.entity.NpcEntity>of(
+                            com.opamb.barotrauma.entity.NpcEntity::new, MobCategory.CREATURE)
+                    .sized(0.6F, 1.8F)
+                    .clientTrackingRange(10)
+                    .build(new ResourceLocation(BarotraumaMod.MOD_ID, "npc").toString()));
+
+    /** Forge 要求所有 Mob 在这里注册基础属性，否则生成时会报 "does not have any attributes"。 */
+    public static void onAttributes(
+            net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {
+        event.put(NPC.get(),
+                com.opamb.barotrauma.entity.NpcEntity.createAttributes().build());
+    }
+
     private ModEntities() {
     }
 

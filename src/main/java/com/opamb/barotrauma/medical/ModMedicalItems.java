@@ -47,6 +47,10 @@ public final class ModMedicalItems {
     public static final RegistryObject<Item> FENTANYL = ITEMS.register("fentanyl",
             () -> new MedicalItem(new Item.Properties().stacksTo(16), TreatmentSpec.FENTANYL));
 
+    /** 广谱抗生素（原作 antibiotics）：货运任务箱内清单占位，暂无治疗效果。 */
+    public static final RegistryObject<Item> ANTIBIOTICS = ITEMS.register("antibiotics",
+            () -> new Item(new Item.Properties().stacksTo(16)));
+
     private ModMedicalItems() {
     }
 
