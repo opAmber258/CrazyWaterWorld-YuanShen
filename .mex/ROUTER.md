@@ -34,7 +34,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 ---
 
 # Session Bootstrap
@@ -64,14 +64,14 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 **Working:**
 - 1.20.1 Forge mod builds and loads; air-ocean deep dimension, outposts, and starter submarine generate.
 - VS2 physical ships: launch, dock, thruster control, breach reconciliation, sonar proxy, and water-state sync.
-- **Minimum gameplay loop:** credits + shop (repair/oxygen/welder/hull upgrade), deterministic POI wrecks, sonar-screen「下潜/靠泊」buttons, first-login guidance + objective HUD, pressure/collision threats. **Missions are handled in the navigation terminal's third tab `任务` (2026-11-10)**; the `mission_terminal` block is deprecated and no longer world-generated (still registered, so old saves keep loading).
+- **Minimum gameplay loop:** credits + shop (repair/oxygen/welder/hull upgrade), deterministic POI wrecks, sonar-screen「下潜/靠泊」buttons, first-login guidance + objective HUD, pressure/collision threats. **Missions (2026-11-13):** station-clerk NPC (`MissionNpc`/`NpcEntity`) dialogue grants up to 3 offers per visit, each bound to an adjacent destination; offers persist at the station, refresh after undocking/redocking, and completed contracts are reset for re-issue. The campaign map lists only offers for the selected destination; cargo fills ship `crate_shelf` slots (fallback: one loose crate at the player's feet after boarding) and settles at 98% on docking. The navigation terminal's mission tab and `mission_terminal` are deprecated.
 - **Persistence:** `data/ShipSavedData` (assembled snapshot + hull damage + shipId + proxy), block-ship hull damage in block-entity NBT, VS2 world-load adoption (`VsPilot.adoptFromSave` + shipyard chunk force-load). `.smoketest-persist` PASS (`船=true 耐久记录=2`), `.smoketest-mission` PASS.
 - Per-compartment scalar water simulation, breach inflow splash/bubbles, ballast, pumps, reactor, and `/barotrauma ship flood` diagnostics.
 - Per-block hull durability (plating 200 / glass 100), melee + explosion + block-ship collision damage, welding-tool repair, camera-facing billboard bars (readable at any view angle), vanilla-style cracks (all 6 faces, outside-visible), damage-scaled leak splashes, and `ShipHullDamagePacket` sync.
 - Sonar screen/hologram, depth HUD, underwater fog, movement drag, and oxygen/drowning survival.
 - **Minerals creative tab (2026-11-10):** `barotrauma:minerals` tab with 60 items — 34 ores/minerals (incl. the four alien materials and paralyxis) + 26 materials (copper/iron/lead/etc.). Textures are cropped from the game's `Minerals.png` / `AlienMaterials.png` / `Crystal.png` at 64×64; names come from the official zh/en `entityname.*` texts.
 - **Hatch/door fixes (2026-11-10):** hatch `isViewBlocking`/`isSuffocating` are always false (the 1px lid used to trigger the in-block fullscreen overlay), hatch models render single-sided, the deck hatch sits mid-block again, the bulkhead door keeps a full-width 1px collision plate (no sideways squeeze), and `hatch_ladder` keeps the middle ladder collision when closed. Small pump gained `FACING`; the welding-tool item model dropped its `item/handheld` parent (generated-model flattening produced 0 quads).
-- **Mission catalog (2026-11-10, uncommitted):** `data/barotrauma/missions/cold_caverns.json` registers all 83 original Cold Caverns missions across 9 kinds, with zh/en names from the game's `missionname.*` texts. `MissionFeature` is the single gate — only `CARGO_ITEMS` and `SALVAGE_ITEM` are on, so `MissionCatalog.offers()` yields 5 entries (4 cargo + `salvageartifactcave`); `PoiNetwork.definitions()` is generated from that list, and `/barotrauma campaign missions` prints the catalog. Delivery pays in full only within 8 blocks of `POST_B_TERMINAL`.
+- **Mission catalog (2026-11-13):** `data/barotrauma/missions/cold_caverns.json` registers all 83 original Cold Caverns missions; `MissionFeature` gates offers, currently 4 cargo entries. `MissionSavedData` stores per-station offers (template → destination) plus active missions; `MissionCargo` creates real crates (contents tagged illegitimate), counts delivered crates in shelves/inventories/loose crates near the ship, and clears all mission cargo at settlement. Network protocol 8 adds `NpcTalkPacket`/`NpcDialoguePacket` and sends per-station offers in `MissionStatePacket`. L1 226 tests pass.
 - **Bulkhead door (`barotrauma:bulkhead_door`, 1×2) and deck hatch (`barotrauma:hatch`, 3×1)**, GeckoLib
   rendered, toggled by right-clicking the fixed frame (the open state's pick shape is frame-only, so
   the doorway does not block attacks). The door was redrawn 2026-11-04: 15 axis-aligned cuboids,
