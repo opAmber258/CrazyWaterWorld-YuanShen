@@ -218,7 +218,8 @@ public final class MissionNpc {
                 player.sendSystemMessage(Component.literal(
                                 "已接任务 #" + id + "：货物已装船 " + crates + " 箱（每箱 "
                                         + mission.cargoPerCrate() + " mk），靠泊目的站自动结算"
-                                        + (hasFreeShelf ? "" : "；船上没有空货架格，箱子散放在脚边"))
+                                        + (hasFreeShelf ? ""
+                                        : "；船上没有空货架格，箱子散放在船上（货架顶或脚边）"))
                         .withStyle(net.minecraft.ChatFormatting.AQUA));
             } else {
                 player.sendSystemMessage(Component.literal(
