@@ -1,0 +1,17 @@
+{
+  "editor": "5.2.2",
+  "format": "bedrock",
+  "project_name": "注射器枪 SyringeGun",
+  "cubes": 62,
+  "bones": 7,
+  "texture_errors": [
+    0
+  ],
+  "texture_embedded": true,
+  "geometry_exact_roundtrip": true,
+  "elements_exact_roundtrip": true,
+  "groups_exact_roundtrip": true,
+  "texture_source_exact": true,
+  "temporary_previews": [],
+  "client_tested": false
+}

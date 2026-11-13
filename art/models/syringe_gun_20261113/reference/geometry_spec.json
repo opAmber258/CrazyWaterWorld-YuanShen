@@ -1,0 +1,1676 @@
+[
+  {
+    "group": "receiver",
+    "name": "rear_pressure_vessel",
+    "from_": [
+      -7.8,
+      6.7,
+      -1.15
+    ],
+    "to": [
+      -5.9,
+      9.05,
+      1.15
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "rear_vessel_bevel",
+    "from_": [
+      -8.25,
+      7.05,
+      -0.95
+    ],
+    "to": [
+      -7.8,
+      8.7,
+      0.95
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "rear_end_cap",
+    "from_": [
+      -8.5,
+      7.45,
+      -0.65
+    ],
+    "to": [
+      -8.25,
+      8.3,
+      0.65
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "receiver_core",
+    "from_": [
+      -6.2,
+      6.15,
+      -1.15
+    ],
+    "to": [
+      -1.05,
+      8.8,
+      1.15
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "upper_spine",
+    "from_": [
+      -6.6,
+      8.8,
+      -0.85
+    ],
+    "to": [
+      7.4,
+      9.25,
+      0.85
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "rail",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "lower_spine",
+    "from_": [
+      -5.5,
+      5.85,
+      -0.8
+    ],
+    "to": [
+      7.4,
+      6.5,
+      0.8
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "sage_side_cover_-1",
+    "from_": [
+      -5.95,
+      6.35,
+      -1.36
+    ],
+    "to": [
+      -1.15,
+      8.65,
+      -1.16
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "controls",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "sage_side_cover_1",
+    "from_": [
+      -5.95,
+      6.35,
+      1.16
+    ],
+    "to": [
+      -1.15,
+      8.65,
+      1.36
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "controls",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "underside_breech",
+    "from_": [
+      -4.7,
+      5.35,
+      -0.7
+    ],
+    "to": [
+      -1.1,
+      5.85,
+      0.7
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "rail",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "sight_rear",
+    "from_": [
+      -5.7,
+      9.25,
+      -0.38
+    ],
+    "to": [
+      -4.7,
+      9.55,
+      0.38
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "receiver",
+    "name": "rear_band",
+    "from_": [
+      -7.15,
+      6.64,
+      -1.23
+    ],
+    "to": [
+      -6.65,
+      9.13,
+      1.23
+    ],
+    "material": "brass",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "cartridge_rack",
+    "name": "bay_central_backbone",
+    "from_": [
+      -1.0,
+      6.5,
+      -0.28
+    ],
+    "to": [
+      6.6,
+      9.0,
+      0.28
+    ],
+    "material": "recess",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "cartridge_rack",
+    "name": "bay_rear_post",
+    "from_": [
+      -1.3,
+      6.5,
+      -1.15
+    ],
+    "to": [
+      -0.8,
+      9.0,
+      1.15
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "cartridge_rack",
+    "name": "bay_front_post",
+    "from_": [
+      6.4,
+      6.5,
+      -1.15
+    ],
+    "to": [
+      6.95,
+      9.0,
+      1.15
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "cartridge_rack",
+    "name": "bay_bottom_rail_-1",
+    "from_": [
+      -0.9,
+      6.42,
+      -1.2
+    ],
+    "to": [
+      6.5,
+      6.6899999999999995,
+      -0.82
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "rail",
+    "face_details": {}
+  },
+  {
+    "group": "cartridge_rack",
+    "name": "bay_top_rail_-1",
+    "from_": [
+      -0.9,
+      8.97,
+      -1.2
+    ],
+    "to": [
+      6.5,
+      9.24,
+      -0.82
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "rail",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_-1_0_barrel",
+    "from_": [
+      0.05,
+      6.95,
+      -0.98
+    ],
+    "to": [
+      5.6,
+      7.75,
+      -0.45
+    ],
+    "material": "ceramic",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "dose",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_-1_0_rear_cap",
+    "from_": [
+      -0.35,
+      6.88,
+      -1.07
+    ],
+    "to": [
+      0.2,
+      7.82,
+      -0.38
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_-1_0_front_cap",
+    "from_": [
+      5.6,
+      6.9,
+      -1.07
+    ],
+    "to": [
+      6.02,
+      7.8,
+      -0.38
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_-1_0_nozzle",
+    "from_": [
+      6.02,
+      7.1000000000000005,
+      -0.92
+    ],
+    "to": [
+      6.4,
+      7.38,
+      -0.52
+    ],
+    "material": "brass",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_-1_1_barrel",
+    "from_": [
+      0.05,
+      8.1,
+      -0.98
+    ],
+    "to": [
+      5.6,
+      8.9,
+      -0.45
+    ],
+    "material": "ceramic",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "dose",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_-1_1_rear_cap",
+    "from_": [
+      -0.35,
+      8.03,
+      -1.07
+    ],
+    "to": [
+      0.2,
+      8.969999999999999,
+      -0.38
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_-1_1_front_cap",
+    "from_": [
+      5.6,
+      8.049999999999999,
+      -1.07
+    ],
+    "to": [
+      6.02,
+      8.95,
+      -0.38
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_-1_1_nozzle",
+    "from_": [
+      6.02,
+      8.25,
+      -0.92
+    ],
+    "to": [
+      6.4,
+      8.53,
+      -0.52
+    ],
+    "material": "brass",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "cartridge_rack",
+    "name": "bay_bottom_rail_1",
+    "from_": [
+      -0.9,
+      6.42,
+      0.82
+    ],
+    "to": [
+      6.5,
+      6.6899999999999995,
+      1.2
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "rail",
+    "face_details": {}
+  },
+  {
+    "group": "cartridge_rack",
+    "name": "bay_top_rail_1",
+    "from_": [
+      -0.9,
+      8.97,
+      0.82
+    ],
+    "to": [
+      6.5,
+      9.24,
+      1.2
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "rail",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_1_0_barrel",
+    "from_": [
+      0.05,
+      6.95,
+      0.45
+    ],
+    "to": [
+      5.6,
+      7.75,
+      0.98
+    ],
+    "material": "ceramic",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "dose",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_1_0_rear_cap",
+    "from_": [
+      -0.35,
+      6.88,
+      0.38
+    ],
+    "to": [
+      0.2,
+      7.82,
+      1.07
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_1_0_front_cap",
+    "from_": [
+      5.6,
+      6.9,
+      0.38
+    ],
+    "to": [
+      6.02,
+      7.8,
+      1.07
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_1_0_nozzle",
+    "from_": [
+      6.02,
+      7.1000000000000005,
+      0.52
+    ],
+    "to": [
+      6.4,
+      7.38,
+      0.92
+    ],
+    "material": "brass",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_1_1_barrel",
+    "from_": [
+      0.05,
+      8.1,
+      0.45
+    ],
+    "to": [
+      5.6,
+      8.9,
+      0.98
+    ],
+    "material": "ceramic",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "dose",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_1_1_rear_cap",
+    "from_": [
+      -0.35,
+      8.03,
+      0.38
+    ],
+    "to": [
+      0.2,
+      8.969999999999999,
+      1.07
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_1_1_front_cap",
+    "from_": [
+      5.6,
+      8.049999999999999,
+      0.38
+    ],
+    "to": [
+      6.02,
+      8.95,
+      1.07
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "syrettes",
+    "name": "syrette_1_1_nozzle",
+    "from_": [
+      6.02,
+      8.25,
+      0.52
+    ],
+    "to": [
+      6.4,
+      8.53,
+      0.92
+    ],
+    "material": "brass",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "grip",
+    "name": "grip_tang",
+    "from_": [
+      -0.7,
+      5.8,
+      -0.85
+    ],
+    "to": [
+      0.85,
+      6.65,
+      0.85
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "grip",
+    "name": "pistol_grip",
+    "from_": [
+      -0.85,
+      0.7,
+      -0.92
+    ],
+    "to": [
+      0.85,
+      6.1,
+      0.92
+    ],
+    "material": "rubber",
+    "rotation": [
+      0,
+      0,
+      -20
+    ],
+    "origin": [
+      0,
+      6.1,
+      0
+    ],
+    "detail": "grip",
+    "face_details": {}
+  },
+  {
+    "group": "grip",
+    "name": "grip_heel",
+    "from_": [
+      -1.05,
+      0.55,
+      -1.03
+    ],
+    "to": [
+      1.0,
+      1.18,
+      1.03
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      -20
+    ],
+    "origin": [
+      0,
+      6.1,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "grip",
+    "name": "grip_sage_inlay_-1",
+    "from_": [
+      -0.57,
+      1.45,
+      -1.01
+    ],
+    "to": [
+      0.54,
+      4.9,
+      -0.92
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      -20
+    ],
+    "origin": [
+      0,
+      6.1,
+      0
+    ],
+    "detail": "grip",
+    "face_details": {}
+  },
+  {
+    "group": "grip",
+    "name": "grip_sage_inlay_1",
+    "from_": [
+      -0.57,
+      1.45,
+      0.92
+    ],
+    "to": [
+      0.54,
+      4.9,
+      1.01
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      -20
+    ],
+    "origin": [
+      0,
+      6.1,
+      0
+    ],
+    "detail": "grip",
+    "face_details": {}
+  },
+  {
+    "group": "stock",
+    "name": "stock_upper_strut",
+    "from_": [
+      -8.475,
+      5.8,
+      -0.625
+    ],
+    "to": [
+      -7.924999999999999,
+      10.929571132170796,
+      0.625
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      -96.155168343274
+    ],
+    "origin": [
+      -8.2,
+      5.8,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "stock",
+    "name": "stock_shoulder_strut",
+    "from_": [
+      -10.15,
+      0.65,
+      -0.725
+    ],
+    "to": [
+      -9.35,
+      6.028196723809943,
+      0.725
+    ],
+    "material": "rubber",
+    "rotation": [
+      0,
+      0,
+      -16.75026450502573
+    ],
+    "origin": [
+      -9.75,
+      0.65,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "stock",
+    "name": "stock_lower_strut",
+    "from_": [
+      -9.975,
+      0.65,
+      -0.575
+    ],
+    "to": [
+      -9.424999999999999,
+      8.01087630652764,
+      0.575
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      -86.8849352400945
+    ],
+    "origin": [
+      -9.7,
+      0.65,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "stock",
+    "name": "stock_butt_pad",
+    "from_": [
+      -10.24,
+      0.28,
+      -0.825
+    ],
+    "to": [
+      -9.76,
+      1.3948542505637225,
+      0.825
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      -23.80594351845768
+    ],
+    "origin": [
+      -10.0,
+      0.28,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "stock",
+    "name": "stock_mount",
+    "from_": [
+      -5.05,
+      5.1,
+      -1.0
+    ],
+    "to": [
+      -3.75,
+      6.0,
+      1.0
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "trigger",
+    "name": "guard_front",
+    "from_": [
+      1.9,
+      3.55,
+      -0.325
+    ],
+    "to": [
+      2.1999999999999997,
+      5.983105012119288,
+      0.325
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      -9.462322208025626
+    ],
+    "origin": [
+      2.05,
+      3.55,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "trigger",
+    "name": "guard_lower",
+    "from_": [
+      -0.7000000000000001,
+      3.5,
+      -0.325
+    ],
+    "to": [
+      -0.4,
+      6.100480724789168,
+      0.325
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      -88.89829388479363
+    ],
+    "origin": [
+      -0.55,
+      3.5,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "trigger",
+    "name": "trigger_blade",
+    "from_": [
+      0.25,
+      4.4,
+      -0.225
+    ],
+    "to": [
+      0.55,
+      5.7462912017836265,
+      0.225
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      -15.068488159492212
+    ],
+    "origin": [
+      0.4,
+      4.4,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "trigger",
+    "name": "lever_upper",
+    "from_": [
+      4.78,
+      3.5,
+      -0.24
+    ],
+    "to": [
+      5.12,
+      6.192582403567252,
+      0.24
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      15.068488159492215
+    ],
+    "origin": [
+      4.95,
+      3.5,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "trigger",
+    "name": "lever_middle",
+    "from_": [
+      5.63,
+      2.15,
+      -0.24
+    ],
+    "to": [
+      5.97,
+      3.7453056133543816,
+      0.24
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      32.19573393471324
+    ],
+    "origin": [
+      5.8,
+      2.15,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "trigger",
+    "name": "lever_tip",
+    "from_": [
+      6.265000000000001,
+      1.65,
+      -0.24
+    ],
+    "to": [
+      6.535,
+      2.4310249675906657,
+      0.24
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      50.19442890773483
+    ],
+    "origin": [
+      6.4,
+      1.65,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "front_bridge",
+    "from_": [
+      6.95,
+      7.8,
+      -0.65
+    ],
+    "to": [
+      9.3,
+      8.55,
+      0.65
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "front_upright",
+    "from_": [
+      7.2,
+      6.2,
+      -1.17
+    ],
+    "to": [
+      7.8,
+      9.55,
+      1.17
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "rail",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "front_upper_latch",
+    "from_": [
+      7.0,
+      9.1,
+      -1.3
+    ],
+    "to": [
+      8.2,
+      9.48,
+      1.3
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "forward_cylinder",
+    "from_": [
+      8.3,
+      4.1,
+      -0.7
+    ],
+    "to": [
+      9.65,
+      8.75,
+      0.7
+    ],
+    "material": "sage",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "ribs",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "cylinder_front_flat",
+    "from_": [
+      9.65,
+      4.5,
+      -0.48
+    ],
+    "to": [
+      9.88,
+      8.4,
+      0.48
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "ribs",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "cylinder_top_cap",
+    "from_": [
+      8.1,
+      8.65,
+      -0.82
+    ],
+    "to": [
+      9.85,
+      9.08,
+      0.82
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "cylinder_bottom_cap",
+    "from_": [
+      8.2,
+      3.93,
+      -0.82
+    ],
+    "to": [
+      9.75,
+      4.4,
+      0.82
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_root",
+    "from_": [
+      9.7,
+      8.05,
+      -0.38
+    ],
+    "to": [
+      10.4,
+      8.6,
+      0.38
+    ],
+    "material": "dark",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_lower",
+    "from_": [
+      10.4,
+      8.06,
+      -0.4
+    ],
+    "to": [
+      10.95,
+      8.2,
+      0.4
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_upper",
+    "from_": [
+      10.4,
+      8.48,
+      -0.4
+    ],
+    "to": [
+      10.95,
+      8.62,
+      0.4
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_left",
+    "from_": [
+      10.4,
+      8.2,
+      -0.4
+    ],
+    "to": [
+      10.95,
+      8.48,
+      -0.24
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  },
+  {
+    "group": "front_assembly",
+    "name": "muzzle_right",
+    "from_": [
+      10.4,
+      8.2,
+      0.24
+    ],
+    "to": [
+      10.95,
+      8.48,
+      0.4
+    ],
+    "material": "steel",
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "detail": "plain",
+    "face_details": {}
+  }
+]

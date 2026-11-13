@@ -1,0 +1,189 @@
+{
+  "candidate_count": 17,
+  "accepted": [],
+  "retained": [
+    {
+      "element": "upper_spine",
+      "face": "east",
+      "fully_covered_by": "front_upright",
+      "changed_pixels": [
+        73,
+        52
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "underside_breech",
+      "face": "west",
+      "fully_covered_by": "stock_mount",
+      "changed_pixels": [
+        1,
+        38
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "bay_central_backbone",
+      "face": "up",
+      "fully_covered_by": "upper_spine",
+      "changed_pixels": [
+        1,
+        15
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "bay_top_rail_-1",
+      "face": "south",
+      "fully_covered_by": "upper_spine",
+      "changed_pixels": [
+        1,
+        19
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "syrette_-1_0_barrel",
+      "face": "west",
+      "fully_covered_by": "syrette_-1_0_rear_cap",
+      "changed_pixels": [
+        1,
+        60
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "syrette_-1_1_barrel",
+      "face": "west",
+      "fully_covered_by": "syrette_-1_1_rear_cap",
+      "changed_pixels": [
+        1,
+        43
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "bay_top_rail_1",
+      "face": "north",
+      "fully_covered_by": "upper_spine",
+      "changed_pixels": [
+        1,
+        27
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "syrette_1_0_barrel",
+      "face": "west",
+      "fully_covered_by": "syrette_1_0_rear_cap",
+      "changed_pixels": [
+        6,
+        34
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "syrette_1_1_barrel",
+      "face": "west",
+      "fully_covered_by": "syrette_1_1_rear_cap",
+      "changed_pixels": [
+        1,
+        31
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "pistol_grip",
+      "face": "down",
+      "fully_covered_by": "grip_heel",
+      "changed_pixels": [
+        1,
+        29
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "guard_front",
+      "face": "up",
+      "fully_covered_by": "lower_spine",
+      "changed_pixels": [
+        1,
+        31
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "guard_lower",
+      "face": "down",
+      "fully_covered_by": "pistol_grip",
+      "changed_pixels": [
+        1,
+        26
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "trigger_blade",
+      "face": "west",
+      "fully_covered_by": "pistol_grip",
+      "changed_pixels": [
+        9,
+        31
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "lever_upper",
+      "face": "up",
+      "fully_covered_by": "lower_spine",
+      "changed_pixels": [
+        1,
+        28
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "front_bridge",
+      "face": "east",
+      "fully_covered_by": "forward_cylinder",
+      "changed_pixels": [
+        1,
+        28
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "forward_cylinder",
+      "face": "down",
+      "fully_covered_by": "cylinder_bottom_cap",
+      "changed_pixels": [
+        5,
+        72
+      ],
+      "reason": "Retained because native perspective raster differs"
+    },
+    {
+      "element": "forward_cylinder",
+      "face": "up",
+      "fully_covered_by": "cylinder_top_cap",
+      "changed_pixels": [
+        6,
+        27
+      ],
+      "reason": "Retained because native perspective raster differs"
+    }
+  ],
+  "views": [
+    [
+      16,
+      12,
+      25
+    ],
+    [
+      -16,
+      12,
+      -25
+    ]
+  ],
+  "criterion": "Strict RGBA equality at 1200x900 in both perspective views after each incremental removal; full six-view file comparison follows"
+}

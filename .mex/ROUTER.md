@@ -34,7 +34,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 ---
 
 # Session Bootstrap
@@ -59,11 +59,13 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 
 ## Current Project State
 
+- **注射器枪 SyringeGun 美术资产（2026-11-13）**：`art/models/syringe_gun_20261113/` 收录由用户指定定案并直推 main 的静态物品模型（制作来源：AI，Codex / GPT-6 + Blockbench 5.2.2）。62 cubes / 7 bones / 372 声明面，64² 单贴图，约 0.992×0.439×0.128 格；完整内嵌贴图工程、Bedrock 几何、六向 1200×900 原生预览及可重跑脚本齐备。离线交付检查、原生重开与导出一致性检查通过；本地同时升入 curated。仅美术归档，未接入物品渲染、手持姿态或射击逻辑，客户端未测试。
+
 - **潜水服 v2 半透明面罩资产（2026-11-12）**：`art/models/diving_suit_v2_glass_r4_20261112/` 收录已由用户验收的 v2 最终 r4（人工 + AI：TakaraMiyuki + GPT-6 / Codex）。217 导出 cubes / 9 bones / 1198 quads，256² 单贴图；八边形视窗、独立半透明玻璃、中空头壳及贴合封角。保留玩家骨架和人工基线；预览与原生导出对应，发布包含可重跑的封角像素足迹与交付检查。按当次用户要求直推 main，并在 Discussion #39 添加候选 B；旧版保留。壳体需双面 cutout、玻璃需独立 translucent 通道；仅美术交付，未接入游戏、客户端未测试。
 
 - **潜水服护甲美术资产（2026-11-12）**：`art/models/diving_suit_20261112/` 收录人工微调后的潜水服 DivingSuit（人工 + AI：TakaraMiyuki + Codex / GPT-6.1 Sol）。104 cubes / 8 bones / 610 faces，256² 单贴图；几何与四张 1200×900 预览由 Blockbench 5.2.2 原生重出。已通过离线结构、内嵌贴图一致性、工程重开与导出一致性检查；按用户明确要求直推 main。仅美术交付，未接入游戏，客户端未测试；待资产评选。详细来源、尺寸与验证见资产 README/validation。
 
-- **小型泵 SmallPump 4.0 美术资产（2026-11-12）**：`art/models/small_pump_20261112/` 收录人工重制的 4.0 版（纯人工：Han-xing-official，无 AI 参与）。18 bones / 38 cubes / 228 面，64² 单贴图；`.geo.json` 为 Bedrock Entity `geometry.small_pump`，`visible_bounds` 2 / 2.5 / offset 0.75，工程 `visible_box` 已统一为 `[2, 2.5, 0.75]`，导出可复现；四张 1200×900 预览。仅美术交付，未接入游戏、客户端未测试。**验收已完成（2026-11-12）**：已在 Blockbench 5.2.2 内重开（18 骨骼 / 38 cube / 1 张 64² 内嵌贴图 / Visible box 2·2.5·0.75，无报错），并用原生 Export Bedrock Geometry 重出与仓库 geo 逐字段 0 差异（仓库 geo 即原生导出原件，sha256 `2a9fc222…`）；`validation.json` 为 `complete`，26 项全通过，PR #56 待合并。注意：本工程为 5.x 工程格式（骨骼存于独立 `groups` 表），用 4.x 打开会静默丢失骨骼名与 pivot，验收须 5.2.x 及以上。
+- **小型泵 SmallPump 4.0 美术资产（2026-11-12）**：`art/models/small_pump_20261112/` 收录人工重制的 4.0 版（纯人工：Han-xing-official，无 AI 参与）。18 bones / 38 cubes / 228 面，64² 单贴图；`art/models/small_pump_20261112/small_pump.geo.json` 为 Bedrock Entity `geometry.small_pump`，`visible_bounds` 2 / 2.5 / offset 0.75，工程 `visible_box` 已统一为 `[2, 2.5, 0.75]`，导出可复现；四张 1200×900 预览。仅美术交付，未接入游戏、客户端未测试。**验收已完成（2026-11-12）**：已在 Blockbench 5.2.2 内重开（18 骨骼 / 38 cube / 1 张 64² 内嵌贴图 / Visible box 2·2.5·0.75，无报错），并用原生 Export Bedrock Geometry 重出与仓库 geo 逐字段 0 差异（仓库 geo 即原生导出原件，sha256 `2a9fc222…`）；`validation.json` 为 `complete`，26 项全通过，PR #56 待合并。注意：本工程为 5.x 工程格式（骨骼存于独立 `groups` 表），用 4.x 打开会静默丢失骨骼名与 pivot，验收须 5.2.x 及以上。
 
 **Working:**
 - 1.20.1 Forge mod builds and loads; air-ocean deep dimension, outposts, and starter submarine generate.

@@ -1,0 +1,93 @@
+{
+  "method": "All four corners of the face, offset 1e-6 outward, lie strictly inside one opaque oriented cuboid with a 1e-5 margin. Convexity proves coverage of the entire rectangular face. Boundary-touching faces retained to preserve antialiased seams. Static geometry only. No partial faces or components removed.",
+  "removed_face_count": 0,
+  "removed_faces": [],
+  "geometric_candidates": [
+    {
+      "element": "upper_spine",
+      "face": "east",
+      "fully_covered_by": "front_upright"
+    },
+    {
+      "element": "underside_breech",
+      "face": "west",
+      "fully_covered_by": "stock_mount"
+    },
+    {
+      "element": "bay_central_backbone",
+      "face": "up",
+      "fully_covered_by": "upper_spine"
+    },
+    {
+      "element": "bay_top_rail_-1",
+      "face": "south",
+      "fully_covered_by": "upper_spine"
+    },
+    {
+      "element": "syrette_-1_0_barrel",
+      "face": "west",
+      "fully_covered_by": "syrette_-1_0_rear_cap"
+    },
+    {
+      "element": "syrette_-1_1_barrel",
+      "face": "west",
+      "fully_covered_by": "syrette_-1_1_rear_cap"
+    },
+    {
+      "element": "bay_top_rail_1",
+      "face": "north",
+      "fully_covered_by": "upper_spine"
+    },
+    {
+      "element": "syrette_1_0_barrel",
+      "face": "west",
+      "fully_covered_by": "syrette_1_0_rear_cap"
+    },
+    {
+      "element": "syrette_1_1_barrel",
+      "face": "west",
+      "fully_covered_by": "syrette_1_1_rear_cap"
+    },
+    {
+      "element": "pistol_grip",
+      "face": "down",
+      "fully_covered_by": "grip_heel"
+    },
+    {
+      "element": "guard_front",
+      "face": "up",
+      "fully_covered_by": "lower_spine"
+    },
+    {
+      "element": "guard_lower",
+      "face": "down",
+      "fully_covered_by": "pistol_grip"
+    },
+    {
+      "element": "trigger_blade",
+      "face": "west",
+      "fully_covered_by": "pistol_grip"
+    },
+    {
+      "element": "lever_upper",
+      "face": "up",
+      "fully_covered_by": "lower_spine"
+    },
+    {
+      "element": "front_bridge",
+      "face": "east",
+      "fully_covered_by": "forward_cylinder"
+    },
+    {
+      "element": "forward_cylinder",
+      "face": "down",
+      "fully_covered_by": "cylinder_bottom_cap"
+    },
+    {
+      "element": "forward_cylinder",
+      "face": "up",
+      "fully_covered_by": "cylinder_top_cap"
+    }
+  ],
+  "retained_reason": "Only native raster-verified candidates may be deleted; see verified_face_selection.json"
+}

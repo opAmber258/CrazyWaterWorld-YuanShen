@@ -1,0 +1,116 @@
+{
+  "asset": "注射器枪 SyringeGun",
+  "identifier": "syringe_gun",
+  "date": "2026-11-13",
+  "source": "AI / Codex (GPT-6) + Blockbench 5.2.2 native APIs + authored Python pixel atlas",
+  "format": "bedrock",
+  "format_version": "1.12.0",
+  "editor_bbox": {
+    "min": [
+      -7.664685204283128,
+      0.13734476281626737,
+      -1.02
+    ],
+    "max": [
+      8.2125,
+      7.1625,
+      1.02
+    ],
+    "size": [
+      15.877185204283128,
+      7.025155237183732,
+      2.04
+    ]
+  },
+  "export_bbox": {
+    "min": [
+      -8.2125,
+      0.13734477292936703,
+      -1.02
+    ],
+    "max": [
+      7.66468520874479,
+      7.1625000000000005,
+      1.02
+    ],
+    "size": [
+      15.877185208744791,
+      7.025155227070633,
+      2.04
+    ]
+  },
+  "dimensions_blocks": [
+    0.9923240752676955,
+    0.43907220232398325,
+    0.1275
+  ],
+  "cost": {
+    "editor_cubes": 62,
+    "editor_groups": 7,
+    "export_cubes": 62,
+    "export_bones": 7,
+    "declared_export_faces": 372,
+    "materials": 1,
+    "texture_pixels": 4096,
+    "texture_frame": [
+      64,
+      64
+    ],
+    "frames": 1,
+    "base_rgba_bytes": 16384,
+    "draw_calls_measured": false,
+    "fps_measured": false
+  },
+  "checks": {
+    "required_files_present": true,
+    "bedrock_geometry_identifier": true,
+    "format_version": true,
+    "cube_and_bone_counts_match": true,
+    "no_empty_bones": true,
+    "no_duplicate_geometry": true,
+    "positive_volumes": true,
+    "export_bbox_matches_mirrored_editor_bbox": true,
+    "png_rgba_power_of_two": true,
+    "no_partial_alpha": true,
+    "transparent_pixels_zero_rgb": true,
+    "embedded_texture_matches_png": true,
+    "all_sampled_face_texels_opaque": true,
+    "portable_embedded_texture": true,
+    "preview_size_and_nonempty": true,
+    "native_reopen_and_export": true
+  },
+  "all_delivery_checks_pass": true,
+  "visual_review": {
+    "views": [
+      "front",
+      "back",
+      "side",
+      "top",
+      "oblique",
+      "rear_oblique"
+    ],
+    "reviewed_in_blockbench": true,
+    "silhouette": "open skeletal stock, slanted grip, two-row syrette bay, short muzzle and vertical forward cylinder",
+    "hidden_face_candidates_retained": 17,
+    "cleanup_removed_faces": 0,
+    "note": "Geometric candidates retained after native strict pixel comparisons differed. No geometry duplicates or sliced surfaces. Historical comparison records are evidence, not a claimed strict optimization pass."
+  },
+  "client_test": {
+    "performed": false,
+    "reason": "Art-only request. No attachable/item renderer, holding transforms, animation, firing logic, client FPS or Minecraft test performed."
+  },
+  "sha256": {
+    "syringe_gun.bbmodel": "f4da2a8f6bedd65d0c6e681e609233bafa3d72c9e4bd3afb35406f49fc53f3f3",
+    "syringe_gun.geo.json": "1fe6af38f4d446e9bfb05ddadade65b3131d4daeb611daa03d91983b38ed6fe5",
+    "syringe_gun_tex.png": "df8b06e0b11eb3c2ca985d17fd40ba1b9245bd72989a36ec7106635d8b8ee45a",
+    "preview_front.png": "88b10f7a6cfb972f372bf955b6f726464184685071eefeed0e63d91791b1fe87",
+    "preview_back.png": "76e8c1904033f07ad6be7c274f5cc9d028daf27841f8151c22cc22b581e7045b",
+    "preview_side.png": "d3187fb8f23ba5228318785e2674dcfb56dcb03d98174011ede4e39c8149b9f1",
+    "preview_oblique.png": "0dcf8b461abe78e88babbd6b5164473c9198ebae12cb584863b38f78ed2e2c46"
+  },
+  "limitations": [
+    "Generic skill audit is not a full Bedrock schema validator; native export roundtrip checked separately.",
+    "Single-view source gives no depth or rear-side information; those details are authored inference.",
+    "No game runtime, lighting, held-item pose or performance certification."
+  ]
+}

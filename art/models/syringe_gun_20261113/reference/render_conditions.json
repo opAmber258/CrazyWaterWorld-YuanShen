@@ -1,0 +1,100 @@
+{
+  "renderer": "Blockbench 5.2.2 native Preview / Three.js",
+  "size": [
+    1200,
+    900
+  ],
+  "background": "#202a2d",
+  "views": {
+    "front": {
+      "projection": "orthographic",
+      "camera": [
+        0.225,
+        3.6750000000000043,
+        70
+      ],
+      "target": [
+        0.225,
+        3.675,
+        0
+      ],
+      "zoom": 1.38,
+      "fov": 45
+    },
+    "back": {
+      "projection": "orthographic",
+      "camera": [
+        0.22500000000000858,
+        3.6750000000000043,
+        -70
+      ],
+      "target": [
+        0.225,
+        3.675,
+        0
+      ],
+      "zoom": 1.38,
+      "fov": 45
+    },
+    "side": {
+      "projection": "orthographic",
+      "camera": [
+        70,
+        3.6750000000000043,
+        4.2724865205253285e-15
+      ],
+      "target": [
+        0.225,
+        3.675,
+        0
+      ],
+      "zoom": 1.38,
+      "fov": 45
+    },
+    "top": {
+      "projection": "orthographic",
+      "camera": [
+        0.225,
+        69.99999999996683,
+        0.0000663279481000331
+      ],
+      "target": [
+        0.225,
+        3.675,
+        0
+      ],
+      "zoom": 1.38,
+      "fov": 45
+    },
+    "oblique": {
+      "projection": "perspective",
+      "camera": [
+        15.999999999999998,
+        12,
+        25
+      ],
+      "target": [
+        0.225,
+        3.675,
+        0
+      ],
+      "zoom": 1,
+      "fov": 36
+    },
+    "rear_oblique": {
+      "projection": "perspective",
+      "camera": [
+        -16,
+        12,
+        -25
+      ],
+      "target": [
+        0.225,
+        3.675,
+        0
+      ],
+      "zoom": 1,
+      "fov": 36
+    }
+  }
+}

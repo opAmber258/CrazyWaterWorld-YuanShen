@@ -1,0 +1,108 @@
+{
+  "comparison_inputs_valid": true,
+  "all_pixel_identical": true,
+  "background": [
+    32,
+    42,
+    45
+  ],
+  "samples": [
+    {
+      "name": "preview_back.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 149639,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_front.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 149724,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_oblique.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 112708,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_rear_oblique.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 114956,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_side.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 36282,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    },
+    {
+      "name": "preview_top.png",
+      "size": [
+        1200,
+        900
+      ],
+      "changed_pixels": 0,
+      "changed_bbox": null,
+      "mean_absolute_rgba_error_0_255": 0.0,
+      "max_channel_error": 0,
+      "foreground_pixels": 82087,
+      "foreground_mean_absolute_rgba_error_0_255": 0.0,
+      "changed_fraction_foreground": 0.0,
+      "pixel_identical": true
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "No perceptual acceptance inferred from small average errors",
+    "Only provided PNGs checked; full frame/view coverage must be documented",
+    "Camera, lights, viewport, frame time and renderer settings must match",
+    "Transparent hidden RGB differences are included in strict RGBA comparison"
+  ]
+}
