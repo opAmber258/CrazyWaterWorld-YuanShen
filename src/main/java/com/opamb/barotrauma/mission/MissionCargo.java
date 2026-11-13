@@ -265,6 +265,18 @@ public final class MissionCargo {
 
     // ------------------------------------------------------------------ 内部
 
+    /** 船上还有没有能放货的空货架格（给接任务提示用）。 */
+    public static boolean hasFreeShelf(ServerLevel level, ServerPlayer player) {
+        for (CabinetBlockEntity shelf : shelves(level, player)) {
+            for (int slot = 0; slot < shelf.getContainerSize(); slot++) {
+                if (shelf.getItem(slot).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** 船上所有箱子货架的方块实体（按坐标排序，保证装载顺序稳定）。 */
     public static List<CabinetBlockEntity> shelves(ServerLevel level, ServerPlayer player) {
         List<CabinetBlockEntity> assembled = assembledShelves(level);

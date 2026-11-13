@@ -94,6 +94,17 @@ public final class CampaignMapScreen extends Screen {
         if (state == null || state.phase() != RoundPhase.AT_NODE) { onClose(); return; }
         pending = false;
         if (state.current() != origin) { origin = state.current(); selected = -1; checked.clear(); scroll = 0; }
+        onMissionUpdate();
+    }
+
+    /** 任务状态包更新后调用：清掉已失效的勾选并刷新下潜按钮。 */
+    public void onMissionUpdate() {
+        if (CampaignMap.isValid(selected)) {
+            List<Mission> current = available();
+            checked.removeIf(id -> current.stream().noneMatch(mission -> mission.id == id));
+        } else {
+            checked.clear();
+        }
         if (dive != null) dive.active = canDive();
     }
     private boolean canDive() {

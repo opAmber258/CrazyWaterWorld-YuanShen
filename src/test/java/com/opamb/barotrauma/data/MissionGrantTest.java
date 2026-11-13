@@ -93,4 +93,34 @@ class MissionGrantTest {
         assertEquals(1, restored.offerDestination(2, granted.get(0)));
         assertEquals(4, restored.offerDestination(2, granted.get(1)));
     }
+
+    /** 造一份带旧 granted 的存档：任务 1 绑定在 0 号站、目的地 1。 */
+    private static CompoundTag legacyTag() {
+        MissionSavedData source = new MissionSavedData();
+        Mission mission = source.missions().get(1);
+        mission.bind(0, 1);
+        CompoundTag tag = new CompoundTag();
+        net.minecraft.nbt.ListTag missions = new net.minecraft.nbt.ListTag();
+        missions.add(mission.save());
+        tag.put("missions", missions);
+        CompoundTag granted = new CompoundTag();
+        granted.put("0", new net.minecraft.nbt.IntArrayTag(new int[]{1}));
+        tag.put("granted", granted);
+        return tag;
+    }
+
+    @Test
+    void offers为空时不回落到旧granted() {
+        CompoundTag tag = legacyTag();
+        tag.put("offers", new CompoundTag());
+        MissionSavedData loaded = MissionSavedData.load(tag);
+        assertEquals(-1, loaded.offerDestination(0, 1),
+                "新格式即使 offers 为空，也不能把旧 granted 复活");
+    }
+
+    @Test
+    void 只有granted的旧存档仍能迁移() {
+        MissionSavedData loaded = MissionSavedData.load(legacyTag());
+        assertEquals(1, loaded.offerDestination(0, 1), "旧格式仍能迁移出报价");
+    }
 }

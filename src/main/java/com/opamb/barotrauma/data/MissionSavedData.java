@@ -396,7 +396,8 @@ public final class MissionSavedData extends SavedData {
             }
         }
         CompoundTag offersTag = tag.getCompound("offers");
-        if (!offersTag.isEmpty()) {
+        // 新存档即使 offers 为空也以它为准；只有完全没有这个键时才读旧的 granted。
+        if (tag.contains("offers")) {
             for (String key : offersTag.getAllKeys()) {
                 try {
                     int node = Integer.parseInt(key);

@@ -60,6 +60,11 @@ public final class ClientMissionCache {
             offersMap.put(packet.offerIds()[i], packet.offerDests()[i]);
         }
         offers = java.util.Map.copyOf(offersMap);
+        // 海图打开时收到任务状态更新：立刻清掉已经失效的勾选，避免隐藏勾选卡住下潜。
+        net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+        if (minecraft.screen instanceof CampaignMapScreen screen) {
+            screen.onMissionUpdate();
+        }
     }
 
     private static Mission.State state(int ordinal) {
