@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "I I",
+    "I I",
+    "SSS"
+  ],
+  "key": {
+    "I": {
+      "item": "barotrauma:iron"
+    },
+    "S": {
+      "item": "barotrauma:steel"
+    }
+  },
+  "result": {
+    "item": "barotrauma:crate_shelf",
+    "count": 1
+  }
+}

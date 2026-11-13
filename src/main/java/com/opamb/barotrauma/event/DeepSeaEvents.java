@@ -320,7 +320,7 @@ public final class DeepSeaEvents {
             if (!data.accept(tester, cargo.id, 0)) {
                 failures.add("接取货运任务失败");
             } else {
-                data.abandon(tester);
+                data.abandon(tester, cargo.id);
                 if (cargo.state() != Mission.State.OFFERED) {
                     failures.add("放弃货运任务后没有回到 OFFERED");
                 }

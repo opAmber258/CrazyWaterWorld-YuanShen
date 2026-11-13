@@ -131,6 +131,11 @@ public abstract class CreativeScreenMixin {
         if (46 < menu.slots.size()) {
             barotrauma$move(menu.slots.get(46), SUIT_X, SUIT_Y);
         }
+        // 47 双手栏位：创造物品栏没有它的底纹位置，挪出屏幕避免压住物品网格。
+        if (com.opamb.barotrauma.equipment.HandsSlot.MENU_INDEX < menu.slots.size()) {
+            barotrauma$move(menu.slots.get(com.opamb.barotrauma.equipment.HandsSlot.MENU_INDEX),
+                    OFFSCREEN, OFFSCREEN);
+        }
     }
 
     private static void barotrauma$move(Slot slot, int x, int y) {

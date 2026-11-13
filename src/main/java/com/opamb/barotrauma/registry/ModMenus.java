@@ -49,6 +49,11 @@ public final class ModMenus {
                     // 缓冲里是 pos + 种类；种类由 CabinetMenu 的 buf 构造器解析。
                     com.opamb.barotrauma.menu.CabinetMenu::new));
 
+    /** 货运箱内部容器：右键箱子打开（左边玩家背包、右边箱子内容）。 */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.CrateMenu>> CRATE =
+            MENUS.register("crate", () -> IForgeMenuType.create(
+                    com.opamb.barotrauma.menu.CrateMenu::new));
+
     private ModMenus() {
     }
 

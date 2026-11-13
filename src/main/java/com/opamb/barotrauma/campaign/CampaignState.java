@@ -228,8 +228,9 @@ public final class CampaignState extends SavedData {
         var missions = tag.getList("selectedMissions", net.minecraft.nbt.Tag.TAG_STRING);
         var ids = new java.util.ArrayList<String>();
         for (int i = 0; i < Math.min(missions.size(), CampaignMission.LIMIT); i++) ids.add(missions.getString(i));
-        var offered = CampaignMission.offered(round.origin(), round.destination()).stream().map(CampaignMission::id).toList();
-        selectedMissions = ids.stream().filter(offered::contains).distinct().toList();
+        // 任务改由站务员/海图勾选、下潜时落到 MissionSavedData；这个旧字段只保留写入，
+        // 载入时不再当作有效任务源（旧档里是假的航线委托 id）。
+        selectedMissions = java.util.List.of();
     }
 
     @Override

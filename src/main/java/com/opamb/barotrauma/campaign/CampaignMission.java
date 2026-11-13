@@ -1,26 +1,18 @@
 package com.opamb.barotrauma.campaign;
 
-import java.util.List;
+/**
+ * 航线委托留下的唯一常量。
+ *
+ * <p>旧版海图上的 3 条"航线委托"（只记录接取、没有实际玩法）已删除；现在任务由
+ * 站务员 NPC 打开海图后勾选（{@code MissionNpc} + {@code CampaignMapScreen}），
+ * 下潜时服务端按 {@code MissionSavedData} 校验并接取。这个常量用于包头/存档的
+ * 条数上限，和 {@code MissionSavedData.MAX_ACTIVE} 保持一致。</p>
+ */
+public final class CampaignMission {
 
-/** M1 的共享航线委托；只记录接取，不伪造目标、货物或已完成的副本。 */
-public record CampaignMission(String id, String kind, int reward) {
+    /** 一趟最多几条任务。 */
     public static final int LIMIT = 3;
 
-    public static List<CampaignMission> offered(int from, int to) {
-        if (!CampaignMap.connects(from, to)) return List.of();
-        String route = from + "_" + to + "_";
-        return List.of(new CampaignMission(route + "salvage", "salvage", 1200),
-                new CampaignMission(route + "recon", "recon", 800),
-                new CampaignMission(route + "delivery", "delivery", 600));
-    }
-
-    /** 空任务出发合法；重复、未知、其他航线、超上限一律拒绝。 */
-    public static boolean valid(RoundPhase phase, int active, int expectedOrigin, int destination,
-                                List<String> ids) {
-        if (phase != RoundPhase.AT_NODE || active != expectedOrigin
-                || !CampaignMap.connects(active, destination) || ids.size() > LIMIT
-                || new java.util.HashSet<>(ids).size() != ids.size()) return false;
-        var offered = offered(active, destination).stream().map(CampaignMission::id).toList();
-        return offered.containsAll(ids);
+    private CampaignMission() {
     }
 }

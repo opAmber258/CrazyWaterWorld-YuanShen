@@ -10,8 +10,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class ModNetwork {
 
-    // 4：新增 ItemSubSlotPacket（潜水服氧气瓶/焊接工具油箱子格）。
-    private static final String PROTOCOL = "4";
+    // 8：站务员改成对话发任务（C2S 提问 + S2C 对话），报价按站点各自刷新。
+    private static final String PROTOCOL = "8";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -42,6 +42,17 @@ public final class ModNetwork {
                 MissionStatePacket::encode, MissionStatePacket::decode, MissionStatePacket::handle);
         CHANNEL.registerMessage(nextId++, MissionActionPacket.class,
                 MissionActionPacket::encode, MissionActionPacket::decode, MissionActionPacket::handle);
+        CHANNEL.messageBuilder(NpcTalkPacket.class, nextId++,
+                        net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(NpcTalkPacket::encode).decoder(NpcTalkPacket::decode)
+                .consumerNetworkThread(NpcTalkPacket::handle).add();
+        CHANNEL.messageBuilder(NpcDialoguePacket.class, nextId++,
+                        net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(NpcDialoguePacket::encode).decoder(NpcDialoguePacket::decode)
+                .consumerNetworkThread(NpcDialoguePacket::handle).add();
+        CHANNEL.registerMessage(nextId++, OpenCampaignMapPacket.class,
+                OpenCampaignMapPacket::encode, OpenCampaignMapPacket::decode,
+                OpenCampaignMapPacket::handle);
         CHANNEL.registerMessage(nextId++, PumpActionPacket.class,
                 PumpActionPacket::encode, PumpActionPacket::decode, PumpActionPacket::handle);
         CHANNEL.registerMessage(nextId++, ReactorActionPacket.class,
@@ -69,6 +80,12 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(ItemSubSlotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(ItemSubSlotPacket::encode).decoder(ItemSubSlotPacket::decode)
                 .consumerNetworkThread(ItemSubSlotPacket::handle).add();
+        CHANNEL.messageBuilder(OpenCratePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(OpenCratePacket::encode).decoder(OpenCratePacket::decode)
+                .consumerNetworkThread(OpenCratePacket::handle).add();
+        CHANNEL.messageBuilder(CrateSlotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(CrateSlotPacket::encode).decoder(CrateSlotPacket::decode)
+                .consumerNetworkThread(CrateSlotPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

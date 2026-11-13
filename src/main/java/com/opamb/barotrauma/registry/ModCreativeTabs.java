@@ -45,6 +45,13 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.MEDIUM_STEEL_CABINET.get());
                         output.accept(ModItems.MEDIUM_WINDOWED_STEEL_CABINET.get());
                         output.accept(ModItems.CRATE_SHELF.get());
+                        output.accept(ModItems.METAL_CRATE.get());
+                        output.accept(ModItems.SECURE_METAL_CRATE.get());
+                        output.accept(ModItems.MEDIC_CRATE.get());
+                        output.accept(ModItems.EXPLOSIVE_CRATE.get());
+                        output.accept(ModItems.CHEMICAL_CRATE.get());
+                        output.accept(ModItems.SEALED_SUPPLY_CRATE.get());
+                        output.accept(ModItems.MAGNETIC_SUSPENSION_CRATE.get());
                         output.accept(ModItems.DIVING_SUIT_LOCKER.get());
                         // 氧气瓶架 / 组合柜：模型未完成，暂不进创造栏（避免出现缺失模型的紫黑块）
                         // output.accept(ModItems.OXYGEN_TANK_SHELF.get());
@@ -61,6 +68,7 @@ public final class ModCreativeTabs {
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.SALINE.get());
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.NALOXONE.get());
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.FENTANYL.get());
+                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.ANTIBIOTICS.get());
                     })
                     .build());
 
@@ -72,6 +80,8 @@ public final class ModCreativeTabs {
                     .displayItems((params, output) -> {
                         output.accept(ModItems.CLOWN_HORN.get());
                         output.accept(ModItems.GUITAR.get());
+                        // 货运任务箱内清单用到的化学品/爆炸物（占位，无功能）
+                        ModItems.CARGO_PLACEHOLDER_ITEMS.forEach(item -> output.accept(item.get()));
                     })
                     .build());
 

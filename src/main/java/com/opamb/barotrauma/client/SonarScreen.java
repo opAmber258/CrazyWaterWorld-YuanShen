@@ -1,7 +1,6 @@
 package com.opamb.barotrauma.client;
 
 import com.opamb.barotrauma.mission.Mission;
-import com.opamb.barotrauma.network.MissionActionPacket;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.opamb.barotrauma.campaign.CampaignMap;
@@ -275,12 +274,12 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
 
     // ---------------------------------------------------------- 顶部横幅 / 页签
 
-    /** 原作顶部那条任务横幅：停靠时显示「选择任务并离开 <站点>」，航行中显示目的地。 */
+    /** 原作顶部那条任务横幅：停靠时显示「准备出航 <站点>」，航行中显示目的地。 */
     private void drawBanner(GuiGraphics graphics) {
         String text = "声纳 / 操舵台";
         var state = CampaignClient.state();
         if (state != null && state.phase() == RoundPhase.AT_NODE && CampaignClient.available()) {
-            text = "选择任务并离开  " + nodeName(state.current());
+            text = "准备出航  " + nodeName(state.current());
         } else if (state != null && state.phase() != RoundPhase.AT_NODE) {
             text = "航行中 · 前往  " + nodeName(state.destination());
         }
@@ -323,9 +322,10 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     private static final int MISSION_ROW_H = 26;
 
     /**
-     * 任务页：导航终端同时作为接单/交付界面（旧的任务终端方块已弃用）。
-     * 数据来自 {@link ClientMissionCache}，操作走 {@link MissionActionPacket}，
-     * 终端位置用导航终端（船核心）自己的方块坐标。
+     * 任务页：只读显示本次航程已接的任务（0..3 条）。
+     *
+     * <p>接取改在码头的站务员 NPC 处（一趟最多 3 条），所有任务在靠泊目的站时
+     * 自动结算，所以这里不再有接取/交付/放弃按钮。</p>
      */
     private void drawMissionPage(GuiGraphics graphics, int mouseX, int mouseY) {
         int x = leftPos + LEFT_X;
@@ -336,9 +336,9 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         graphics.fill(x, y, x + w, y + 1, BOX_EDGE);
         graphics.drawString(font, "任 务", x + 8, y + 6, ACCENT, false);
 
-        var missions = ClientMissionCache.offered();
+        var missions = ClientMissionCache.active();
         if (missions.isEmpty()) {
-            graphics.drawString(font, "暂无任务（靠泊哨站后从导航终端查看）",
+            graphics.drawString(font, "还没接任务：回码头找站务员（一趟最多 3 条）",
                     x + 8, y + 22, DIM, false);
             return;
         }
@@ -349,13 +349,12 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                 graphics.drawString(font, "…", x + 8, lineY, DIM, false);
                 break;
             }
-            drawMissionRow(graphics, x + 6, lineY, w - 12, mouseX, mouseY, mission);
+            drawMissionRow(graphics, x + 6, lineY, w - 12, mission);
             lineY += MISSION_ROW_H;
         }
     }
 
-    private void drawMissionRow(GuiGraphics graphics, int x, int y, int w,
-                                int mouseX, int mouseY, Mission mission) {
+    private void drawMissionRow(GuiGraphics graphics, int x, int y, int w, Mission mission) {
         graphics.fill(x, y, x + w, y + MISSION_ROW_H - 2, BTN_BG);
         graphics.fill(x, y, x + w, y + 1, BOX_EDGE);
 
@@ -363,58 +362,19 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         String name = spec == null ? ("任务 #" + mission.id)
                 : net.minecraft.network.chat.Component.translatable(spec.nameKey()).getString();
         int dist = (int) Math.sqrt(minecraft.player.blockPosition().distSqr(mission.target));
-        graphics.drawString(font, name + " · 奖励 " + mission.reward + " · " + dist + "m",
+        int reward = mission.cargoTotal() > 0 ? mission.cargoPayout() : mission.reward;
+        graphics.drawString(font, name + " · 奖励 " + reward + " · " + dist + "m",
                 x + 6, y + 4, TEXT, false);
 
         String state = switch (mission.state()) {
-            case OFFERED -> "可接取";
-            case ACTIVE -> "进行中";
-            case READY -> "已达成，回终端交付";
+            case OFFERED, ACTIVE -> "进行中 · 靠泊目的站自动结算";
+            case READY -> "已达成 · 靠泊目的站自动结算";
             case DONE -> "已完成";
             case FAILED -> "已超时失败";
         };
         int stateColor = mission.state() == Mission.State.READY ? 0xFF6FD07A
                 : mission.state() == Mission.State.FAILED ? 0xFFC8483C : DIM;
         graphics.drawString(font, state, x + 6, y + 14, stateColor, false);
-
-        boolean mine = ClientMissionCache.active() != null
-                && ClientMissionCache.active().id == mission.id;
-        String button = mine
-                ? (mission.state() == Mission.State.READY ? "交付" : "放弃")
-                : (mission.isTaken() ? "已被接走" : "接取");
-        boolean enabled = mission.state() != Mission.State.DONE && (!mission.isTaken() || mine);
-        int bx = x + w - 70;
-        boolean hover = enabled && mouseX >= bx && mouseX < bx + 62
-                && mouseY >= y + 4 && mouseY < y + 20;
-        graphics.fill(bx, y + 4, bx + 62, y + 20,
-                !enabled ? 0xFF1A211C : hover ? BTN_ON : 0xFF2F3A2F);
-        graphics.drawCenteredString(font, button, bx + 31, y + 8,
-                enabled ? TEXT : 0xFF5A6256);
-    }
-
-    private void handleMissionClick(double mouseX, double mouseY) {
-        int x = leftPos + LEFT_X + 6;
-        int lineY = topPos + STATUS_Y + 22;
-        int w = COL_X + COL_W - LEFT_X - 12;
-        var active = ClientMissionCache.active();
-        for (Mission mission : ClientMissionCache.offered()) {
-            int bx = x + w - 70;
-            if (mouseX >= bx && mouseX < bx + 62 && mouseY >= lineY + 4 && mouseY < lineY + 20) {
-                boolean mine = active != null && active.id == mission.id;
-                boolean enabled = mission.state() != Mission.State.DONE
-                        && (!mission.isTaken() || mine);
-                if (enabled) {
-                    int action = mine
-                            ? (mission.state() == Mission.State.READY
-                                    ? MissionActionPacket.TURN_IN : MissionActionPacket.ABANDON)
-                            : MissionActionPacket.ACCEPT;
-                    ModNetwork.CHANNEL.sendToServer(
-                            new MissionActionPacket(action, mission.id, menu.sonarPos()));
-                }
-                return;
-            }
-            lineY += MISSION_ROW_H;
-        }
     }
 
     /**
@@ -1264,11 +1224,8 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                 }
             }
         }
-        // 任务页只处理任务行按钮
+        // 任务页只展示本次航程已接的任务，不响应点击
         if (page == 2) {
-            if (button == 0) {
-                handleMissionClick(mouseX, mouseY);
-            }
             return super.mouseClicked(mouseX, mouseY, button);
         }
         // 核心页只展示数据，不响应示波器拖拽之类的操作

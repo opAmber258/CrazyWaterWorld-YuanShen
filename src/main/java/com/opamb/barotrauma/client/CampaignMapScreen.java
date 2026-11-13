@@ -1,7 +1,12 @@
 package com.opamb.barotrauma.client;
 
 import com.opamb.barotrauma.campaign.*;
+import com.opamb.barotrauma.mission.CargoManifest;
+import com.opamb.barotrauma.mission.Mission;
+import com.opamb.barotrauma.mission.MissionCatalog;
+import com.opamb.barotrauma.mission.MissionSpec;
 import com.opamb.barotrauma.network.*;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -12,7 +17,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** M1 海图：原作首群系底图 + 虚线航路 + 站点图标，右侧任务滚动区。 */
+/**
+ * M1 海图：原作首群系底图 + 虚线航路 + 站点图标。
+ *
+ * <p>照原作的任务流程：和站务员对话领取委托（每次访问最多 3 条，绑定目的地）→ 打开这张图 →
+ * 左键选相邻目的站 → 右侧只列该目的地能接的任务、勾选（一趟最多 3 条）→ 点「下潜」时
+ * 连同勾选一起发给服务端，服务端接取任务（货运同时装货）并开始航程。</p>
+ */
 public final class CampaignMapScreen extends Screen {
     private static final ResourceLocation MAP_PIECES =
             new ResourceLocation("barotrauma", "textures/gui/map_pieces.png");
@@ -27,13 +38,19 @@ public final class CampaignMapScreen extends Screen {
     private static final int ICON_MISSION_U = 200;
 
     private int selected = -1, origin = -1, scroll, maxScroll;
-    private final Set<String> checked = new LinkedHashSet<>();
+    private final Set<Integer> checked = new LinkedHashSet<>();
     private int mapX, mapY, mapW, mapH, panelX, panelW, bodyY, bodyBottom;
     private double scale;
     private Button dive;
     private boolean pending;
 
     public CampaignMapScreen() { super(tr("title")); }
+
+    /** 服务端发 OpenCampaignMapPacket 后调用（右键站务员）。 */
+    public static void openFromNpc() {
+        Minecraft.getInstance().setScreen(new CampaignMapScreen());
+    }
+
     private static Component tr(String key, Object... args) { return Component.translatable("campaign.barotrauma." + key, args); }
     private static Component nodeName(MapNode n) { return tr("node." + n.id()); }
 
@@ -53,13 +70,17 @@ public final class CampaignMapScreen extends Screen {
                 Component why = selected < 0 ? Component.translatable("campaign.barotrauma.select_first")
                         : pending ? Component.translatable("campaign.barotrauma.pending")
                         : Component.translatable("campaign.barotrauma.invalid");
-                if (net.minecraft.client.Minecraft.getInstance().player != null) {
-                    net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(why, true);
+                if (Minecraft.getInstance().player != null) {
+                    Minecraft.getInstance().player.displayClientMessage(why, true);
                 }
                 return;
             }
             pending = true; dive.active = false;
-            ModNetwork.CHANNEL.sendToServer(new CampaignActionPacket(origin, selected, List.copyOf(checked)));
+            List<String> ids = new ArrayList<>();
+            for (int id : checked) {
+                ids.add(Integer.toString(id));
+            }
+            ModNetwork.CHANNEL.sendToServer(new CampaignActionPacket(origin, selected, ids));
             // 服务端会立刻把全员传送进艇；先关掉海图，否则玩家会卡在 GUI 里点不到声纳/水泵。
             onClose();
         }).bounds(panelX + 6, height - 44, panelW - 12, 20).build());
@@ -78,13 +99,19 @@ public final class CampaignMapScreen extends Screen {
     private boolean canDive() {
         var state = CampaignClient.state();
         return !pending && state != null && CampaignClient.available()
-                && CampaignMission.valid(state.phase(), state.current(), origin, selected, List.copyOf(checked));
+                && state.phase() == RoundPhase.AT_NODE && state.current() == origin
+                && CampaignMap.connects(origin, selected) && checked.size() <= CampaignMission.LIMIT;
     }
     private int x(MapNode n) { return mapX + (int) Math.round(n.mapX() * scale); }
     private int y(MapNode n) { return mapY + (int) Math.round(n.mapY() * scale); }
     private MapNode hit(double mx, double my) {
         for (MapNode n : CampaignMap.nodes()) if (Math.abs(mx - x(n)) <= 12 && Math.abs(my - y(n)) <= 12) return n;
         return null;
+    }
+
+    /** 当前站挂出来的、能接去所选目的地的那些（原作海图按目的地过滤）。 */
+    private List<Mission> available() {
+        return ClientMissionCache.grantedFor(selected);
     }
 
     @Override public void render(GuiGraphics g, int mx, int my, float partialTick) {
@@ -130,8 +157,9 @@ public final class CampaignMapScreen extends Screen {
                 int size = n.type() == NodeType.OUTPOST ? 30 : 20;
                 g.blit(MAP_ICONS, cx - size / 2, cy - size / 2, size, size, u, 0, 128, 128, 512, 512);
             }
-            // 可接任务的相邻站：角标感叹号
-            if (n.id() != origin && CampaignMap.connects(origin, n.id())) {
+            // 有去这个目的地的报价：角标感叹号
+            if (n.id() != origin && CampaignMap.connects(origin, n.id())
+                    && !ClientMissionCache.grantedFor(n.id()).isEmpty()) {
                 g.blit(MAP_ICONS, cx + 9, cy - 19, 12, 12, ICON_MISSION_U, 128, 30, 30, 512, 512);
             }
         }
@@ -145,11 +173,21 @@ public final class CampaignMapScreen extends Screen {
             MapNode target = CampaignMap.node(selected);
             int yy = bodyY - scroll;
             yy = wrapped(g, tr("route", nodeName(CampaignMap.node(origin)), nodeName(target)), panelX + 8, yy, panelW - 16, 0xFFE4F1E9) + 6;
-            for (CampaignMission mission : CampaignMission.offered(origin, selected)) {
-                g.fill(panelX + 8, yy + 1, panelX + 17, yy + 10, checked.contains(mission.id()) ? 0xFF80CEAF : 0xFF07151E);
-                yy = wrapped(g, tr("mission." + mission.kind() + ".name"), panelX + 23, yy, panelW - 31, 0xFFDBEAE3);
-                yy = wrapped(g, tr("reward", mission.reward()), panelX + 23, yy + 2, panelW - 31, 0xFFE3D78D);
-                yy = wrapped(g, tr("mission." + mission.kind() + ".description"), panelX + 8, yy + 3, panelW - 16, 0xFFA8BEBB) + 12;
+            yy = wrapped(g, tr("missions_accepted", checked.size(), CampaignMission.LIMIT),
+                    panelX + 8, yy, panelW - 16, 0xFF80CEAF) + 4;
+            List<Mission> available = available();
+            if (available.isEmpty()) {
+                // 这个目的地没有站务员发过的委托：回码头对话领取。
+                yy = wrapped(g, tr("missions_hint"), panelX + 8, yy, panelW - 16, 0xFFA8BEBB) + 8;
+            } else {
+                for (Mission mission : available) {
+                    boolean boxed = checked.contains(mission.id);
+                    g.fill(panelX + 8, yy + 1, panelX + 17, yy + 10,
+                            boxed ? 0xFF80CEAF : 0xFF07151E);
+                    yy = wrapped(g, tr("mission_line", mission.id, missionName(mission),
+                            missionReward(mission)), panelX + 23, yy, panelW - 31, 0xFFDBEAE3) + 4;
+                }
+                yy += 4;
             }
             int end = wrapped(g, tr("boundary"), panelX + 8, yy, panelW - 16, 0xFFD4AA78);
             maxScroll = Math.max(0, end + scroll - bodyBottom + 6);
@@ -167,6 +205,31 @@ public final class CampaignMapScreen extends Screen {
             text.add(hover.faction().equals("none") ? tr("faction.none") : tr("faction.coalition", hover.reputation()));
             g.renderComponentTooltip(font, text, mx, my);
         }
+    }
+
+    static String missionName(Mission mission) {
+        MissionSpec spec = MissionCatalog.offer(mission.id);
+        if (spec != null) {
+            String name = Component.translatable(spec.nameKey()).getString();
+            if (!name.contains(".barotrauma.") && !name.isBlank()) {
+                return name;
+            }
+        }
+        return switch (mission.type) {
+            case SALVAGE -> "打捞";
+            case RECON -> "侦察";
+            case DELIVERY -> "货运";
+            case URGENT_DELIVERY -> "紧急货运";
+        };
+    }
+
+    static String missionReward(Mission mission) {
+        MissionSpec spec = MissionCatalog.offer(mission.id);
+        CargoManifest manifest = spec == null ? null : CargoManifest.forMission(spec.id());
+        if (manifest != null) {
+            return "每箱 " + manifest.rewardPerCrate() + " mk";
+        }
+        return mission.reward + " mk";
     }
 
     /** 用原作寒冷洞穴的地形切片平铺；三个变体轮着来，避免一眼重复。 */
@@ -218,24 +281,36 @@ public final class CampaignMapScreen extends Screen {
                 selected = n.id(); checked.clear(); scroll = 0; dive.active = canDive(); return true;
             }
             if (n != null) {
-                if (net.minecraft.client.Minecraft.getInstance().player != null) {
-                    net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(
+                if (Minecraft.getInstance().player != null) {
+                    Minecraft.getInstance().player.displayClientMessage(
                             Component.translatable("campaign.barotrauma.adjacent_only"), true);
                 }
             }
-            if (mx >= panelX && mx < width - 10 && my >= bodyY && my < bodyBottom && !pending) {
+            // 任务勾选
+            if (mx >= panelX && mx < width - 10 && my >= bodyY && my < bodyBottom && !pending
+                    && CampaignMap.isValid(selected)) {
                 int yy = bodyY - scroll;
-                if (CampaignMap.isValid(selected)) {
-                    yy += font.split(tr("route", nodeName(CampaignMap.node(origin)), nodeName(CampaignMap.node(selected))), panelW - 16).size() * 10 + 6;
-                    for (CampaignMission mission : CampaignMission.offered(origin, selected)) {
-                        int hh = font.split(tr("mission." + mission.kind() + ".name"), panelW - 31).size() * 10;
-                        if (my >= yy && my < yy + hh + 2) {
-                            if (!checked.remove(mission.id())) checked.add(mission.id());
-                            dive.active = canDive(); return true;
+                yy += font.split(tr("route", nodeName(CampaignMap.node(origin)),
+                        nodeName(CampaignMap.node(selected))), panelW - 16).size() * 10 + 6;
+                yy += font.split(tr("missions_accepted", checked.size(), CampaignMission.LIMIT),
+                        panelW - 16).size() * 10 + 4;
+                for (Mission mission : available()) {
+                    int hh = font.split(tr("mission_line", mission.id, missionName(mission),
+                            missionReward(mission)), panelW - 31).size() * 10;
+                    if (my >= yy && my < yy + hh + 2) {
+                        if (!checked.remove(mission.id)) {
+                            if (checked.size() < CampaignMission.LIMIT) {
+                                checked.add(mission.id);
+                            } else if (Minecraft.getInstance().player != null) {
+                                Minecraft.getInstance().player.displayClientMessage(
+                                        Component.translatable("campaign.barotrauma.mission_limit",
+                                                CampaignMission.LIMIT), true);
+                            }
                         }
-                        yy += hh + 2 + font.split(tr("reward", mission.reward()), panelW - 31).size() * 10
-                                + 3 + font.split(tr("mission." + mission.kind() + ".description"), panelW - 16).size() * 10 + 12;
+                        dive.active = canDive();
+                        return true;
                     }
+                    yy += hh + 4;
                 }
             }
         }
