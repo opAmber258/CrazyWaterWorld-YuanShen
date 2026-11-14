@@ -1,8 +1,8 @@
 {
   "metrics": {
-    "components": 62,
-    "declared_faces": 372,
-    "texture_pixels": 4096,
+    "components": 64,
+    "declared_faces": 384,
+    "texture_pixels": 16384,
     "textures": 1,
     "inverted_components": 0,
     "partial_alpha_textures": 0

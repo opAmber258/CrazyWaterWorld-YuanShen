@@ -1,85 +1,124 @@
 {
   "asset": "注射器枪 SyringeGun",
+  "display_name_zh": "注射器枪",
+  "display_name_en": "Syringe Gun",
   "identifier": "syringe_gun",
-  "date": "2026-11-13",
-  "source": "AI / Codex (GPT-6) + Blockbench 5.2.2 native APIs + authored Python pixel atlas",
+  "date": "2026-11-14",
+  "status": "complete",
+  "review_status": "pending_review",
+  "creation_source": "制作来源：人工 + AI（TakaraMiyuki + GPT-6 / Codex）",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex + Blockbench 5.2.2",
+        "role": "初稿；本轮仅整理、原生导出、预览和交付验证"
+      }
+    ],
+    "division": "TakaraMiyuki 手动修改最终几何、UV 与贴图；AI 保留人工保存结果，移除未使用旧贴图、清除外部依赖，重出交付文件。"
+  },
   "format": "bedrock",
   "format_version": "1.12.0",
   "editor_bbox": {
     "min": [
-      -7.664685204283128,
-      0.13734476281626737,
+      -8.14796,
+      0.48870905978049295,
       -1.02
     ],
     "max": [
       8.2125,
-      7.1625,
+      7.09788,
       1.02
     ],
     "size": [
-      15.877185204283128,
-      7.025155237183732,
+      16.36046,
+      6.609170940219507,
       2.04
     ]
   },
   "export_bbox": {
     "min": [
       -8.2125,
-      0.13734477292936703,
+      0.48870905978049295,
       -1.02
     ],
     "max": [
-      7.66468520874479,
-      7.1625000000000005,
+      8.14796,
+      7.09788,
       1.02
     ],
     "size": [
-      15.877185208744791,
-      7.025155227070633,
+      16.36046,
+      6.609170940219507,
       2.04
     ]
   },
   "dimensions_blocks": [
-    0.9923240752676955,
-    0.43907220232398325,
+    1.02252875,
+    0.4130731837637192,
     0.1275
   ],
   "cost": {
-    "editor_cubes": 62,
+    "editor_cubes": 64,
     "editor_groups": 7,
-    "export_cubes": 62,
+    "export_cubes": 64,
     "export_bones": 7,
-    "declared_export_faces": 372,
+    "declared_export_faces": 384,
     "materials": 1,
-    "texture_pixels": 4096,
-    "texture_frame": [
-      64,
-      64
+    "texture_size": [
+      128,
+      128
     ],
+    "texture_logical_size": [
+      32,
+      32
+    ],
+    "texture_pixels": 16384,
     "frames": 1,
-    "base_rgba_bytes": 16384,
-    "draw_calls_measured": false,
-    "fps_measured": false
+    "base_rgba_bytes": 65536,
+    "fps_measured": false,
+    "draw_calls_measured": false
+  },
+  "human_preservation": {
+    "geometry_and_uv_differences": [],
+    "groups_semantically_identical": true,
+    "outliner_identical": true,
+    "png_pixels_and_bytes_identical": true,
+    "source_sha256": "38b45754c5a4fe9afc574a2e267f32c6e58bd7b58e8d3f11cd48a8b582fcab19",
+    "allowed_changes": [
+      "Unused texture slot 0 removed; active slot 1 remapped to 0",
+      "External relative paths removed; active texture renamed",
+      "Native codec cleared stock.primary_selected editor marker; no geometry or UV change"
+    ]
   },
   "checks": {
     "required_files_present": true,
-    "bedrock_geometry_identifier": true,
-    "format_version": true,
-    "cube_and_bone_counts_match": true,
-    "no_empty_bones": true,
-    "no_duplicate_geometry": true,
-    "positive_volumes": true,
-    "export_bbox_matches_mirrored_editor_bbox": true,
-    "png_rgba_power_of_two": true,
-    "no_partial_alpha": true,
-    "transparent_pixels_zero_rgb": true,
-    "embedded_texture_matches_png": true,
-    "all_sampled_face_texels_opaque": true,
+    "bedrock_identifier": true,
+    "editor_export_counts_match": true,
+    "source_geometry_and_uv_preserved": true,
+    "source_bones_preserved": true,
+    "source_active_png_exact": true,
+    "only_used_texture_retained": true,
     "portable_embedded_texture": true,
-    "preview_size_and_nonempty": true,
-    "native_reopen_and_export": true
+    "rgba_power_of_two": true,
+    "alpha_binary": true,
+    "transparent_rgb_zero": true,
+    "uv_in_logical_bounds": true,
+    "source_sampling_alpha_preserved": true,
+    "no_empty_bones": true,
+    "export_bbox_matches_editor": true,
+    "native_reopen_export_exact": true,
+    "structure_audit_without_errors": true,
+    "six_native_previews": true
   },
   "all_delivery_checks_pass": true,
+  "native_uv_repack": {
+    "status": "not_performed",
+    "reason": "发布既有人工修订版；保留人工 UV，未重新分配或缩放图案。界面换算密度为 64x；未宣称原生重排往返通过。"
+  },
   "visual_review": {
     "views": [
       "front",
@@ -89,28 +128,31 @@
       "oblique",
       "rear_oblique"
     ],
-    "reviewed_in_blockbench": true,
-    "silhouette": "open skeletal stock, slanted grip, two-row syrette bay, short muzzle and vertical forward cylinder",
-    "hidden_face_candidates_retained": 17,
-    "cleanup_removed_faces": 0,
-    "note": "Geometric candidates retained after native strict pixel comparisons differed. No geometry duplicates or sliced surfaces. Historical comparison records are evidence, not a claimed strict optimization pass."
+    "renderer": "Blockbench 5.2.2 native Preview",
+    "reviewed": true,
+    "geometry_changed_by_agent": false,
+    "repainted_by_agent": false,
+    "transparent_uv_samples": 19,
+    "alpha_note": "人工纹理包含透明裁切；逐面 UV 和源 PNG 均完全保留，不把所有表面必须不透明作为交付要求。"
   },
   "client_test": {
     "performed": false,
-    "reason": "Art-only request. No attachable/item renderer, holding transforms, animation, firing logic, client FPS or Minecraft test performed."
+    "reason": "仅静态美术交付；未接入物品渲染、手持姿态或射击逻辑。"
   },
   "sha256": {
-    "syringe_gun.bbmodel": "f4da2a8f6bedd65d0c6e681e609233bafa3d72c9e4bd3afb35406f49fc53f3f3",
-    "syringe_gun.geo.json": "1fe6af38f4d446e9bfb05ddadade65b3131d4daeb611daa03d91983b38ed6fe5",
-    "syringe_gun_tex.png": "df8b06e0b11eb3c2ca985d17fd40ba1b9245bd72989a36ec7106635d8b8ee45a",
-    "preview_front.png": "88b10f7a6cfb972f372bf955b6f726464184685071eefeed0e63d91791b1fe87",
-    "preview_back.png": "76e8c1904033f07ad6be7c274f5cc9d028daf27841f8151c22cc22b581e7045b",
-    "preview_side.png": "d3187fb8f23ba5228318785e2674dcfb56dcb03d98174011ede4e39c8149b9f1",
-    "preview_oblique.png": "0dcf8b461abe78e88babbd6b5164473c9198ebae12cb584863b38f78ed2e2c46"
+    "syringe_gun.bbmodel": "8ba896bfe5c7a6cd65121e788549447b73501f758c51dc093faeb81b4053f45c",
+    "syringe_gun.geo.json": "a436a9dff613584fc0e621f69f743e991027bb671afe01aee00ce5cbefb65996",
+    "syringe_gun_tex.png": "5448f4b84e872efb46cfd67999a72caf745e37a18432a3bf5cebd2e2d3013b2a",
+    "preview_front.png": "c7859dd07004a811abb05d3113387860eeacf118c49fb0bad18a8ce7c3a50cc5",
+    "preview_back.png": "7e152689ecbf592587a196e254ef769ce8471ca00a8ab8427c98b0c262ef392d",
+    "preview_side.png": "a6134f5ec3fc2afba93a0ae73670ba7c71486c9b426fa926c211ec5bbea1154e",
+    "preview_oblique.png": "e4c532fea30f9b3177ee47036b2393e71a18e03a00b80edbd435f8491f85e845",
+    "preview_top.png": "42fec0c74e5e8fef078f2432f5b34d8b04821a4eda92090cae86ba230e6147ef",
+    "preview_rear_oblique.png": "afa4025aea48db496f3067e023eb5852941f06721087a058e8c5e89ec67369aa"
   },
   "limitations": [
-    "Generic skill audit is not a full Bedrock schema validator; native export roundtrip checked separately.",
-    "Single-view source gives no depth or rear-side information; those details are authored inference.",
-    "No game runtime, lighting, held-item pose or performance certification."
+    "Generic audit is not a full Bedrock schema validator; native codec roundtrip checked separately.",
+    "No Minecraft runtime or FPS certification.",
+    "Initial prototype reconstruction and face-cleanup evidence under reference are historical and do not describe this revision."
   ]
 }

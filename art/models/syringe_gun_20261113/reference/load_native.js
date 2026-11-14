@@ -2,7 +2,7 @@
  const path=PathModule; const fs={readFileSync:(p)=>{let x;Blockbench.read([p],{},r=>x=r[0].content);return x},writeFileSync:(p,s)=>Blockbench.writeFile(p,{content:s})};
  const root=globalThis.SYRINGE_ASSET_ROOT;
  if(ModelProject.all.length) throw new Error('Expected empty isolated Blockbench instance');
- const data=JSON.parse(fs.readFileSync(path.join(root,'reference/authored_input.bbmodel'),'utf8'));
+ const data=JSON.parse(fs.readFileSync(path.join(root,'syringe_gun.bbmodel'),'utf8'));
  Codecs.project.load(data,{path:path.join(root,'syringe_gun.bbmodel')});
  await new Promise(r=>setTimeout(r,500));
  Project.name='注射器枪 SyringeGun';Project.geometry_name='syringe_gun';Project.box_uv=false;

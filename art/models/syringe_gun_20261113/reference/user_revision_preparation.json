@@ -1,0 +1,23 @@
+{
+  "source_sha256": "38b45754c5a4fe9afc574a2e267f32c6e58bd7b58e8d3f11cd48a8b582fcab19",
+  "active_png_sha256": "5448f4b84e872efb46cfd67999a72caf745e37a18432a3bf5cebd2e2d3013b2a",
+  "cubes": 64,
+  "groups": 7,
+  "png_size": [
+    128,
+    128
+  ],
+  "logical_uv": {
+    "width": 32,
+    "height": 32
+  },
+  "removed_unused_texture_slot": 0,
+  "texture_index_remap": {
+    "1": 0
+  },
+  "geometry_changed": false,
+  "uv_changed": false,
+  "active_pixels_changed": false,
+  "removed_external_texture_paths": true,
+  "source": "User-saved Blockbench model; author: TakaraMiyuki"
+}

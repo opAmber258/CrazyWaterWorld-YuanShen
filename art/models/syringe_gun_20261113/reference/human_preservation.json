@@ -1,0 +1,12 @@
+{
+  "geometry_and_uv_differences": [],
+  "groups_semantically_identical": true,
+  "outliner_identical": true,
+  "png_pixels_and_bytes_identical": true,
+  "source_sha256": "38b45754c5a4fe9afc574a2e267f32c6e58bd7b58e8d3f11cd48a8b582fcab19",
+  "allowed_changes": [
+    "Unused texture slot 0 removed; active slot 1 remapped to 0",
+    "External relative paths removed; active texture renamed",
+    "Native codec cleared stock.primary_selected editor marker; no geometry or UV change"
+  ]
+}

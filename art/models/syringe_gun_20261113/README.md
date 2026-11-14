@@ -1,78 +1,70 @@
 # 注射器枪 SyringeGun
 
-制作来源：AI。Codex（GPT-6）制作几何、原创像素图集、UV、原生 Blockbench 预览与离线检查；用户提供两张原作参考图。
+制作来源：人工 + AI（TakaraMiyuki + GPT-6 / Codex）。
 
-日期：2026-11-13。工具：本机 Blockbench 5.2.2、原生 Bedrock codec / Preview、Python + Pillow。交付格式由用户明确选择为 `.bbmodel + Bedrock 几何`。
+TakaraMiyuki 提供原作参考，手动修改本次最终几何、UV 和像素贴图；AI 完成初稿，本轮仅保留人工保存结果、整理贴图依赖、重出原生几何与预览并执行交付验证。工具为本机 Blockbench 5.2.2、Python / Pillow。更新日期：2026-11-14。
 
-![斜视](preview_oblique.png)
+本次直接替换 `art/models/syringe_gun_20261113/` 原候选 A。仍为待评审资产，本地 curated 分类不代表评选通过；未接入游戏。
 
-## 文件
+![人工调整版斜视](preview_oblique.png)
 
-- `syringe_gun.bbmodel`：可编辑 Bedrock Entity 工程，内嵌 64×64 贴图，无外部绝对路径依赖。
-- `syringe_gun.geo.json`：Blockbench 原生导出，`format_version: 1.12.0`，identifier `geometry.syringe_gun`。
-- `syringe_gun_tex.png`：单张 RGBA、64×64、单帧像素图集。
-- `preview_front/back/side/oblique.png`：规范四件套预览；另有 `preview_top.png` 和 `preview_rear_oblique.png`。
-- `validation.json`、`structure_audit.json`：离线交付、结构和成本证据。
-- `reference/`：用户参考、游戏裁切、原创色板、制作脚本、原生重开证据与审计。
+## 本轮变化与保留边界
 
-## 原作查证与参考范围
+- 相比初稿，62 cubes 更新为 64 cubes，仍为 7 bones；声明面由 372 更新为 384。几何比例、位置、局部结构、UV 与图案均采用用户保存版本。
+- 有效贴图由 64×64 更新为人工调整的 128×128 RGBA；项目逻辑 UV 为 32×32。Blockbench 列表换算为 64x，不能据此断言每个面均严格遵循同一密度。
+- 用户工程仍携带一张未被使用的旧 64×64 内嵌贴图。384 个面全部引用新的 128×128 贴图；交付时只移除未使用旧贴图，将有效槽位 1 映射为 0，清除跨项目相对路径并统一文件名。
+- 64 个元素的名称、坐标、枢轴、旋转、逐面 UV 及朝向与人工快照严格一致；骨骼语义、层级一致。原生 codec 只清除了 `stock.primary_selected` 编辑器选中标记。
+- 有效 PNG 的文件字节与人工快照完全一致，无重绘、缩放或重新排列 UV。`stock_butt_pad` 的部分面包含人工透明裁切，保留原 alpha 与 UV，没有为追求全不透明而修改。
 
-本机原作安装目录 `F:/SteamLibrary/steamapps/common/Barotrauma/`，分别核实：
+原始人工保存文件及外置 PNG 位于 `reference/snapshot_before_publish/`；准备过程与保留证明见 `reference/user_revision_preparation.json`、`reference/human_preservation.json`。此次没有执行新的 UV 展开；未将原生重排往返标为通过。
 
-| 内容 | 原作条目 |
+## 交付文件
+
+| 文件 | 内容 |
 | --- | --- |
-| 简中名称 | `Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml`，`entityname.syringegun` = 注射器枪 |
-| 英文名称 | `Content/Texts/English/EnglishVanilla.xml`，`entityname.syringegun` = Syringe Gun |
-| 实体 | `Content/Items/Tools/tools.xml`，`Item identifier="syringegun"`，`scale="0.5"` |
-| 世界精灵 | `Content/Items/Tools/tools.png`，`sourcerect="0,93,149,71"` |
-| 物品栏精灵 | `Content/Items/InventoryIconAtlas.png`，`sourcerect="0,64,64,64"` |
-| 容量 | 原作 `ItemContainer capacity="1" maxstacksize="4"`；本模型以两侧各两支药筒表达四支容量，是视觉重排 |
+| `syringe_gun.bbmodel` | Blockbench Bedrock Entity 工程，内嵌当前唯一使用的 PNG，无外部路径依赖 |
+| `syringe_gun.geo.json` | 原生导出，format 1.12.0，identifier `geometry.syringe_gun` |
+| `syringe_gun_tex.png` | 128×128、RGBA、单帧；alpha 为 0 或 255，透明像素 RGB 为零 |
+| `preview_front/back/side/oblique.png` | 四件套；另附顶视及后斜视两张 |
+| `validation.json` | 当前贡献者、尺寸、成本、保留核对与交付检查 |
+| `structure_audit.json`、`audit_cost.json` | 当前结构和成本检查 |
+| `reference/` | 人工快照、调色板、原作参考、原生导出/渲染脚本与验证证据 |
 
-补充查询：[官方 Wiki · Syringe Gun](https://barotraumagame.com/wiki/Syringe_Gun)。外观以用户两张图片和本机精灵为主，不混用高级注射器枪。
+## 原作依据和尺寸
 
-项目风格参考只来自 `curated/welding_tool_20261108` 与 `curated/plasma_cutter_20261110`：学习少量连续结构、灰绿金属与橡胶的材料区分，以及约 2 px/单位的像素语言。读取了这两件参考的实际工程、64×64 PNG、UV 和预览。未使用 deprecated，也未复制参考几何或贴图。
+原作查证来自本机 Barotrauma 安装内容，分别核对中英文条目：
 
-## 设计和尺寸
+- `Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml`：`entityname.syringegun` = 注射器枪。
+- `Content/Texts/English/EnglishVanilla.xml`：`entityname.syringegun` = Syringe Gun。
+- `Content/Items/Tools/tools.xml`：`Item identifier="syringegun"`，`scale="0.5"`，精灵 `Content/Items/Tools/tools.png`，裁切 `0,93,149,71`；物品栏图集裁切 `0,64,64,64`。
+- 补充来源：[官方 Wiki · Syringe Gun](https://barotraumagame.com/wiki/Syringe_Gun)。用户参考图和原作裁切保存在 `reference/`。
 
-这是新建的低多边形候选，没有覆盖既有版本。保留长药仓、灰绿控制盒、两颗浅色侧面紧固件、银色尾端、镂空肩托、倾斜握把、开放扳机护圈、向下弯折拨杆，以及前端竖向套筒与短枪口。枪口具有真实开孔；药仓两侧的药筒具有厚度。不可见背面、截面与装配关系属于原创推断，并非从二维图中提取的官方三维结构。
+原作裁切与 scale 不能直接换算现实米制尺寸。当前尺寸为作者人工修订结果，按 16 模型单位=1 格换算：约 **1.022529 × 0.413073 × 0.127500 格**（X×Y×Z），即 **16.36046 × 6.60917 × 2.04** 模型单位。含旋转包围盒在 `validation.json` 中复算。初稿约 0.99 m 的比例推定是历史设计依据，不用于覆盖本次人工尺寸。
 
-原作精灵长宽比为 149/71≈2.10，`scale=0.5` 后约 74.5×35.5 游戏像素。该值不能直接换算现实米制尺寸。本候选按双手紧凑工具的轮廓，主动选择总长约 0.99 m；不宣称这是原作官方尺寸。先用约 20.95 单位长的结构图建模，再统一乘 0.75，得到约 15.71 Minecraft 模型单位；16 单位=1 格，按 1 格≈1 m 理解约 0.98 m；计入倾斜枪托的完整包围盒为 0.9923×0.4391×0.1275 格。精确含旋转包围盒、三轴尺寸与导出镜像关系见 `validation.json`。
+编辑工程枪口沿 +X，Y 向上，Z 为厚度；Bedrock 原生 codec 镜像 X 并转换旋转语义，导出枪口沿 −X。几何的逻辑贴图尺寸为 32×32，外置 PNG 是 128×128；二者比例应保持，不能将 geo 的贴图尺寸擅自改为 128。
 
-轴向：Blockbench 工程枪口朝 +X、Y 向上、Z 为厚度；原生 Bedrock codec 镜像 X，导出枪口朝 −X。文件和骨骼枢轴采用 codec 的原生转换，不能直接把编辑坐标逐数复制进 geo。
+## 预览与验证
 
-## 材质与成本
+六张预览均由当前人工调整版在本机 Blockbench 5.2.2 原生 Preview / Three.js 中生成，1200×900，纯色 `#202a2d` 底，无 UI、网格及选中线。正/背/侧/顶为正交，前后斜视为透视；按当前包围盒居中取景，每个视角独立创建并释放离屏视图。参数在 `reference/render_conditions.json`，脚本为 `reference/render_native.js`。
 
-62 cubes、7 bones、372 个声明面；一材质、一张 64×64 单帧图集，无描边壳、透明覆盖层或动画副本。上部药仓、药筒、握柄、枪托、护圈和前端组件按用途分组。直线与斜线结构使用连续长方体和旋转体，没有逐像素挤出或逐扫描线堆叠。
+已完成原生保存、关闭本任务工程、重新打开、重新导出；项目元素、骨骼、内嵌 PNG 和原生文本导出的 geo 均严格一致。人工源与交付的几何/UV/像素保留核对、UV 边界、透明像素、依赖完整性和结构审计通过。实际客户端、手持姿态、射击、动画及 FPS 未实测。
 
-色板采用灰绿旧漆、深色橡胶、浅灰金属、米白药筒、少量青绿药液窗与低饱和黄铜。贴图为硬边色块，不使用渐变和随机噪点。图集按建模草图约 2 px/单位分配，整体缩放后约 2.67 px/最终模型单位；不足一像素的细轴按至少 1 px 处理。相同材料、像素尺寸、纹理语义的面共享 UV，岛外留 1 px 挤出边。
+成本：64 cubes / 7 bones / 384 声明面；1 材质，128² 单帧贴图。基础 RGBA 字节量 65536（64 KiB），不是显存实测。所有人工构件保留；没有执行历史隐藏面清理来改变当前外观。
 
-已审计重复体、零体积和隐藏面。17 个几何遮挡候选在原生透视严格像素对照中未达到完全不变，故保守保留全部候选；没有把失败的严格比较称为优化通过。局部接合仍含内部面，成本仅 372 面。相关算法、候选和像素证据在 `reference/face_cleanup_audit.json`、`verified_face_selection.json` 及比较报告中。基础 RGBA 内存计算为 16 KiB，不代表显存或 FPS 实测。
+## 重现当前交付
 
-## 验证与边界
+当前 `.bbmodel` 是几何与 UV 的权威输入；初稿参数不能重建人工结果。需要 Python、Pillow、websocket-client，以及已安装 Blockbench 的隔离调试实例（本轮本机端口 9224）。脚本按自身所在资产目录解析路径，不依赖作者本机资产目录。
 
-- 四件套、文件名、geometry identifier、正尺寸、无重复体：离线校验。
-- PNG 为 RGBA、2 的幂；仅 alpha 0/255，透明像素 RGB 为零；所有实际 UV 采样区域不透明，内嵌 PNG 与外置 PNG 完全一致。
-- 在本机 Blockbench 5.2.2 保存、关闭本任务工程、重新打开；元素、分组和贴图来源完全一致；重新执行原生 **文本导出** 后 geo 结构严格相等。证据为 `reference/native_reopen_validation.json`，不是拿 raw 浮点对象与经过 codec 数字序列化的 JSON 直接比较。
-- 六张预览均由 Blockbench 原生 Preview / Three.js 生成，1200×900、纯色底、无 UI/网格。正、背、侧、顶为正交；两张斜视为透视。相机和投影见 `reference/render_conditions.json`。历史清理对照有少量透视抗锯齿差异，未声称所有历史截图严格一致；最终预览均由当前交付工程生成。
-- 游戏端未实测；未接入物品 renderer/attachable、手持姿态、射击逻辑或动画。当前交付为静态美术模型。未修改仓库代码、未提交或推送。
-
-## 重现
-
-`reference/build_asset.py` 用自身位置寻找资产根目录，从相对文件重新生成原创贴图和原始工程，不依赖游戏安装路径或用户参考图片。需要 Python、Pillow。运行：
+从仓库根可运行：
 
 ```text
-python reference/build_asset.py
+python art/models/syringe_gun_20261113/reference/build_asset.py
+python art/models/syringe_gun_20261113/reference/bb_native.py art/models/syringe_gun_20261113/reference/export_current.js
+python art/models/syringe_gun_20261113/reference/bb_native.py art/models/syringe_gun_20261113/reference/render_native.js
+python art/models/syringe_gun_20261113/reference/bb_native.py art/models/syringe_gun_20261113/reference/verify_reopen.js
+python art/models/syringe_gun_20261113/reference/validate_asset.py
 ```
 
-原生导出与预览需要已安装 Blockbench 的交互式运行环境。`bb_native.py` 通过本机 9224 调试端口连接**隔离实例**，只使用 Blockbench 原生 API，不使用 MCP token。该端口是本轮隔离实例的启动参数，不修改用户原实例或认证配置。打开隔离实例后，在资产目录运行：
+`build_asset.py` 仅从当前工程提取内嵌 PNG；`export_current.js` 要求隔离实例没有其他工程。人工原始快照经过 `prepare_user_revision.py` 可以重新生成本轮整理输入；不要在正在编辑的用户窗口运行。普通资产验证不启动 Minecraft。
 
-```text
-python reference/bb_native.py reference/load_native.js
-python reference/bb_native.py reference/render_native.js
-python reference/bb_native.py reference/verify_reopen.js
-python reference/validate_asset.py
-```
-
-首次加载要求隔离实例没有工程；重建已打开的本任务工程用 `reload_authored.js`。Python 桥接脚本需 `websocket-client`。脚本自动把自身所在资产目录传给 JavaScript，不依赖作者本机绝对资产路径。正式归档到仓库后可从仓库根使用对应相对脚本路径运行。
-
-2026-11-13 用户明确指定将本资产升入本地 `curated/syringe_gun_20261113/`，并按交付约定发布到上游 `main` 的 `art/models/syringe_gun_20261113/`。本轮范围是资产归档与登记，不含运行时接入。
+`reference/authored_input.bbmodel`、`geometry_spec.json`、`face_cleanup*`、`select_invisible_faces.js`、`baseline_face_cleanup/`、`final_preview_check/`、`repeat_preview_check/` 及旧比较报告是初稿历史证据，**不描述当前人工版，也不是当前构建输入**。本轮实际证据为 `native_reopen_validation.json`、`human_preservation.json` 和根目录 `validation.json`。
