@@ -1,0 +1,120 @@
+{
+  "official_name_zh": "加工台",
+  "official_name_en": "Fabricator",
+  "name_key": "entityname.fabricator",
+  "source_files": {
+    "zh": {
+      "relative_path": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml",
+      "sha256": "ff565d41c60800b6a06ebe690599706f25ce9eb25bb3ac68dbfc290e28ecdc0a"
+    },
+    "en": {
+      "relative_path": "Content/Texts/English/EnglishVanilla.xml",
+      "sha256": "0b4446db3185536816fdf0f356305652cc7481cdec71a7678b860a21fb358a59"
+    },
+    "definition": {
+      "relative_path": "Content/Items/Fabricators/fabricators.xml",
+      "sha256": "8f9ebb483a4b1e2aaa0fdc6b07de48bcdbf7cbd46bc91f2f8f1b90cd9a8a5e95"
+    },
+    "atlas": {
+      "relative_path": "Content/Items/Fabricators/FabricatorsAndDeconstructors.png",
+      "sha256": "9050011246cc29fa44aa8424d5e556c423cd15ab6a0701c885de55939fd777d9"
+    }
+  },
+  "item": {
+    "name": "",
+    "identifier": "fabricator",
+    "tags": "fabricator,donttakeitems,dontsellitems",
+    "category": "Machine",
+    "linkable": "true",
+    "allowedlinks": "deconstructor,locker",
+    "description": "",
+    "scale": "0.5",
+    "damagedbyexplosions": "true",
+    "explosiondamagemultiplier": "0.2"
+  },
+  "sprite": {
+    "texture": "Content/Items/Fabricators/FabricatorsAndDeconstructors.png",
+    "sourcerect": "0,624,336,400",
+    "depth": "0.8"
+  },
+  "decorative_sprites": [
+    {
+      "texture": "Content/Items/Fabricators/FabricatorsAndDeconstructors.png",
+      "depth": "0.84",
+      "offset": "-103,99",
+      "sourcerect": "908,301,116,87"
+    },
+    {
+      "texture": "Content/Items/Fabricators/FabricatorsAndDeconstructors.png",
+      "depth": "0.81",
+      "offset": "-103,99",
+      "sourcerect": "825,395,114,83"
+    },
+    {
+      "texture": "Content/Items/Fabricators/FabricatorsAndDeconstructors.png",
+      "depth": "0.83",
+      "offset": "-72,129",
+      "sourcerect": "944,395,74,74",
+      "origin": "0.5,0.5",
+      "rotationspeed": "-715"
+    },
+    {
+      "texture": "Content/Items/Fabricators/FabricatorsAndDeconstructors.png",
+      "depth": "0.83",
+      "offset": "-117,71",
+      "sourcerect": "805,537,54,54",
+      "origin": "0.5,0.5",
+      "rotationspeed": "400"
+    }
+  ],
+  "alpha_visible_bbox": [
+    1,
+    0,
+    336,
+    400
+  ],
+  "online_reference": "https://barotraumagame.com/wiki/Fabricator_%26_Deconstructor",
+  "user_reference": "user_reference.png",
+  "style_reference": "art-vault/curated/engine_20261113/preview_oblique.png",
+  "style_learning": "低对比灰绿金属、真实百叶层次、按功能组织体块、少量定位磨损；不复制几何、UV 或贴图。",
+  "assumptions": {
+    "character_visual_height_px": 120,
+    "minecraft_character_visual_height_bb": 32,
+    "formula": "K = 0.5 * 32 / 120; width = 336 * K; height = 400 * K",
+    "suggested_size_bb": [
+      44.8,
+      53.3333333333
+    ],
+    "final_size_bb": [
+      44,
+      52.5,
+      23.375
+    ],
+    "initial_draft_size_bb": [
+      44,
+      52.5,
+      18.7
+    ]
+  },
+  "artistic_inference": [
+    "depth and rear layout",
+    "support risers and feet",
+    "exposed gantry, spindle and machining bed",
+    "static wheel and cable cross-sections",
+    "angled crown in three dimensions"
+  ],
+  "date": "2026-11-14",
+  "human_revision": {
+    "contributor": "TakaraMiyuki",
+    "scope": "最终几何、UV 和像素贴图调整",
+    "logical_uv_size": [
+      256,
+      256
+    ],
+    "image_size": [
+      512,
+      512
+    ],
+    "preservation_report": "human_preservation.json"
+  }
+}

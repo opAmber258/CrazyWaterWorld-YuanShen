@@ -1,16 +1,20 @@
 {
+  "revision": "2026-11-14 human revision",
   "cube_budget": 85,
-  "bone_budget": 8,
+  "face_budget": 510,
   "material_budget": 1,
-  "texture": [
-    64,
-    64
-  ],
-  "texture_density_px_per_unit": 2.6666666666666665,
-  "authoring_to_final_scale": 0.75,
-  "animation": false,
-  "actual_cubes": 62,
+  "actual_cubes": 64,
   "actual_groups": 7,
-  "islands": 83,
-  "source": "Reference-driven new asset; inferred depth and reverse side"
+  "texture": [
+    128,
+    128
+  ],
+  "logical_uv": [
+    32,
+    32
+  ],
+  "display_density": 64,
+  "density_note": "List-derived value; no claim that all human-modified faces have uniform actual texel density",
+  "animation": false,
+  "geometry_policy": "Preserve human snapshot exactly"
 }

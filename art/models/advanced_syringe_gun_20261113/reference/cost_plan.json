@@ -1,1 +1,10 @@
-{"budgets": {"components": 90, "declared_faces": 540, "texture_pixels": 16384, "textures": 1, "inverted_components": 0, "partial_alpha_textures": 0}}
+{
+  "budgets": {
+    "components": 90,
+    "declared_faces": 540,
+    "texture_pixels": 65536,
+    "textures": 1,
+    "inverted_components": 0,
+    "partial_alpha_textures": 0
+  }
+}

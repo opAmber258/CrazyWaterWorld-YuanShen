@@ -1,0 +1,21 @@
+{
+  "source": "reference/manual_checkpoint_20261114/",
+  "checks": {
+    "elements_name": true,
+    "elements_from": true,
+    "elements_to": true,
+    "elements_origin": true,
+    "elements_faces": true,
+    "elements_uuid": true,
+    "elements_type": true,
+    "elements_rotation": true,
+    "group_semantics": true,
+    "hierarchy": true,
+    "logical_resolution": true,
+    "embedded_png_bytes": true,
+    "external_png_bytes": true
+  },
+  "all_preserved": true,
+  "manual_project_sha256": "d9f09a4921768e744e07544cefd14b506b32355fe7433a227817fafa2fb5238c",
+  "texture_sha256": "8e400d555663f78b859c6a8fd76403f1649121e7c3e0f6685b9965de0cfe35c2"
+}

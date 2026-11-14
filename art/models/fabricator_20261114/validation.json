@@ -1,0 +1,201 @@
+{
+  "display_name_zh": "加工台",
+  "display_name_en": "Fabricator",
+  "asset": "加工台 Fabricator",
+  "identifier": "geometry.fabricator",
+  "production_source": "人工 + AI",
+  "creation_source": "人工 + AI（TakaraMiyuki + GPT-6 / Codex）",
+  "creation_tools": "Codex（基于 GPT-6） / Blockbench 5.2.2 / Python / Pillow / local Electron API",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex / Blockbench 5.2.2 / Python / Pillow",
+        "role": "初稿几何、像素贴图；保留人工调整后重出几何、四视图和验证"
+      }
+    ],
+    "division": "TakaraMiyuki 手动修改最终几何、UV 和像素贴图；AI 保留人工版本并完成交付。会话仅提供 GPT-6 基础模型标识，未提供更细版本号。"
+  },
+  "date": "2026-11-14",
+  "status": "human-edited static art; authorized direct-main publication; upstream selection pending",
+  "blockbench_version": "5.2.2",
+  "user_direction": "按原作人物比例还原；用户手动修订并明确授权直推主分支及登记 Discussion #39",
+  "metrics": {
+    "cubes": 108,
+    "bones": 11,
+    "declared_faces": 648,
+    "bbox": {
+      "min": [
+        -22,
+        0,
+        -11.6875
+      ],
+      "max": [
+        22,
+        52.50000132424052,
+        11.6875
+      ],
+      "size_bb": [
+        44,
+        52.50000132424052,
+        23.375
+      ],
+      "size_blocks": [
+        2.75,
+        3.2812500827650326,
+        1.4609375
+      ]
+    },
+    "texture": {
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "palette_colors_including_transparent": 21,
+      "sha256": "8e400d555663f78b859c6a8fd76403f1649121e7c3e0f6685b9965de0cfe35c2",
+      "density_min": 1.4285714285714228,
+      "density_max": 2.6666666666666665,
+      "unique_uv_islands": 648
+    }
+  },
+  "checks": {
+    "four_piece_package": true,
+    "identifier_correct": true,
+    "official_names_separately_verified": true,
+    "visible_blockbench_project_reviewed": true,
+    "four_final_native_previews_reviewed": true,
+    "embedded_external_png_identical": true,
+    "all_declared_faces_uv_assigned_and_in_bounds": true,
+    "geometry_and_uv_export_equivalent": true,
+    "unique_uv_islands_nonoverlapping": true,
+    "native_geo_import_reexport_exact": true,
+    "reopened_bbmodel_export_exact": true,
+    "human_geometry_uv_texture_preserved": true
+  },
+  "audit": {
+    "independent_errors": [],
+    "independent_warnings": [
+      "Human-edited geometry and UVs have nonuniform physical texel density; reported densities account for the 512px image / 256-unit logical UV ratio. Geometry and UVs are preserved without repacking."
+    ],
+    "generic": {
+      "bb": {
+        "errors": [],
+        "warnings": [
+          {
+            "code": "texture_project_size_mismatch",
+            "message": "actual PNG is (512, 512), project UV resolution is (256, 256); UV checked in project space"
+          }
+        ]
+      },
+      "geo": {
+        "errors": [],
+        "warnings": [
+          {
+            "code": "texture_export_size_mismatch",
+            "message": "actual PNG is (512, 512), export description is (256, 256)"
+          }
+        ]
+      }
+    }
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        280,
+        68,
+        920,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        280,
+        68,
+        920,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        430,
+        68,
+        770,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        289,
+        109,
+        881,
+        863
+      ],
+      "projection": "perspective"
+    }
+  },
+  "files_sha256": {
+    "fabricator.bbmodel": "d9f09a4921768e744e07544cefd14b506b32355fe7433a227817fafa2fb5238c",
+    "fabricator.geo.json": "4ff9afa459ef6f1e77461070af416f52b060086ed106134b0bb148c5de185ca3",
+    "fabricator_tex.png": "8e400d555663f78b859c6a8fd76403f1649121e7c3e0f6685b9965de0cfe35c2",
+    "preview_front.png": "7288146996494e1ed597fff655ca9cfd8d1ef9ec9750f0f80c8cb7e77e2d9b95",
+    "preview_back.png": "84a18af64e6cbd07bc6a61d7f5b106f461ff226e9841ba038005306d65611353",
+    "preview_side.png": "4274ef50b656fe0cedb13f21dc15474af7268c94ed763b1aaf92eba47cae3b24",
+    "preview_oblique.png": "ec2cc4f3d9be88bf63acf4dd2aa5a37f8dede7738622cf19b84d6086d13be5fe",
+    "README.md": "9bbe73ca66de024eab62124959d54367e5be12a0f6d9239396cf9d521faf486f",
+    "structure_audit.json": "b878be2fff0ddf2fbc147026681b73e5dfe3d3430172146656a8fdafb5e6bf3a"
+  },
+  "coordinates": {
+    "front": "+Z",
+    "floor": "Y=0",
+    "centered_axes": [
+      "X",
+      "Z"
+    ]
+  },
+  "source_report": "reference/source_report.json",
+  "not_tested": [
+    "Minecraft runtime",
+    "GeckoLib runtime",
+    "placement and collision",
+    "lighting and emission",
+    "animation and interactions",
+    "crafting and power",
+    "performance"
+  ],
+  "repository": {
+    "runtime_code_changed": false,
+    "authorized_direct_main": true,
+    "asset_path": "art/models/fabricator_20261114/",
+    "discussion": "https://github.com/opAmber258/CrazyWaterWorld-YuanShen/discussions/39",
+    "candidate": "A",
+    "classification": "待评选；本地 production 保留"
+  },
+  "boundary": "已在 Blockbench 检查并完成导出，未进入 Minecraft 验证。"
+}

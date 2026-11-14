@@ -1,0 +1,103 @@
+{
+  "errors": [],
+  "warnings": [
+    "Human-edited geometry and UVs have nonuniform physical texel density; reported densities account for the 512px image / 256-unit logical UV ratio. Geometry and UVs are preserved without repacking."
+  ],
+  "cubes": 108,
+  "bones": 11,
+  "declared_faces": 648,
+  "independent_bb_geo_geometry_and_uv_match": true,
+  "bbox": {
+    "min": [
+      -22,
+      0,
+      -11.6875
+    ],
+    "max": [
+      22,
+      52.50000132424052,
+      11.6875
+    ],
+    "size_bb": [
+      44,
+      52.50000132424052,
+      23.375
+    ],
+    "size_blocks": [
+      2.75,
+      3.2812500827650326,
+      1.4609375
+    ]
+  },
+  "texture": {
+    "size": [
+      512,
+      512
+    ],
+    "mode": "RGBA",
+    "palette_colors_including_transparent": 21,
+    "sha256": "8e400d555663f78b859c6a8fd76403f1649121e7c3e0f6685b9965de0cfe35c2",
+    "density_min": 1.4285714285714228,
+    "density_max": 2.6666666666666665,
+    "unique_uv_islands": 648
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        280,
+        68,
+        920,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        280,
+        68,
+        920,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        430,
+        68,
+        770,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        289,
+        109,
+        881,
+        863
+      ],
+      "projection": "perspective"
+    }
+  },
+  "native_import_reexport": true
+}

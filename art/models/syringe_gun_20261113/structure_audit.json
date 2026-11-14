@@ -1,39 +1,39 @@
 {
-  "path": "F:\\BarotraumaMinecraft\\art-vault\\production\\syringe_gun_20261113\\syringe_gun.bbmodel",
+  "path": "art/models/syringe_gun_20261113/syringe_gun.bbmodel",
   "profile": "generic",
   "kind": "bbmodel",
   "structural_errors_absent": true,
   "dependencies_complete": true,
   "counts": {
-    "elements": 62,
+    "elements": 64,
     "plane_elements": 0,
     "inverted_elements": 0,
     "rotated_elements": 14,
-    "declared_export_faces": 372
+    "declared_export_faces": 384
   },
   "textures": {
     "0": {
       "size": [
-        64,
-        64
+        128,
+        128
       ],
-      "pixels": 4096,
-      "rgba_base_bytes": 16384,
-      "transparent_pixels": 1388,
+      "pixels": 16384,
+      "rgba_base_bytes": 65536,
+      "transparent_pixels": 8772,
       "partial_alpha_pixels": 0,
       "frame_size": [
-        64,
-        64
+        128,
+        128
       ],
       "frame_count": 1,
       "animation_metadata_checked": false,
       "uv_size": [
-        64,
-        64
+        32,
+        32
       ]
     }
   },
-  "texture_pixels": 4096,
+  "texture_pixels": 16384,
   "errors": [],
   "warnings": [],
   "limitations": [

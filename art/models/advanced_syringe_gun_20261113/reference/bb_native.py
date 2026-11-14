@@ -1,4 +1,4 @@
-"""Run a task script in the local Blockbench debugging instance (port 9224).
+"""Run a task script in the local Blockbench debugging instance (port 9225).
 Requires websocket-client; no credentials or MCP configuration involved.
 Usage: python reference/bb_native.py reference/script.js
 """
@@ -7,7 +7,7 @@ from pathlib import Path
 import websocket
 
 def evaluate(code):
-    tabs=json.load(urllib.request.urlopen('http://127.0.0.1:9224/json/list'))
+    tabs=json.load(urllib.request.urlopen('http://127.0.0.1:9225/json/list'))
     tab=next(t for t in tabs if t['type']=='page' and 'app.asar/index.html' in t['url'])
     ws=websocket.create_connection(tab['webSocketDebuggerUrl'], suppress_origin=True, timeout=90)
     try:

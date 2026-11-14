@@ -1,0 +1,9 @@
+{
+  "blockbench_version": "5.2.2",
+  "name": "fabricator",
+  "format": "bedrock",
+  "cubes": 108,
+  "bones": 11,
+  "textures": 1,
+  "exact_reopened_export_match": true
+}

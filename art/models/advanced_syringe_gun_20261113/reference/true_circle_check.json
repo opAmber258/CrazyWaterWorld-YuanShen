@@ -1,0 +1,18 @@
+{
+  "radius_x": 2.55,
+  "radius_y": 2.55,
+  "diameters": [
+    5.644200173614239,
+    5.644200173614239
+  ],
+  "width_height_ratio": 1,
+  "equal_diameters_within_float_error": true,
+  "non_rim_elements_unchanged": 68,
+  "center": [
+    -5.7,
+    6.3,
+    0
+  ],
+  "depth": 1.12,
+  "texture_unchanged": true
+}

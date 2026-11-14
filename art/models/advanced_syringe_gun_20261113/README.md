@@ -1,91 +1,67 @@
-# 高级注射器枪 AdvancedSyringeGun
+# 高级注射器枪 AdvancedSyringeGun — 最终人工调整版
 
-制作来源：人工 + AI（TakaraMiyuki + GPT-6）。人工提供原作侧视参考并保存机匣高度微调；AI（Codex + Blockbench 5.2.2）完成初始几何、像素贴图、UV、脚本、预览和验证，发布前保留人工保存版本并重出几何与六向预览。
+制作来源：人工 + AI（TakaraMiyuki + GPT-6）。人工完成最终几何、UV 和像素贴图调整；AI 使用 Codex、Blockbench 5.2.2、Python / Pillow 完成初始模型和尾部圆环修订，并基于最终人工保存版本重出几何、预览和验证。
 
-日期：2026-11-13。工具：本机 Blockbench 5.2.2 原生工程 / Bedrock codec / Preview、Python、Pillow。独立静态美术候选，未接入游戏。
+更新日期：2026-11-14。发布目标仍为 `art/models/advanced_syringe_gun_20261113/`，按用户要求覆盖该目录现有版本，更新 Discussion #39 已有候选 A，不另立候选。仅美术资产，尚待上游评审，未接入游戏。
 
-![斜视预览](preview_oblique.png)
+![斜视](preview_oblique.png)
 
-## 文件
+## 本轮变更与保留
 
-- `advanced_syringe_gun.bbmodel`：可编辑 Bedrock Entity 工程，内嵌贴图，不依赖外部绝对路径。
-- `advanced_syringe_gun.geo.json`：原生导出；`format_version=1.12.0`；`geometry.advanced_syringe_gun`。
-- `advanced_syringe_gun_tex.png`：一张 64×64 RGBA 单帧像素图集。
-- `preview_front/back/side/oblique.png`：1200×900 规范预览；另附顶视、背面斜视。
-- `validation.json`、`structure_audit.json`、`audit_cost.json`：交付、结构及成本记录。
-- `reference/`：用户参考、本机原作裁切、色板、构建与原生预览脚本、重开证据、保守清理试验。
+最终输入为用户本轮保存的 **82 cubes / 8 bones** 工程，包含尾部圆环、枪托、扳机等人工调整，以及修改过的 UV 和 **256×256** 像素贴图。本轮不重建或重新整圆用户最终几何；82 个元素的形状、变换、面 UV 和纹理引用逐字段保持一致，骨骼语义保持一致，内嵌 PNG 字节保持一致。
 
-## 原作查证
+为便携交付，清除了贴图外部 `path` / `relative_path`，保留完整内嵌 PNG；清除了编辑器专用 `primary_selected` 标记。原始人工输入在 `reference/manual_publish_input.bbmodel`，清理后的最终输入在 `reference/manual_publish_portable.bbmodel`。这些清理不改变几何、骨骼变换或贴图像素。
 
-名称分别读取本机游戏的两份文本，不从英文直译：
+相对首次上游版本：69 → **82 cubes**，8 bones 不变，声明面 414 → **492**，实际 PNG 从 64² 更新为人工保存的 **256²**。工程 UV 逻辑空间仍为 **64×64**，每一逻辑 UV 单位对应 4×4 PNG 像素；不得把 UV 当作 256 空间或缩小图片。正确映射后的所有面采样区域均不透明。
 
-| 内容 | 文件 / 条目 |
-| --- | --- |
-| 简中 | `Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml`，`entityname.advancedsyringegun` = 高级注射器枪 |
-| 英文 | `Content/Texts/English/EnglishVanilla.xml`，`entityname.advancedsyringegun` = Advanced Syringe Gun |
-| 实体 | `Content/Items/Jobgear/Medic/medic_talent_items.xml`，`identifier=advancedsyringegun`，`variantof=syringegun` |
-| 世界精灵 | `Content/Items/JobGear/TalentGear.png`，`sourcerect=354,429,145,78` |
-| 缩放 | 继承 `Content/Items/Tools/tools.xml` 中基础 `syringegun` 的 `scale=0.5` |
-| 高级版特点 | 实体包含 `StatusHUD`；本机 `ItemContainer capacity=2 maxstacksize=8` |
+预算按当前人工输入复核：90 cubes / 540 faces / 单图集最大 256²，实际未超预算。单材质、单帧，无动画副本或额外透明覆盖；基础 RGBA 为 256 KiB，不是实测显存或 FPS。尾环多边形背衬和连接结构保留，本轮没有删减隐藏面。
 
-补充阅读：[官方 Wiki · Advanced Syringe Gun](https://barotraumagame.com/wiki/Advanced_Syringe_Gun)。网页容量摘要与本机实体 XML 有差异，本候选以本机文件核实特征，不把网页摘要当作游戏逻辑实现。精确读取值保存在 `reference/source_evidence.json`。
+## 比例和格式
 
-形状参考为用户图片和本机精灵裁切；未将原作贴图直接用于模型。项目风格仅参考 `curated/syringe_gun_20261113` 和 `curated/welding_tool_20261108`：实际读取其工程、PNG 尺寸和 UV，查看斜视预览，学习低体块机械结构、灰绿漆面 / 金属 / 橡胶分层与约 2–3 px/模型单位的像素语言。没有复制它们的几何或图集，没有使用 deprecated。
+编辑坐标枪口朝 +X，Y 向上，Z 为厚度；Bedrock codec 镜像 X，导出枪口朝 −X。最终原生包围盒：最小 `[-8.297979, 0.386984, -1.288]`，最大 `[8.56, 8.882976, 1.288]`；尺寸约 `16.857979 × 8.495992 × 2.576` 单位，即 **1.053624 × 0.531000 × 0.161 格**（16 单位 / 格）。
 
-## 造型与比例
+这是双手医疗工具的美术尺寸，不是原作现实尺寸。原作精灵 145×78，继承 scale=0.5 后为 72.5×39 游戏像素，不可直接换算现实米制长度。
 
-这是从零新建的高级版，保留长方形琥珀药仓、青绿外围框架、扫描器与双浅色旋钮、后部管线、镂空枪托、倾斜握柄、开放扳机区、弯折拨杆、竖向前握把和短枪口。枪口有真实方形开孔；前后两侧均具完整厚度。背面、管线截面与装配连接属于原创三维推断，不代表官方三维设计。
+## 原作与风格来源
 
-药仓的 3×4 可见分格是视觉节奏与原作色块的低多边形转译，**不代表原作插槽或实际弹药数量**。琥珀材质以不透明硬边像素表达，未添加透明玻璃层、描边壳、发光 shader 或动画。扫描器的青绿色显示条仅为静态纹理。
+- 简中：`Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml`，`entityname.advancedsyringegun=高级注射器枪`。
+- 英文：`Content/Texts/English/EnglishVanilla.xml`，同条目 `Advanced Syringe Gun`。
+- 实体：`Content/Items/Jobgear/Medic/medic_talent_items.xml`，`identifier=advancedsyringegun`，继承 `syringegun` 的 `scale=0.5`。
+- 精灵：`Content/Items/JobGear/TalentGear.png`，`sourcerect=354,429,145,78`。裁切、用户参考及查证值位于 `reference/`。
+- 风格沿用 curated 注射器枪 / 焊接工具的低多边形结构、金属和橡胶分层；未使用 deprecated 或复制外部模型贴图。尾部内部功能、厚度与背面由美术补全，不声明为官方三维结构。
 
-原作精灵 145×78，继承 `scale=0.5` 后为约 72.5×39 游戏像素；此值没有官方米制换算。作者主动选择约一米长的双手医疗工具比例，将原创草图统一乘 0.8；16 模型单位按 1 格理解。计入旋转体块后的完整包围盒：
+## 文件和验证
 
-- 编辑坐标最小点：`[-7.826978, -0.418088, -1.288]`。
-- 最大点：`[8.56, 7.387173, 1.288]`。
-- 长 × 高 × 厚：`16.386978 × 7.805261 × 2.576` 模型单位。
-- 约 `1.024186 × 0.487829 × 0.161` 格；若一格约一米，长度约 1.02 米。这是美术尺寸选择，不是原作现实尺寸。
+- `advanced_syringe_gun.bbmodel`：可编辑 Bedrock Entity 工程，完整内嵌 PNG，无外部纹理依赖。
+- `advanced_syringe_gun.geo.json`：Blockbench 原生导出，1.12.0，identifier `geometry.advanced_syringe_gun`。
+- `advanced_syringe_gun_tex.png`：256×256 RGBA，无半透明像素；透明 RGB / alpha 均为 0。
+- 六张 1200×900 `preview_*.png` 来自原生 Blockbench Preview / Three.js，纯色底，无 UI / 网格；正、背、侧、顶正交，两张斜视透视。
+- `validation.json` / `reference/validate_manual_publish.py`：人工元素、骨骼语义和 PNG 保留、实际 UV 采样、透明、计数、预算和预览尺寸检查通过。
+- `reference/native_reopen_validation.json`：关闭并重新打开后，元素、分组和 PNG 完全一致；原生重出 geo 与交付严格一致；纹理错误 0。
+- `structure_audit.json`：generic 结构审计无错误 / 警告，无非正体积；不是完整 Bedrock schema 或客户端兼容认证。
 
-编辑工程枪口朝 +X，Y 向上，Z 为厚度；Bedrock 原生 codec 镜像 X 后导出，枪口朝 −X。集成时须使用 codec 导出的枢轴和旋转，不能将编辑坐标直接逐数填入 geo。
+`reference/true_circle_check.json`、旧基线和圆环修订报告为人工最终调整之前的历史证据，不覆盖当前人工造型。当前以本 README、validation、manual_publish_portable 和 native_reopen_validation 为准。
 
-## 材质和成本
-
-最终 **69 cubes / 8 bones / 414 个声明面**，一张 64×64 图集，单材质、单帧，无动画副本。组名按 receiver、scanner、cassette_frame、amber_magazine、stock、grip_trigger、rear_hose、front_assembly 分工。
-
-预算在批量生成前设为最多 90 cubes、10 bones、540 faces、单图集最多 128×128；最终图集仅需 64×64。大结构使用连续 cuboid，斜线使用旋转长条，管线只用五段。刻线、握柄纹、旋钮标记和药仓反光使用贴图，没有逐像素挤出或扫描线堆叠。
-
-基础 UV 密度约 2 px/草图单位，整体缩放后约 2.5 px/最终模型单位；极小旋钮、扫描条和药仓反光至少分配 2 px 以保留标记。相同材料、尺寸与图案的面复用 UV，四边扩展 1 px。没有柔边渐变或随机噪点；未使用的透明图集区域 alpha 和 RGB 均为零，实际面采样区域全部不透明。基础 RGBA 字节估算为 16 KiB，不是显存或 FPS 测量。
-
-## 验证
-
-- 最终工程在 Blockbench 原生保存后关闭本任务页签、重新打开：元素、分组和内嵌 PNG 完全一致；纹理错误为 0。
-- 重开后原生 `Codecs.bedrock.compile()` 文本经 JSON 解析，与交付 geo 严格相等；证据在 `reference/native_reopen_validation.json`。
-- 本任务新建页签，已有注射器枪工程的 UUID 和保存状态保持不变。
-- 正尺寸、无重复 cuboid、无空骨骼、UV 范围及不透明采样、内外 PNG 一致、2 的幂尺寸、旋转包围盒与原生 Three.js 包围盒一致：通过 `reference/validate_asset.py`。
-- 通用工程审计无错误 / 警告；其 generic profile 只做有限结构检查，不认证 Bedrock 客户端兼容性。
-- 六张 1200×900 预览来自 Blockbench 原生 Preview / Three.js，纯色底，无 UI / 网格。正、背、侧、顶为正交，两张斜视为透视；相机参数在 `reference/render_conditions.json`。
-- 隐藏面审计发现 18 个单体遮挡候选。删除试验的严格 RGBA 对照在正、背、顶视一致，但侧视变化 9 像素，两张斜视分别变化 34 / 68 像素。因此**未通过严格保真比较，最终恢复全部 18 面**，未把平均误差小当作清理成功。相关候选和逐视角对照在 `reference/face_cleanup_*`。
-
-游戏内渲染、手持 / GUI / 掉落姿态、健康扫描、射击、装填、动画与性能均未测试。本次仅美术归档，按用户授权直推上游 main，并在 Discussion #39 登记为待评审候选；本地按用户要求移入 curated，本地分类不代表上游评审通过。未修改游戏代码，后续经评选和集成后才能声称游戏可用。
-
-发布采用人工保存的机匣修改：`breech_core.to.y` 从 `6.16` 调整为 `6.06`，其它数值差别为编辑器保存时的小数精度。最终工程和贴图完整保留，几何与六向预览已重新输出。隐藏面试验记录针对初始 AI 版本；最终版本同样没有应用任何隐藏面删除。
+未测试 Minecraft 客户端、手持 / GUI / 掉落显示、射击、扫描、动画或 FPS。未修改游戏逻辑；本地 curated 分类及进入 main 均不代表上游评审通过。
 
 ## 重现
 
-Python 3 + Pillow：
+Python 3 + Pillow，从资产目录运行：
 
 ```text
-python reference/build_asset.py
-python reference/validate_asset.py
+python reference/build_revision.py
+python reference/validate_manual_publish.py
 ```
 
-第一条优先从 `reference/publish_input.bbmodel` 恢复人工保存的发布输入和 PNG，不覆盖最终 `.bbmodel` / `.geo.json`；该快照不存在时才运行最初的程序化建模部分。第二条检查现有交付并更新 validation。当前最终工程对应 publish_input / authored_input，未应用隐藏面删除候选。
+构建优先恢复 `manual_publish_portable.bbmodel` 和内嵌 PNG，不重新生成最终人工几何。老的 round_input 与初始建模逻辑仅为历史记录。
 
-原生编辑 / 预览另需 `websocket-client` 与启用了本机调试端口 9224 的桌面 Blockbench。`bb_native.py` 通过 DevTools 调用编辑器原生 API，不使用 MCP 凭据，不更改 MCP 配置。先保护现有工程，再运行：
+原生导出 / 预览另需 websocket-client 和本机 Blockbench 调试端口 9225（独立 profile）：
 
 ```text
 python reference/bb_native.py reference/load_native.js
 python reference/bb_native.py reference/render_native.js
 python reference/bb_native.py reference/verify_reopen.js
+python reference/validate_manual_publish.py
 ```
 
-已有本任务页签时使用 `reload_authored.js` 代替 `load_native.js`；前者只重建已保存的本任务页签。渲染脚本在原生环境创建离屏 Preview，结束即释放，不是自制光栅渲染器。脚本以自身位置解析资产目录，外部游戏文件只用于已归档的查证，不是重建依赖。`apply_face_cleanup.js` 是未通过严格比较的试验，**不要用于最终工程**。
+脚本按自身位置解析路径，不依赖本机游戏目录；离屏 Preview 完成后释放，不使用 MCP 凭据或更改认证配置。

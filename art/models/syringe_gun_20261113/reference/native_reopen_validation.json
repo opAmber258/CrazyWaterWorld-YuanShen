@@ -2,7 +2,7 @@
   "editor": "5.2.2",
   "format": "bedrock",
   "project_name": "注射器枪 SyringeGun",
-  "cubes": 62,
+  "cubes": 64,
   "bones": 7,
   "texture_errors": [
     0

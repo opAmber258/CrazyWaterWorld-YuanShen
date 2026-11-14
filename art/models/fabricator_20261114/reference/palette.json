@@ -1,0 +1,22 @@
+{
+  "shell": "#68766f",
+  "light": "#819087",
+  "edge": "#a2aba0",
+  "shade": "#52615c",
+  "hood": "#414d49",
+  "hoodlight": "#59645c",
+  "dark": "#293735",
+  "seam": "#364540",
+  "panel": "#7d7f71",
+  "panellight": "#96988a",
+  "steel": "#8b9b91",
+  "steelshade": "#64766f",
+  "yellow": "#b1a052",
+  "yellowshade": "#82773f",
+  "paper": "#b5b4a0",
+  "ink": "#525b50",
+  "copper": "#8f7659",
+  "red": "#986357",
+  "screen": "#354e48",
+  "signal": "#9bad83"
+}
