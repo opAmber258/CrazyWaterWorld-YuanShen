@@ -1,10 +1,7 @@
 {
-  "asset": "高级注射器枪 AdvancedSyringeGun",
-  "identifier": "advanced_syringe_gun",
-  "date": "2026-11-13",
-  "passed": true,
   "display_name_zh": "高级注射器枪",
   "display_name_en": "Advanced Syringe Gun",
+  "date": "2026-11-14",
   "creation_source": "人工 + AI（TakaraMiyuki + GPT-6）",
   "contributors": {
     "human": [
@@ -14,103 +11,79 @@
       {
         "name": "GPT-6",
         "tool": "Codex + Blockbench 5.2.2",
-        "role": "初始几何、贴图、UV、原生预览、导出及验证"
+        "role": "初始建模和尾环修订；基于最终人工保存版本重出导出、预览和检查"
       }
     ],
-    "division": "人工提供参考并保存机匣高度微调；AI 保留人工保存版本，重出几何、六向预览与验证。"
+    "division": "人工完成最终几何、UV 和像素贴图调整；本轮 AI 不改变其几何、UV、骨骼变换或贴图像素，仅清理文件路径和编辑器选择标记并重出资源。"
   },
-  "format": "Bedrock Entity",
-  "geometry_version": "1.12.0",
-  "editor": "Blockbench 5.2.2",
+  "passed": true,
+  "errors": [],
+  "format": "Bedrock Entity 1.12.0",
+  "identifier": "geometry.advanced_syringe_gun",
   "counts": {
-    "cubes": 69,
+    "cubes": 82,
     "bones": 8,
-    "declared_export_faces": 414,
+    "faces": 492,
     "textures": 1,
-    "frames": 1,
-    "duplicate_cuboids": 0
+    "frames": 1
   },
-  "bounds_editor_units": {
-    "min": [
-      -7.826977514026638,
-      -0.4180883061490924,
-      -1.288
-    ],
-    "max": [
-      8.56,
-      7.387172834426351,
-      1.288
-    ],
-    "size": [
-      16.38697751402664,
-      7.8052611405754435,
-      2.576
-    ]
-  },
-  "bounds_blocks": [
-    1.024186094626665,
-    0.4878288212859652,
-    0.161
-  ],
   "texture": {
     "mode": "RGBA",
     "size": [
+      256,
+      256
+    ],
+    "logical_uv_size": [
       64,
       64
     ],
-    "pixels": 4096,
-    "base_rgba_bytes": 16384,
-    "partial_alpha_pixels": 0,
-    "all_sampled_uv_opaque": true,
-    "embedded_equals_external": true
+    "base_rgba_bytes": 262144
   },
-  "previews": {
-    "names": [
-      "front",
-      "back",
-      "side",
-      "oblique",
-      "top",
-      "rear_oblique"
+  "bounds_editor_units": {
+    "min": [
+      -8.297978967173176,
+      0.3869843268158927,
+      -1.2879999876022339
     ],
-    "size": [
-      1200,
-      900
-    ],
-    "renderer": "Native Blockbench Preview / Three.js",
-    "orthographic": [
-      "front",
-      "back",
-      "side",
-      "top"
-    ],
-    "perspective": [
-      "oblique",
-      "rear_oblique"
-    ],
-    "ui": false,
-    "grid": false
+    "max": [
+      8.5600004196167,
+      8.882976375467878,
+      1.2879999876022339
+    ]
   },
-  "cleanup": {
-    "candidate_faces": 18,
-    "removed_faces": 0,
-    "reason": "Strict RGBA comparison differed in side and perspective samples; all candidates restored.",
-    "comparison": "reference/face_cleanup_comparison.json"
+  "size_units": [
+    16.857979386789875,
+    8.495992048651985,
+    2.5759999752044678
+  ],
+  "size_blocks": [
+    1.0536237116743672,
+    0.530999503040749,
+    0.16099999845027924
+  ],
+  "manual_edits_preserved": {
+    "elements_exact": true,
+    "bone_semantics_exact": true,
+    "embedded_png_exact": true
   },
+  "normalization": [
+    "Removed external texture path / relative_path; retained embedded PNG",
+    "Cleared editor-only primary_selected flag"
+  ],
   "native_reopen": "reference/native_reopen_validation.json",
-  "errors": [],
-  "checks": {
-    "native_reopen": true,
-    "native_geometry_roundtrip_exact": true,
-    "positive_dimensions": true,
-    "within_cost_budget": true,
-    "no_external_texture_dependency": true
+  "previews": "six native 1200x900 views, front/back/side/top orthographic, obliques perspective",
+  "budget": {
+    "max_cubes": 90,
+    "max_faces": 540,
+    "max_texture_side": 256,
+    "reason": "Preserve the user-authored 256x256 bitmap without downsampling",
+    "within_budget": true
   },
-  "limits": [
-    "No Minecraft client test or game integration",
-    "No held/GUI/display runtime test or animation",
-    "No measured draw calls, overdraw, GPU memory or FPS",
-    "Not a complete Bedrock schema validator",
-    "Opaque amber is a pixel-art representation; 12 visible subdivisions do not encode inventory capacity"
+  "runtime_tested": false,
+  "publication_target": "art/models/advanced_syringe_gun_20261113/ (replace existing candidate)",
+  "limitations": [
+    "No Minecraft render, holding, GUI, gameplay or FPS test",
+    "Bounded structural checks; not a complete Bedrock schema validator",
+    "Older ring/equality reports are historical; user final edits take precedence"
   ]
 }

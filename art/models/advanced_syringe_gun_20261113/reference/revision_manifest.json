@@ -1,0 +1,29 @@
+{
+  "baseline_cubes": 69,
+  "final_cubes": 80,
+  "removed": 5,
+  "added": 16,
+  "preserved_elements_exact": 64,
+  "preserved_prior_opaque_texels": true,
+  "retained_breech_to_y": 6.86,
+  "ring_center": [
+    -5.7,
+    6.3,
+    0
+  ],
+  "radius_to_rim_centerline": [
+    2.55,
+    2.55
+  ],
+  "rim_width": 0.55,
+  "rim_depth": 1.12,
+  "max_cubes": 90,
+  "max_faces": 540,
+  "texture_size": [
+    64,
+    64
+  ],
+  "patches": 8,
+  "interpretation": "Broad black circular silhouette with recessed interior, inferred depth; no claim about original function.",
+  "orthographic_circle_check": "true_circle_check.json"
+}

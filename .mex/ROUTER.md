@@ -34,7 +34,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-13
+last_updated: 2026-11-14
 ---
 
 # Session Bootstrap
@@ -63,7 +63,7 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 
 - **引擎 Engine 第三候选（2026-11-13）**：`art/models/engine_20261113/` 收录按用户授权直推 main 的独立低多边形静态设备（制作来源：AI，GPT 6.1 Sol / Codex + Blockbench 5.2.2）。143 cubes / 10 bones / 858 声明面，512² RGBA，约 5.4125×2.625×2.19375 格；三联百叶、仪表、电控区、开放八边形推进罩与静态四叶转子，X/Z 居中、Y 贴地。完整内嵌贴图工程、Bedrock 几何、四向 1200×900 原生预览、脚本和验证记录齐备；工程重开和原生几何导入重出完全一致，离线结构与 UV 核对通过，保留窄边纹素取整密度警告。Discussion #39 登记为引擎候选 C，A/B 保留；本地按用户要求归入 curated，不代表上游评选通过。仅美术归档，未接入游戏、客户端未测试。
 
-- **高级注射器枪 AdvancedSyringeGun 美术资产（2026-11-13）**：`art/models/advanced_syringe_gun_20261113/` 收录按用户授权直推 main 的静态物品候选（制作来源：人工 + AI，TakaraMiyuki + GPT-6 / Codex + Blockbench 5.2.2）。69 cubes / 8 bones / 414 声明面，64² 单贴图，约 1.024×0.488×0.161 格；保留人工保存的机匣高度微调，完整内嵌贴图工程、Bedrock 几何、六向 1200×900 原生预览及可重跑脚本齐备。原生重开、导出一致性与离线交付检查通过；Discussion #39 登记为待评审候选；本地按用户要求归入 curated，不代表上游评审通过。仅美术归档，未接入游戏，客户端未测试。
+- **高级注射器枪 AdvancedSyringeGun 美术资产（2026-11-14 最终人工调整版）**：按用户授权直接覆盖 `art/models/advanced_syringe_gun_20261113/` 原候选（人工 + AI：TakaraMiyuki + GPT-6 / Codex + Blockbench 5.2.2）。82 cubes / 8 bones / 492 声明面，256² 单贴图、64² 逻辑 UV，约 1.054×0.531×0.161 格；完整保留人工几何、UV、骨骼语义及内嵌 PNG，仅清理外部路径与编辑器选择标记。原生重开、重新导出严格一致，六向 1200×900 预览与离线检查齐备；同路径替换旧 69-cube 版本，更新 Discussion #39 已有候选 A，仍待评审，不新增候选。本地 curated 同步当前版本，不代表上游评审通过；未接入游戏、客户端未测试。
 
 - **注射器枪 SyringeGun 美术资产（2026-11-13）**：`art/models/syringe_gun_20261113/` 收录按用户授权直推 main、尚待评审的静态物品模型（制作来源：AI，Codex / GPT-6 + Blockbench 5.2.2）。62 cubes / 7 bones / 372 声明面，64² 单贴图，约 0.992×0.439×0.128 格；完整内嵌贴图工程、Bedrock 几何、六向 1200×900 原生预览及可重跑脚本齐备。离线交付检查、原生重开与导出一致性检查通过；本地按用户要求归入 curated，该本地分类不代表上游评审通过；Discussion #39 登记为待评选候选。仅美术归档，未接入物品渲染、手持姿态或射击逻辑，客户端未测试。
 

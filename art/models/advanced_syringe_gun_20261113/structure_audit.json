@@ -1,29 +1,29 @@
 {
-  "path": "F:\\BarotraumaMinecraft\\art-vault\\production\\advanced_syringe_gun_20261113\\advanced_syringe_gun.bbmodel",
+  "path": "F:\\BarotraumaMinecraft\\art-vault\\production\\advanced_syringe_gun_rear_ring_20261114\\advanced_syringe_gun.bbmodel",
   "profile": "generic",
   "kind": "bbmodel",
   "structural_errors_absent": true,
   "dependencies_complete": true,
   "counts": {
-    "elements": 69,
+    "elements": 82,
     "plane_elements": 0,
     "inverted_elements": 0,
-    "rotated_elements": 20,
-    "declared_export_faces": 414
+    "rotated_elements": 30,
+    "declared_export_faces": 492
   },
   "textures": {
     "0": {
       "size": [
-        64,
-        64
+        256,
+        256
       ],
-      "pixels": 4096,
-      "rgba_base_bytes": 16384,
-      "transparent_pixels": 1767,
+      "pixels": 65536,
+      "rgba_base_bytes": 262144,
+      "transparent_pixels": 54404,
       "partial_alpha_pixels": 0,
       "frame_size": [
-        64,
-        64
+        256,
+        256
       ],
       "frame_count": 1,
       "animation_metadata_checked": false,
@@ -33,7 +33,7 @@
       ]
     }
   },
-  "texture_pixels": 4096,
+  "texture_pixels": 65536,
   "errors": [],
   "warnings": [],
   "limitations": [
