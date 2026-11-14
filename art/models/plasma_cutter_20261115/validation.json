@@ -1,0 +1,87 @@
+{
+  "asset": "plasma_cutter",
+  "identifier": "plasma_cutter",
+  "date": "2026-11-15",
+  "status": "complete",
+  "status_reason": "美术侧交付齐备（java_block 口径：bbmodel + 贴图 + 四向预览 + 说明文件）。Java 模型 JSON 因旋转格式待集成侧定夺而未随附，见 limitations。",
+  "creation_source": "人工（Han-xing-official）",
+  "contributors": {
+    "human": ["Han-xing-official"],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线渲染校验、文档与登记起草；未参与几何、UV、贴图、预览制作"
+      }
+    ],
+    "division": "几何、UV、贴图绘制、预览截图全部人工完成；AI 仅做交付打包与离线校验。"
+  },
+  "display_name_zh": "等离子切割器",
+  "display_name_en": "PlasmaCutter",
+  "production": {
+    "model_format": "java_block",
+    "bbmodel_format_version": "5.0",
+    "java_block_version": "26.3",
+    "blockbench": "5.x（作者 2026-11-15 在 5.x 中重开编辑并保存）",
+    "textures_embedded": true
+  },
+  "counts": {
+    "base": { "cubes": 25, "declared_faces": 150, "groups": 6, "bones": 0, "animations": 0, "hidden_elements": 0 },
+    "oxygen_tank_variant": { "cubes": 27, "declared_faces": 162, "groups": 7, "bones": 0, "animations": 0, "hidden_elements": 0 }
+  },
+  "bounds_blockbench_units": {
+    "base": { "min": [5, -0.289, -4.25], "max": [11, 13, 19.311], "size": [6.0, 13.289, 23.561] },
+    "oxygen_tank_variant": { "min": [5, -2.999, -4.25], "max": [11, 13, 19.311], "size": [6.0, 15.999, 23.561] }
+  },
+  "dimensions_blocks_at_16_units_per_block": {
+    "base": [0.375, 0.83, 1.473],
+    "oxygen_tank_variant": [0.375, 1.0, 1.473]
+  },
+  "cost": {
+    "base": { "texture": "64x64 RGBA", "texture_pixels": 4096, "transparent_pixels": 2690 },
+    "oxygen_tank_variant": { "texture": "64x64 RGBA", "texture_pixels": 4096, "transparent_pixels": 2686 }
+  },
+  "checks": [
+    { "name": "naming_convention", "pass": true, "detail": "plasma_cutter = 等离子切割器 PlasmaCutter，标识与讨论 #39 已登记候选 A 一致；目录 plasma_cutter_20261115。" },
+    { "name": "deliverable_set", "pass": true, "detail": "java_block 口径：bbmodel + _tex.png + 四向预览 + README/validation/structure_audit + reference，另含 oxygen_tank 变体 bbmodel 与变体斜视预览。" },
+    { "name": "preview_geometry_consistency", "pass": true, "detail": "离线渲染器（ZYX 欧拉序）正/背/侧视图与作者五张预览轮廓逐一比对一致；删除氧气瓶后重渲染确认基础版无瓶。" },
+    { "name": "texture_power_of_two", "pass": true, "detail": "两份贴图均 64×64，2 的幂。" },
+    { "name": "texture_true_transparency", "pass": true, "detail": "RGBA8，透明像素 alpha=0（本体 2665/4096），无半透明噪点。" },
+    { "name": "texture_matches_embedded", "pass": true, "detail": "两份 _tex.png 与对应 bbmodel 内嵌贴图逐字节一致。" },
+    { "name": "preview_dimensions", "pass": true, "detail": "5 张预览均 1200×900，纯黑底、无网格无 UI。" },
+    { "name": "no_hidden_geometry", "pass": true, "detail": "两个工程隐藏元素数均为 0（工程内 2 张隐藏参考图片不属于几何）。" },
+    { "name": "no_unused_cubes", "pass": true, "detail": "基础版已删除氧气瓶瓶体与垫环；剩余 cube 全部参与几何。" },
+    { "name": "bbmodel_reopens", "pass": true, "detail": "作者于 2026-11-15 在 Blockbench 5.x 中重开编辑并保存（含删除氧气瓶与变体微调）。" }
+  ],
+  "errors": [],
+  "warnings": [
+    { "code": "MULTI_AXIS_ROTATIONS", "detail": "25/25 cube 带旋转且多为多轴自由旋转（如 [-90,67.5,-90]），超出 1.20.1 原版 Java 模型 JSON 表达范围；接入前需集成者确认目标格式。" },
+    { "code": "ZERO_THICKNESS_PLANES", "detail": "2 个零厚度面片：喳喳（枪口锯齿 3×4×0）、这是电线（3×2×0）。" },
+    { "code": "TEXTURE_VARIANT_DELTA", "detail": "本体与变体贴图差异 16 像素（x33-58 / y31-46，氧气瓶 UV 区），系作者微调，两份贴图各自与对应 bbmodel 字节一致。" },
+    { "code": "TEXTURE_FILENAME_NOTE", "detail": "作者工程内贴图文件名（带氧气罐.png / plasma_cutter1.5.png）与交付文件名（按角色命名）不同，内容以字节校验为准。" }
+  ],
+  "previews": {
+    "method": "作者在 Blockbench 视口手动截图导出（约定 3.3 交互环境例外）；reference/ 内脚本为交付后自建校验工具，不用于产出预览",
+    "files": [
+      { "file": "preview_front.png", "view": "正视（南向正交）", "size": [1200, 900] },
+      { "file": "preview_back.png", "view": "背视（北向正交，枪口方向）", "size": [1200, 900] },
+      { "file": "preview_side.png", "view": "侧视（东向正交）", "size": [1200, 900] },
+      { "file": "preview_oblique.png", "view": "斜视（透视）", "size": [1200, 900] },
+      { "file": "preview_oblique_oxygen_tank.png", "view": "变体斜视（透视）", "size": [1200, 900] }
+    ]
+  },
+  "runtime": {
+    "integrated": false,
+    "in_game_verified": false,
+    "note": "美术资产交付，未修改 src/main/resources，未注册物品，未启动 Minecraft 客户端。"
+  },
+  "limitations": [
+    "Java 模型 JSON 未随附：几何含多轴自由旋转，超出 1.20.1 原版 JSON 表达范围，待集成侧确认目标格式后用 Blockbench 原生导出。",
+    "无动画；无 emissive 发光贴图（与候选 A 方案不同）。",
+    "变体仅有斜视一张预览（作者本轮选择）；如评选需要可补四向。"
+  ],
+  "manual_acceptance": {
+    "bbmodel_reopens": "pass — 作者当晚在 Blockbench 5.x 重开、编辑并保存两份工程",
+    "notes": "离线渲染器比对结论与作者预览一致；如需人工复核可运行 reference/ 内脚本。"
+  }
+}
