@@ -59,10 +59,15 @@ public final class VsThruster implements ShipPhysicsListener {
     private volatile int throttleY;
     private volatile int throttleZ;
     private volatile int power = 100;
-    /** 全船供电比例（0..1）；0 时推进器不出力。由 VsPilot 每 tick 从 ShipSimulation 同步。 */
+    /** 全船供电比例（0..1）；诊断/显示用，推进已改用逐引擎供电系数。 */
     private volatile double supply = 1.0D;
     /** 船上已安装的引擎数量；0 时完全不能推进。 */
     private volatile int engineCount;
+    /**
+     * 逐引擎有效供电系数之和（每台 {@code min(Voltage,2)^(2/3)}，低于 0.5 记 0）。
+     * 引擎绑定的接线盒损坏/缺失时，该引擎不贡献推力。
+     */
+    private volatile double engineSupplyFactor;
     /**
      * 全船水量占比（含压载水，0..1）。原版 {@code SubmarineBody.CalculateBuoyancy()}
      * 的唯一输入：7% 中性，低于 7% 正浮力 ×2，低于 0 的部分封顶 -0.5。
@@ -176,8 +181,18 @@ public final class VsThruster implements ShipPhysicsListener {
         return engineCount;
     }
 
+    /** 逐引擎有效供电系数之和；每台最多 {@code 2^(2/3)}，8 台封顶。 */
+    public void setEngineSupplyFactor(double factor) {
+        double max = 8.0D * Math.pow(2.0D, 2.0D / 3.0D);
+        engineSupplyFactor = Math.max(0.0D, Math.min(factor, max));
+    }
+
+    public double engineSupplyFactor() {
+        return engineSupplyFactor;
+    }
+
     private boolean powered() {
-        return supply >= 0.5D && engineCount > 0;
+        return engineSupplyFactor > 0.0D && engineCount > 0;
     }
 
     /** 全船水量占比（含压载水），原版浮力公式的唯一输入。 */
@@ -251,11 +266,9 @@ public final class VsThruster implements ShipPhysicsListener {
         }
         double throttle = power / 100.0D;
         // 原作 Engine.Update：MinVoltage=0.5，低于 0.5 引擎完全停；
-        // 推力系数用 min(Voltage, 2)^(2/3)，电压富余可以小幅超推。
-        double supplyFactor = supply < 0.5D ? 0.0D
-                : Math.pow(Math.min(supply, 2.0D), 2.0D / 3.0D);
-        // 没有引擎就没有推力；多台引擎线性叠加，最多按 8 台封顶。
-        double engineFactor = Math.min(8, Math.max(0, engineCount));
+        // 推力系数用 min(Voltage, 2)^(2/3)。这里用逐引擎系数之和：
+        // 某台引擎的接线盒坏了/缺失时它拿不到电，不能继续按全船电压出力。
+        double engineFactor = engineSupplyFactor;
         double engineBoost = engineMultiplier;
 
         // 水平：八向推力归一化，斜着走不会比直着走快
@@ -265,8 +278,8 @@ public final class VsThruster implements ShipPhysicsListener {
         double ax = 0.0D;
         double az = 0.0D;
         if (len > 0.0D) {
-            ax = hx / len * ACCEL * throttle * supplyFactor * engineFactor * engineBoost;
-            az = hz / len * ACCEL * throttle * supplyFactor * engineFactor * engineBoost;
+            ax = hx / len * ACCEL * throttle * engineFactor * engineBoost;
+            az = hz / len * ACCEL * throttle * engineFactor * engineBoost;
         }
         // 原版二次水阻（水平 0.01 + 船员质量/5000，封顶 0.1）
         double dragHorizontal = Math.min(DRAG_MAX, DRAG_HORIZONTAL);

@@ -62,7 +62,15 @@ public final class MineralVeins {
         if (minerals.isEmpty()) {
             return;
         }
+        // 先加载航线区块：生成器第一次跑过后 terrainSeed() 才是真实派生种子。
+        preloadCorridor(level, anchor, startSite);
+        // 必须用生成器实际使用的派生种子：SeaTerrain 的洞顶/海底噪声按它计算，
+        // 用 level.getSeed() 会把候选放到错误的岩壁高度，最后被表面检查全部排除。
         long seed = level.getSeed();
+        if (level.getChunkSource().getGenerator() instanceof DeepSeaChunkGenerator generator
+                && generator.terrainSeed() != Long.MIN_VALUE) {
+            seed = generator.terrainSeed();
+        }
         // 关卡参数：资源概率/隧道半径/开阔带中点；没有活动关卡时保持原来的 0.2/16/-240。
         com.opamb.barotrauma.world.level.LevelParams params = MissionInstance.activeParams();
         double chance = params == null ? 0.2D : params.content().resourceSpawnChance();
@@ -70,7 +78,6 @@ public final class MineralVeins {
                 : Math.max(48, params.cavernHalfWidth());
         double midDepth = params == null ? -240.0D
                 : (params.bandCeiling() + params.bandFloor()) / 2.0D;
-        preloadCorridor(level, anchor, startSite);
         List<Candidate> candidates = collectCandidates(level, seed, anchor, startSite, corridor);
         if (candidates.isEmpty()) {
             BarotraumaMod.LOGGER.warn("[mining] 航线上找不到可放矿脉的岩壁：anchor=({},{})",

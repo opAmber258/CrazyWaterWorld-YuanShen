@@ -168,46 +168,49 @@ public final class SeaTerrain {
     }
 
     private static LevelProfile levelProfile(long seed, int x, int z) {
-        MissionInstance.RouteLevel level = MissionInstance.routeLevel();
-        if (level == null) {
-            return null;
-        }
-        RoutePath path = MissionInstance.activePath();
-        if (path == null) {
-            return null;
-        }
-        LevelParams params = level.type().params();
-        // 侧隧道可能离主航道很远：必须按到整个隧道网络的距离判定，
-        // 否则侧隧道落在主航道影响半径外就完全不会被挖开。
-        double distance = path.distanceToNetwork(x, z);
-        double influence = levelInfluence(params);
-        if (distance >= influence) {
-            return null;
-        }
-        double blend = smooth((distance - (influence - LEVEL_EDGE_BLEND)) / LEVEL_EDGE_BLEND);
-        if (blend >= 1.0D) {
-            return null;
-        }
+        // 关卡配置和航道必须来自同一次快照；生成器外层也持同一把读锁（可重入）。
+        try (MissionInstance.RouteLock ignored = MissionInstance.holdRouteReadLock()) {
+            MissionInstance.RouteLevel level = MissionInstance.routeLevel();
+            if (level == null) {
+                return null;
+            }
+            RoutePath path = MissionInstance.activePath();
+            if (path == null) {
+                return null;
+            }
+            LevelParams params = level.type().params();
+            // 侧隧道可能离主航道很远：必须按到整个隧道网络的距离判定，
+            // 否则侧隧道落在主航道影响半径外就完全不会被挖开。
+            double distance = path.distanceToNetwork(x, z);
+            double influence = levelInfluence(params);
+            if (distance >= influence) {
+                return null;
+            }
+            double blend = smooth((distance - (influence - LEVEL_EDGE_BLEND)) / LEVEL_EDGE_BLEND);
+            if (blend >= 1.0D) {
+                return null;
+            }
 
-        // 洞窟剖面：主航道椭圆 + 侧洞环 + 洞室的并集，夹在关卡开阔带内。
-        RoutePath.Open open = path.openAt(x, z, seed);
-        double top;
-        double bottom;
-        if (open == null) {
-            // 洞窟之外整列是岩：洞顶压到洞底以上，生成器看到 open<=0 会保留石头。
-            top = params.bandCeiling();
-            bottom = top + 1.0D;
-        } else {
-            top = Math.min(open.top(), params.bandCeiling());
-            bottom = Math.max(open.bottom(), params.bandFloor());
-            if (bottom > top) {
+            // 洞窟剖面：主航道椭圆 + 侧洞环 + 洞室的并集，夹在关卡开阔带内。
+            RoutePath.Open open = path.openAt(x, z, seed);
+            double top;
+            double bottom;
+            if (open == null) {
+                // 洞窟之外整列是岩：洞顶压到洞底以上，生成器看到 open<=0 会保留石头。
                 top = params.bandCeiling();
                 bottom = top + 1.0D;
+            } else {
+                top = Math.min(open.top(), params.bandCeiling());
+                bottom = Math.max(open.bottom(), params.bandFloor());
+                if (bottom > top) {
+                    top = params.bandCeiling();
+                    bottom = top + 1.0D;
+                }
             }
+            // 站点不再额外挖空腔：主洞在端点处本身就有 240–480 格宽、240–440 格高，
+            // 站体（41×25、-44..-64）和码头竖井（-116..-69）都落在洞窟里。
+            return new LevelProfile(top, bottom, blend);
         }
-        // 站点不再额外挖空腔：主洞在端点处本身就有 240–480 格宽、240–440 格高，
-        // 站体（41×25、-44..-64）和码头竖井（-116..-69）都落在洞窟里。
-        return new LevelProfile(top, bottom, blend);
     }
 
     /** 哨站核心区取哨站高度，外圈 {@link #OUTPOST_BLEND} 格平滑过渡到世界高度。 */

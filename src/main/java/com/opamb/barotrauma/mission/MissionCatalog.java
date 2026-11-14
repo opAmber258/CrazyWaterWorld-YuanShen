@@ -62,6 +62,7 @@ public final class MissionCatalog {
 
     private static List<MissionSpec> buildOffers() {
         List<MissionSpec> out = new ArrayList<>();
+        List<MissionSpec> minerals = new ArrayList<>();
         for (MissionSpec spec : SPECS) {
             if (!spec.implemented()) {
                 continue;
@@ -73,11 +74,17 @@ public final class MissionCatalog {
             if (spec.kind() == MissionKind.CARGO && !CARGO_OFFERS.contains(spec.id())) {
                 continue;
             }
-            if (spec.kind() == MissionKind.MINERAL && !MINERAL_OFFERS.contains(spec.id())) {
+            if (spec.kind() == MissionKind.MINERAL) {
+                if (MINERAL_OFFERS.contains(spec.id())) {
+                    // 采矿报价追加到列表末尾：PoiNetwork 按列表顺序发数字 id，
+                    // 插在中间会让旧存档已有任务的 id 整体后移、绑定到错误模板。
+                    minerals.add(spec);
+                }
                 continue;
             }
             out.add(spec);
         }
+        out.addAll(minerals);
         return List.copyOf(out);
     }
 

@@ -100,8 +100,13 @@ public class JunctionBoxBlock extends BaseEntityBlock {
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, net.minecraft.world.phys.BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            if (serverPlayer.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D,
-                    pos.getZ() + 0.5D) > 64.0D) {
+            // 面板统一用装配坐标；物理船的方块实体在船坞里，距离按世界坐标算。
+            BlockPos cell = com.opamb.barotrauma.ship.vs.VsState.active()
+                    ? com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(pos) : pos;
+            net.minecraft.world.phys.Vec3 center = com.opamb.barotrauma.ship.vs.VsState.active()
+                    ? com.opamb.barotrauma.ship.vs.VsPilot.assemblyToWorld(cell)
+                    : net.minecraft.world.phys.Vec3.atCenterOf(pos);
+            if (center == null || serverPlayer.distanceToSqr(center) > 64.0D) {
                 return InteractionResult.CONSUME;
             }
             boolean screwdriver = serverPlayer.getMainHandItem().is(ModItems.SCREWDRIVER.get())
@@ -113,7 +118,7 @@ public class JunctionBoxBlock extends BaseEntityBlock {
                         Component.translatable("power.repaired", (int) Math.round(box.condition())), true);
                 return InteractionResult.CONSUME;
             }
-            PowerPanelState.send(serverPlayer, pos);
+            PowerPanelState.send(serverPlayer, cell);
             return InteractionResult.CONSUME;
         }
         return InteractionResult.SUCCESS;

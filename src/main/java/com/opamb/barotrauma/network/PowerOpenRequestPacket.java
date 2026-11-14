@@ -6,7 +6,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.util.Comparator;
 import java.util.function.Supplier;
 
 /** 客户端 → 服务端：打开本船最近接线盒的电力面板。 */
@@ -34,17 +33,28 @@ public record PowerOpenRequestPacket() {
                 player.displayClientMessage(Component.translatable("power.no_ship"), true);
                 return;
             }
-            net.minecraft.core.BlockPos playerCell = com.opamb.barotrauma.ship.vs.VsState.active()
-                    ? com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(player.blockPosition())
-                    : player.blockPosition();
-            var box = ship.simulation().junctionBoxes().stream()
-                    .min(Comparator.comparingDouble(p -> p.distSqr(playerCell)))
-                    .orElse(null);
-            if (box == null) {
+            // 接线盒坐标是装配坐标；物理船要先用船体变换换到世界坐标再比距离。
+            // 不能把玩家世界坐标直接传给 toAssembly（那只是船坞偏移换算）。
+            net.minecraft.core.BlockPos best = null;
+            double bestDistance = Double.MAX_VALUE;
+            for (net.minecraft.core.BlockPos cell : ship.simulation().junctionBoxes()) {
+                net.minecraft.world.phys.Vec3 world = com.opamb.barotrauma.ship.vs.VsState.active()
+                        ? com.opamb.barotrauma.ship.vs.VsPilot.assemblyToWorld(cell)
+                        : net.minecraft.world.phys.Vec3.atCenterOf(cell);
+                if (world == null) {
+                    continue;
+                }
+                double distance = world.distanceToSqr(player.position());
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    best = cell;
+                }
+            }
+            if (best == null || bestDistance > 64.0D) {
                 player.displayClientMessage(Component.translatable("power.no_box"), true);
                 return;
             }
-            PowerPanelState.send(player, box);
+            PowerPanelState.send(player, best);
         });
         context.setPacketHandled(true);
     }

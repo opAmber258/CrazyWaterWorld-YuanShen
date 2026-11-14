@@ -64,6 +64,15 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
 
     private long cachedWorldSeed = Long.MIN_VALUE;
 
+    /**
+     * 地形生成实际使用的派生种子；还没生成过区块时返回 {@link Long#MIN_VALUE}。
+     * {@code SeaTerrain} 的噪声、海底高度和 {@code MineralVeins} 的动态矿脉候选
+     * 必须用同一个值，不能用 {@code level.getSeed()}。
+     */
+    public long terrainSeed() {
+        return cachedWorldSeed;
+    }
+
     public DeepSeaChunkGenerator(BiomeSource biomeSource) {
         super(biomeSource);
     }
@@ -82,7 +91,10 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                                                         StructureManager structureManager, ChunkAccess chunk) {
         long seed = worldSeed(randomState);
         return CompletableFuture.supplyAsync(() -> {
-            generate(chunk, seed);
+            // 整块持读锁：setRouteLevel 不能在生成中途换掉关卡配置/航道。
+            try (MissionInstance.RouteLock ignored = MissionInstance.holdRouteReadLock()) {
+                generate(chunk, seed);
+            }
             return chunk;
         }, executor);
     }

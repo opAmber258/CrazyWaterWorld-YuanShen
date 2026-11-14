@@ -1000,6 +1000,28 @@ public final class ShipSimulation {
         return lastEngineCount;
     }
 
+    /**
+     * 逐引擎有效供电系数之和：每台引擎按它实际拿到的电压算
+     * {@code min(Voltage,2)^(2/3)}，低于 MinVoltage 0.5 记 0。
+     *
+     * <p>物理推进不能直接用"全船电压 × 引擎数"：某台引擎绑的接线盒坏了/缺失时
+     * 它实际拿不到电，必须单独扣掉。</p>
+     */
+    public double engineSupplyFactor() {
+        double sum = 0.0D;
+        for (var entry : engines.entrySet()) {
+            EngineReport report = entry.getValue();
+            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS) {
+                continue;
+            }
+            double voltage = consumerVoltage(entry.getKey());
+            if (voltage >= 0.5D) {
+                sum += Math.pow(Math.min(voltage, 2.0D), 2.0D / 3.0D);
+            }
+        }
+        return sum;
+    }
+
     /** 上一 tick 的引擎总耗电（kW）。 */
     public double engineDemandKw() {
         return lastEngineDemand;

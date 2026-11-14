@@ -586,6 +586,8 @@ public final class VsPilot {
         target.setPower(control.power());
         target.setSupply(control.simulation().voltage());
         target.setEngineCount(control.simulation().engineCount());
+        // 逐引擎电压：某个引擎的接线盒坏了就不能继续按全船电压出力。
+        target.setEngineSupplyFactor(control.simulation().engineSupplyFactor());
         target.setEngineMultiplier(control.engineMultiplier());
         // 原版浮力只认全船水量占比（含压载水），不再按"压载百分比"另算一份力。
         target.setWaterRatio(control.buoyancyWaterRatio());
@@ -983,6 +985,18 @@ public final class VsPilot {
             return yardPos;
         }
         return yardPos.offset(-yardOffsetX, -yardOffsetY, -yardOffsetZ);
+    }
+
+    /**
+     * 装配坐标 → 船坞坐标。物理船上的方块实体在船坞里，读写它们之前要用这个换算。
+     * 船坞偏移还没对账时返回 {@code null}（调用方应放弃本次读写）。
+     */
+    @Nullable
+    public static BlockPos toYard(BlockPos assemblyPos) {
+        if (assemblyPos == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        return assemblyPos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
     }
 
     /**

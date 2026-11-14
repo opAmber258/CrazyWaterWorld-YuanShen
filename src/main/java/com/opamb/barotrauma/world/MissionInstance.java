@@ -70,6 +70,34 @@ public final class MissionInstance {
 
     private static volatile RouteLevel routeLevel;
 
+    /**
+     * 关卡切换与区块生成的读写锁：区块生成任务持读锁，{@link #setRouteLevel} 持写锁。
+     * 否则生成线程可能在一个区块内先读到旧关卡、再读到新航道。
+     */
+    private static final java.util.concurrent.locks.ReentrantReadWriteLock ROUTE_LOCK =
+            new java.util.concurrent.locks.ReentrantReadWriteLock();
+
+    /** 生成任务持有的关卡读锁；关闭即释放。 */
+    public static final class RouteLock implements AutoCloseable {
+        private final java.util.concurrent.locks.Lock lock;
+
+        private RouteLock(java.util.concurrent.locks.Lock lock) {
+            this.lock = lock;
+        }
+
+        @Override
+        public void close() {
+            lock.unlock();
+        }
+    }
+
+    /** 区块生成持读锁：同一区块内不会读到切换前后的两套关卡配置。 */
+    public static RouteLock holdRouteReadLock() {
+        java.util.concurrent.locks.Lock lock = ROUTE_LOCK.readLock();
+        lock.lock();
+        return new RouteLock(lock);
+    }
+
     /** 主航道缓存：关卡配置不变就复用同一条折线，生成器每列都会查它。 */
     private record PathCache(RouteLevel level, RoutePath path) {
     }
@@ -78,7 +106,13 @@ public final class MissionInstance {
 
     /** 设置本轮关卡；{@code null} 清除（回到全局地形）。 */
     public static void setRouteLevel(RouteLevel level) {
-        routeLevel = level;
+        java.util.concurrent.locks.Lock lock = ROUTE_LOCK.writeLock();
+        lock.lock();
+        try {
+            routeLevel = level;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /** 当前活动关卡；没有返回 null。 */

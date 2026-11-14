@@ -15,6 +15,8 @@ import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipGeometry;
 import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.ship.vs.VsPilot;
+import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.world.DockingBay;
 import com.opamb.barotrauma.world.StationStoreSavedData;
 import net.minecraft.ChatFormatting;
@@ -482,19 +484,39 @@ public final class StoreService {
     /** 玩家所在潜艇上的所有钢柜/货架槽位；找不到船核心时返回空表。 */
     private static List<ContainerSlot> shipContainers(ServerPlayer player) {
         ServerLevel level = player.serverLevel();
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, player.blockPosition(),
-                SHIP_SEARCH_RANGE);
-        if (core == null) {
-            return List.of();
+        ShipState state;
+        ShipGeometry.Bounds bounds;
+        if (VsState.active()) {
+            // 物理船的方块实体在船坞里：几何是装配坐标，扫描范围要加上船坞偏移。
+            state = VsState.activeState();
+            if (state == null) {
+                return List.of();
+            }
+            ShipGeometry.Bounds assembly = state.geometry().bounds();
+            BlockPos minYard = VsPilot.toYard(new BlockPos(
+                    assembly.minX(), assembly.minY(), assembly.minZ()));
+            BlockPos maxYard = VsPilot.toYard(new BlockPos(
+                    assembly.maxX(), assembly.maxY(), assembly.maxZ()));
+            if (minYard == null || maxYard == null) {
+                return List.of();
+            }
+            bounds = new ShipGeometry.Bounds(minYard.getX(), minYard.getY(), minYard.getZ(),
+                    maxYard.getX(), maxYard.getY(), maxYard.getZ());
+        } else {
+            ShipCoreBlockEntity core = ShipCores.nearestCore(level, player.blockPosition(),
+                    SHIP_SEARCH_RANGE);
+            if (core == null) {
+                return List.of();
+            }
+            state = core.state();
+            if (state == null) {
+                state = core.rescan(level);
+            }
+            if (state == null) {
+                return List.of();
+            }
+            bounds = state.geometry().bounds();
         }
-        ShipState state = core.state();
-        if (state == null) {
-            state = core.rescan(level);
-        }
-        if (state == null) {
-            return List.of();
-        }
-        ShipGeometry.Bounds bounds = state.geometry().bounds();
         List<ContainerSlot> out = new ArrayList<>();
         ChunkPos min = new ChunkPos(bounds.minX() >> 4, bounds.minZ() >> 4);
         ChunkPos max = new ChunkPos(bounds.maxX() >> 4, bounds.maxZ() >> 4);

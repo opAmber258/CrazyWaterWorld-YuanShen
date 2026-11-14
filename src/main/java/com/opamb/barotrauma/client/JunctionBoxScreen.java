@@ -27,6 +27,8 @@ public class JunctionBoxScreen extends Screen {
     private static final int MAX_ROWS = 8;
 
     private PowerStatePacket state;
+    /** 设备列表滚动偏移（第 scroll 项显示在列表第一行）。 */
+    private int scroll;
 
     public JunctionBoxScreen(PowerStatePacket state) {
         super(Component.translatable("block.barotrauma.junction_box"));
@@ -45,7 +47,12 @@ public class JunctionBoxScreen extends Screen {
 
     private void update(PowerStatePacket next) {
         this.state = next;
+        this.scroll = Mth.clamp(scroll, 0, maxScroll());
         rebuildWidgets();
+    }
+
+    private int maxScroll() {
+        return Math.max(0, state.devices().size() - MAX_ROWS);
     }
 
     @Override
@@ -53,9 +60,10 @@ public class JunctionBoxScreen extends Screen {
         int left = (width - W) / 2;
         int top = (height - H) / 2;
         List<PowerStatePacket.Device> devices = state.devices();
-        int rows = Math.min(MAX_ROWS, devices.size());
+        scroll = Mth.clamp(scroll, 0, maxScroll());
+        int rows = Math.min(MAX_ROWS, Math.max(0, devices.size() - scroll));
         for (int i = 0; i < rows; i++) {
-            PowerStatePacket.Device device = devices.get(i);
+            PowerStatePacket.Device device = devices.get(scroll + i);
             boolean boundHere = state.boxPos().equals(device.box());
             String label = boundHere ? "解绑" : "绑定";
             int y = top + 118 + i * ROW;
@@ -98,9 +106,10 @@ public class JunctionBoxScreen extends Screen {
         if (devices.isEmpty()) {
             g.drawString(font, Component.translatable("power.no_devices"), left + 18, top + 122, 0xFF8A96A2);
         }
-        int rows = Math.min(MAX_ROWS, devices.size());
+        scroll = Mth.clamp(scroll, 0, maxScroll());
+        int rows = Math.min(MAX_ROWS, Math.max(0, devices.size() - scroll));
         for (int i = 0; i < rows; i++) {
-            PowerStatePacket.Device device = devices.get(i);
+            PowerStatePacket.Device device = devices.get(scroll + i);
             int rowY = top + 118 + i * ROW;
             boolean boundHere = state.boxPos().equals(device.box());
             String name = Component.translatable(device.nameKey()).getString();
@@ -111,11 +120,25 @@ public class JunctionBoxScreen extends Screen {
                 g.drawString(font, "→ 其他盒子", left + 18, rowY + 10, 0xFF8A96A2);
             }
         }
-        if (devices.size() > MAX_ROWS) {
-            g.drawString(font, "+" + (devices.size() - MAX_ROWS) + " …",
-                    left + 18, top + 118 + MAX_ROWS * ROW, 0xFF8A96A2);
+        if (maxScroll() > 0) {
+            String hint = "第 " + (scroll + 1) + "–" + (scroll + rows) + " / "
+                    + devices.size() + " 项 · 滚轮翻页";
+            g.drawString(font, hint, left + 18, top + 118 + MAX_ROWS * ROW, 0xFF8A96A2);
         }
         super.render(g, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (delta != 0.0D) {
+            int next = Mth.clamp(scroll + (delta > 0.0D ? -1 : 1), 0, maxScroll());
+            if (next != scroll) {
+                scroll = next;
+                rebuildWidgets();
+            }
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     private static Component line(String key, double value) {

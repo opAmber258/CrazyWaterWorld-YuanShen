@@ -21,11 +21,15 @@ public final class AutomationUtil {
     /** 装配坐标下，玩家是否在 cell 的 range 格内（物理船会把玩家坐标转成装配坐标）。 */
     public static boolean playerNear(ServerLevel level, BlockPos cell, double range) {
         double rangeSq = range * range;
+        // 物理船的 cell 是装配坐标；先换到世界坐标再和玩家世界位置比较。
+        net.minecraft.world.phys.Vec3 center = VsState.active()
+                ? VsPilot.assemblyToWorld(cell)
+                : net.minecraft.world.phys.Vec3.atCenterOf(cell);
+        if (center == null) {
+            return false;
+        }
         for (ServerPlayer player : level.players()) {
-            BlockPos pos = VsState.active()
-                    ? VsPilot.toAssembly(player.blockPosition())
-                    : player.blockPosition();
-            if (pos.distSqr(cell) <= rangeSq) {
+            if (player.position().distanceToSqr(center) <= rangeSq) {
                 return true;
             }
         }

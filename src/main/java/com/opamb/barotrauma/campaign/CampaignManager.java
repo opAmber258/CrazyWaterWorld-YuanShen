@@ -122,10 +122,14 @@ public final class CampaignManager {
         if (startHasOutpost && !hasStartStation) {
             BarotraumaMod.LOGGER.warn("[campaign] 出发站未生成（旧存档）：退回目的站正下方");
         }
-        // 船永远放在出发站正下方的水里。无人航路点现在也有大洞窟端点空腔，
-        // 不会把船塞进岩石；路线 518–1500 格，落在目的站才会立刻结算，
-        // 所以不再需要"目的站无人时改落目的坐标"的旧兜底。
-        Vec3 start = new Vec3(startSite.x() + 0.5D, anchor.y(), startSite.z() + 0.5D);
+        // 出发站有哨站但未生成时（旧存档），退回目的站正下方，避免把船放进岩石。
+        // 目的站无哨站时仍放在出发站正下方。
+        Vec3 start;
+        if (hasStartStation || !endHasOutpost) {
+            start = new Vec3(startSite.x() + 0.5D, anchor.y(), startSite.z() + 0.5D);
+        } else {
+            start = anchor.spawn();
+        }
         int preloaded = MissionInstance.preloadNear(deep,
                 new BlockPos(startSite.x(), anchor.y(), startSite.z()), 2);
         MissionInstance.preload(deep, anchor, 1);
@@ -322,14 +326,13 @@ public final class CampaignManager {
         }
         CampaignState state = CampaignState.wallet(deep);
         var round = state.round();
-        if (round.phase() != RoundPhase.DIVING || !round.hasInstance()) {
+        if (!round.hasInstance()) {
             return;
         }
-        // 中途生成的新区块也要按本轮站点类型来（读档后静态标记可能没设上）
+        // 读档后静态关卡配置可能没设上：从 RoundState 重放（必须在新区块生成前）。
+        // 到达站后（AT_NODE）也要恢复：站体和码头竖井依赖关卡剖面，不能退回全局地形。
         int slot = Math.max(0, Math.round((round.instanceX() - MissionInstance.BASE_X)
                 / (float) MissionInstance.SPACING));
-        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
-        // 读档后静态关卡配置可能没设上：从 RoundState 重放（必须在新区块生成前）。
         MissionInstance.RouteLevel level = MissionInstance.routeLevel();
         if (level == null || level.slot() != slot) {
             com.opamb.barotrauma.world.level.LevelType type =
@@ -339,6 +342,11 @@ public final class CampaignManager {
             MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
                     slot, type, round.levelSeed(), round.levelDifficulty(), distance));
         }
+        if (round.phase() != RoundPhase.DIVING) {
+            return;
+        }
+        // 中途生成的新区块也要按本轮站点类型来（读档后静态标记可能没设上）
+        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
         if (round.endHasOutpost()) {
             return; // 有目的站：靠泊由 VsPilot.dock → onDocked 触发
         }

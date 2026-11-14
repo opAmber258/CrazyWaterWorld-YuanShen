@@ -999,8 +999,8 @@ public final class DeepSeaEvents {
             com.opamb.barotrauma.campaign.CampaignState campaign =
                     com.opamb.barotrauma.campaign.CampaignState.wallet(adoptDeep);
             com.opamb.barotrauma.campaign.RoundState round = campaign.round();
-            if (round.phase() == com.opamb.barotrauma.campaign.RoundPhase.DIVING
-                    && round.hasInstance()) {
+            // 到达站后（AT_NODE）也要恢复关卡配置：站体和码头竖井依赖关卡剖面。
+            if (round.hasInstance()) {
                 int slot = Math.max(0, Math.round((round.instanceX()
                         - com.opamb.barotrauma.world.MissionInstance.BASE_X)
                         / (float) com.opamb.barotrauma.world.MissionInstance.SPACING));
@@ -1013,8 +1013,10 @@ public final class DeepSeaEvents {
                         new com.opamb.barotrauma.world.MissionInstance.RouteLevel(
                                 slot, type, round.levelSeed(), round.levelDifficulty(),
                                 distance));
-                com.opamb.barotrauma.world.MissionInstance.setRouteOutposts(
-                        slot, round.startHasOutpost(), round.endHasOutpost());
+                if (round.phase() == com.opamb.barotrauma.campaign.RoundPhase.DIVING) {
+                    com.opamb.barotrauma.world.MissionInstance.setRouteOutposts(
+                            slot, round.startHasOutpost(), round.endHasOutpost());
+                }
             }
         }
         // P4 持久化实测（两段式）：
