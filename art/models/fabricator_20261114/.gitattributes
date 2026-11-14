@@ -1,0 +1,2 @@
+# Preserve recorded hashes and the byte-exact human checkpoint on all platforms.
+* -text whitespace=cr-at-eol

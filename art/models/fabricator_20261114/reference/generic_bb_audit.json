@@ -1,0 +1,50 @@
+{
+  "input": "art-vault\\production\\fabricator_20261114\\fabricator.bbmodel",
+  "kind": "bbmodel",
+  "errors": [],
+  "warnings": [
+    {
+      "code": "texture_project_size_mismatch",
+      "message": "actual PNG is (512, 512), project UV resolution is (256, 256); UV checked in project space"
+    }
+  ],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance.",
+    "Bounds are unrotated source-coordinate extents; bone/element transforms and inflate are not applied."
+  ],
+  "identifier": "fabricator",
+  "uv_space": {
+    "width": 256,
+    "height": 256,
+    "source": "project resolution"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "elements": 108,
+    "cubes": 108,
+    "groups": 11,
+    "declared_faces": 648,
+    "rotated_cubes": 19,
+    "animations": null,
+    "missing_uv_faces": 0,
+    "missing_texture_faces": 0
+  },
+  "bounds": [
+    [
+      -22,
+      0,
+      -11.6875
+    ],
+    [
+      22,
+      52.5,
+      11.6875
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 1
+}
