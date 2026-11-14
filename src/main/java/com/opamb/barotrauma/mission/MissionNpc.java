@@ -6,6 +6,7 @@ import com.opamb.barotrauma.entity.NpcEntity;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.registry.ModEntities;
 import com.opamb.barotrauma.world.DockingBay;
+import com.opamb.barotrauma.world.MissionInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -33,7 +34,8 @@ public final class MissionNpc {
      * 找第一个"脚下实心、站位和头顶都是空气"的点。</p>
      */
     private static final int[][] SPOT_CANDIDATES = {
-            {4, 3}, {3, 3}, {-4, 3}, {4, -3}, {3, -3}, {-3, 3}, {2, 2}, {-2, 2}};
+            {4, 3}, {3, 3}, {-4, 3}, {4, -3}, {3, -3}, {-3, 3}, {2, 2}, {-2, 2},
+            {6, 0}, {-6, 0}, {0, 4}, {0, -4}, {8, 2}, {-8, -2}, {5, -1}, {-5, 1}};
     /** 站内地面层（{@code OutpostBuilder.INNER_MIN_Y}）。 */
     private static final int SPOT_Y = -62;
 
@@ -43,59 +45,104 @@ public final class MissionNpc {
     /** 这个站能放 NPC 的位置；站还没生成好时返回 null。 */
     @Nullable
     public static BlockPos spotFor(ServerLevel level, DockingBay.Site site) {
+        return spotFor(level, site, true);
+    }
+
+    /** @param requireFree 是否要求 1.6 格内没有其他 NPC（三个服务 NPC 不能叠在一起） */
+    @Nullable
+    private static BlockPos spotFor(ServerLevel level, DockingBay.Site site, boolean requireFree) {
         for (int[] candidate : SPOT_CANDIDATES) {
             BlockPos pos = site.at(candidate[0], SPOT_Y, candidate[1]);
             if (!level.isLoaded(pos)) {
                 continue;
             }
-            if (level.getBlockState(pos.below()).isSolid()
-                    && level.getBlockState(pos).isAir()
-                    && level.getBlockState(pos.above()).isAir()) {
-                return pos;
+            if (!level.getBlockState(pos.below()).isSolid()
+                    || !level.getBlockState(pos).isAir()
+                    || !level.getBlockState(pos.above()).isAir()) {
+                continue;
             }
+            if (requireFree && !level.getEntitiesOfClass(NpcEntity.class,
+                    new AABB(pos).inflate(1.6D)).isEmpty()) {
+                continue;
+            }
+            return pos;
         }
         return null;
     }
 
-    /** 每 2 秒调用：玩家所在站没有站务员就生成一个。 */
+    /**
+     * 每 2 秒调用：玩家所在站补齐三个服务 NPC——站务员（任务）、商人（商店）、
+     * 医生（医疗诊所）。各自独立站位/独立界面，不是共用一个终端标签页。
+     */
     public static void ensureStations(ServerLevel level) {
         for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
             if (player.serverLevel() != level) {
                 continue;
             }
             DockingBay.Site site = DockingBay.siteAt(player.getBlockX(), player.getBlockZ());
-            if (site == null) {
+            if (site == null || !MissionInstance.outpostExpected(site)) {
                 continue;
             }
-            BlockPos spot = spotFor(level, site);
-            if (spot == null) {
-                continue;
-            }
-            if (!level.getEntitiesOfClass(NpcEntity.class, new AABB(spot).inflate(32.0D)).isEmpty()) {
-                continue;
-            }
-            NpcEntity npc = ModEntities.NPC.get().create(level);
-            if (npc == null) {
-                continue;
-            }
-            double x = spot.getX() + 0.5D;
-            double z = spot.getZ() + 0.5D;
-            double faceX = site.x() + 0.5D - x;
-            double faceZ = site.z() + 0.5D - z;
-            float yaw = (float) (Math.atan2(-faceX, faceZ) * 180.0D / Math.PI);
-            npc.moveTo(x, spot.getY(), z, yaw, 0.0F);
-            npc.setSkin(skinFor(site));
-            npc.finalizeSpawn(level, level.getCurrentDifficultyAt(spot),
-                    MobSpawnType.STRUCTURE, null, null);
-            level.addFreshEntity(npc);
-            BarotraumaMod.LOGGER.info("[missions] 站务员已生成：站({}, {}) 位置 {} 皮肤 {}",
-                    site.x(), site.z(), spot, npc.skin());
+            ensureRole(level, site, NpcEntity.ROLE_MISSION);
+            ensureRole(level, site, NpcEntity.ROLE_MERCHANT);
+            ensureRole(level, site, NpcEntity.ROLE_DOCTOR);
         }
     }
 
-    /** 同一个站永远同一个皮肤（站坐标散列到皮肤表）。 */
+    private static void ensureRole(ServerLevel level, DockingBay.Site site, String role) {
+        AABB area = new AABB(site.at(0, SPOT_Y, 0)).inflate(32.0D);
+        java.util.List<NpcEntity> existing = level.getEntitiesOfClass(NpcEntity.class, area,
+                npc -> role.equals(npc.role()));
+        if (!existing.isEmpty()) {
+            // 旧存档迁移：站务员恢复按站点散列的指定皮肤，商人/医生默认史蒂夫。
+            for (NpcEntity npc : existing) {
+                applyDefaultAppearance(npc, role, site);
+            }
+            return;
+        }
+        BlockPos spot = spotFor(level, site, true);
+        if (spot == null) {
+            return;
+        }
+        NpcEntity npc = ModEntities.NPC.get().create(level);
+        if (npc == null) {
+            return;
+        }
+        double x = spot.getX() + 0.5D;
+        double z = spot.getZ() + 0.5D;
+        double faceX = site.x() + 0.5D - x;
+        double faceZ = site.z() + 0.5D - z;
+        float yaw = (float) (Math.atan2(-faceX, faceZ) * 180.0D / Math.PI);
+        npc.moveTo(x, spot.getY(), z, yaw, 0.0F);
+        npc.setRole(role);
+        applyDefaultAppearance(npc, role, site);
+        npc.finalizeSpawn(level, level.getCurrentDifficultyAt(spot),
+                MobSpawnType.STRUCTURE, null, null);
+        level.addFreshEntity(npc);
+        BarotraumaMod.LOGGER.info("[station] {} 已生成：站({}, {}) 位置 {} 皮肤 {} slim={}",
+                role, site.x(), site.z(), spot, npc.skin(), npc.slim());
+    }
+
+    /** 同一个站永远同一个站务员皮肤（站坐标散列到皮肤表）。 */
     private static String skinFor(DockingBay.Site site) {
         return NpcEntity.SKINS[Math.floorMod(site.x() / 64 + site.z() * 7, NpcEntity.SKINS.length)];
+    }
+
+    /**
+     * 站务员用原先指定的三张皮肤（按站散列）；商人/医生没指定皮肤，用默认史蒂夫。
+     *
+     * <p>细手臂按皮肤贴图本身决定：{@code opamber} 是 3px 手臂的 slim 皮肤，
+     * 另外两张是标准 4px 皮肤。</p>
+     */
+    private static void applyDefaultAppearance(NpcEntity npc, String role, DockingBay.Site site) {
+        if (NpcEntity.ROLE_MISSION.equals(role)) {
+            String skin = skinFor(site);
+            npc.setSkin(skin);
+            npc.setSlim(NpcEntity.isSlimSkin(skin));
+        } else {
+            npc.setSkin(NpcEntity.DEFAULT_SKIN);
+            npc.setSlim(false);
+        }
     }
 
     /**
@@ -217,7 +264,7 @@ public final class MissionNpc {
                 }
                 player.sendSystemMessage(Component.literal(
                                 "已接任务 #" + id + "：货物已装船 " + crates + " 箱（每箱 "
-                                        + mission.cargoPerCrate() + " mk），靠泊目的站自动结算"
+                                        + mission.cargoPerCrate() + " 马克），靠泊目的站自动结算"
                                         + (hasFreeShelf ? ""
                                         : "；船上没有空货架格，箱子散放在船上（货架顶或脚边）"))
                         .withStyle(net.minecraft.ChatFormatting.AQUA));
@@ -245,6 +292,9 @@ public final class MissionNpc {
                     + mission.target.getZ() + "）";
             case RECON -> "前往目标点侦察";
             case DELIVERY, URGENT_DELIVERY -> "货运";
+            case MINERAL -> "采集 " + MissionProgress.mineralName(mission.mineralItem())
+                    + " ×" + mission.mineralCount() + "（靠泊目的站后结算，只上交 "
+                    + mission.mineralHandoverCount() + " 个）";
         };
     }
 }

@@ -39,6 +39,8 @@ public final class ClientMissionCache {
                                 state(packet.activeStates()[index]), true,
                                 packet.activeDeadlineAt()[index], -1,
                                 packet.activeDest()[index]);
+                        mission.setMineral(def.mineralItem(), def.mineralCount(),
+                                def.mineralHandover());
                         mission.setCargo(packet.activeCargoTotal()[index],
                                 packet.activeCargoPerCrate()[index]);
                         mine.add(mission);
@@ -50,9 +52,14 @@ public final class ClientMissionCache {
             final int index = i;
             definitions.stream()
                     .filter(def -> def.id == packet.poolIds()[index]).findFirst()
-                    .ifPresent(def -> pool.add(Mission.clientBrief(def.id, def.type, def.target,
-                            def.radius, def.reward, def.deadlineTicks,
-                            state(packet.poolStates()[index]), packet.poolTaken()[index], 0L)));
+                    .ifPresent(def -> {
+                        Mission mission = Mission.clientBrief(def.id, def.type, def.target,
+                                def.radius, def.reward, def.deadlineTicks,
+                                state(packet.poolStates()[index]), packet.poolTaken()[index], 0L);
+                        mission.setMineral(def.mineralItem(), def.mineralCount(),
+                                def.mineralHandover());
+                        pool.add(mission);
+                    });
         }
         offered = List.copyOf(pool);
         java.util.Map<Integer, Integer> offersMap = new java.util.HashMap<>();

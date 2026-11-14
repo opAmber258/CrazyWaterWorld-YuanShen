@@ -176,18 +176,22 @@ public final class HullDamageRenderer {
             return;
         }
         List<Target> targets = targets(cameraPos, mapping.toWorld());
-        if (targets.isEmpty()) {
+        // 矿脉的切割进度条和船壳血条共用同一套 billboard 渲染。
+        List<Target> veinBars = MineralVeinClient.bars(cameraPos);
+        if (targets.isEmpty() && veinBars.isEmpty()) {
             return;
         }
-        if (targets.size() > MAX_BARS) {
-            targets.sort(Comparator.comparingDouble(Target::distance));
-            targets = targets.subList(0, MAX_BARS);
+        List<Target> bars = new ArrayList<>(targets);
+        bars.addAll(veinBars);
+        if (bars.size() > MAX_BARS) {
+            bars.sort(Comparator.comparingDouble(Target::distance));
+            bars = bars.subList(0, MAX_BARS);
         }
         PoseStack pose = event.getPoseStack();
         Matrix4f matrix = pose.last().pose();
 
         drawCracks(mc, level, matrix, targets, mapping, cameraPos);
-        drawBars(mc, camera, matrix, targets, cameraPos);
+        drawBars(mc, camera, matrix, bars, cameraPos);
         spawnLeakParticles(level, targets, cameraPos, mapping);
     }
 

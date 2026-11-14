@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:plastic"
+    },
+    {
+      "item": "barotrauma:plastic"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:plasma_cutter"
+  }
+}

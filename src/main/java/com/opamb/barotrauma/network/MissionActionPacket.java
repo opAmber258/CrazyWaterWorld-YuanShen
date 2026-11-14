@@ -137,6 +137,8 @@ public record MissionActionPacket(int action) {
             sendState(player, level);
             return;
         }
+        // 先取名字再 add：Inventory.add 会把传入的 stack 吃掉，之后 getHoverName() 变成"空气"。
+        String name = stack.getHoverName().getString();
         if (!player.getInventory().add(stack)) {
             wallet.addCredits(cost);
             player.sendSystemMessage(Component.literal("购买失败：背包已满，未扣除 credits")
@@ -145,7 +147,7 @@ public record MissionActionPacket(int action) {
             return;
         }
         player.sendSystemMessage(Component.literal(
-                "已购买 " + stack.getHoverName().getString() + "（-" + cost + " credits）")
+                "已购买 " + name + "（-" + cost + " credits）")
                 .withStyle(ChatFormatting.GREEN));
         sendState(player, level);
     }

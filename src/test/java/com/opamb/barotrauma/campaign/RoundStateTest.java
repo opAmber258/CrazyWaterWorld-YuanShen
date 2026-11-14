@@ -112,4 +112,42 @@ class RoundStateTest {
         assertEquals(RoundPhase.AT_NODE, round.phase());
         assertEquals(-1, round.destination());
     }
+
+    @Test
+    @DisplayName("NBT 往返保留关卡类型/种子/难度/路线距离")
+    void levelRoundTrip() {
+        RoundState source = new RoundState();
+        source.beginTravel(0, 1, 100L);
+        source.setLevel("coldcavernsmaze", 987654321L, 9, 1300);
+
+        RoundState restored = new RoundState();
+        restored.load(source.save());
+
+        assertEquals("coldcavernsmaze", restored.levelType());
+        assertEquals(987654321L, restored.levelSeed());
+        assertEquals(9, restored.levelDifficulty());
+        assertEquals(1300, restored.levelDistance());
+    }
+
+    @Test
+    @DisplayName("旧存档没有关卡字段：默认 basic/0/0")
+    void levelDefaults() {
+        RoundState round = new RoundState();
+        round.load(new CompoundTag());
+        assertEquals("coldcavernsbasic", round.levelType());
+        assertEquals(0L, round.levelSeed());
+        assertEquals(0, round.levelDifficulty());
+        assertEquals(0, round.levelDistance());
+    }
+
+    @Test
+    @DisplayName("未知关卡类型回退 basic")
+    void unknownLevelFallsBack() {
+        CompoundTag tag = new CompoundTag();
+        tag.putString("phase", RoundPhase.AT_NODE.name());
+        tag.putString("levelType", "not_a_level");
+        RoundState round = new RoundState();
+        round.load(tag);
+        assertEquals("coldcavernsbasic", round.levelType());
+    }
 }

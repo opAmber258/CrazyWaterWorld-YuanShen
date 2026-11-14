@@ -1,13 +1,20 @@
 package com.opamb.barotrauma.world;
 
+import com.opamb.barotrauma.world.level.LevelParams;
+
 import java.util.List;
 
 /**
  * 开阔海域的高度场：纯数学，不碰 MC 注册表，单元测试可以直接调。
  *
- * <p>形状对照原作 Cold Caverns：关卡高度远大于潜艇高度、上下都是岩壁，中间是开阔水域。
- * 这里用两条 2D 噪声分别定"顶部岩壳底面"和"底部岩床顶面"，两者之间就是可航行空间；
- * 最高接近 1000 格，没有分层岩板，也没有竖井。</p>
+ * <p>全局地形（没有航行关卡时）是两条 2D 噪声定的顶部岩壳和底部岩床，中间是开阔水域；
+ * 有航行关卡时，整片海域会被 {@link RoutePath} 的大洞窟替代：主航道左右蜿蜒、上下起伏，
+ * 外面套着横向最大 480 格、纵向最大 440 格的椭圆洞窟，侧洞是能绕行的环路。
+ * 潜艇在两站之间看到的是看不到边的洞窟，而不是细管子或长方形大厅。</p>
+ *
+ * <p>本类只负责返回"这一列从哪里到哪里的水是通的"：{@code ceilingY} 是洞顶（岩壳底面），
+ * {@code floorY} 是洞底（岩床顶面）。{@code ceilingY <= floorY} 表示整列都是岩，
+ * 生成器会保留原始石头，不雕刻。</p>
  */
 public final class SeaTerrain {
 
@@ -29,6 +36,9 @@ public final class SeaTerrain {
     /** 理论最大开阔高度：洞顶最浅 -44、洞底最深 -544，正好 500 格。 */
     public static final int MAX_OPEN_HEIGHT = Math.abs(FLOOR_BASE_Y - ROOF_FLAT_Y);
 
+    /** 关卡影响范围边缘的过渡宽度：最外 64 格把隧道岩体渐隐回开阔海。 */
+    private static final double LEVEL_EDGE_BLEND = 64.0D;
+
     private static final long SALT_ROOF = 0x51A7E001L;
     private static final long SALT_FLOOR = 0x9B2C4407L;
 
@@ -44,21 +54,17 @@ public final class SeaTerrain {
             new ClearZone(PoiNetwork.POST_B_TERMINAL.getX(), PoiNetwork.POST_B_TERMINAL.getZ(),
                     PoiNetwork.POST_B_TERMINAL.getY(), 26));
 
+    /** 关卡某列的洞窟剖面：洞顶、洞底，以及向全局地形过渡的权重（0=关卡，1=全局）。 */
+    private record LevelProfile(double top, double bottom, double blend) {
+    }
+
     private SeaTerrain() {
     }
 
-    /** 顶部岩壳底面：哨站核心压平在 -44，其它地方往噪声深处最多加厚 196 格。 */
+    /** 顶部岩壳底面：哨站核心压平在 -44，其它地方往噪声深处最多加厚 120 格。 */
     public static int ceilingY(long seed, int x, int z) {
-        if (isOutpostCore(x, z)) {
-            return ROOF_FLAT_Y;
-        }
-        double n = DeepSeaNoise.fbm2(seed ^ SALT_ROOF, x / 150.0D, z / 150.0D, 3);
-        int world = ROOF_FLAT_Y - (int) Math.round((n * 0.5D + 0.5D) * ROOF_DEPTH);
-        DockingBay.Site instance = siteWithinBlend(x, z);
-        int ceiling = instance != null
-                ? blendAt(ROOF_FLAT_Y, world,
-                        Math.max(Math.abs(x - instance.x()), Math.abs(z - instance.z())))
-                : blendOutpost(ROOF_FLAT_Y, world, x, z);
+        int ceiling = baseCeilingY(seed, x, z);
+        ceiling = applyLevel(ceiling, seed, x, z, true);
         for (ClearZone zone : POI_CLEAR) {
             double distance = Math.hypot(x - zone.x(), z - zone.z());
             double weight = 1.0D - smooth((distance - zone.radius()) / 30.0D);
@@ -72,9 +78,8 @@ public final class SeaTerrain {
 
     /** 底部岩床顶面：基准 -544，噪声抬升最多 44 格（寒冷深穴 500 格高）。 */
     public static int floorY(long seed, int x, int z) {
-        double n = DeepSeaNoise.fbm2(seed ^ SALT_FLOOR, x / 130.0D, z / 130.0D, 3);
-        // 用户要求去掉哨站岩台：海底在哨站下方也按世界噪声走，潜艇直接悬在开阔水域。
-        int floor = FLOOR_BASE_Y + (int) Math.round((n * 0.5D + 0.5D) * FLOOR_RISE);
+        int floor = baseFloorY(seed, x, z);
+        floor = applyLevel(floor, seed, x, z, false);
         for (ClearZone zone : POI_CLEAR) {
             double distance = Math.hypot(x - zone.x(), z - zone.z());
             double weight = 1.0D - smooth((distance - zone.radius()) / 30.0D);
@@ -91,8 +96,12 @@ public final class SeaTerrain {
         if (Math.max(Math.abs(x), Math.abs(z)) <= OUTPOST_CLEAR) {
             return true;
         }
-        // 副本关卡：出发站—目的站的大海域（两站净空 + 48 格半径的开阔水道）
+        // 副本关卡：主航道（蜿蜒隧道）净空
         if (MissionInstance.inRouteZone(x, z)) {
+            return true;
+        }
+        // 关卡的侧洞环/洞室也不能长岩柱/岩墙
+        if (MissionInstance.inSideBranch(x, z)) {
             return true;
         }
         // 哨站东侧留一条宽阔的天然出口：噪声岩墙偶尔会把出生点围成一圈，这里兜底。
@@ -105,6 +114,100 @@ public final class SeaTerrain {
             }
         }
         return false;
+    }
+
+    /**
+     * 关卡影响半径：主洞 + 侧洞环 + 96 格岩壁，超过这个距离就是全局开阔海。
+     *
+     * <p>岩壁必须厚过 64 格的边缘混合带，否则洞窟最外缘会被混成开阔海，
+     * 玩家能从侧洞直接钻出去。96 = 32 格实心 + 64 格过渡。</p>
+     */
+    public static double levelInfluence(LevelParams params) {
+        return Math.max(96.0D, params.cavernOuterRadius() + 96.0D);
+    }
+
+    // ------------------------------------------------------------------
+    // 全局地形（没有航行关卡的部分）
+    // ------------------------------------------------------------------
+
+    private static int baseCeilingY(long seed, int x, int z) {
+        if (isOutpostCore(x, z)) {
+            return ROOF_FLAT_Y;
+        }
+        double n = DeepSeaNoise.fbm2(seed ^ SALT_ROOF, x / 150.0D, z / 150.0D, 3);
+        int world = ROOF_FLAT_Y - (int) Math.round((n * 0.5D + 0.5D) * ROOF_DEPTH);
+        DockingBay.Site instance = siteWithinBlend(x, z);
+        return instance != null
+                ? blendAt(ROOF_FLAT_Y, world,
+                        Math.max(Math.abs(x - instance.x()), Math.abs(z - instance.z())))
+                : blendOutpost(ROOF_FLAT_Y, world, x, z);
+    }
+
+    private static int baseFloorY(long seed, int x, int z) {
+        double n = DeepSeaNoise.fbm2(seed ^ SALT_FLOOR, x / 130.0D, z / 130.0D, 3);
+        // 用户要求去掉哨站岩台：海底在哨站下方也按世界噪声走，潜艇直接悬在开阔水域。
+        return FLOOR_BASE_Y + (int) Math.round((n * 0.5D + 0.5D) * FLOOR_RISE);
+    }
+
+    // ------------------------------------------------------------------
+    // 关卡主航道
+    // ------------------------------------------------------------------
+
+    /**
+     * 把全局高度换成关卡隧道剖面。
+     *
+     * @param ceiling true 取洞顶，false 取洞底
+     */
+    private static int applyLevel(int world, long seed, int x, int z, boolean ceiling) {
+        LevelProfile profile = levelProfile(seed, x, z);
+        if (profile == null) {
+            return world;
+        }
+        double target = ceiling ? profile.top() : profile.bottom();
+        return (int) Math.round(target + (world - target) * profile.blend());
+    }
+
+    private static LevelProfile levelProfile(long seed, int x, int z) {
+        MissionInstance.RouteLevel level = MissionInstance.routeLevel();
+        if (level == null) {
+            return null;
+        }
+        RoutePath path = MissionInstance.activePath();
+        if (path == null) {
+            return null;
+        }
+        LevelParams params = level.type().params();
+        // 侧隧道可能离主航道很远：必须按到整个隧道网络的距离判定，
+        // 否则侧隧道落在主航道影响半径外就完全不会被挖开。
+        double distance = path.distanceToNetwork(x, z);
+        double influence = levelInfluence(params);
+        if (distance >= influence) {
+            return null;
+        }
+        double blend = smooth((distance - (influence - LEVEL_EDGE_BLEND)) / LEVEL_EDGE_BLEND);
+        if (blend >= 1.0D) {
+            return null;
+        }
+
+        // 洞窟剖面：主航道椭圆 + 侧洞环 + 洞室的并集，夹在关卡开阔带内。
+        RoutePath.Open open = path.openAt(x, z, seed);
+        double top;
+        double bottom;
+        if (open == null) {
+            // 洞窟之外整列是岩：洞顶压到洞底以上，生成器看到 open<=0 会保留石头。
+            top = params.bandCeiling();
+            bottom = top + 1.0D;
+        } else {
+            top = Math.min(open.top(), params.bandCeiling());
+            bottom = Math.max(open.bottom(), params.bandFloor());
+            if (bottom > top) {
+                top = params.bandCeiling();
+                bottom = top + 1.0D;
+            }
+        }
+        // 站点不再额外挖空腔：主洞在端点处本身就有 240–480 格宽、240–440 格高，
+        // 站体（41×25、-44..-64）和码头竖井（-116..-69）都落在洞窟里。
+        return new LevelProfile(top, bottom, blend);
     }
 
     /** 哨站核心区取哨站高度，外圈 {@link #OUTPOST_BLEND} 格平滑过渡到世界高度。 */

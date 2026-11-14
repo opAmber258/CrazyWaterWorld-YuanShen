@@ -102,8 +102,10 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                 }
             }
 
-            SonarScan.Frame frame = SonarScan.scan(level, center, effectiveRange, hull, player,
-                    scanMode, dirX, dirY, dirZ);
+            SonarScan.Frame frame = ship == null || ship.simulation().voltage() >= 0.5D
+                    ? SonarScan.scan(level, center, effectiveRange, hull, player,
+                            scanMode, dirX, dirY, dirZ)
+                    : new SonarScan.Frame(effectiveRange, new int[0]);
 
             int power = ship == null ? 100 : ship.power();
             double speed = ship == null ? 0.0D : ship.blocksPerSecond();
@@ -383,6 +385,10 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
         }
         if (ship == null) {
             sb.append("\n未接入船核心");
+            return sb.toString();
+        }
+        if (ship.simulation().voltage() < 0.5D) {
+            sb.append("\n电力不足：声纳离线（需要 ≥50% 电压）");
             return sb.toString();
         }
         ShipSimulation.Report report = ship.simulation().report();

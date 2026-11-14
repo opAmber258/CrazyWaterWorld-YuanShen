@@ -16,6 +16,15 @@ public final class RoundState {
     /** 本轮起点/终点有没有哨站（原作 Location.Type.HasOutpost；无人航路点两端都不建站）。 */
     private boolean startHasOutpost = true;
     private boolean endHasOutpost = true;
+    /** 本轮航行关卡类型/种子/难度；旧存档没有就是 basic/0。 */
+    private String levelType = "coldcavernsbasic";
+    private long levelSeed;
+    private int levelDifficulty;
+    /**
+     * 本轮出发站到目的站的实际距离。存下来是为了读档/改代码后不会把已经生成的
+     * 航道端点挪走；旧存档没有这个字段（0）时回退到关卡参数的 routeLength。
+     */
+    private int levelDistance;
 
     public RoundPhase phase() {
         return phase;
@@ -59,6 +68,35 @@ public final class RoundState {
 
     public boolean endHasOutpost() {
         return endHasOutpost;
+    }
+
+    public String levelType() {
+        return levelType;
+    }
+
+    public long levelSeed() {
+        return levelSeed;
+    }
+
+    public int levelDifficulty() {
+        return levelDifficulty;
+    }
+
+    public int levelDistance() {
+        return levelDistance;
+    }
+
+    /** 记录本轮关卡类型/种子/难度（在 beginTravel 之后调用，失败回滚会恢复上一轮）。 */
+    public void setLevel(String typeId, long seed, int difficulty) {
+        setLevel(typeId, seed, difficulty, 0);
+    }
+
+    /** 记录本轮关卡类型/种子/难度/实际路线距离。 */
+    public void setLevel(String typeId, long seed, int difficulty, int distance) {
+        this.levelType = typeId == null || typeId.isBlank() ? "coldcavernsbasic" : typeId;
+        this.levelSeed = seed;
+        this.levelDifficulty = Math.max(0, difficulty);
+        this.levelDistance = Math.max(0, distance);
     }
 
     /** 记录本轮任务海域实例锚点（同一轮内不变）。 */
@@ -114,6 +152,10 @@ public final class RoundState {
         tag.putInt("instanceZ", instanceZ);
         tag.putBoolean("startHasOutpost", startHasOutpost);
         tag.putBoolean("endHasOutpost", endHasOutpost);
+        tag.putString("levelType", levelType);
+        tag.putLong("levelSeed", levelSeed);
+        tag.putInt("levelDifficulty", levelDifficulty);
+        tag.putInt("levelDistance", levelDistance);
         return tag;
     }
 
@@ -137,6 +179,13 @@ public final class RoundState {
         }
         startHasOutpost = !tag.contains("startHasOutpost") || tag.getBoolean("startHasOutpost");
         endHasOutpost = !tag.contains("endHasOutpost") || tag.getBoolean("endHasOutpost");
+        levelType = com.opamb.barotrauma.world.level.LevelType
+                .fromId(tag.contains("levelType") ? tag.getString("levelType") : null).id();
+        levelSeed = tag.contains("levelSeed") ? tag.getLong("levelSeed") : 0L;
+        levelDifficulty = tag.contains("levelDifficulty")
+                ? Math.max(0, tag.getInt("levelDifficulty")) : 0;
+        levelDistance = tag.contains("levelDistance")
+                ? Math.max(0, tag.getInt("levelDistance")) : 0;
         if (!CampaignMap.isValid(origin)) {
             origin = CampaignMap.START_NODE;
         }

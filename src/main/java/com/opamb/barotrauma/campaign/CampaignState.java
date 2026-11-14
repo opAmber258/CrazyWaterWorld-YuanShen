@@ -18,7 +18,7 @@ import java.util.Set;
 public final class CampaignState extends SavedData {
 
     public static final String NAME = "barotrauma_campaign";
-    /** 原版战役初始资金 2,500 mk；先作为设计默认值。 */
+    /** 原版战役初始资金 2,500 马克；先作为设计默认值。 */
     private static final int INITIAL_CREDITS = 2500;
 
     private int currentNode = CampaignMap.START_NODE;

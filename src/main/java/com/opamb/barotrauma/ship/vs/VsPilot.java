@@ -130,9 +130,16 @@ public final class VsPilot {
     /** 船坞偏移扫描失败后的冷却，避免每 20 tick 全盒扫一遍。 */
     private static long nextYardScanGameTime = Long.MIN_VALUE;
 
+    /** 舱门/舱口被等离子切割机累计切掉的进度（装配坐标）。 */
+    private static final java.util.Map<BlockPos, Float> fixtureCut = new java.util.HashMap<>();
+    /** fixtureCut 属于哪一次装配；换船/重新装配时清空进度。 */
+    private static Vec3 fixtureCutAnchor;
+    /** 舱门/舱口要切多少点才烂（每次 2 tick 调 1.5 点，约 6 秒）。 */
+    private static final float FIXTURE_CUT_HEALTH = 90.0F;
+
     static {
         VsState.install(VsPilot::observeCore, VsPilot::tryDamage,
-                VsPilot::tryRepair, VsPilot::damageExplosion);
+                VsPilot::tryRepair, VsPilot::tryCut, VsPilot::damageExplosion);
         VsState.installBoardingResolver(VsPilot::boardingPositions);
         VsState.installGeometryRefresh(VsPilot::refreshPhysicalGeometry);
         VsState.installCompartmentQuery(VsPilot::isPlayerInDryCompartment);
@@ -577,7 +584,7 @@ public final class VsPilot {
         }
         target.setThrottle(control.throttleX(), control.throttleY(), control.throttleZ());
         target.setPower(control.power());
-        target.setSupply(control.simulation().powerRatio());
+        target.setSupply(control.simulation().voltage());
         target.setEngineCount(control.simulation().engineCount());
         target.setEngineMultiplier(control.engineMultiplier());
         // 原版浮力只认全船水量占比（含压载水），不再按"压载百分比"另算一份力。
@@ -1423,6 +1430,98 @@ public final class VsPilot {
         return true;
     }
 
+    /**
+     * 等离子切割机：沿视线切船壳（扣耐久，0% 走破口），或把舱门/舱口切烂。
+     *
+     * <p>舱门没有船壳耐久表，单独按格累计切割量；切穿后从船坞方块、快照和
+     * 舱室几何里一起摘掉，并在切口位置掉回门/舱口物品。</p>
+     */
+    private static boolean tryCut(ServerLevel level, ServerPlayer player, float amount) {
+        if (ship == null || state == null || lastLevel != level || snapshot.isEmpty()
+                || player.isSpectator()) {
+            return false;
+        }
+        if (yardOffsetX == Integer.MIN_VALUE) {
+            discoverYardOffset(level);
+        }
+        if (yardOffsetX == Integer.MIN_VALUE) {
+            return false;
+        }
+        BlockPos best = pickHullBlock(level, player);
+        if (best == null) {
+            return false;
+        }
+        BlockState block = snapshot.get(best);
+        if (block == null || isConsolePart(block)) {
+            return false;
+        }
+        float max = state.hullMaxHealth(block);
+        if (max > 0.0F) {
+            float health = state.hullDamage().applyDamage(best, amount, max);
+            if (health <= 0.0F) {
+                breachSnapshotBlock(level, player, best, block);
+            } else {
+                Vec3 hit = toWorld(best);
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
+                        hit.x, hit.y, hit.z, 4, 0.2D, 0.2D, 0.2D, 0.01D);
+                if (level.getGameTime() % 10L == 0L) {
+                    level.playSound(null, BlockPos.containing(hit),
+                            net.minecraft.sounds.SoundEvents.FIRE_AMBIENT,
+                            net.minecraft.sounds.SoundSource.PLAYERS, 0.35F, 1.9F);
+                }
+                sendHullDamageState(state);
+            }
+            return true;
+        }
+        if (!isCuttableFixture(block)) {
+            return false;
+        }
+        if (fixtureCutAnchor == null || !fixtureCutAnchor.equals(assembledPos)) {
+            fixtureCut.clear();
+            fixtureCutAnchor = assembledPos;
+        }
+        float progress = fixtureCut.merge(best.immutable(), amount, Float::sum);
+        Vec3 hit = toWorld(best);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
+                hit.x, hit.y, hit.z, 4, 0.25D, 0.25D, 0.25D, 0.02D);
+        if (level.getGameTime() % 10L == 0L) {
+            level.playSound(null, BlockPos.containing(hit),
+                    net.minecraft.sounds.SoundEvents.FIRE_AMBIENT,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 0.3F, 1.6F);
+        }
+        if (progress >= FIXTURE_CUT_HEALTH) {
+            fixtureCut.remove(best);
+            removeFixture(level, best, block);
+        }
+        return true;
+    }
+
+    /** 等离子切割机能把哪些船内构件切烂（舱门/舱口；船壳走耐久）。 */
+    private static boolean isCuttableFixture(BlockState block) {
+        net.minecraft.world.level.block.Block b = block.getBlock();
+        return b == com.opamb.barotrauma.registry.ModShipBlocks.BULKHEAD_DOOR.get()
+                || b == com.opamb.barotrauma.registry.ModShipBlocks.HATCH.get()
+                || b == com.opamb.barotrauma.registry.ModShipBlocks.HATCH_LADDER.get();
+    }
+
+    /** 切穿舱门/舱口：清船坞方块、移出快照、重扫几何，并在切口掉回物品。 */
+    private static void removeFixture(ServerLevel level, BlockPos original, BlockState block) {
+        Vec3 world = toWorld(original);
+        level.setBlock(original.offset(yardOffsetX, yardOffsetY, yardOffsetZ),
+                Blocks.AIR.defaultBlockState(), 3);
+        snapshot.remove(original);
+        rebuildGeometry(level, List.of(original));
+        net.minecraft.world.item.ItemStack drop =
+                new net.minecraft.world.item.ItemStack(block.getBlock().asItem());
+        if (!drop.isEmpty()) {
+            net.minecraft.world.level.block.Block.popResource(level,
+                    BlockPos.containing(world), drop);
+        }
+        level.playSound(null, BlockPos.containing(world),
+                net.minecraft.sounds.SoundEvents.NETHERITE_BLOCK_BREAK,
+                net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 0.8F);
+    }
+
     /** 服务端预检全部登船位置：真实船坞碰撞 + 舱室 + 当前完整刚体变换（含旋转）。 */
     private static List<Vec3> boardingPositions(ServerLevel level, int count) {
         if (ship == null || state == null || lastLevel != level || count < 1) return List.of();
@@ -2185,6 +2284,37 @@ public final class VsPilot {
         int dz = (int) Math.round(now.z - assembledPos.z);
         Map<BlockPos, BlockState> restore = snapshot;
         BlockPos oldCore = corePos;
+        // 靠泊吸附会整体平移船；先把"在船上"的玩家和任务散箱记下来，拆完一起搬。
+        int moveX = dx;
+        int moveY = dy;
+        int moveZ = dz;
+        Vec3 oldCoreWorld = oldCore == null ? null
+                : new Vec3(oldCore.getX() + moveX + 0.5D, oldCore.getY() + moveY + 0.5D,
+                        oldCore.getZ() + moveZ + 0.5D);
+        List<ServerPlayer> riders = new ArrayList<>();
+        List<net.minecraft.world.entity.item.ItemEntity> pinnedCargo = new ArrayList<>();
+        if (oldCoreWorld != null) {
+            double riderRadius = 32.0D;
+            for (ServerPlayer candidate : level.players()) {
+                if (candidate.level() == level
+                        && candidate.position().distanceToSqr(oldCoreWorld) <= riderRadius * riderRadius) {
+                    riders.add(candidate);
+                }
+            }
+            net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(
+                    oldCoreWorld.x - 48.0D, oldCoreWorld.y - 48.0D, oldCoreWorld.z - 48.0D,
+                    oldCoreWorld.x + 48.0D, oldCoreWorld.y + 48.0D, oldCoreWorld.z + 48.0D);
+            for (net.minecraft.world.entity.item.ItemEntity item
+                    : level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area)) {
+                if (item.getPersistentData().getBoolean(
+                        com.opamb.barotrauma.mission.MissionCargo.TAG_PINNED)) {
+                    pinnedCargo.add(item);
+                }
+            }
+        }
+        int snapX = 0;
+        int snapY = 0;
+        int snapZ = 0;
 
         // 0) 靠泊判定：必须把船开到某个哨站对接口附近；靠泊时吸附到码头标准位。
         com.opamb.barotrauma.world.DockingBay.Site dockSite = null;
@@ -2207,9 +2337,9 @@ public final class VsPilot {
                         horizontal, Math.abs(currentCore.getY() - dockCore.getY()));
             }
             // 吸附：把核心拉到该站的标准码头核心位
-            int snapX = dockCore.getX() - currentCore.getX();
-            int snapY = dockCore.getY() - currentCore.getY();
-            int snapZ = dockCore.getZ() - currentCore.getZ();
+            snapX = dockCore.getX() - currentCore.getX();
+            snapY = dockCore.getY() - currentCore.getY();
+            snapZ = dockCore.getZ() - currentCore.getZ();
             dx += snapX;
             dy += snapY;
             dz += snapZ;
@@ -2249,6 +2379,20 @@ public final class VsPilot {
         //    不排掉的话拆回来的就是"满水的沉船"（隔离自检实测舱内 26 格全是水）
         if (state != null) {
             state.clearWater(level, dx, dy, dz);
+        }
+        // 靠泊吸附把船整体搬走时，船上的玩家和任务散箱要一起搬：否则船瞬移到码头、
+        // 人还留在海里，散箱也会被落下导致货运结算 0 箱（用户实测）。
+        if (snapX != 0 || snapY != 0 || snapZ != 0) {
+            for (ServerPlayer rider : riders) {
+                rider.teleportTo(level, rider.getX() + snapX, rider.getY() + snapY,
+                        rider.getZ() + snapZ, rider.getYRot(), rider.getXRot());
+                rider.setDeltaMovement(Vec3.ZERO);
+                rider.fallDistance = 0.0F;
+            }
+            for (net.minecraft.world.entity.item.ItemEntity item : pinnedCargo) {
+                item.setPos(item.getX() + snapX, item.getY() + snapY, item.getZ() + snapZ);
+                item.setDeltaMovement(Vec3.ZERO);
+            }
         }
         int skipped = restore.size() - placed;
         // 4) 新的声纳台重新扫描

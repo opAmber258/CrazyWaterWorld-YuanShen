@@ -70,6 +70,13 @@ public final class EquipmentData {
         return !stack.isEmpty() && stack.is(EquipmentTags.DIVING_SUIT);
     }
 
+    /** 穿的是不是透明潜水服变体（只影响客户端模型，玩法一致）。 */
+    public static boolean hasGlassDivingSuit(Player player) {
+        ItemStack stack = getStack(player, EquipmentSlotType.DIVING_SUIT);
+        return !stack.isEmpty()
+                && stack.getItem() instanceof com.opamb.barotrauma.item.GlassDivingSuitItem;
+    }
+
     /**
      * 旧存档迁移：原版护甲槽/副手槽在新界面里已经不存在，登录时把里面的东西
      * 搬走——能进装备槽的进装备槽，剩下的进背包，背包满了就掉在脚下。

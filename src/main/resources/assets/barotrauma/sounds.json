@@ -42,5 +42,11 @@
     "sounds": [
       "barotrauma:alarm/warning_beep"
     ]
+  },
+  "reactor_alarm": {
+    "subtitle": "subtitles.barotrauma.reactor_alarm",
+    "sounds": [
+      "barotrauma:alarm/reactor_alarm"
+    ]
   }
 }

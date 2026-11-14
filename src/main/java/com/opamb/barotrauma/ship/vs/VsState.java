@@ -64,6 +64,14 @@ public final class VsState {
         boolean tryRepair(ServerLevel level, ServerPlayer player, float amount);
     }
 
+    /**
+     * 物理船上切割（等离子切割机）：沿视线扣船壳耐久，或把舱门/舱口切烂。
+     * 由 {@link VsPilot} 提供。
+     */
+    public interface Cutter {
+        boolean tryCut(ServerLevel level, ServerPlayer player, float amount);
+    }
+
     /** 物理船爆炸：按世界坐标对装配快照里的格子扣耐久。由 {@link VsPilot} 提供。 */
     public interface ExplosionDamager {
         int damageExplosion(ServerLevel level, net.minecraft.world.phys.Vec3 center,
@@ -95,6 +103,7 @@ public final class VsState {
     private static volatile CoreObserver coreObserver;
     private static volatile Damager damager;
     private static volatile Repairer repairer;
+    private static volatile Cutter cutter;
     private static volatile ExplosionDamager explosionDamager;
     private static volatile GeometryRefresh geometryRefresh;
     private static volatile BlockPos corePos;
@@ -175,10 +184,12 @@ public final class VsState {
      * 方块实体和 mixin 走到这里都是空操作，不会触发 VS2 类加载。</p>
      */
     public static void install(CoreObserver observer, Damager newDamager,
-                               Repairer newRepairer, ExplosionDamager newExplosionDamager) {
+                               Repairer newRepairer, Cutter newCutter,
+                               ExplosionDamager newExplosionDamager) {
         coreObserver = observer;
         damager = newDamager;
         repairer = newRepairer;
+        cutter = newCutter;
         explosionDamager = newExplosionDamager;
     }
 
@@ -238,6 +249,19 @@ public final class VsState {
         }
         try {
             return current.tryRepair(level, player, amount);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** 等离子切割机每 0.1 s 调一次；返回 true 表示切到了船壳或舱门。 */
+    public static boolean tryCut(ServerLevel level, ServerPlayer player, float amount) {
+        Cutter current = cutter;
+        if (!active || current == null || level == null || player == null) {
+            return false;
+        }
+        try {
+            return current.tryCut(level, player, amount);
         } catch (Throwable ignored) {
             return false;
         }

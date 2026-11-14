@@ -994,6 +994,29 @@ public final class DeepSeaEvents {
         if (adoptDeep != null && VsSupport.available()) {
             event.getServer().execute(() -> VsPilot.adoptFromSave(adoptDeep));
         }
+        // 读档后把本轮关卡配置重放进静态桥；否则新区块会按默认地形生成。
+        if (adoptDeep != null) {
+            com.opamb.barotrauma.campaign.CampaignState campaign =
+                    com.opamb.barotrauma.campaign.CampaignState.wallet(adoptDeep);
+            com.opamb.barotrauma.campaign.RoundState round = campaign.round();
+            if (round.phase() == com.opamb.barotrauma.campaign.RoundPhase.DIVING
+                    && round.hasInstance()) {
+                int slot = Math.max(0, Math.round((round.instanceX()
+                        - com.opamb.barotrauma.world.MissionInstance.BASE_X)
+                        / (float) com.opamb.barotrauma.world.MissionInstance.SPACING));
+                com.opamb.barotrauma.world.level.LevelType type =
+                        com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
+                com.opamb.barotrauma.world.level.LevelParams params = type.params();
+                int distance = round.levelDistance() > 0
+                        ? round.levelDistance() : params.routeLength();
+                com.opamb.barotrauma.world.MissionInstance.setRouteLevel(
+                        new com.opamb.barotrauma.world.MissionInstance.RouteLevel(
+                                slot, type, round.levelSeed(), round.levelDifficulty(),
+                                distance));
+                com.opamb.barotrauma.world.MissionInstance.setRouteOutposts(
+                        slot, round.startHasOutpost(), round.endHasOutpost());
+            }
+        }
         // P4 持久化实测（两段式）：
         //   .smoketest-persist       → 造初始潜艇 + 装配成物理船 + 损伤两格，然后正常停服存档
         //   .smoketest-persist-check → 依赖 onServerStarted 的认领，200 tick 后断言船已接回

@@ -186,6 +186,21 @@ public final class OceanEnvironment {
     }
 
     /**
+     * 这个位置是否在某艘船的舱室里（干舱/进水舱都算）。
+     *
+     * <p>潜行防掉边必须在这里关掉：VS2 物理船的方块对 {@code level.noCollision}
+     * 不可见，原版 {@code maybeBackOffFromEdge} 会把整个舱室当成悬崖边缘，
+     * 在干舱里按 Shift 移动会被"挤开"甚至挤穿船壳（用户实测小泵上 Shift+移动）。</p>
+     */
+    public static boolean isInsideShipCompartment(Level level, Vec3 pos) {
+        if (!isInOcean(level, pos)) {
+            return false;
+        }
+        DryZone zone = level.isClientSide() ? clientDryZone : serverDryZone;
+        return zone != null && zone.isInsideCompartment(level, pos);
+    }
+
+    /**
      * 游泳/溺水的权威浸没判定（issue #31）：在 {@link #isSubmerged} 之上追加
      * 方块船干舱兜底与物理船舱内干湿询问。
      *

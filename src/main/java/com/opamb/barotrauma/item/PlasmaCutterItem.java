@@ -1,0 +1,303 @@
+package com.opamb.barotrauma.item;
+
+import com.opamb.barotrauma.block.MineralVeinBlock;
+import com.opamb.barotrauma.equipment.ItemSubSlot;
+import com.opamb.barotrauma.registry.ModItems;
+import com.opamb.barotrauma.registry.ModShipBlocks;
+import com.opamb.barotrauma.ship.ShipCores;
+import com.opamb.barotrauma.ship.vs.VsState;
+import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.UseAnim;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * 等离子切割机：潜渊症里的切割工具，和焊接工具相反——负修复。
+ *
+ * <ul>
+ *   <li><b>矿脉</b>：对着岩壁矿脉按住右键约 4 秒，切碎后掉矿物（采矿任务用）；</li>
+ *   <li><b>船壳/舷窗/装甲板</b>：持续切割扣耐久，0% 时走原有破口流程（会进水）；</li>
+ *   <li><b>舱门/舱口</b>：约 6 秒切烂，门/舱口物品掉在切口；</li>
+ *   <li><b>普通方块</b>：不切（按用户要求只做矿 + 船体结构）。</li>
+ * </ul>
+ *
+ * <p>消耗的是悬停子格里的**氧气瓶**（原作 plasmacutter 的容器接受
+ * {@code oxygensource}，每秒扣 1 点；往里塞焊接油箱会爆炸，所以这里直接拒收）。
+ * 原作 plasmacutter 也是 {@code RepairTool}，{@code structurefixamount} 为负。</p>
+ */
+public class PlasmaCutterItem extends Item {
+
+    /** 每 2 tick 对船壳造成多少伤害：15 HP/s，200 血外壳约 13 秒。 */
+    public static final float HULL_DAMAGE_PER_APPLICATION = 1.5F;
+    /** 切碎一块矿脉要多少次应用（每 2 tick 一次）：40 次 = 4 秒。 */
+    private static final int VEIN_CUT_APPLICATIONS = 40;
+    /** 切烂一扇门/一个舱口要多少次应用：60 次 = 6 秒。 */
+    private static final int FIXTURE_CUT_APPLICATIONS = 60;
+    /** 氧气瓶消耗间隔（原作 1/s）。 */
+    private static final int OXYGEN_INTERVAL = 20;
+    private static final double REACH = 4.5D;
+
+    /** 服务端每名玩家当前的切割目标；换目标/松手就清零。 */
+    private static final Map<UUID, CutTarget> CUTS = new HashMap<>();
+
+    /** 正在切的格子和已经切了几次。 */
+    private record CutTarget(BlockPos pos, int applications) {
+    }
+
+    public PlasmaCutterItem(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!hasOxygen(stack)) {
+            player.displayClientMessage(Component.translatable("message.barotrauma.plasma_no_oxygen")
+                    .withStyle(ChatFormatting.RED), true);
+            return InteractionResultHolder.fail(stack);
+        }
+        player.startUsingItem(hand);
+        return InteractionResultHolder.consume(stack);
+    }
+
+    @Override
+    public InteractionResult useOn(UseOnContext context) {
+        Player player = context.getPlayer();
+        if (player == null) {
+            return InteractionResult.PASS;
+        }
+        if (!hasOxygen(context.getItemInHand())) {
+            player.displayClientMessage(Component.translatable("message.barotrauma.plasma_no_oxygen")
+                    .withStyle(ChatFormatting.RED), true);
+            return InteractionResult.FAIL;
+        }
+        player.startUsingItem(context.getHand());
+        return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    public int getUseDuration(ItemStack stack) {
+        return 72000;
+    }
+
+    @Override
+    public UseAnim getUseAnimation(ItemStack stack) {
+        return UseAnim.BOW;
+    }
+
+    @Override
+    public void onUseTick(Level level, LivingEntity living, ItemStack stack, int remainingUseDuration) {
+        if (!(living instanceof Player player)) {
+            return;
+        }
+        if (!hasOxygen(stack)) {
+            if (!level.isClientSide) {
+                player.displayClientMessage(Component.translatable("message.barotrauma.plasma_no_oxygen")
+                        .withStyle(ChatFormatting.RED), true);
+                player.stopUsingItem();
+            }
+            return;
+        }
+        if (level.isClientSide) {
+            if (player.tickCount % 2 == 0) {
+                spawnCutParticles(level, player);
+                com.opamb.barotrauma.client.MineralVeinClient.tickFromPlayer(level, player, REACH);
+            }
+            return;
+        }
+        if (player.tickCount % 2 != 0) {
+            return;
+        }
+        ServerLevel server = (ServerLevel) level;
+        boolean cut = cutSomething(server, (ServerPlayer) player);
+        if (!cut) {
+            // 没切到东西：清掉半截进度，别让下次瞄到同一格时直接完成。
+            clearProgress((ServerPlayer) player, server);
+            return;
+        }
+        if (player.tickCount % OXYGEN_INTERVAL == 0) {
+            consumeOxygen(stack, player);
+            if (!hasOxygen(stack)) {
+                player.stopUsingItem();
+            }
+        }
+    }
+
+    /** 松开右键：客户端把矿脉进度条清掉。 */
+    @Override
+    public void releaseUsing(ItemStack stack, Level level, LivingEntity living, int timeLeft) {
+        if (level.isClientSide) {
+            com.opamb.barotrauma.client.MineralVeinClient.reset();
+        }
+    }
+
+    /** 服务端一次切割应用；返回 true 表示确实切到了矿脉/船壳/舱门。 */
+    private boolean cutSomething(ServerLevel level, ServerPlayer player) {
+        HitResult hit = player.pick(REACH, 0.0F, false);
+        if (hit instanceof BlockHitResult blockHit && hit.getType() == HitResult.Type.BLOCK) {
+            BlockPos pos = blockHit.getBlockPos();
+            BlockState state = level.getBlockState(pos);
+            if (state.getBlock() instanceof MineralVeinBlock vein) {
+                return progress(level, player, pos, VEIN_CUT_APPLICATIONS, () -> {
+                    level.destroyBlock(pos, false);
+                    int count = vein.cutYield(level.random);
+                    Block.popResource(level, pos,
+                            MineralVeinBlock.mined(vein.mineral(), count));
+                    level.playSound(null, pos, SoundEvents.NETHERITE_BLOCK_BREAK,
+                            SoundSource.PLAYERS, 0.9F, 0.8F);
+                    level.sendParticles(ParticleTypes.CRIT,
+                            pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D,
+                            12, 0.3D, 0.3D, 0.3D, 0.05D);
+                });
+            }
+            // 方块船（没装配成物理船）：门/舱口切烂，船壳走船核心耐久。
+            if (VsState.active()) {
+                return VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION);
+            }
+            if (isFixture(state)) {
+                return progress(level, player, pos, FIXTURE_CUT_APPLICATIONS, () -> {
+                    ItemStack drop = new ItemStack(state.getBlock().asItem());
+                    level.destroyBlock(pos, false);
+                    if (!drop.isEmpty()) {
+                        Block.popResource(level, pos, drop);
+                    }
+                    level.playSound(null, pos, SoundEvents.NETHERITE_BLOCK_BREAK,
+                            SoundSource.PLAYERS, 0.8F, 0.8F);
+                });
+            }
+            if (ModShipBlocks.isRepairableHull(state)) {
+                ShipCoreBlockEntity core = ShipCores.nearestCore(level, pos, 64.0D);
+                if (core == null || core.state() == null) {
+                    return false;
+                }
+                return core.damageBlock(level, pos, HULL_DAMAGE_PER_APPLICATION, player);
+            }
+            return false;
+        }
+        // 物理船的方块在世界里是空气，只能按装配快照做视线检测。
+        return VsState.active() && VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION);
+    }
+
+    /** 累计切割进度；达到 {@code applications} 次就执行 {@code finish}。 */
+    private static boolean progress(ServerLevel level, ServerPlayer player, BlockPos pos,
+                                    int applications, Runnable finish) {
+        UUID id = player.getUUID();
+        CutTarget current = CUTS.get(id);
+        int done = current != null && current.pos().equals(pos)
+                ? current.applications() + 1 : 1;
+        CUTS.put(id, new CutTarget(pos.immutable(), done));
+        // 原版裂纹动画：stage 0..9，切完要显式清掉。
+        int stage = Math.min(9, done * 10 / applications);
+        level.destroyBlockProgress(player.getId(), pos, stage);
+        if (done >= applications) {
+            CUTS.remove(id);
+            level.destroyBlockProgress(player.getId(), pos, -1);
+            finish.run();
+        }
+        return true;
+    }
+
+    private static void clearProgress(ServerPlayer player, ServerLevel level) {
+        CutTarget current = CUTS.remove(player.getUUID());
+        if (current != null) {
+            level.destroyBlockProgress(player.getId(), current.pos(), -1);
+        }
+    }
+
+    /** 方块船上的舱门/舱口（物理船上的由 {@link VsState#tryCut} 处理）。 */
+    private static boolean isFixture(BlockState state) {
+        Block block = state.getBlock();
+        return block == ModShipBlocks.BULKHEAD_DOOR.get()
+                || block == ModShipBlocks.HATCH.get()
+                || block == ModShipBlocks.HATCH_LADDER.get();
+    }
+
+    /** 子格里的氧气瓶还有氧气吗（原作 plasmacutter 只接受 oxygensource）。 */
+    private static boolean hasOxygen(ItemStack tool) {
+        ItemStack tank = ItemSubSlot.get(tool);
+        return !tank.isEmpty()
+                && tank.is(com.opamb.barotrauma.equipment.EquipmentTags.OXYGEN_TANK)
+                && tank.getDamageValue() < tank.getMaxDamage();
+    }
+
+    /** 消耗 1 点氧气；氧气瓶耗尽就从子格里消失。创造模式不消耗。 */
+    private static void consumeOxygen(ItemStack tool, Player player) {
+        if (player.getAbilities().instabuild) {
+            return;
+        }
+        ItemStack tank = ItemSubSlot.get(tool);
+        if (tank.isEmpty() || !tank.is(com.opamb.barotrauma.equipment.EquipmentTags.OXYGEN_TANK)) {
+            return;
+        }
+        int damage = tank.getDamageValue() + 1;
+        if (damage >= tank.getMaxDamage()) {
+            ItemSubSlot.set(tool, ItemStack.EMPTY);
+        } else {
+            tank.setDamageValue(damage);
+            ItemSubSlot.set(tool, tank);
+        }
+    }
+
+    /** 客户端切割火花：只做视觉，真正的进度在服务端。 */
+    private void spawnCutParticles(Level level, Player player) {
+        Vec3 eye = player.getEyePosition(1.0F);
+        Vec3 look = player.getViewVector(1.0F);
+        HitResult hit = player.pick(REACH, 1.0F, false);
+        Vec3 at = hit.getType() == HitResult.Type.BLOCK
+                ? hit.getLocation()
+                : eye.add(look.scale(2.0D));
+        for (int i = 0; i < 2; i++) {
+            double x = at.x + (player.getRandom().nextDouble() - 0.5D) * 0.25D;
+            double y = at.y + (player.getRandom().nextDouble() - 0.5D) * 0.25D;
+            double z = at.z + (player.getRandom().nextDouble() - 0.5D) * 0.25D;
+            level.addParticle(ParticleTypes.FLAME, x, y, z, 0.0D, 0.01D, 0.0D);
+        }
+        if (player.getRandom().nextInt(3) == 0) {
+            level.addParticle(ParticleTypes.SMOKE, at.x, at.y, at.z, 0.0D, 0.03D, 0.0D);
+        }
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip,
+                                TooltipFlag flag) {
+        tooltip.add(Component.translatable("tooltip.barotrauma.plasma_cutter")
+                .withStyle(ChatFormatting.GRAY));
+        ItemStack tank = ItemSubSlot.get(stack);
+        if (tank.isEmpty()) {
+            tooltip.add(Component.translatable("tooltip.barotrauma.plasma_no_oxygen")
+                    .withStyle(ChatFormatting.RED));
+        } else {
+            int left = Math.max(0, tank.getMaxDamage() - tank.getDamageValue());
+            tooltip.add(Component.translatable("tooltip.barotrauma.plasma_oxygen",
+                    left, tank.getMaxDamage()).withStyle(ChatFormatting.GRAY));
+        }
+        super.appendHoverText(stack, level, tooltip, flag);
+    }
+}

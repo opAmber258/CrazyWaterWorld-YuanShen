@@ -3,6 +3,7 @@ package com.opamb.barotrauma.world;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.world.level.LevelParams;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.WorldGenRegion;
@@ -31,18 +32,18 @@ import java.util.concurrent.Executor;
 /**
  * 深海维度生成器：一整根 1000 格高的岩柱，中间掏出一整片开阔的"潜渊症式"海域。
  *
- * <p>形状（对照原作 Cold Caverns 关卡参数：关卡高度远大于隧道直径）：</p>
+ * <p>形状（对照原作 Cold Caverns 关卡参数）：</p>
  * <ul>
- *   <li><b>顶部岩壳</b>：压平在 y=-44（哨站屋顶严丝合缝），向噪声深处最厚到 y=-240；</li>
- *   <li><b>底部岩床</b>：基准 y=-1000，噪声抬升最高约 180 格；</li>
- *   <li><b>开阔水域</b>：夹在两者之间，最高接近 1000 格；</li>
- *   <li><b>岩柱 / 钟乳石 / 浮岩岛 / 隔断岩墙</b>：都从 2D 噪声长出来，潜艇要绕行；</li>
- *   <li><b>哨站台地</b>：哨站下方压出一块 -98 的岩台当水池底，外圈 140 格渐变到世界岩床；</li>
+ *   <li><b>全局开阔海</b>：顶部岩壳 -44 起、底部岩床 -544 左右，中间是开阔水域，
+ *       岩柱/钟乳石/浮岩岛从 2D 噪声长出来；</li>
+ *   <li><b>航行关卡</b>：{@link RoutePath} 在岩体里挖出左右蜿蜒、上下起伏的大椭圆洞窟
+ *       （横向最大 480、纵向最大 440），侧洞是首尾都接主航道的环路；潜艇看到的是
+ *       看不到边的洞窟，而不是细管子；</li>
  *   <li><b>POI 净空</b>：沉船/中继站周围强制留空，不会被岩柱埋掉。</li>
  * </ul>
  *
- * <p>上一版的"每 120 格一层岩板 + TrunkNetwork 竖井"已按用户要求撤掉：那些岩板把海域切成
- * 一层层，竖井又像电梯井。现在上下移动靠岩床起伏和天然开口，不再有竖直井道。</p>
+ * <p>上一版的 Voronoi 细胞壁已按用户要求撤掉（方块状细胞墙太丑）；关卡地形完全由
+ * {@link SeaTerrain} 的隧道剖面决定，不再叠加岩柱/岩墙/浮岩岛。</p>
  */
 public class DeepSeaChunkGenerator extends ChunkGenerator {
 
@@ -91,6 +92,8 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
         int originX = chunkPos.getMinBlockX();
         int originZ = chunkPos.getMinBlockZ();
         int minY = chunk.getMinBuildHeight();
+        // 本轮航行关卡的参数；没有活动关卡就是 null（走原来的全局地形）。
+        LevelParams params = MissionInstance.activeParams();
 
         // 海域用空气而不是真实水：水下效果由客户端雾/滤镜表现，进水走数值模拟。
         BlockState ocean = Blocks.AIR.defaultBlockState();
@@ -126,8 +129,9 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             }
         }
 
-        // 3) 开阔海域：上岩壳、下岩床，中间整片开放（最高接近 1000 格），
-        //    水里再长岩柱/钟乳石/浮岩岛/隔断岩墙。没有分层岩板，也没有竖井。
+        // 3) 海域：全局是上岩壳/下岩床之间的开阔水；活动关卡是 330–600 格宽、
+        //    330–560 格高的随机游走大洞窟。洞窟中央保持通畅，外圈按大尺度噪声长
+        //    岩柱/钟乳石/浮岩岛——这是原作洞穴里的岩体特征，但不再是难看的细胞墙。
         for (int lx = 0; lx < 16; lx++) {
             for (int lz = 0; lz < 16; lz++) {
                 int x = originX + lx;
@@ -139,28 +143,77 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                     continue; // 整列都是岩（噪声把洞顶压到洞底以下），保持原样
                 }
 
-                boolean clear = SeaTerrain.inClearZone(x, z);
-                boolean wall = DeepSeaNoise.fbm2(seed ^ SALT_WALL, x / 110.0D, z / 110.0D, 3) > 0.58D;
-                double pillarNoise = DeepSeaNoise.fbm2(seed ^ SALT_PILLAR, x / 48.0D, z / 48.0D, 2);
-                double hangNoise = DeepSeaNoise.fbm2(seed ^ SALT_HANG, x / 46.0D, z / 46.0D, 2);
-                double islandNoise = DeepSeaNoise.fbm2(seed ^ SALT_ISLAND, x / 130.0D, z / 130.0D, 2);
-                double islandYNoise = DeepSeaNoise.fbm2(seed ^ SALT_ISLAND_Y, x / 70.0D, z / 70.0D, 2);
+                double routeDistance = params == null ? Double.MAX_VALUE
+                        : MissionInstance.distanceToActiveRoute(x, z);
+                boolean inLevel = params != null
+                        && routeDistance <= SeaTerrain.levelInfluence(params);
+                boolean clear = !inLevel && SeaTerrain.inClearZone(x, z);
 
-                // 岩柱/钟乳石只长到水域高度的 18%：用户反馈三成仍然太高。
-                int pillarTop = pillarNoise > 0.34D
-                        ? floor + (int) ((pillarNoise - 0.34D) * open * 0.18D) : floor;
-                int hangBottom = hangNoise > 0.34D
-                        ? ceiling - (int) ((hangNoise - 0.34D) * open * 0.18D) : ceiling;
+                // 关卡内的大岩体：只长在洞窟外圈（离隧道中心 > 0.45×半宽），
+                // 中央航道永远留空。岩柱从洞底长、钟乳石从洞顶垂、浮岩岛在中间。
+                int formationTop = Integer.MIN_VALUE;
+                int formationBottom = Integer.MIN_VALUE;
+                if (inLevel && params != null
+                        && routeDistance > params.cavernHalfWidth() * 0.45D) {
+                    double islandNoise = DeepSeaNoise.fbm2(
+                            seed ^ SALT_ISLAND, x / 110.0D, z / 110.0D, 2);
+                    if (islandNoise > 0.52D) {
+                        double islandYNoise = DeepSeaNoise.fbm2(
+                                seed ^ SALT_ISLAND_Y, x / 70.0D, z / 70.0D, 2);
+                        int centerY = floor + (int) ((0.5D + islandYNoise * 0.30D) * open);
+                        int half = (int) ((islandNoise - 0.52D) * open * 0.60D) + 16;
+                        formationTop = centerY + half;
+                        formationBottom = centerY - half;
+                    }
+                    double pillarNoise = DeepSeaNoise.fbm2(
+                            seed ^ SALT_PILLAR, x / 90.0D, z / 90.0D, 2);
+                    if (pillarNoise > 0.56D) {
+                        formationTop = floor + (int) ((pillarNoise - 0.56D) * open * 0.50D) + 4;
+                        formationBottom = floor;
+                    }
+                    double hangNoise = DeepSeaNoise.fbm2(
+                            seed ^ SALT_HANG, x / 90.0D, z / 90.0D, 2);
+                    if (hangNoise > 0.56D) {
+                        formationBottom = ceiling - (int) ((hangNoise - 0.56D) * open * 0.50D) - 4;
+                        formationTop = ceiling;
+                    }
+                }
+
+                int pillarTop = floor;
+                int hangBottom = ceiling;
                 int islandBottom = Integer.MIN_VALUE;
                 int islandTop = Integer.MIN_VALUE;
-                if (islandNoise > 0.55D) {
-                    int centerY = floor + (int) ((0.5D + islandYNoise * 0.30D) * open);
-                    int half = (int) ((islandNoise - 0.55D) * 24.0D) + 2;
-                    islandBottom = centerY - half;
-                    islandTop = centerY + half;
+                boolean wall = false;
+                if (!inLevel && !clear) {
+                    double pillarThreshold = 0.34D;
+                    double wallThreshold = 0.58D;
+                    double islandThreshold = 0.55D;
+                    wall = DeepSeaNoise.fbm2(seed ^ SALT_WALL, x / 110.0D, z / 110.0D, 3)
+                            > wallThreshold;
+                    double pillarNoise = DeepSeaNoise.fbm2(seed ^ SALT_PILLAR, x / 48.0D, z / 48.0D, 2);
+                    double hangNoise = DeepSeaNoise.fbm2(seed ^ SALT_HANG, x / 46.0D, z / 46.0D, 2);
+                    double islandNoise = DeepSeaNoise.fbm2(seed ^ SALT_ISLAND, x / 130.0D, z / 130.0D, 2);
+                    double islandYNoise = DeepSeaNoise.fbm2(seed ^ SALT_ISLAND_Y, x / 70.0D, z / 70.0D, 2);
+
+                    // 岩柱/钟乳石只长到水域高度的 18%：用户反馈三成仍然太高。
+                    pillarTop = pillarNoise > pillarThreshold
+                            ? floor + (int) ((pillarNoise - pillarThreshold) * open * 0.18D) : floor;
+                    hangBottom = hangNoise > pillarThreshold
+                            ? ceiling - (int) ((hangNoise - pillarThreshold) * open * 0.18D) : ceiling;
+                    if (islandNoise > islandThreshold) {
+                        int centerY = floor + (int) ((0.5D + islandYNoise * 0.30D) * open);
+                        int half = (int) ((islandNoise - islandThreshold) * 24.0D) + 2;
+                        islandBottom = centerY - half;
+                        islandTop = centerY + half;
+                    }
                 }
 
                 for (int y = floor + 1; y < ceiling; y++) {
+                    if (inLevel) {
+                        boolean rock = y <= formationTop && y >= formationBottom;
+                        setBlock(chunk, x, y, z, rock ? stone : ocean);
+                        continue;
+                    }
                     if (clear) {
                         setBlock(chunk, x, y, z, ocean);
                         continue;
@@ -183,11 +236,14 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             }
         }
 
+        // 6a) 采矿任务：副本航线附近的海底矿脉（按坐标 + 世界种子确定性生成）
+        placeVeins(chunk, seed, originX, originZ, minY);
+
         // 6b) 任务 POI：沉船/侦察点/B 中继站（确定性，幂等）
         PoiNetwork.buildInto(chunk);
 
-        // 6c) 任务海域实例不再单独挖洞穴：副本站周围直接复用主世界开阔海域地形
-        //     （SeaTerrain 会在锚点附近压平洞顶并留出 64 格机动净空）。
+        // 6c) 任务海域实例不单独挖洞穴：主航道隧道和两端站点空腔都由
+        //     SeaTerrain / RoutePath 生成，站体直接挂在空腔顶板上。
 
         // 6d) 哨站：主站 + 本轮关卡两端的站（无人航路点两端不建站，和原作一致）。
         for (DockingBay.Site site : DockingBay.sitesNear(chunkPos)) {
@@ -210,6 +266,134 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
         // 7) 高度图
         Heightmap.primeHeightmaps(chunk,
                 EnumSet.of(Heightmap.Types.WORLD_SURFACE_WG, Heightmap.Types.OCEAN_FLOOR_WG));
+    }
+
+    /**
+     * 在副本航线附近的岩壁/海底表面撒矿脉。
+     *
+     * <p>矿脉是普通方块，玩家把潜艇停在附近、穿潜水服出舱，用等离子切割机
+     * 切碎后带回。位置完全由（世界种子, x, z）决定，同一存档重进不会变；
+     * 生成时避开码头正下方，也不会替换掉站体/沉船（那些在 6b/6d 之后覆盖）。</p>
+     *
+     * <p>除了海底，还会在岩柱/浮岩岛的表面按散列撒少量矿脉，这样不用一路潜到
+     * 500 格海底也能采矿。</p>
+     */
+    private static void placeVeins(ChunkAccess chunk, long seed, int originX, int originZ, int minY) {
+        if (!MissionInstance.inMiningZone(originX + 8, originZ + 8)
+                && !MissionInstance.inMiningZone(originX, originZ)
+                && !MissionInstance.inMiningZone(originX + 15, originZ + 15)) {
+            return;
+        }
+        // 关卡参数：海底/岩壁密度和盐只对本槽位的关卡生效，旧槽位保持原密度。
+        int slot = Math.max(0, Math.round((originX - MissionInstance.BASE_X)
+                / (float) MissionInstance.SPACING));
+        LevelParams params = MissionInstance.paramsForSlot(slot);
+        int floorMask = params == null ? 1023 : params.seafloorVeinMask();
+        int wallMask = params == null ? 255 : params.wallVeinMask();
+        long veinSeed = params == null ? seed
+                : seed ^ MissionInstance.routeLevel().seed();
+        // 环境矿脉：原作资源点间隔 96–192 格 × 0.2–0.3 概率；这里按区块门控，
+        // 一个区块最多一簇，避免声纳上一扫全是矿。
+        int gate = params == null ? 16 : params.ambientChunkGate();
+        long chunkGate = veinHash(veinSeed, originX >> 4, originZ >> 4);
+        if (Math.floorMod(chunkGate, gate) != 0) {
+            return;
+        }
+        boolean[] placed = {false};
+        BlockState[] veins = {
+                com.opamb.barotrauma.registry.ModBlocks.QUARTZ_VEIN.get().defaultBlockState(),
+                com.opamb.barotrauma.registry.ModBlocks.PYROMORPHITE_VEIN.get().defaultBlockState(),
+                com.opamb.barotrauma.registry.ModBlocks.URANIUM_VEIN.get().defaultBlockState()
+        };
+        for (int lx = 0; lx < 16; lx++) {
+            for (int lz = 0; lz < 16; lz++) {
+                int x = originX + lx;
+                int z = originZ + lz;
+                if (!MissionInstance.inMiningZone(x, z)) {
+                    continue;
+                }
+                long hash = veinHash(veinSeed, x, z);
+                int floor = SeaTerrain.floorY(seed, x, z);
+                int ceiling = SeaTerrain.ceilingY(seed, x, z);
+                // 整列是岩（关卡隧道之外）：没有可采矿壁。
+                if (ceiling <= floor) {
+                    continue;
+                }
+                // 海底表面：密度由关卡 resourceSpawnChance 决定（basic 0.2 → 1/1024）。
+                if (!placed[0] && (hash & floorMask) == 0L && floor > minY
+                        && floor < ModDimensions.CEILING_BOTTOM_Y) {
+                    BlockState vein = veins[(int) Math.floorMod(hash >>> 10, 3L)];
+                    setBlock(chunk, x, floor, z, vein);
+                    placed[0] = true;
+                    // 一半概率向 x 方向再带一格，让矿脉看着是“一簇”而不是单点。
+                    if (((hash >>> 11) & 1L) == 0L) {
+                        int nx = lx < 15 ? lx + 1 : lx - 1;
+                        if (nx >= 0) {
+                            setBlock(chunk, originX + nx, floor, z, vein);
+                        }
+                    }
+                }
+                // 岩壁表面：每列抽 2 个深度，命中岩壁才长。
+                if (ceiling - floor <= 8) {
+                    continue;
+                }
+                for (int sample = 0; sample < 2 && !placed[0]; sample++) {
+                    long sampleHash = veinHash(hash ^ (0x632BE59BD9B4E019L * (sample + 1L)), x, z);
+                    if ((sampleHash & wallMask) != 0L) {
+                        continue;
+                    }
+                    int y = floor + 3 + (int) Math.floorMod(sampleHash >>> 8,
+                            Math.max(1, ceiling - floor - 6));
+                    if (y <= minY || y >= ModDimensions.CEILING_BOTTOM_Y) {
+                        continue;
+                    }
+                    if (!isRock(chunk, x, y, z) || !touchesAir(chunk, x, y, z, lx, lz)) {
+                        continue;
+                    }
+                    setBlock(chunk, x, y, z, veins[(int) Math.floorMod(sampleHash >>> 20, 3L)]);
+                    placed[0] = true;
+                }
+            }
+        }
+    }
+
+    /** 世界生成阶段的岩层判断（矿脉只会替换这三种石头）。 */
+    private static boolean isRock(ChunkAccess chunk, int x, int y, int z) {
+        BlockState state = chunk.getBlockState(new BlockPos(x, y, z));
+        return state.is(Blocks.STONE) || state.is(Blocks.DEEPSLATE) || state.is(Blocks.TUFF);
+    }
+
+    /** 这一格岩壁是否贴着空气（只在同一区块内查，避免触发邻区块生成）。 */
+    private static boolean touchesAir(ChunkAccess chunk, int x, int y, int z, int lx, int lz) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) != 1) {
+                        continue;
+                    }
+                    int nx = lx + dx;
+                    int nz = lz + dz;
+                    if (nx < 0 || nx > 15 || nz < 0 || nz > 15) {
+                        continue;
+                    }
+                    if (chunk.getBlockState(new BlockPos(x + dx, y + dy, z + dz)).isAir()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** 矿脉位置/类型的确定性散列。 */
+    private static long veinHash(long seed, int x, int z) {
+        long h = seed ^ 0x9E3779B97F4A7C15L;
+        h ^= x * 0xC2B2AE3D27D4EB4FL;
+        h ^= z * 0x165667B19E3779F9L;
+        h ^= h >>> 29;
+        h *= 0xBF58476D1CE4E5B9L;
+        h ^= h >>> 32;
+        return h;
     }
 
     private static void fillSection(LevelChunkSection section, BlockState state) {

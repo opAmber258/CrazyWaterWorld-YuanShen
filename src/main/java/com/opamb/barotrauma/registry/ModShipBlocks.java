@@ -210,6 +210,10 @@ public final class ModShipBlocks {
         if (state.getBlock() == ModBlocks.SMALL_PUMP.get()) {
             return false;
         }
+        // 接线盒是墙挂小盒（0.625×1×0.55），不该占满整格挡水/分舱。
+        if (state.getBlock() == ModBlocks.JUNCTION_BOX.get()) {
+            return false;
+        }
         // 门/舱口永远算"水密"：门板只有 1px 厚，但按格子算隔断。开着的门不靠
         // 洪水填充连通两侧（那样一开门水就瞬间均摊），而是由 ShipGeometry.DoorLink
         // 按限速流量慢慢补平。
@@ -251,6 +255,7 @@ public final class ModShipBlocks {
                 || block == ModBlocks.BALLAST_PUMP.get()
                 || block == ModBlocks.REACTOR.get()
                 || block == ModBlocks.ENGINE.get()
+                || block == ModBlocks.JUNCTION_BOX.get()
                 // 容器家具也要跟船走，否则装配后钢柜/货架留在码头原地。
                 || block == ModBlocks.MEDIUM_STEEL_CABINET.get()
                 || block == ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get()

@@ -8,6 +8,7 @@ import com.opamb.barotrauma.medical.affliction.Limb;
 import com.opamb.barotrauma.reactor.ReactorFuel;
 import com.opamb.barotrauma.reactor.ReactorState;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.registry.ModSounds;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -65,6 +66,8 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
     private double lastRatio;
     /** 过热冒烟的节流计时（秒）。 */
     private double smokeTimer;
+    /** 过热/熔毁警报的节流计时（秒）。 */
+    private double alarmTimer;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public ReactorBlockEntity(BlockPos pos, BlockState state) {
@@ -111,6 +114,18 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         }
         if ((events & ReactorState.EVENT_MELTDOWN) != 0) {
             be.meltdown(server);
+        }
+
+        // 过热/熔毁警报：每 2 秒响一次原版 AlarmBuzzerLoop（不需要独立警报方块）。
+        if (be.state.overheated() || be.state.meltedDown()) {
+            be.alarmTimer += SECONDS_PER_TICK;
+            if (be.alarmTimer >= 2.0D) {
+                be.alarmTimer = 0.0D;
+                level.playSound(null, pos, ModSounds.REACTOR_ALARM.get(),
+                        SoundSource.BLOCKS, 1.2F, 1.0F);
+            }
+        } else {
+            be.alarmTimer = 0.0D;
         }
 
         // 起火之前：温度超过最佳区就持续往外喷白烟，越热越密。

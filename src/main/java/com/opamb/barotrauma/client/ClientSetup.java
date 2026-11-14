@@ -28,6 +28,7 @@ public final class ClientSetup {
     public static void onRegisterKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
         event.register(CampaignClient.OPEN_MAP);
         event.register(UnderwaterMovement.TOGGLE_NATURAL_SINK);
+        event.register(PowerClient.OPEN_POWER);
     }
 
     /** 客户端初始化：干燥区回调、渲染层与菜单界面注册。 */
@@ -86,6 +87,8 @@ public final class ClientSetup {
                 context -> new ReactorRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.ENGINE.get(),
                 context -> new EngineRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.JUNCTION_BOX.get(),
+                context -> new JunctionBoxRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.CABINET.get(),
                 context -> new CabinetRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.HATCH.get(), context -> new HatchRenderer());

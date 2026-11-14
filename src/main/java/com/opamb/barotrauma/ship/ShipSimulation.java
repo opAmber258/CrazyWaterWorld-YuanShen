@@ -105,6 +105,43 @@ public final class ShipSimulation {
                               boolean keepBelowDoor, double ballastTarget) {
     }
 
+    /**
+     * 用电设备上报表：设备格 → (耗电 kW, 最低电压, 绑定的接线盒, 最后上报 tick)。
+     *
+     * <p>对应原作 {@code Powered}。设备每 tick 上报自己的需求；接线盒只是把设备
+     * 归组，电压仍按全船 {@code 总供电 / 总负载} 算。</p>
+     */
+    private final java.util.Map<net.minecraft.core.BlockPos, ConsumerReport> consumers =
+            new java.util.HashMap<>();
+    private long consumerTick;
+    private static final int CONSUMER_STALE_TICKS = 40;
+
+    /** 接线盒上报表：格子 → (耐久 0..100, 最后上报 tick)。 */
+    private final java.util.Map<net.minecraft.core.BlockPos, BoxReport> boxes =
+            new java.util.HashMap<>();
+    private long boxTick;
+    private static final int BOX_STALE_TICKS = 40;
+
+    /** 原版 vanilla 潜艇接线盒的过压阈值（Dugong.sub 里是 1.7；代码默认 2.0）。 */
+    public static final double JUNCTION_BOX_OVERVOLTAGE = 1.7D;
+
+    /** 上一次 tick 的全船电压（供电/负载，不封顶）。 */
+    private double lastVoltage;
+    /** 上一次 tick 的全船供电（kW）。 */
+    private double lastSupply;
+
+    private record ConsumerReport(double demandKw, double minVoltage,
+                                  net.minecraft.core.BlockPos box, long lastSeen) {
+    }
+
+    private record BoxReport(double condition, long lastSeen) {
+    }
+
+    /** 供电设备快照，给电力面板用。 */
+    public record ConsumerInfo(net.minecraft.core.BlockPos pos, double demandKw,
+                               double minVoltage, net.minecraft.core.BlockPos box) {
+    }
+
     /** 上一 tick 由压载泵登记为压载舱的水体下标（用于浮力/进水比例）。 */
     private final java.util.Set<Integer> ballastBodies = new java.util.HashSet<>();
     /** 格子 → 水体下标的缓存；换几何时整个 simulated 对象会重建，缓存自然失效。 */
@@ -317,18 +354,48 @@ public final class ShipSimulation {
                 activePumps++;
             }
         }
-        double demand = activePumps * PUMP_POWER
-                + machines.oxygen() * O2_POWER
+
+        // 设备上报的电网负载（原作 Powered）：每台设备有自己的功率和最低电压。
+        consumerTick++;
+        double consumerDemand = 0.0D;
+        var consumerIterator = consumers.entrySet().iterator();
+        while (consumerIterator.hasNext()) {
+            var entry = consumerIterator.next();
+            ConsumerReport report = entry.getValue();
+            if (consumerTick - report.lastSeen() > CONSUMER_STALE_TICKS) {
+                consumerIterator.remove();
+                continue;
+            }
+            consumerDemand += report.demandKw();
+        }
+
+        // 接线盒上报（耐久）：超过 40 tick 没上报视为拆掉。
+        boxTick++;
+        var boxIterator = boxes.entrySet().iterator();
+        while (boxIterator.hasNext()) {
+            var entry = boxIterator.next();
+            if (boxTick - entry.getValue().lastSeen() > BOX_STALE_TICKS) {
+                boxIterator.remove();
+            }
+        }
+
+        // 还没改造完的设备走旧的全船统计；全部改造后 consumers 非空，用设备上报值。
+        double legacyDemand = activePumps * PUMP_POWER + engineDemand;
+        double demand = (consumers.isEmpty() ? legacyDemand : consumerDemand)
+                // 声纳/导航台是船核心，没有独立设备实体上报，按数量固定计 100 kW。
                 + machines.sonar() * SONAR_POWER
-                + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER)
-                + engineDemand;
+                + machines.oxygen() * O2_POWER
+                + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER);
         // 硬核：没堆 / 没开机 / 输出为 0 → 全船没电，推进和泵都停。
         boolean hasReactor = reactorCapacity > 0.0D;
-        double ratio = !hasReactor || reactorOutput <= 0.0D ? 0.0D
-                : demand <= 0.0D ? 1.0D : Math.min(1.0D, reactorOutput / demand);
+        lastSupply = reactorOutput;
+        lastVoltage = hasReactor || reactorOutput > 0.0D
+                ? PowerGrid.voltage(reactorOutput, demand) : 0.0D;
         lastOutput = reactorOutput;
         lastDemand = demand;
-        lastRatio = ratio;
+        // 兼容旧代码：0..1 的“够不够电”，过压部分由 lastVoltage 单独表达。
+        lastRatio = Math.min(1.0D, lastVoltage);
+        double ratio = lastRatio;
 
         // 制氧：按舱室体积分配
         int totalVolume = 0;
@@ -644,6 +711,12 @@ public final class ShipSimulation {
         return body >= 0 && bodyWater(body) >= UNITS_PER_BLOCK * 0.05D;
     }
 
+    /** 水体当前进水比例（0..1）：自动化门/泵用。 */
+    public double bodyWaterFraction(int body) {
+        double capacity = bodyCapacity(body);
+        return capacity <= 0.0D ? 0.0D : Math.min(1.0D, bodyWater(body) / capacity);
+    }
+
     /**
      * 开着的门按限速把高水位一侧的水挪到低水位一侧。
      *
@@ -941,6 +1014,90 @@ public final class ShipSimulation {
     public double powerRatio() {
         return lastRatio;
     }
+
+    /** 原版电压：总供电 / 总负载，不封顶 1；0 = 没电，>1 = 富余，>1.7 = 过压。 */
+    public double voltage() {
+        return lastVoltage;
+    }
+
+    /** 上一 tick 的全船供电（kW）。 */
+    public double supplyKw() {
+        return lastSupply;
+    }
+
+    /** 设备每 tick 上报自己的电网需求；{@code box == null} 表示挂在默认总线上。 */
+    public void reportConsumer(net.minecraft.core.BlockPos cell, double demandKw,
+                               double minVoltage, net.minecraft.core.BlockPos box) {
+        if (cell == null) {
+            return;
+        }
+        consumers.put(cell.immutable(), new ConsumerReport(
+                Math.max(0.0D, demandKw), Math.max(0.0D, minVoltage),
+                box == null ? null : box.immutable(), consumerTick));
+    }
+
+    /** 接线盒每 tick 上报耐久。 */
+    public void reportJunctionBox(net.minecraft.core.BlockPos cell, double condition) {
+        if (cell == null) {
+            return;
+        }
+        boxes.put(cell.immutable(), new BoxReport(
+                Math.max(0.0D, Math.min(100.0D, condition)), boxTick));
+    }
+
+    /**
+     * 某个设备实际拿到的电压。
+     *
+     * <p>绑定的接线盒坏了（耐久 0 / 没上报）→ 0；否则用全船电压。没绑盒子（旧船）
+     * 也走全船默认总线，保证现有存档能继续开。</p>
+     */
+    public double consumerVoltage(net.minecraft.core.BlockPos cell) {
+        ConsumerReport report = cell == null ? null : consumers.get(cell);
+        if (report != null && report.box() != null) {
+            BoxReport box = boxes.get(report.box());
+            if (box == null || box.condition() <= 0.0D) {
+                return 0.0D;
+            }
+        }
+        return lastVoltage;
+    }
+
+    /** 某个接线盒上绑定的设备总负载（kW）。 */
+    public double boxLoad(net.minecraft.core.BlockPos box) {
+        if (box == null) {
+            return 0.0D;
+        }
+        double load = 0.0D;
+        for (ConsumerReport report : consumers.values()) {
+            if (box.equals(report.box())) {
+                load += report.demandKw();
+            }
+        }
+        return load;
+    }
+
+    /** 某个接线盒当前耐久（0..100）；没上报返回 0。 */
+    public double boxCondition(net.minecraft.core.BlockPos box) {
+        BoxReport report = box == null ? null : boxes.get(box);
+        return report == null ? 0.0D : report.condition();
+    }
+
+    /** 当前登记的所有用电设备（电力面板用）。 */
+    public java.util.List<ConsumerInfo> consumerInfos() {
+        java.util.List<ConsumerInfo> result = new java.util.ArrayList<>(consumers.size());
+        for (var entry : consumers.entrySet()) {
+            ConsumerReport report = entry.getValue();
+            result.add(new ConsumerInfo(entry.getKey(), report.demandKw(),
+                    report.minVoltage(), report.box()));
+        }
+        return result;
+    }
+
+    /** 当前登记的所有接线盒位置（电力面板用）。 */
+    public java.util.Set<net.minecraft.core.BlockPos> junctionBoxes() {
+        return java.util.Set.copyOf(boxes.keySet());
+    }
+
 
     /** 当前登记的反应堆数量（诊断/测试用）。 */
     public int reactorCount() {

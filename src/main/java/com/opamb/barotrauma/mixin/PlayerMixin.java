@@ -19,6 +19,7 @@ public abstract class PlayerMixin implements DivingSuitState {
     @Inject(method = "defineSynchedData", at = @At("TAIL"))
     private void barotrauma$defineDivingSuit(CallbackInfo ci) {
         ((Player) (Object) this).getEntityData().define(DivingSuitState.DATA_WEARING, false);
+        ((Player) (Object) this).getEntityData().define(DivingSuitState.DATA_WEARING_GLASS, false);
     }
 
     @Override
@@ -29,5 +30,15 @@ public abstract class PlayerMixin implements DivingSuitState {
     @Override
     public void barotrauma$setWearingDivingSuit(boolean wearing) {
         ((Player) (Object) this).getEntityData().set(DivingSuitState.DATA_WEARING, wearing);
+    }
+
+    @Override
+    public boolean barotrauma$wearingGlassDivingSuit() {
+        return ((Player) (Object) this).getEntityData().get(DivingSuitState.DATA_WEARING_GLASS);
+    }
+
+    @Override
+    public void barotrauma$setWearingGlassDivingSuit(boolean wearing) {
+        ((Player) (Object) this).getEntityData().set(DivingSuitState.DATA_WEARING_GLASS, wearing);
     }
 }

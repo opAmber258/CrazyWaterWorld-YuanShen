@@ -25,6 +25,13 @@ public abstract class PlayerSneakEdgeMixin {
     private void barotrauma$noSneakEdgeGuardInWater(CallbackInfoReturnable<Boolean> cir) {
         Player self = (Player) (Object) this;
         net.minecraft.world.phys.Vec3 sample = self.position().add(0.0D, 0.4D, 0.0D);
+        // 物理船舱室里也关掉：VS2 方块对 level.noCollision 不可见，原版防掉边
+        // 会把整个舱室当成悬崖。干舱里按 Shift 移动会被挤开、甚至被挤穿船壳
+        // （用户实测：小水泵上 Shift+移动，有概率挤出舱壁）。
+        if (OceanEnvironment.isInsideShipCompartment(self.level(), sample)) {
+            cir.setReturnValue(false);
+            return;
+        }
         // 服务端也会走 Entity#move → maybeBackOffFromEdge，而服务端的 isSubmerged 读不到
         // 方块船的舱内水面（那要查船核心），干舱会被当成水下。这里按 UnderwaterSurvival
         // 的同一套判定先把方块船干舱排除掉，避免服务端和客户端对潜行防掉边不一致。

@@ -185,6 +185,14 @@ public final class MissionSavedData extends SavedData {
      *
      * @return 这次实际新挂出去的任务 id
      */
+    /** 发放时按"大类"轮换：普通货运和紧急货运算同一类。 */
+    private static String groupOf(MissionType type) {
+        return switch (type) {
+            case DELIVERY, URGENT_DELIVERY -> "CARGO";
+            default -> type.name();
+        };
+    }
+
     public List<Integer> grantBatch(int node, List<Integer> destinations, int limit) {
         if (destinations == null || destinations.isEmpty() || limit <= 0) {
             return List.of();
@@ -202,10 +210,43 @@ public final class MissionSavedData extends SavedData {
             }
         }
         candidates.sort(java.util.Comparator.comparingInt(mission -> mission.id));
-        List<Integer> out = new ArrayList<>();
+        // 按任务大类轮流取（货运/打捞/采矿各一条），否则按 id 排序会永远先发货运，
+        // 站务员看起来就"只有那三个运货任务"。普通货运和紧急货运算同一类；
+        // 起始大类按站点轮换，不同站点的报价顺序不完全一样。
+        java.util.Map<String, java.util.ArrayDeque<Mission>> byType = new LinkedHashMap<>();
         for (Mission mission : candidates) {
-            if (out.size() >= limit) {
+            byType.computeIfAbsent(groupOf(mission.type), key -> new java.util.ArrayDeque<>())
+                    .add(mission);
+        }
+        List<Mission> ordered = new ArrayList<>();
+        List<String> types = new ArrayList<>(byType.keySet());
+        if (!types.isEmpty()) {
+            int start = Math.floorMod(node, types.size());
+            for (int i = 0; i < types.size() && ordered.size() < limit; i++) {
+                ordered.add(byType.get(types.get((start + i) % types.size())).poll());
+            }
+        }
+        // 类型不够（例如某类已经被接走）就按类型顺序补足。
+        while (ordered.size() < limit) {
+            boolean added = false;
+            for (java.util.ArrayDeque<Mission> queue : byType.values()) {
+                if (ordered.size() >= limit) {
+                    break;
+                }
+                Mission next = queue.poll();
+                if (next != null) {
+                    ordered.add(next);
+                    added = true;
+                }
+            }
+            if (!added) {
                 break;
+            }
+        }
+        List<Integer> out = new ArrayList<>();
+        for (Mission mission : ordered) {
+            if (mission == null || out.size() >= limit) {
+                continue;
             }
             if (mission.state() == Mission.State.DONE) {
                 mission.resetForRegrant();

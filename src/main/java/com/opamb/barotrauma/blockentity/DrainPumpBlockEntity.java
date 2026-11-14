@@ -1,6 +1,8 @@
 package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.PowerConsumer;
+import com.opamb.barotrauma.ship.PowerGrid;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -28,7 +30,7 @@ import org.jetbrains.annotations.Nullable;
  * <p>船状态解析：物理船激活时用 {@link VsState#activeState()}（方块在船坞里，
  * 找不到正常的核心）；方块船只找 32 格内的船核心。找不到船就空转。</p>
  */
-public class DrainPumpBlockEntity extends BlockEntity {
+public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
 
     /**
      * 普通泵满流量（单位/秒）：1 格 = 100 单位。
@@ -57,6 +59,9 @@ public class DrainPumpBlockEntity extends BlockEntity {
     private int flow = -100;
     /** 自动控制的当前判定结果（服务端每 tick 更新，供菜单显示）。 */
     private boolean autoWet;
+    /** 绑定的接线盒（装配/世界坐标）；null = 直接挂全船默认总线。 */
+    @Nullable
+    private BlockPos boundBox;
 
     public DrainPumpBlockEntity(BlockPos pos, BlockState state) {
         this(ModBlockEntities.DRAIN_PUMP.get(), pos, state);
@@ -110,6 +115,34 @@ public class DrainPumpBlockEntity extends BlockEntity {
         return getBlockState().is(com.opamb.barotrauma.registry.ModBlocks.SMALL_PUMP.get());
     }
 
+    /** 原版额定功率：普通泵 300 kW，小泵 60 kW。 */
+    public double powerKw() {
+        return small() ? 60.0D : 300.0D;
+    }
+
+    @Override
+    public double powerDemandKw() {
+        // 原作 Pump.GetCurrentPowerConsumption：按流量百分比缩放，停机不吃电。
+        return powerKw() * Math.abs(effectiveFlow()) / 100.0D;
+    }
+
+    @Override
+    public double minVoltage() {
+        return 0.3D;
+    }
+
+    @Override
+    @Nullable
+    public BlockPos powerBox() {
+        return boundBox;
+    }
+
+    @Override
+    public void setPowerBox(@Nullable BlockPos box) {
+        this.boundBox = box == null ? null : box.immutable();
+        setChanged();
+    }
+
     public void setAuto(boolean auto) {
         this.auto = auto;
         setChanged();
@@ -148,10 +181,13 @@ public class DrainPumpBlockEntity extends BlockEntity {
             // 用 bodyIsWet（水量 > 0.05 格）判断，自动泵才会真的在水进舱时启动。
             be.autoWet = ship.simulation().bodyIsWet(body);
         }
-        // 硬核供电：实际流量按全船供电比例缩放；请求值单独上报，负载按请求值算。
+        // 硬核供电：实际流量按设备拿到的电压缩放（原作 Pump.Update 用 min(Voltage, 2)）；
+        // 请求值单独上报，负载按请求流量算。
         double requested = be.signedRate(state);
-        double ratio = ship.simulation().powerRatio();
-        ship.simulation().reportPump(cell, requested * ratio, be.ballast(), requested,
+        ship.simulation().reportConsumer(cell, be.powerDemandKw(), be.minVoltage(), be.boundBox);
+        double voltage = ship.simulation().consumerVoltage(cell);
+        double factor = PowerGrid.effectiveFactor(voltage);
+        ship.simulation().reportPump(cell, requested * factor, be.ballast(), requested,
                 be.keepBelowDoor(), be.ballastTarget());
     }
 
@@ -202,6 +238,9 @@ public class DrainPumpBlockEntity extends BlockEntity {
         super.saveAdditional(tag);
         tag.putBoolean("PumpAuto", auto);
         tag.putInt("PumpFlow", flow);
+        if (boundBox != null) {
+            tag.putLong("PowerBox", boundBox.asLong());
+        }
     }
 
     @Override
@@ -215,6 +254,7 @@ public class DrainPumpBlockEntity extends BlockEntity {
                 maxFlow(getBlockState()));
         auto = migrated[0] != 0;
         flow = migrated[1];
+        boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
     }
 
     /**

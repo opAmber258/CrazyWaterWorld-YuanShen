@@ -3,9 +3,12 @@ package com.opamb.barotrauma.mission;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.data.MissionSavedData;
 import com.opamb.barotrauma.registry.ModItems;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -83,6 +86,9 @@ public final class MissionProgress {
                     case RECON -> player.blockPosition().distSqr(mission.target)
                             <= (double) mission.radius * mission.radius;
                     case SALVAGE -> countWithBag(player, ModItems.BLACK_BOX.get().asItem()) > 0;
+                    // 采矿：背包里（含装备背包）采够指定矿物就 READY，靠泊后结算。
+                    case MINERAL -> mission.mineralCount() > 0
+                            && countMineral(player, mission.mineralItem()) >= mission.mineralCount();
                     // 货运不在途中判定，靠泊时自动结算（CampaignManager.settleArrival）。
                     case DELIVERY, URGENT_DELIVERY -> false;
                 };
@@ -90,7 +96,7 @@ public final class MissionProgress {
                     data.markReady(mission);
                     player.displayClientMessage(net.minecraft.network.chat.Component.literal(
                             "任务 #" + mission.id + " 目标达成！靠泊目的站后自动结算（"
-                                    + mission.reward + " mk）"), false);
+                                    + mission.reward + " 马克）"), false);
                     changed = true;
                 }
             }
@@ -110,5 +116,90 @@ public final class MissionProgress {
             }
         }
         return count;
+    }
+
+    /** 采矿任务：只数"从矿脉里采出来的"矿物（创造模式拿的同种矿物不算）。 */
+    public static int countMineral(ServerPlayer player, String itemId) {
+        Item item = itemById(itemId);
+        if (item == null) {
+            return 0;
+        }
+        int count = countMined(player.getInventory().items, item);
+        count += countMined(player.getInventory().offhand, item);
+        for (ItemStack stack : com.opamb.barotrauma.equipment.BagManager.contents(player)) {
+            if (stack.is(item) && com.opamb.barotrauma.block.MineralVeinBlock.isMined(stack)) {
+                count += stack.getCount();
+            }
+        }
+        return count;
+    }
+
+    private static int countMined(java.util.List<ItemStack> stacks, Item item) {
+        int count = 0;
+        for (ItemStack stack : stacks) {
+            if (stack.is(item) && com.opamb.barotrauma.block.MineralVeinBlock.isMined(stack)) {
+                count += stack.getCount();
+            }
+        }
+        return count;
+    }
+
+    /** 结算时从背包/装备背包里扣掉采出来的矿物；返回实际扣掉的数量。 */
+    public static int consumeMineral(ServerPlayer player, String itemId, int amount) {
+        Item item = itemById(itemId);
+        if (item == null || amount <= 0) {
+            return 0;
+        }
+        int remaining = amount;
+        remaining -= shrinkMined(player.getInventory().items, item, remaining);
+        remaining -= shrinkMined(player.getInventory().offhand, item, remaining);
+        if (remaining > 0) {
+            for (ItemStack stack : com.opamb.barotrauma.equipment.BagManager.contents(player)) {
+                if (remaining <= 0) {
+                    break;
+                }
+                if (stack.is(item) && com.opamb.barotrauma.block.MineralVeinBlock.isMined(stack)) {
+                    int take = Math.min(remaining, stack.getCount());
+                    stack.shrink(take);
+                    remaining -= take;
+                }
+            }
+            com.opamb.barotrauma.equipment.BagManager.commit(player);
+        }
+        return amount - remaining;
+    }
+
+    private static int shrinkMined(java.util.List<ItemStack> stacks, Item item, int amount) {
+        int taken = 0;
+        for (ItemStack stack : stacks) {
+            if (taken >= amount) {
+                break;
+            }
+            if (stack.is(item) && com.opamb.barotrauma.block.MineralVeinBlock.isMined(stack)) {
+                int take = Math.min(amount - taken, stack.getCount());
+                stack.shrink(take);
+                taken += take;
+            }
+        }
+        return taken;
+    }
+
+    private static Item itemById(String itemId) {
+        ResourceLocation id = ResourceLocation.tryParse(itemId == null ? "" : itemId);
+        return id == null ? null : BuiltInRegistries.ITEM.get(id);
+    }
+
+    /** 矿物显示名（服务端聊天消息用；服务端语言固定 en_us，所以这三种直接写中文）。 */
+    public static String mineralName(String itemId) {
+        String id = itemId == null ? "" : itemId;
+        return switch (id) {
+            case "barotrauma:quartz" -> "石英";
+            case "barotrauma:pyromorphite" -> "磷氯铅矿";
+            case "barotrauma:uraniumore" -> "铀矿";
+            default -> {
+                Item item = itemById(id);
+                yield item == null ? id : item.getDescription().getString();
+            }
+        };
     }
 }

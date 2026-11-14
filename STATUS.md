@@ -3,12 +3,57 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-11（装备/背包/潜水服氧气重做 + 缺氧改医疗系统，见下方最新一节；
-> 已提交 `8679e0c`，未推送）。
+> 上次更新：2026-11-15（哨站服务 + 关卡洞窟网络 + 电力/采矿/装备批次，PR 待审；
+> 本地 `main` 仍在 `77009a7`，`origin/main` 已多 3 个美术提交，**还没 pull**）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
 > ⚠️ 2026-11-04 那条"按 Shift 不沉 = 人站在舱底，非代码问题"的定性**是错的**，
 > 已在 §10.57.1 纠正：是原版潜行边缘保护在 VS2 船上把水平位移清零。
+
+## 2026-11-15 哨站服务 + 关卡洞窟网络 + 电力/采矿/装备（PR 待审）
+
+> **交接摘要：新会话从这一节开始读。** 这批是工作区累积的未提交改动，已一次性提交到
+> `feat/outpost-batch-20261115` 并开 PR 等 CodeRabbit 审核；**没有合并、没有导出 jar**。
+> 本地 `main` 仍停在 `77009a7`；`origin/main` 已多 3 个美术提交（`8d4843e` 等），
+> **本地还没 pull**，PR 合并后要用户明确授权再 pull。
+
+### 1. 哨站服务（本轮重点，细节见 `docs/OUTPOST_SERVICES.md`）
+- 商人/医生/站务员三个独立 NPC（`NpcEntity` 角色 `mission/merchant/doctor`），各自独立界面，
+  不共用任务终端标签页；每站自动补齐，旧存档进站迁移。
+- 商店：`StoreCatalog` + `StationStoreSavedData` + `StorePricing`；真实库存、商人余额 5000、
+  ±5% 价格修正、每次到访补货、卖价 30%、只收主背包耐久 ≥90% 且无内容物。
+- 三个标签页（原作 `StoreTab`）：购买 / 出售 / 潜艇（`SellSub` 扫船上 `CabinetBlockEntity`，
+  排除任务货箱/装东西的箱子/耐久 <90%）。
+- 购买确认两个交付选项（原作 `Store.cs` + `CampaignMode.AllowImmediateItemDelivery`）：
+  「立即获得」进角色背包；「送至潜艇」写入 `StoreDeliverySavedData`，起航时由
+  `StoreService.deliverPending` 在 VS2 装配前送进船上钢柜/货架，放不下的留待下次起航。
+- 医疗诊所：`ClinicPricing` 按原作 `BaseHealCost + Strength × Multiplier`（出血 2.5、
+  烧伤 2.25、缺氧 0.5、失血 1.5、阿片中毒 1.25、成瘾 2.85、辐射 4.0），
+  `MedicalClinicService` 治疗并刷新 HUD。
+- NPC 皮肤：站务员按站点散列 `opamber/hanxing/tenbaku`（opamber 用 slim，另两张 classic），
+  商人/医生默认史蒂夫 classic。
+- 网络协议 13；修复「已购买空气」（`Inventory.add` 会吃掉传入 stack，先取名字再 add）。
+
+### 2. 关卡地形
+- `RoutePath` 大洞窟网络：主航道随机上下 + 左右游走，侧隧道可再挂侧隧道，洞室；
+  `distanceToNetwork` 统一影响地形/净空/矿脉。
+- `LevelType/LevelParams/LevelSelector`：tutorial/basic/advanced/maze/outpost，按目的深度 +
+  出航数选；`RoundState` 持久化 levelType/seed/difficulty/distance。
+- 洞宽 330–600、高 330–560；路线按类型 518/700/1500/1300；`SPACING` 2048；声纳 248；
+  外圈岩柱/钟乳石/浮岩岛；Voronoi 细胞壁已删。
+
+### 3. 电力 / 采矿 / 装备
+- 电力：`PowerGrid`/`PowerConsumer`/`PowerStatePacket`/`PowerBindPacket`/
+  `PowerOpenRequestPacket`/`PowerPanelState`，接线盒方块/GeckoLib 模型/GUI，螺丝刀。
+- 采矿：`MineralVeins` 沿航线生成、石英/磷氯铅矿/铀矿脉方块、等离子切割机（烧氧气瓶）、
+  采矿任务。
+- 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
+
+### 4. 验证 / 未做
+- `./gradlew compileJava test --offline`：**272 项测试 0 失败（47 个测试类）**。
+- 客户端本轮未起（用户要求等通知）；实机验收待用户。
+- 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
+  任务/沉船/怪物等 P0 缺口。
 
 ## 2026-11-11 装备/背包/潜水服氧气重做（已提交 8679e0c）
 

@@ -250,8 +250,10 @@ public final class VsThruster implements ShipPhysicsListener {
             return;
         }
         double throttle = power / 100.0D;
-        // 原作 MinVoltage=0.5：低于 0.5 引擎完全停；0.5..1 之间推力按 Voltage^(2/3) 衰减。
-        double supplyFactor = supply < 0.5D ? 0.0D : Math.pow(Math.min(supply, 1.0D), 2.0D / 3.0D);
+        // 原作 Engine.Update：MinVoltage=0.5，低于 0.5 引擎完全停；
+        // 推力系数用 min(Voltage, 2)^(2/3)，电压富余可以小幅超推。
+        double supplyFactor = supply < 0.5D ? 0.0D
+                : Math.pow(Math.min(supply, 2.0D), 2.0D / 3.0D);
         // 没有引擎就没有推力；多台引擎线性叠加，最多按 8 台封顶。
         double engineFactor = Math.min(8, Math.max(0, engineCount));
         double engineBoost = engineMultiplier;
