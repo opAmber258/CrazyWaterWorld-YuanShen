@@ -9,6 +9,9 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 船核心的查找 / 重扫辅助。
  */
@@ -32,17 +35,16 @@ public final class ShipCores {
     }
 
     /**
-     * 找离 {@code center} 最近的船核心。
+     * 列出 {@code center} 附近（已加载区块内）的所有船核心。
      *
      * <p>不逐格查方块（那要几十万次），而是直接翻已加载区块的方块实体表——核心很少，
      * 一次几分钟区块的遍历就够了。</p>
      */
-    @Nullable
-    public static ShipCoreBlockEntity nearestCore(Level level, BlockPos center, double maxDistance) {
+    public static List<ShipCoreBlockEntity> coresNear(Level level, BlockPos center, double maxDistance) {
         int chunkRadius = Math.max(1, (int) Math.ceil(maxDistance / 16.0D));
         ChunkPos origin = new ChunkPos(center);
-        ShipCoreBlockEntity best = null;
-        double bestDistance = maxDistance * maxDistance;
+        double limit = maxDistance * maxDistance;
+        List<ShipCoreBlockEntity> cores = new ArrayList<>();
         for (int dx = -chunkRadius; dx <= chunkRadius; dx++) {
             for (int dz = -chunkRadius; dz <= chunkRadius; dz++) {
                 ChunkAccess chunk = level.getChunkSource()
@@ -52,14 +54,28 @@ public final class ShipCores {
                 }
                 for (BlockPos bePos : chunk.getBlockEntitiesPos()) {
                     BlockEntity be = chunk.getBlockEntity(bePos);
-                    if (be instanceof ShipCoreBlockEntity core) {
-                        double distance = core.getBlockPos().distSqr(center);
-                        if (distance <= bestDistance) {
-                            bestDistance = distance;
-                            best = core;
-                        }
+                    if (be instanceof ShipCoreBlockEntity core
+                            && core.getBlockPos().distSqr(center) <= limit) {
+                        cores.add(core);
                     }
                 }
+            }
+        }
+        return cores;
+    }
+
+    /**
+     * 找离 {@code center} 最近的船核心。
+     */
+    @Nullable
+    public static ShipCoreBlockEntity nearestCore(Level level, BlockPos center, double maxDistance) {
+        ShipCoreBlockEntity best = null;
+        double bestDistance = maxDistance * maxDistance;
+        for (ShipCoreBlockEntity core : coresNear(level, center, maxDistance)) {
+            double distance = core.getBlockPos().distSqr(center);
+            if (distance <= bestDistance) {
+                bestDistance = distance;
+                best = core;
             }
         }
         return best;

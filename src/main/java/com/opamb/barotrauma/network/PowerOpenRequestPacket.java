@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.network;
 
+import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
@@ -65,10 +66,24 @@ public record PowerOpenRequestPacket() {
                 }
             }
 
-            var core = ShipCores.nearestCore(level, player.blockPosition(), CORE_SEARCH);
-            if (core != null) {
+            // 方块船：搜索范围内每艘船都要看，不能只认最近的核心——
+            // 近处的船可能没有接线盒，远处那艘的盒子反而更近。
+            for (ShipCoreBlockEntity core : ShipCores.coresNear(
+                    level, player.blockPosition(), CORE_SEARCH)) {
+                if (VsState.isPhysical(level, core.getBlockPos())
+                        || VsPilot.isYardBlock(core.getBlockPos())) {
+                    // 已装配成物理船：接线盒坐标是装配坐标，由上面的分支处理。
+                    // yardOffset 已换算但 probe 还没就绪时 isPhysical 可能为 false，
+                    // 所以再用船坞包围盒兜一层。
+                    continue;
+                }
+                // 方块船的 state 不随存档保存，重载后要等 rescan 才有。
+                ShipState blockShip = core.state() != null ? core.state() : core.rescan(level);
+                if (blockShip == null) {
+                    continue;
+                }
                 hadShip = true;
-                for (BlockPos cell : core.state().simulation().junctionBoxes()) {
+                for (BlockPos cell : blockShip.simulation().junctionBoxes()) {
                     if (!level.hasChunkAt(cell)) {
                         continue;
                     }
