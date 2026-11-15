@@ -1,0 +1,31 @@
+{
+  "blockbench_version": "5.2.2",
+  "reopened_project_geometry_match": true,
+  "reopened_project_animation_match": true,
+  "geo_import_reexport_match": true,
+  "animation_import_reexport_match": true,
+  "imported_cubes": 200,
+  "imported_bones": 35,
+  "imported_clips": [
+    "animation.engine.running",
+    "animation.engine.rotor_spin",
+    "animation.engine.pistons"
+  ],
+  "bbox": {
+    "min": [
+      -43.30000002384186,
+      0,
+      -17.549999237060547
+    ],
+    "max": [
+      42.735,
+      43.99999995231629,
+      18.599999952316285
+    ],
+    "size": [
+      86.03500002384186,
+      43.99999995231629,
+      36.14999918937683
+    ]
+  }
+}

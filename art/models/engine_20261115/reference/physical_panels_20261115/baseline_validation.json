@@ -1,0 +1,211 @@
+{
+  "asset": "引擎 Engine",
+  "identifier": "geometry.engine",
+  "display_name_zh": "引擎",
+  "display_name_en": "Engine",
+  "date": "2026-11-15",
+  "creation_source": "人工 + AI（TakaraMiyuki + Codex / GPT-6）",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6 (Codex)",
+        "tool": "Blockbench 5.2.2 / MCP / Python / Pillow",
+        "role": "在手改贴图的底色区域增补检修板等纹理，刷新原生预览与验证"
+      }
+    ],
+    "division": "人工完成当前 180-cube 几何、UV 重排与贴图修改；本轮 AI 不改变几何、UV、骨骼或动画。"
+  },
+  "status": "complete local texture pass; awaiting user visual review",
+  "baseline": {
+    "directory": "reference/texture_detail_pass_20261115",
+    "model_sha256": "91b20227ba0f237807695c62c316653d2ee51bf90bdde78b8acdff58edb792ea",
+    "texture_sha256": "8d9240d1fb008533cc11b4f7b96ccf2eee0fa25fa6b4fe3866a823800274fd57"
+  },
+  "metrics": {
+    "cubes": 180,
+    "bones": 18,
+    "declared_faces": 1080,
+    "transformed_bbox": {
+      "min": [
+        -43.30000002384186,
+        0,
+        -17.549999237060547
+      ],
+      "max": [
+        42.20000391508465,
+        43.99999995231629,
+        18.599999952316285
+      ],
+      "size": [
+        85.50000393892651,
+        43.99999995231629,
+        36.14999918937683
+      ]
+    },
+    "size_blocks": [
+      5.343750246182907,
+      2.749999997019768,
+      2.2593749493360518
+    ],
+    "logical_uv_size": [
+      256,
+      256
+    ],
+    "physical_png_size": [
+      512,
+      512
+    ],
+    "modified_faces": 25,
+    "modified_pixels": 2446
+  },
+  "native_roundtrip": {
+    "blockbench_version": "5.2.2",
+    "reopened_project_geometry_match": true,
+    "reopened_project_animation_match": true,
+    "geo_import_reexport_match": true,
+    "animation_import_reexport_match": true,
+    "imported_cubes": 180,
+    "imported_bones": 18,
+    "imported_clips": [
+      "animation.engine.rotor_spin",
+      "animation.engine.pistons",
+      "animation.engine.running"
+    ],
+    "bbox": {
+      "min": [
+        -43.30000002384186,
+        0,
+        -17.549999237060547
+      ],
+      "max": [
+        42.20000391508465,
+        43.99999995231629,
+        18.599999952316285
+      ],
+      "size": [
+        85.50000393892651,
+        43.99999995231629,
+        36.14999918937683
+      ]
+    }
+  },
+  "preservation": {
+    "geometry_uv_groups_and_animations_unchanged": true,
+    "unchanged_cube_count": 180,
+    "pixels_outside_registered_regions_preserved": true,
+    "original_non_base_user_strokes_preserved": true
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        188,
+        1109,
+        712
+      ],
+      "projection": "orthographic"
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        188,
+        1109,
+        712
+      ],
+      "projection": "orthographic"
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        286,
+        68,
+        914,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        121,
+        192,
+        980,
+        781
+      ],
+      "projection": "perspective"
+    },
+    "running": {
+      "size": [
+        960,
+        720
+      ],
+      "frames": 60,
+      "duration_ms": 2400,
+      "loop": true
+    },
+    "rotor": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 20,
+      "duration_ms": 800,
+      "loop": true
+    },
+    "pistons": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 30,
+      "duration_ms": 1200,
+      "loop": true
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "files_sha256": {
+    "engine.bbmodel": "f64b223ff422917fbbbf39f5e444933a0c06a0204eaeba5b04c44aacbca9a6c4",
+    "engine.geo.json": "81551af6fddd05254081ed99b38429342bfacdfe5f23f01e420b29bd4fa6b3fb",
+    "engine.animation.json": "87d0312846254d0ff795108c4e7aa82a01d575e20d387a19a48447064566be1c",
+    "engine_tex.png": "71ae2ea93b4b624b6b1752363b6974c9ee2dceaacb24dba0c6c0fdcd679edfa5",
+    "preview_front.png": "558f5fdc2c429cc815ee2ad9901d0c7071ff9d5c9a73895e51ef31ea8b39f342",
+    "preview_back.png": "59a0f29663c5dd7c1e81aa534f89649b1aefd72584802720db1e00f1c738007b",
+    "preview_side.png": "a9d26b3bbc9730a2efb0ebb2fc868c432d4a0003ddbf75d8e2f7d9ef0d536c60",
+    "preview_oblique.png": "c0f146743507dfd7ca40ba7a2742fe8427123dc226344e626dd277f3141714e5",
+    "preview_running.gif": "05b0a267ab5c8c01500e266714a56b04ccf4daa5ae7e82e77ec553f91e943231",
+    "preview_rotor.gif": "5f8cbd0df65f1970383c5791aed7ab5742060090e9c99e240b53a09ca67b948d",
+    "preview_pistons.gif": "e57475b9829c99a2b7bce875a2c74f5b74f11878af8f58544813908385328141",
+    "README.md": "d23958e5150e2d838219f14a24d102062500940d85739630a0d01a6798600082",
+    "structure_audit.json": "0a17e1e6baa255bcb91f0506bd84f3c0b49d11e98e3a22aaf72ab11449e3fc1b"
+  },
+  "runtime_verified": false,
+  "not_tested": [
+    "Minecraft / GeckoLib runtime rendering and animation playback",
+    "collision, placement, propulsion and interactions",
+    "lighting and performance"
+  ],
+  "publishing": {
+    "committed": false,
+    "pushed": false,
+    "discussion_updated": false
+  },
+  "boundary": "已在 Blockbench 检查并完成导出，未进入 Minecraft 验证。"
+}

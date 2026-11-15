@@ -1,0 +1,167 @@
+{
+  "stage": "physical inspection covers and fasteners",
+  "errors": [],
+  "warnings": [],
+  "cubes": 428,
+  "bones": 37,
+  "declared_faces": 2568,
+  "unchanged_cube_count": 180,
+  "unchanged_original_bones": 18,
+  "original_uv_and_animation_preserved": true,
+  "new_cover_assemblies": 17,
+  "new_cover_cubes": 20,
+  "existing_covers_reused": 2,
+  "independent_fasteners": 76,
+  "fastener_cubes": 228,
+  "logical_uv_size": [
+    256,
+    256
+  ],
+  "physical_png_size": [
+    512,
+    512
+  ],
+  "texture_cleanup_pixels": 1933,
+  "transformed_bbox": {
+    "min": [
+      -43.30000002384186,
+      0,
+      -17.549999237060547
+    ],
+    "max": [
+      43.150000000596044,
+      43.99999995231629,
+      18.599999952316285
+    ],
+    "size": [
+      86.45000002443791,
+      43.99999995231629,
+      36.14999918937683
+    ]
+  },
+  "size_blocks": [
+    5.4031250015273695,
+    2.749999997019768,
+    2.2593749493360518
+  ],
+  "native_roundtrip": {
+    "blockbench_version": "5.2.2",
+    "reopened_project_geometry_match": true,
+    "reopened_project_animation_match": true,
+    "geo_import_reexport_match": true,
+    "animation_import_reexport_match": true,
+    "imported_cubes": 428,
+    "imported_bones": 37,
+    "imported_clips": [
+      "animation.engine.rotor_spin",
+      "animation.engine.pistons",
+      "animation.engine.running"
+    ],
+    "bbox": {
+      "min": [
+        -43.30000002384186,
+        0,
+        -17.549999237060547
+      ],
+      "max": [
+        43.150000000596044,
+        43.99999995231629,
+        18.599999952316285
+      ],
+      "size": [
+        86.45000002443791,
+        43.99999995231629,
+        36.14999918937683
+      ]
+    }
+  },
+  "motion_clearance": {
+    "method": "Native mesh OBB separating-axis tests; 60 samples across the 2.4 second combined loop",
+    "added_static_cubes": 248,
+    "moving_original_cubes": 37,
+    "tested_pairs": 527496,
+    "intersections": [],
+    "limitation": "Sampled mesh check, not continuous collision or Minecraft validation"
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        191,
+        1109,
+        709
+      ]
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        191,
+        1109,
+        709
+      ]
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        286,
+        68,
+        914,
+        832
+      ]
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        120,
+        195,
+        975,
+        780
+      ]
+    },
+    "running": {
+      "size": [
+        960,
+        720
+      ],
+      "frames": 60,
+      "loop": true
+    },
+    "rotor": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 20,
+      "loop": true
+    },
+    "pistons": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 30,
+      "loop": true
+    }
+  },
+  "notes": [
+    "Original 180 cubes, 18 bone definitions, face UVs, memberships and all three animation clips are unchanged.",
+    "17 new cover assemblies use 20 cubes, including four strips around the shaft opening; two existing rear covers are reused.",
+    "76 fasteners each have one washer and two head halves separated by a real 0.12-BB slot.",
+    "New skin UVs intentionally reuse host face subregions; fasteners share constant-color patches. These overlaps are intentional.",
+    "The user-authored 256 logical UV / 512 physical PNG relationship is preserved."
+  ]
+}

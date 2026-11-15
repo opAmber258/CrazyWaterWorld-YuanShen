@@ -1,0 +1,9566 @@
+{
+  "baseline_sha256": "438b36c931e0bbf4237721d97e7919af68530c7a31ab0581e4e172757a29dc9b",
+  "baseline_cubes": 180,
+  "original_cubes_preserved": true,
+  "original_groups_preserved": true,
+  "original_animations_preserved": true,
+  "new_plate_bodies": 17,
+  "existing_plate_bodies_reused": 2,
+  "independent_fasteners": 76,
+  "slot_is_geometry": true,
+  "added_cubes": 248,
+  "final_cubes": 428,
+  "final_bones": 37,
+  "panels": [
+    {
+      "name": "roof_cover_front",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "source_name": "crown",
+      "face": "up",
+      "pixel_region": [
+        8,
+        7,
+        47,
+        39
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "housing",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "roof_cover_rear",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "source_name": "crown",
+      "face": "up",
+      "pixel_region": [
+        63,
+        7,
+        102,
+        39
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "housing",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right_end_service_cover",
+      "source_uuid": "3c0c265d-3fa0-5469-9e53-a3d7d645cc31",
+      "source_name": "rounded_end",
+      "face": "east",
+      "pixel_region": [
+        7,
+        5,
+        49,
+        31
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "housing",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "right_bevel_cover",
+      "source_uuid": "877d26f6-cffe-5fae-8721-2ed083f3013b",
+      "source_name": "end_continuous_bevel",
+      "face": "up",
+      "pixel_region": [
+        3,
+        8,
+        19,
+        49
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "housing",
+      "source_rotation": [
+        0,
+        0,
+        -54
+      ]
+    },
+    {
+      "name": "left_bevel_cover",
+      "source_uuid": "b2d067a6-ed3f-c148-6e3e-0bdcba13a994",
+      "source_name": "end_continuous_bevel",
+      "face": "up",
+      "pixel_region": [
+        3,
+        8,
+        9,
+        38
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "housing",
+      "source_rotation": [
+        0,
+        0,
+        64
+      ]
+    },
+    {
+      "name": "motor_bearing_service_cover",
+      "source_uuid": "e68f41f2-48dd-535e-bc7a-5b3a1f473467",
+      "source_name": "left_bulkhead",
+      "face": "west",
+      "pixel_region": [
+        6,
+        7,
+        46,
+        52
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 4,
+      "bolts": 4,
+      "parent_bone": "housing",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "underside_cover_left",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "source_name": "lower_casing",
+      "face": "down",
+      "pixel_region": [
+        10,
+        8,
+        53,
+        40
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "housing",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "underside_cover_right",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "source_name": "lower_casing",
+      "face": "down",
+      "pixel_region": [
+        67,
+        8,
+        110,
+        40
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "housing",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "shroud_lower_service_cover",
+      "source_uuid": "f2c5c096-cbb2-5d2e-ac5c-4706ed03f23a",
+      "source_name": "shroud_side_panel",
+      "face": "south",
+      "pixel_region": [
+        3,
+        24,
+        17,
+        37
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "nozzle_segment_cover_0",
+      "source_uuid": "8d57789c-35fe-5c30-bd46-4ba5de12777b",
+      "source_name": "flared_shroud_0",
+      "face": "up",
+      "pixel_region": [
+        2,
+        3,
+        15,
+        21
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "nozzle_segment_cover_1",
+      "source_uuid": "be642482-a660-546f-be3a-2636c7c3e597",
+      "source_name": "flared_shroud_1",
+      "face": "up",
+      "pixel_region": [
+        2,
+        3,
+        15,
+        21
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        45,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "nozzle_segment_cover_2",
+      "source_uuid": "8b968eac-8230-58ab-947f-eeed9c5af067",
+      "source_name": "flared_shroud_2",
+      "face": "up",
+      "pixel_region": [
+        2,
+        3,
+        15,
+        21
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        90,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "nozzle_segment_cover_3",
+      "source_uuid": "e4e8b3bd-0762-53fb-8a31-2e43527cc351",
+      "source_name": "flared_shroud_3",
+      "face": "up",
+      "pixel_region": [
+        2,
+        3,
+        15,
+        21
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        135,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "nozzle_segment_cover_4",
+      "source_uuid": "0701dbcd-5cc0-5ce5-93c8-9289452bea87",
+      "source_name": "flared_shroud_4",
+      "face": "up",
+      "pixel_region": [
+        2,
+        3,
+        15,
+        21
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        180,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "nozzle_segment_cover_5",
+      "source_uuid": "d4f40899-a4ac-5fff-8940-b407647f47db",
+      "source_name": "flared_shroud_5",
+      "face": "up",
+      "pixel_region": [
+        2,
+        3,
+        15,
+        21
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        225,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "nozzle_segment_cover_6",
+      "source_uuid": "c0b63f1a-61dd-5c67-81f2-f59f0fcc6ca4",
+      "source_name": "flared_shroud_6",
+      "face": "up",
+      "pixel_region": [
+        2,
+        3,
+        15,
+        21
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        270,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "nozzle_segment_cover_7",
+      "source_uuid": "404f9ae7-e56c-5ae8-97a5-84a5a65b2ed3",
+      "source_name": "flared_shroud_7",
+      "face": "up",
+      "pixel_region": [
+        2,
+        3,
+        15,
+        21
+      ],
+      "existing_plate_reused": false,
+      "new_plate_cubes": 1,
+      "bolts": 4,
+      "parent_bone": "nozzle",
+      "source_rotation": [
+        315,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rear_access_0_physical_fasteners",
+      "source_uuid": "d140b3a7-8758-5e51-a53f-e0c6e2a4a38f",
+      "source_name": "rear_access_0",
+      "face": "north",
+      "pixel_region": [
+        1,
+        1,
+        42,
+        42
+      ],
+      "existing_plate_reused": true,
+      "new_plate_cubes": 0,
+      "bolts": 4,
+      "parent_bone": "rear_service",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rear_access_1_physical_fasteners",
+      "source_uuid": "866a1303-1093-5dc0-af33-d6bb8e798479",
+      "source_name": "rear_access_1",
+      "face": "north",
+      "pixel_region": [
+        1,
+        1,
+        42,
+        42
+      ],
+      "existing_plate_reused": true,
+      "new_plate_cubes": 0,
+      "bolts": 4,
+      "parent_bone": "rear_service",
+      "source_rotation": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "fasteners": [
+    {
+      "name": "roof_cover_front_bolt_01",
+      "parent_group": "ccbe6834-4f62-583e-8047-204dd4a8462e",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "face": "up",
+      "pixel_position": [
+        11,
+        9.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "roof_cover_front_bolt_02",
+      "parent_group": "ccbe6834-4f62-583e-8047-204dd4a8462e",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "face": "up",
+      "pixel_position": [
+        45,
+        9.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "roof_cover_front_bolt_03",
+      "parent_group": "ccbe6834-4f62-583e-8047-204dd4a8462e",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "face": "up",
+      "pixel_position": [
+        11,
+        37.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "roof_cover_front_bolt_04",
+      "parent_group": "ccbe6834-4f62-583e-8047-204dd4a8462e",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "face": "up",
+      "pixel_position": [
+        45,
+        37.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "roof_cover_rear_bolt_01",
+      "parent_group": "f81491fe-578d-5473-b732-3b9465dbffef",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "face": "up",
+      "pixel_position": [
+        66,
+        9.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "roof_cover_rear_bolt_02",
+      "parent_group": "f81491fe-578d-5473-b732-3b9465dbffef",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "face": "up",
+      "pixel_position": [
+        100,
+        9.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "roof_cover_rear_bolt_03",
+      "parent_group": "f81491fe-578d-5473-b732-3b9465dbffef",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "face": "up",
+      "pixel_position": [
+        66,
+        37.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "roof_cover_rear_bolt_04",
+      "parent_group": "f81491fe-578d-5473-b732-3b9465dbffef",
+      "source_uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "face": "up",
+      "pixel_position": [
+        100,
+        37.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "right_end_service_cover_bolt_01",
+      "parent_group": "fcd10946-c788-5e20-afa7-ee8a0a412dee",
+      "source_uuid": "3c0c265d-3fa0-5469-9e53-a3d7d645cc31",
+      "face": "east",
+      "pixel_position": [
+        10,
+        7.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "right_end_service_cover_bolt_02",
+      "parent_group": "fcd10946-c788-5e20-afa7-ee8a0a412dee",
+      "source_uuid": "3c0c265d-3fa0-5469-9e53-a3d7d645cc31",
+      "face": "east",
+      "pixel_position": [
+        47,
+        7.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "right_end_service_cover_bolt_03",
+      "parent_group": "fcd10946-c788-5e20-afa7-ee8a0a412dee",
+      "source_uuid": "3c0c265d-3fa0-5469-9e53-a3d7d645cc31",
+      "face": "east",
+      "pixel_position": [
+        10,
+        29.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "right_end_service_cover_bolt_04",
+      "parent_group": "fcd10946-c788-5e20-afa7-ee8a0a412dee",
+      "source_uuid": "3c0c265d-3fa0-5469-9e53-a3d7d645cc31",
+      "face": "east",
+      "pixel_position": [
+        47,
+        29.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "right_bevel_cover_bolt_01",
+      "parent_group": "96cf6223-29ac-5cc1-b5dd-e9bfb2520763",
+      "source_uuid": "877d26f6-cffe-5fae-8721-2ed083f3013b",
+      "face": "up",
+      "pixel_position": [
+        6,
+        10.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "right_bevel_cover_bolt_02",
+      "parent_group": "96cf6223-29ac-5cc1-b5dd-e9bfb2520763",
+      "source_uuid": "877d26f6-cffe-5fae-8721-2ed083f3013b",
+      "face": "up",
+      "pixel_position": [
+        17,
+        10.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "right_bevel_cover_bolt_03",
+      "parent_group": "96cf6223-29ac-5cc1-b5dd-e9bfb2520763",
+      "source_uuid": "877d26f6-cffe-5fae-8721-2ed083f3013b",
+      "face": "up",
+      "pixel_position": [
+        6,
+        47.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "right_bevel_cover_bolt_04",
+      "parent_group": "96cf6223-29ac-5cc1-b5dd-e9bfb2520763",
+      "source_uuid": "877d26f6-cffe-5fae-8721-2ed083f3013b",
+      "face": "up",
+      "pixel_position": [
+        17,
+        47.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "left_bevel_cover_bolt_01",
+      "parent_group": "5873a3ea-a1b4-5335-b0fa-74e64df8a6b6",
+      "source_uuid": "b2d067a6-ed3f-c148-6e3e-0bdcba13a994",
+      "face": "up",
+      "pixel_position": [
+        6,
+        10.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "left_bevel_cover_bolt_02",
+      "parent_group": "5873a3ea-a1b4-5335-b0fa-74e64df8a6b6",
+      "source_uuid": "b2d067a6-ed3f-c148-6e3e-0bdcba13a994",
+      "face": "up",
+      "pixel_position": [
+        7,
+        10.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "left_bevel_cover_bolt_03",
+      "parent_group": "5873a3ea-a1b4-5335-b0fa-74e64df8a6b6",
+      "source_uuid": "b2d067a6-ed3f-c148-6e3e-0bdcba13a994",
+      "face": "up",
+      "pixel_position": [
+        6,
+        36.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "left_bevel_cover_bolt_04",
+      "parent_group": "5873a3ea-a1b4-5335-b0fa-74e64df8a6b6",
+      "source_uuid": "b2d067a6-ed3f-c148-6e3e-0bdcba13a994",
+      "face": "up",
+      "pixel_position": [
+        7,
+        36.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "motor_bearing_service_cover_bolt_01",
+      "parent_group": "28564b91-986f-5cbf-ac89-49fad9030766",
+      "source_uuid": "e68f41f2-48dd-535e-bc7a-5b3a1f473467",
+      "face": "west",
+      "pixel_position": [
+        9,
+        9.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "motor_bearing_service_cover_bolt_02",
+      "parent_group": "28564b91-986f-5cbf-ac89-49fad9030766",
+      "source_uuid": "e68f41f2-48dd-535e-bc7a-5b3a1f473467",
+      "face": "west",
+      "pixel_position": [
+        44,
+        9.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "motor_bearing_service_cover_bolt_03",
+      "parent_group": "28564b91-986f-5cbf-ac89-49fad9030766",
+      "source_uuid": "e68f41f2-48dd-535e-bc7a-5b3a1f473467",
+      "face": "west",
+      "pixel_position": [
+        9,
+        50.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "motor_bearing_service_cover_bolt_04",
+      "parent_group": "28564b91-986f-5cbf-ac89-49fad9030766",
+      "source_uuid": "e68f41f2-48dd-535e-bc7a-5b3a1f473467",
+      "face": "west",
+      "pixel_position": [
+        44,
+        50.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "underside_cover_left_bolt_01",
+      "parent_group": "40494c96-4ac8-5318-a837-8abc23923cbe",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "face": "down",
+      "pixel_position": [
+        13,
+        10.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "underside_cover_left_bolt_02",
+      "parent_group": "40494c96-4ac8-5318-a837-8abc23923cbe",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "face": "down",
+      "pixel_position": [
+        51,
+        10.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "underside_cover_left_bolt_03",
+      "parent_group": "40494c96-4ac8-5318-a837-8abc23923cbe",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "face": "down",
+      "pixel_position": [
+        13,
+        38.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "underside_cover_left_bolt_04",
+      "parent_group": "40494c96-4ac8-5318-a837-8abc23923cbe",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "face": "down",
+      "pixel_position": [
+        51,
+        38.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "underside_cover_right_bolt_01",
+      "parent_group": "8d180c4d-9e62-5f7c-bcf0-bb3ba17a7acf",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "face": "down",
+      "pixel_position": [
+        70,
+        10.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "underside_cover_right_bolt_02",
+      "parent_group": "8d180c4d-9e62-5f7c-bcf0-bb3ba17a7acf",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "face": "down",
+      "pixel_position": [
+        108,
+        10.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "underside_cover_right_bolt_03",
+      "parent_group": "8d180c4d-9e62-5f7c-bcf0-bb3ba17a7acf",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "face": "down",
+      "pixel_position": [
+        70,
+        38.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "underside_cover_right_bolt_04",
+      "parent_group": "8d180c4d-9e62-5f7c-bcf0-bb3ba17a7acf",
+      "source_uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "face": "down",
+      "pixel_position": [
+        108,
+        38.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "shroud_lower_service_cover_bolt_01",
+      "parent_group": "10ecb877-66ba-5839-ad5b-1534b25aa495",
+      "source_uuid": "f2c5c096-cbb2-5d2e-ac5c-4706ed03f23a",
+      "face": "south",
+      "pixel_position": [
+        6,
+        26.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "shroud_lower_service_cover_bolt_02",
+      "parent_group": "10ecb877-66ba-5839-ad5b-1534b25aa495",
+      "source_uuid": "f2c5c096-cbb2-5d2e-ac5c-4706ed03f23a",
+      "face": "south",
+      "pixel_position": [
+        15,
+        26.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "shroud_lower_service_cover_bolt_03",
+      "parent_group": "10ecb877-66ba-5839-ad5b-1534b25aa495",
+      "source_uuid": "f2c5c096-cbb2-5d2e-ac5c-4706ed03f23a",
+      "face": "south",
+      "pixel_position": [
+        6,
+        35.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "shroud_lower_service_cover_bolt_04",
+      "parent_group": "10ecb877-66ba-5839-ad5b-1534b25aa495",
+      "source_uuid": "f2c5c096-cbb2-5d2e-ac5c-4706ed03f23a",
+      "face": "south",
+      "pixel_position": [
+        15,
+        35.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_0_bolt_01",
+      "parent_group": "a76f4883-c8ab-576c-ab52-e1342b66967e",
+      "source_uuid": "8d57789c-35fe-5c30-bd46-4ba5de12777b",
+      "face": "up",
+      "pixel_position": [
+        5,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_0_bolt_02",
+      "parent_group": "a76f4883-c8ab-576c-ab52-e1342b66967e",
+      "source_uuid": "8d57789c-35fe-5c30-bd46-4ba5de12777b",
+      "face": "up",
+      "pixel_position": [
+        13,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_0_bolt_03",
+      "parent_group": "a76f4883-c8ab-576c-ab52-e1342b66967e",
+      "source_uuid": "8d57789c-35fe-5c30-bd46-4ba5de12777b",
+      "face": "up",
+      "pixel_position": [
+        5,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_0_bolt_04",
+      "parent_group": "a76f4883-c8ab-576c-ab52-e1342b66967e",
+      "source_uuid": "8d57789c-35fe-5c30-bd46-4ba5de12777b",
+      "face": "up",
+      "pixel_position": [
+        13,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_1_bolt_01",
+      "parent_group": "9ee2a3c1-4d89-54bd-b96d-b541b57de366",
+      "source_uuid": "be642482-a660-546f-be3a-2636c7c3e597",
+      "face": "up",
+      "pixel_position": [
+        5,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_1_bolt_02",
+      "parent_group": "9ee2a3c1-4d89-54bd-b96d-b541b57de366",
+      "source_uuid": "be642482-a660-546f-be3a-2636c7c3e597",
+      "face": "up",
+      "pixel_position": [
+        13,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_1_bolt_03",
+      "parent_group": "9ee2a3c1-4d89-54bd-b96d-b541b57de366",
+      "source_uuid": "be642482-a660-546f-be3a-2636c7c3e597",
+      "face": "up",
+      "pixel_position": [
+        5,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_1_bolt_04",
+      "parent_group": "9ee2a3c1-4d89-54bd-b96d-b541b57de366",
+      "source_uuid": "be642482-a660-546f-be3a-2636c7c3e597",
+      "face": "up",
+      "pixel_position": [
+        13,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_2_bolt_01",
+      "parent_group": "314d4e9b-b1e5-5aec-996f-435c8cf6ba89",
+      "source_uuid": "8b968eac-8230-58ab-947f-eeed9c5af067",
+      "face": "up",
+      "pixel_position": [
+        5,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_2_bolt_02",
+      "parent_group": "314d4e9b-b1e5-5aec-996f-435c8cf6ba89",
+      "source_uuid": "8b968eac-8230-58ab-947f-eeed9c5af067",
+      "face": "up",
+      "pixel_position": [
+        13,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_2_bolt_03",
+      "parent_group": "314d4e9b-b1e5-5aec-996f-435c8cf6ba89",
+      "source_uuid": "8b968eac-8230-58ab-947f-eeed9c5af067",
+      "face": "up",
+      "pixel_position": [
+        5,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_2_bolt_04",
+      "parent_group": "314d4e9b-b1e5-5aec-996f-435c8cf6ba89",
+      "source_uuid": "8b968eac-8230-58ab-947f-eeed9c5af067",
+      "face": "up",
+      "pixel_position": [
+        13,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_3_bolt_01",
+      "parent_group": "8068c9df-0cb5-5beb-902a-63a236fce1c3",
+      "source_uuid": "e4e8b3bd-0762-53fb-8a31-2e43527cc351",
+      "face": "up",
+      "pixel_position": [
+        5,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_3_bolt_02",
+      "parent_group": "8068c9df-0cb5-5beb-902a-63a236fce1c3",
+      "source_uuid": "e4e8b3bd-0762-53fb-8a31-2e43527cc351",
+      "face": "up",
+      "pixel_position": [
+        13,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_3_bolt_03",
+      "parent_group": "8068c9df-0cb5-5beb-902a-63a236fce1c3",
+      "source_uuid": "e4e8b3bd-0762-53fb-8a31-2e43527cc351",
+      "face": "up",
+      "pixel_position": [
+        5,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_3_bolt_04",
+      "parent_group": "8068c9df-0cb5-5beb-902a-63a236fce1c3",
+      "source_uuid": "e4e8b3bd-0762-53fb-8a31-2e43527cc351",
+      "face": "up",
+      "pixel_position": [
+        13,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_4_bolt_01",
+      "parent_group": "e76205f5-9e75-5c4a-ae02-d698310a44ab",
+      "source_uuid": "0701dbcd-5cc0-5ce5-93c8-9289452bea87",
+      "face": "up",
+      "pixel_position": [
+        5,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_4_bolt_02",
+      "parent_group": "e76205f5-9e75-5c4a-ae02-d698310a44ab",
+      "source_uuid": "0701dbcd-5cc0-5ce5-93c8-9289452bea87",
+      "face": "up",
+      "pixel_position": [
+        13,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_4_bolt_03",
+      "parent_group": "e76205f5-9e75-5c4a-ae02-d698310a44ab",
+      "source_uuid": "0701dbcd-5cc0-5ce5-93c8-9289452bea87",
+      "face": "up",
+      "pixel_position": [
+        5,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_4_bolt_04",
+      "parent_group": "e76205f5-9e75-5c4a-ae02-d698310a44ab",
+      "source_uuid": "0701dbcd-5cc0-5ce5-93c8-9289452bea87",
+      "face": "up",
+      "pixel_position": [
+        13,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_5_bolt_01",
+      "parent_group": "2cc25270-81f6-51e2-9a4a-cfc4f3975b1c",
+      "source_uuid": "d4f40899-a4ac-5fff-8940-b407647f47db",
+      "face": "up",
+      "pixel_position": [
+        5,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_5_bolt_02",
+      "parent_group": "2cc25270-81f6-51e2-9a4a-cfc4f3975b1c",
+      "source_uuid": "d4f40899-a4ac-5fff-8940-b407647f47db",
+      "face": "up",
+      "pixel_position": [
+        13,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_5_bolt_03",
+      "parent_group": "2cc25270-81f6-51e2-9a4a-cfc4f3975b1c",
+      "source_uuid": "d4f40899-a4ac-5fff-8940-b407647f47db",
+      "face": "up",
+      "pixel_position": [
+        5,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_5_bolt_04",
+      "parent_group": "2cc25270-81f6-51e2-9a4a-cfc4f3975b1c",
+      "source_uuid": "d4f40899-a4ac-5fff-8940-b407647f47db",
+      "face": "up",
+      "pixel_position": [
+        13,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_6_bolt_01",
+      "parent_group": "3a386c8e-4379-5a87-ae61-e2bc1f9a5f30",
+      "source_uuid": "c0b63f1a-61dd-5c67-81f2-f59f0fcc6ca4",
+      "face": "up",
+      "pixel_position": [
+        5,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_6_bolt_02",
+      "parent_group": "3a386c8e-4379-5a87-ae61-e2bc1f9a5f30",
+      "source_uuid": "c0b63f1a-61dd-5c67-81f2-f59f0fcc6ca4",
+      "face": "up",
+      "pixel_position": [
+        13,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_6_bolt_03",
+      "parent_group": "3a386c8e-4379-5a87-ae61-e2bc1f9a5f30",
+      "source_uuid": "c0b63f1a-61dd-5c67-81f2-f59f0fcc6ca4",
+      "face": "up",
+      "pixel_position": [
+        5,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_6_bolt_04",
+      "parent_group": "3a386c8e-4379-5a87-ae61-e2bc1f9a5f30",
+      "source_uuid": "c0b63f1a-61dd-5c67-81f2-f59f0fcc6ca4",
+      "face": "up",
+      "pixel_position": [
+        13,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_7_bolt_01",
+      "parent_group": "e6bbc5a4-cf3c-5727-9200-5500997b6f9b",
+      "source_uuid": "404f9ae7-e56c-5ae8-97a5-84a5a65b2ed3",
+      "face": "up",
+      "pixel_position": [
+        5,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_7_bolt_02",
+      "parent_group": "e6bbc5a4-cf3c-5727-9200-5500997b6f9b",
+      "source_uuid": "404f9ae7-e56c-5ae8-97a5-84a5a65b2ed3",
+      "face": "up",
+      "pixel_position": [
+        13,
+        5.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_7_bolt_03",
+      "parent_group": "e6bbc5a4-cf3c-5727-9200-5500997b6f9b",
+      "source_uuid": "404f9ae7-e56c-5ae8-97a5-84a5a65b2ed3",
+      "face": "up",
+      "pixel_position": [
+        5,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "nozzle_segment_cover_7_bolt_04",
+      "parent_group": "e6bbc5a4-cf3c-5727-9200-5500997b6f9b",
+      "source_uuid": "404f9ae7-e56c-5ae8-97a5-84a5a65b2ed3",
+      "face": "up",
+      "pixel_position": [
+        13,
+        19.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "rear_access_0_physical_fasteners_bolt_01",
+      "parent_group": "06632f5b-5a19-5226-ad33-f71d1fbb7ccf",
+      "source_uuid": "d140b3a7-8758-5e51-a53f-e0c6e2a4a38f",
+      "face": "north",
+      "pixel_position": [
+        3.5,
+        3.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "rear_access_0_physical_fasteners_bolt_02",
+      "parent_group": "06632f5b-5a19-5226-ad33-f71d1fbb7ccf",
+      "source_uuid": "d140b3a7-8758-5e51-a53f-e0c6e2a4a38f",
+      "face": "north",
+      "pixel_position": [
+        40.5,
+        3.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "rear_access_0_physical_fasteners_bolt_03",
+      "parent_group": "06632f5b-5a19-5226-ad33-f71d1fbb7ccf",
+      "source_uuid": "d140b3a7-8758-5e51-a53f-e0c6e2a4a38f",
+      "face": "north",
+      "pixel_position": [
+        3.5,
+        40.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "rear_access_0_physical_fasteners_bolt_04",
+      "parent_group": "06632f5b-5a19-5226-ad33-f71d1fbb7ccf",
+      "source_uuid": "d140b3a7-8758-5e51-a53f-e0c6e2a4a38f",
+      "face": "north",
+      "pixel_position": [
+        40.5,
+        40.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "rear_access_1_physical_fasteners_bolt_01",
+      "parent_group": "01155ce1-8c52-5e1c-9723-c395c56fd7fa",
+      "source_uuid": "866a1303-1093-5dc0-af33-d6bb8e798479",
+      "face": "north",
+      "pixel_position": [
+        3.5,
+        3.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "rear_access_1_physical_fasteners_bolt_02",
+      "parent_group": "01155ce1-8c52-5e1c-9723-c395c56fd7fa",
+      "source_uuid": "866a1303-1093-5dc0-af33-d6bb8e798479",
+      "face": "north",
+      "pixel_position": [
+        40.5,
+        3.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "rear_access_1_physical_fasteners_bolt_03",
+      "parent_group": "01155ce1-8c52-5e1c-9723-c395c56fd7fa",
+      "source_uuid": "866a1303-1093-5dc0-af33-d6bb8e798479",
+      "face": "north",
+      "pixel_position": [
+        3.5,
+        40.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    },
+    {
+      "name": "rear_access_1_physical_fasteners_bolt_04",
+      "parent_group": "01155ce1-8c52-5e1c-9723-c395c56fd7fa",
+      "source_uuid": "866a1303-1093-5dc0-af33-d6bb8e798479",
+      "face": "north",
+      "pixel_position": [
+        40.5,
+        40.5
+      ],
+      "part_cubes": 3,
+      "head_size_bb": 0.85,
+      "actual_slot_gap_bb": 0.12,
+      "washer_depth_bb": 0.12,
+      "head_depth_bb": 0.28
+    }
+  ],
+  "new_element_names": [
+    "roof_cover_front_plate",
+    "roof_cover_front_bolt_01_washer",
+    "roof_cover_front_bolt_01_head_a",
+    "roof_cover_front_bolt_01_head_b",
+    "roof_cover_front_bolt_02_washer",
+    "roof_cover_front_bolt_02_head_a",
+    "roof_cover_front_bolt_02_head_b",
+    "roof_cover_front_bolt_03_washer",
+    "roof_cover_front_bolt_03_head_a",
+    "roof_cover_front_bolt_03_head_b",
+    "roof_cover_front_bolt_04_washer",
+    "roof_cover_front_bolt_04_head_a",
+    "roof_cover_front_bolt_04_head_b",
+    "roof_cover_rear_plate",
+    "roof_cover_rear_bolt_01_washer",
+    "roof_cover_rear_bolt_01_head_a",
+    "roof_cover_rear_bolt_01_head_b",
+    "roof_cover_rear_bolt_02_washer",
+    "roof_cover_rear_bolt_02_head_a",
+    "roof_cover_rear_bolt_02_head_b",
+    "roof_cover_rear_bolt_03_washer",
+    "roof_cover_rear_bolt_03_head_a",
+    "roof_cover_rear_bolt_03_head_b",
+    "roof_cover_rear_bolt_04_washer",
+    "roof_cover_rear_bolt_04_head_a",
+    "roof_cover_rear_bolt_04_head_b",
+    "right_end_service_cover_plate",
+    "right_end_service_cover_bolt_01_washer",
+    "right_end_service_cover_bolt_01_head_a",
+    "right_end_service_cover_bolt_01_head_b",
+    "right_end_service_cover_bolt_02_washer",
+    "right_end_service_cover_bolt_02_head_a",
+    "right_end_service_cover_bolt_02_head_b",
+    "right_end_service_cover_bolt_03_washer",
+    "right_end_service_cover_bolt_03_head_a",
+    "right_end_service_cover_bolt_03_head_b",
+    "right_end_service_cover_bolt_04_washer",
+    "right_end_service_cover_bolt_04_head_a",
+    "right_end_service_cover_bolt_04_head_b",
+    "right_bevel_cover_plate",
+    "right_bevel_cover_bolt_01_washer",
+    "right_bevel_cover_bolt_01_head_a",
+    "right_bevel_cover_bolt_01_head_b",
+    "right_bevel_cover_bolt_02_washer",
+    "right_bevel_cover_bolt_02_head_a",
+    "right_bevel_cover_bolt_02_head_b",
+    "right_bevel_cover_bolt_03_washer",
+    "right_bevel_cover_bolt_03_head_a",
+    "right_bevel_cover_bolt_03_head_b",
+    "right_bevel_cover_bolt_04_washer",
+    "right_bevel_cover_bolt_04_head_a",
+    "right_bevel_cover_bolt_04_head_b",
+    "left_bevel_cover_plate",
+    "left_bevel_cover_bolt_01_washer",
+    "left_bevel_cover_bolt_01_head_a",
+    "left_bevel_cover_bolt_01_head_b",
+    "left_bevel_cover_bolt_02_washer",
+    "left_bevel_cover_bolt_02_head_a",
+    "left_bevel_cover_bolt_02_head_b",
+    "left_bevel_cover_bolt_03_washer",
+    "left_bevel_cover_bolt_03_head_a",
+    "left_bevel_cover_bolt_03_head_b",
+    "left_bevel_cover_bolt_04_washer",
+    "left_bevel_cover_bolt_04_head_a",
+    "left_bevel_cover_bolt_04_head_b",
+    "motor_bearing_service_cover_plate_upper",
+    "motor_bearing_service_cover_plate_lower",
+    "motor_bearing_service_cover_plate_left",
+    "motor_bearing_service_cover_plate_right",
+    "motor_bearing_service_cover_bolt_01_washer",
+    "motor_bearing_service_cover_bolt_01_head_a",
+    "motor_bearing_service_cover_bolt_01_head_b",
+    "motor_bearing_service_cover_bolt_02_washer",
+    "motor_bearing_service_cover_bolt_02_head_a",
+    "motor_bearing_service_cover_bolt_02_head_b",
+    "motor_bearing_service_cover_bolt_03_washer",
+    "motor_bearing_service_cover_bolt_03_head_a",
+    "motor_bearing_service_cover_bolt_03_head_b",
+    "motor_bearing_service_cover_bolt_04_washer",
+    "motor_bearing_service_cover_bolt_04_head_a",
+    "motor_bearing_service_cover_bolt_04_head_b",
+    "underside_cover_left_plate",
+    "underside_cover_left_bolt_01_washer",
+    "underside_cover_left_bolt_01_head_a",
+    "underside_cover_left_bolt_01_head_b",
+    "underside_cover_left_bolt_02_washer",
+    "underside_cover_left_bolt_02_head_a",
+    "underside_cover_left_bolt_02_head_b",
+    "underside_cover_left_bolt_03_washer",
+    "underside_cover_left_bolt_03_head_a",
+    "underside_cover_left_bolt_03_head_b",
+    "underside_cover_left_bolt_04_washer",
+    "underside_cover_left_bolt_04_head_a",
+    "underside_cover_left_bolt_04_head_b",
+    "underside_cover_right_plate",
+    "underside_cover_right_bolt_01_washer",
+    "underside_cover_right_bolt_01_head_a",
+    "underside_cover_right_bolt_01_head_b",
+    "underside_cover_right_bolt_02_washer",
+    "underside_cover_right_bolt_02_head_a",
+    "underside_cover_right_bolt_02_head_b",
+    "underside_cover_right_bolt_03_washer",
+    "underside_cover_right_bolt_03_head_a",
+    "underside_cover_right_bolt_03_head_b",
+    "underside_cover_right_bolt_04_washer",
+    "underside_cover_right_bolt_04_head_a",
+    "underside_cover_right_bolt_04_head_b",
+    "shroud_lower_service_cover_plate",
+    "shroud_lower_service_cover_bolt_01_washer",
+    "shroud_lower_service_cover_bolt_01_head_a",
+    "shroud_lower_service_cover_bolt_01_head_b",
+    "shroud_lower_service_cover_bolt_02_washer",
+    "shroud_lower_service_cover_bolt_02_head_a",
+    "shroud_lower_service_cover_bolt_02_head_b",
+    "shroud_lower_service_cover_bolt_03_washer",
+    "shroud_lower_service_cover_bolt_03_head_a",
+    "shroud_lower_service_cover_bolt_03_head_b",
+    "shroud_lower_service_cover_bolt_04_washer",
+    "shroud_lower_service_cover_bolt_04_head_a",
+    "shroud_lower_service_cover_bolt_04_head_b",
+    "nozzle_segment_cover_0_plate",
+    "nozzle_segment_cover_0_bolt_01_washer",
+    "nozzle_segment_cover_0_bolt_01_head_a",
+    "nozzle_segment_cover_0_bolt_01_head_b",
+    "nozzle_segment_cover_0_bolt_02_washer",
+    "nozzle_segment_cover_0_bolt_02_head_a",
+    "nozzle_segment_cover_0_bolt_02_head_b",
+    "nozzle_segment_cover_0_bolt_03_washer",
+    "nozzle_segment_cover_0_bolt_03_head_a",
+    "nozzle_segment_cover_0_bolt_03_head_b",
+    "nozzle_segment_cover_0_bolt_04_washer",
+    "nozzle_segment_cover_0_bolt_04_head_a",
+    "nozzle_segment_cover_0_bolt_04_head_b",
+    "nozzle_segment_cover_1_plate",
+    "nozzle_segment_cover_1_bolt_01_washer",
+    "nozzle_segment_cover_1_bolt_01_head_a",
+    "nozzle_segment_cover_1_bolt_01_head_b",
+    "nozzle_segment_cover_1_bolt_02_washer",
+    "nozzle_segment_cover_1_bolt_02_head_a",
+    "nozzle_segment_cover_1_bolt_02_head_b",
+    "nozzle_segment_cover_1_bolt_03_washer",
+    "nozzle_segment_cover_1_bolt_03_head_a",
+    "nozzle_segment_cover_1_bolt_03_head_b",
+    "nozzle_segment_cover_1_bolt_04_washer",
+    "nozzle_segment_cover_1_bolt_04_head_a",
+    "nozzle_segment_cover_1_bolt_04_head_b",
+    "nozzle_segment_cover_2_plate",
+    "nozzle_segment_cover_2_bolt_01_washer",
+    "nozzle_segment_cover_2_bolt_01_head_a",
+    "nozzle_segment_cover_2_bolt_01_head_b",
+    "nozzle_segment_cover_2_bolt_02_washer",
+    "nozzle_segment_cover_2_bolt_02_head_a",
+    "nozzle_segment_cover_2_bolt_02_head_b",
+    "nozzle_segment_cover_2_bolt_03_washer",
+    "nozzle_segment_cover_2_bolt_03_head_a",
+    "nozzle_segment_cover_2_bolt_03_head_b",
+    "nozzle_segment_cover_2_bolt_04_washer",
+    "nozzle_segment_cover_2_bolt_04_head_a",
+    "nozzle_segment_cover_2_bolt_04_head_b",
+    "nozzle_segment_cover_3_plate",
+    "nozzle_segment_cover_3_bolt_01_washer",
+    "nozzle_segment_cover_3_bolt_01_head_a",
+    "nozzle_segment_cover_3_bolt_01_head_b",
+    "nozzle_segment_cover_3_bolt_02_washer",
+    "nozzle_segment_cover_3_bolt_02_head_a",
+    "nozzle_segment_cover_3_bolt_02_head_b",
+    "nozzle_segment_cover_3_bolt_03_washer",
+    "nozzle_segment_cover_3_bolt_03_head_a",
+    "nozzle_segment_cover_3_bolt_03_head_b",
+    "nozzle_segment_cover_3_bolt_04_washer",
+    "nozzle_segment_cover_3_bolt_04_head_a",
+    "nozzle_segment_cover_3_bolt_04_head_b",
+    "nozzle_segment_cover_4_plate",
+    "nozzle_segment_cover_4_bolt_01_washer",
+    "nozzle_segment_cover_4_bolt_01_head_a",
+    "nozzle_segment_cover_4_bolt_01_head_b",
+    "nozzle_segment_cover_4_bolt_02_washer",
+    "nozzle_segment_cover_4_bolt_02_head_a",
+    "nozzle_segment_cover_4_bolt_02_head_b",
+    "nozzle_segment_cover_4_bolt_03_washer",
+    "nozzle_segment_cover_4_bolt_03_head_a",
+    "nozzle_segment_cover_4_bolt_03_head_b",
+    "nozzle_segment_cover_4_bolt_04_washer",
+    "nozzle_segment_cover_4_bolt_04_head_a",
+    "nozzle_segment_cover_4_bolt_04_head_b",
+    "nozzle_segment_cover_5_plate",
+    "nozzle_segment_cover_5_bolt_01_washer",
+    "nozzle_segment_cover_5_bolt_01_head_a",
+    "nozzle_segment_cover_5_bolt_01_head_b",
+    "nozzle_segment_cover_5_bolt_02_washer",
+    "nozzle_segment_cover_5_bolt_02_head_a",
+    "nozzle_segment_cover_5_bolt_02_head_b",
+    "nozzle_segment_cover_5_bolt_03_washer",
+    "nozzle_segment_cover_5_bolt_03_head_a",
+    "nozzle_segment_cover_5_bolt_03_head_b",
+    "nozzle_segment_cover_5_bolt_04_washer",
+    "nozzle_segment_cover_5_bolt_04_head_a",
+    "nozzle_segment_cover_5_bolt_04_head_b",
+    "nozzle_segment_cover_6_plate",
+    "nozzle_segment_cover_6_bolt_01_washer",
+    "nozzle_segment_cover_6_bolt_01_head_a",
+    "nozzle_segment_cover_6_bolt_01_head_b",
+    "nozzle_segment_cover_6_bolt_02_washer",
+    "nozzle_segment_cover_6_bolt_02_head_a",
+    "nozzle_segment_cover_6_bolt_02_head_b",
+    "nozzle_segment_cover_6_bolt_03_washer",
+    "nozzle_segment_cover_6_bolt_03_head_a",
+    "nozzle_segment_cover_6_bolt_03_head_b",
+    "nozzle_segment_cover_6_bolt_04_washer",
+    "nozzle_segment_cover_6_bolt_04_head_a",
+    "nozzle_segment_cover_6_bolt_04_head_b",
+    "nozzle_segment_cover_7_plate",
+    "nozzle_segment_cover_7_bolt_01_washer",
+    "nozzle_segment_cover_7_bolt_01_head_a",
+    "nozzle_segment_cover_7_bolt_01_head_b",
+    "nozzle_segment_cover_7_bolt_02_washer",
+    "nozzle_segment_cover_7_bolt_02_head_a",
+    "nozzle_segment_cover_7_bolt_02_head_b",
+    "nozzle_segment_cover_7_bolt_03_washer",
+    "nozzle_segment_cover_7_bolt_03_head_a",
+    "nozzle_segment_cover_7_bolt_03_head_b",
+    "nozzle_segment_cover_7_bolt_04_washer",
+    "nozzle_segment_cover_7_bolt_04_head_a",
+    "nozzle_segment_cover_7_bolt_04_head_b",
+    "rear_access_0_physical_fasteners_bolt_01_washer",
+    "rear_access_0_physical_fasteners_bolt_01_head_a",
+    "rear_access_0_physical_fasteners_bolt_01_head_b",
+    "rear_access_0_physical_fasteners_bolt_02_washer",
+    "rear_access_0_physical_fasteners_bolt_02_head_a",
+    "rear_access_0_physical_fasteners_bolt_02_head_b",
+    "rear_access_0_physical_fasteners_bolt_03_washer",
+    "rear_access_0_physical_fasteners_bolt_03_head_a",
+    "rear_access_0_physical_fasteners_bolt_03_head_b",
+    "rear_access_0_physical_fasteners_bolt_04_washer",
+    "rear_access_0_physical_fasteners_bolt_04_head_a",
+    "rear_access_0_physical_fasteners_bolt_04_head_b",
+    "rear_access_1_physical_fasteners_bolt_01_washer",
+    "rear_access_1_physical_fasteners_bolt_01_head_a",
+    "rear_access_1_physical_fasteners_bolt_01_head_b",
+    "rear_access_1_physical_fasteners_bolt_02_washer",
+    "rear_access_1_physical_fasteners_bolt_02_head_a",
+    "rear_access_1_physical_fasteners_bolt_02_head_b",
+    "rear_access_1_physical_fasteners_bolt_03_washer",
+    "rear_access_1_physical_fasteners_bolt_03_head_a",
+    "rear_access_1_physical_fasteners_bolt_03_head_b",
+    "rear_access_1_physical_fasteners_bolt_04_washer",
+    "rear_access_1_physical_fasteners_bolt_04_head_a",
+    "rear_access_1_physical_fasteners_bolt_04_head_b"
+  ],
+  "texture_cleanup_pixels": [
+    [
+      44,
+      327
+    ],
+    [
+      44,
+      328
+    ],
+    [
+      44,
+      329
+    ],
+    [
+      44,
+      330
+    ],
+    [
+      44,
+      331
+    ],
+    [
+      44,
+      332
+    ],
+    [
+      44,
+      333
+    ],
+    [
+      44,
+      334
+    ],
+    [
+      44,
+      335
+    ],
+    [
+      44,
+      336
+    ],
+    [
+      44,
+      337
+    ],
+    [
+      44,
+      338
+    ],
+    [
+      44,
+      339
+    ],
+    [
+      44,
+      340
+    ],
+    [
+      44,
+      341
+    ],
+    [
+      44,
+      342
+    ],
+    [
+      44,
+      343
+    ],
+    [
+      44,
+      344
+    ],
+    [
+      44,
+      345
+    ],
+    [
+      45,
+      327
+    ],
+    [
+      45,
+      345
+    ],
+    [
+      46,
+      327
+    ],
+    [
+      46,
+      329
+    ],
+    [
+      46,
+      343
+    ],
+    [
+      46,
+      345
+    ],
+    [
+      47,
+      327
+    ],
+    [
+      47,
+      329
+    ],
+    [
+      47,
+      343
+    ],
+    [
+      47,
+      345
+    ],
+    [
+      48,
+      327
+    ],
+    [
+      48,
+      345
+    ],
+    [
+      49,
+      327
+    ],
+    [
+      49,
+      345
+    ],
+    [
+      50,
+      327
+    ],
+    [
+      50,
+      345
+    ],
+    [
+      51,
+      327
+    ],
+    [
+      51,
+      345
+    ],
+    [
+      52,
+      327
+    ],
+    [
+      52,
+      345
+    ],
+    [
+      53,
+      327
+    ],
+    [
+      53,
+      345
+    ],
+    [
+      54,
+      327
+    ],
+    [
+      54,
+      329
+    ],
+    [
+      54,
+      343
+    ],
+    [
+      54,
+      345
+    ],
+    [
+      55,
+      327
+    ],
+    [
+      55,
+      329
+    ],
+    [
+      55,
+      343
+    ],
+    [
+      55,
+      345
+    ],
+    [
+      56,
+      327
+    ],
+    [
+      56,
+      345
+    ],
+    [
+      57,
+      327
+    ],
+    [
+      57,
+      328
+    ],
+    [
+      57,
+      329
+    ],
+    [
+      57,
+      330
+    ],
+    [
+      57,
+      331
+    ],
+    [
+      57,
+      332
+    ],
+    [
+      57,
+      333
+    ],
+    [
+      57,
+      334
+    ],
+    [
+      57,
+      335
+    ],
+    [
+      57,
+      336
+    ],
+    [
+      57,
+      337
+    ],
+    [
+      57,
+      338
+    ],
+    [
+      57,
+      339
+    ],
+    [
+      57,
+      340
+    ],
+    [
+      57,
+      341
+    ],
+    [
+      57,
+      342
+    ],
+    [
+      57,
+      343
+    ],
+    [
+      57,
+      344
+    ],
+    [
+      57,
+      345
+    ],
+    [
+      60,
+      227
+    ],
+    [
+      60,
+      228
+    ],
+    [
+      60,
+      229
+    ],
+    [
+      60,
+      230
+    ],
+    [
+      60,
+      231
+    ],
+    [
+      60,
+      232
+    ],
+    [
+      60,
+      233
+    ],
+    [
+      60,
+      234
+    ],
+    [
+      60,
+      235
+    ],
+    [
+      60,
+      236
+    ],
+    [
+      60,
+      237
+    ],
+    [
+      60,
+      238
+    ],
+    [
+      60,
+      239
+    ],
+    [
+      60,
+      240
+    ],
+    [
+      60,
+      241
+    ],
+    [
+      60,
+      242
+    ],
+    [
+      60,
+      243
+    ],
+    [
+      60,
+      244
+    ],
+    [
+      60,
+      245
+    ],
+    [
+      60,
+      246
+    ],
+    [
+      60,
+      247
+    ],
+    [
+      60,
+      248
+    ],
+    [
+      60,
+      249
+    ],
+    [
+      60,
+      250
+    ],
+    [
+      60,
+      251
+    ],
+    [
+      60,
+      252
+    ],
+    [
+      60,
+      253
+    ],
+    [
+      60,
+      254
+    ],
+    [
+      60,
+      255
+    ],
+    [
+      60,
+      256
+    ],
+    [
+      60,
+      257
+    ],
+    [
+      60,
+      258
+    ],
+    [
+      60,
+      259
+    ],
+    [
+      60,
+      260
+    ],
+    [
+      60,
+      261
+    ],
+    [
+      60,
+      262
+    ],
+    [
+      60,
+      263
+    ],
+    [
+      60,
+      264
+    ],
+    [
+      60,
+      265
+    ],
+    [
+      60,
+      266
+    ],
+    [
+      60,
+      267
+    ],
+    [
+      60,
+      268
+    ],
+    [
+      60,
+      269
+    ],
+    [
+      60,
+      270
+    ],
+    [
+      60,
+      271
+    ],
+    [
+      60,
+      272
+    ],
+    [
+      61,
+      227
+    ],
+    [
+      61,
+      272
+    ],
+    [
+      62,
+      227
+    ],
+    [
+      62,
+      229
+    ],
+    [
+      62,
+      270
+    ],
+    [
+      62,
+      272
+    ],
+    [
+      62,
+      273
+    ],
+    [
+      63,
+      227
+    ],
+    [
+      63,
+      229
+    ],
+    [
+      63,
+      270
+    ],
+    [
+      63,
+      272
+    ],
+    [
+      63,
+      273
+    ],
+    [
+      64,
+      227
+    ],
+    [
+      64,
+      272
+    ],
+    [
+      64,
+      273
+    ],
+    [
+      65,
+      227
+    ],
+    [
+      65,
+      272
+    ],
+    [
+      65,
+      273
+    ],
+    [
+      66,
+      227
+    ],
+    [
+      66,
+      272
+    ],
+    [
+      66,
+      273
+    ],
+    [
+      67,
+      227
+    ],
+    [
+      67,
+      272
+    ],
+    [
+      67,
+      273
+    ],
+    [
+      68,
+      227
+    ],
+    [
+      68,
+      272
+    ],
+    [
+      68,
+      273
+    ],
+    [
+      69,
+      227
+    ],
+    [
+      69,
+      272
+    ],
+    [
+      69,
+      273
+    ],
+    [
+      70,
+      227
+    ],
+    [
+      70,
+      272
+    ],
+    [
+      70,
+      273
+    ],
+    [
+      71,
+      227
+    ],
+    [
+      71,
+      272
+    ],
+    [
+      71,
+      273
+    ],
+    [
+      72,
+      227
+    ],
+    [
+      72,
+      272
+    ],
+    [
+      72,
+      273
+    ],
+    [
+      73,
+      227
+    ],
+    [
+      73,
+      272
+    ],
+    [
+      73,
+      273
+    ],
+    [
+      74,
+      227
+    ],
+    [
+      74,
+      272
+    ],
+    [
+      74,
+      273
+    ],
+    [
+      75,
+      227
+    ],
+    [
+      75,
+      272
+    ],
+    [
+      75,
+      273
+    ],
+    [
+      76,
+      227
+    ],
+    [
+      76,
+      272
+    ],
+    [
+      76,
+      273
+    ],
+    [
+      77,
+      227
+    ],
+    [
+      77,
+      272
+    ],
+    [
+      77,
+      273
+    ],
+    [
+      78,
+      227
+    ],
+    [
+      78,
+      272
+    ],
+    [
+      78,
+      273
+    ],
+    [
+      79,
+      227
+    ],
+    [
+      79,
+      272
+    ],
+    [
+      79,
+      273
+    ],
+    [
+      80,
+      227
+    ],
+    [
+      80,
+      272
+    ],
+    [
+      80,
+      273
+    ],
+    [
+      81,
+      227
+    ],
+    [
+      81,
+      272
+    ],
+    [
+      81,
+      273
+    ],
+    [
+      82,
+      227
+    ],
+    [
+      82,
+      272
+    ],
+    [
+      82,
+      273
+    ],
+    [
+      83,
+      227
+    ],
+    [
+      83,
+      272
+    ],
+    [
+      83,
+      273
+    ],
+    [
+      84,
+      227
+    ],
+    [
+      84,
+      272
+    ],
+    [
+      84,
+      273
+    ],
+    [
+      85,
+      227
+    ],
+    [
+      85,
+      272
+    ],
+    [
+      85,
+      273
+    ],
+    [
+      86,
+      227
+    ],
+    [
+      86,
+      272
+    ],
+    [
+      86,
+      273
+    ],
+    [
+      87,
+      227
+    ],
+    [
+      87,
+      272
+    ],
+    [
+      87,
+      273
+    ],
+    [
+      88,
+      227
+    ],
+    [
+      88,
+      272
+    ],
+    [
+      88,
+      273
+    ],
+    [
+      89,
+      227
+    ],
+    [
+      89,
+      272
+    ],
+    [
+      89,
+      273
+    ],
+    [
+      90,
+      227
+    ],
+    [
+      90,
+      272
+    ],
+    [
+      90,
+      273
+    ],
+    [
+      91,
+      227
+    ],
+    [
+      91,
+      272
+    ],
+    [
+      91,
+      273
+    ],
+    [
+      92,
+      227
+    ],
+    [
+      92,
+      272
+    ],
+    [
+      92,
+      273
+    ],
+    [
+      93,
+      227
+    ],
+    [
+      93,
+      272
+    ],
+    [
+      93,
+      273
+    ],
+    [
+      94,
+      227
+    ],
+    [
+      94,
+      272
+    ],
+    [
+      94,
+      273
+    ],
+    [
+      95,
+      227
+    ],
+    [
+      95,
+      272
+    ],
+    [
+      95,
+      273
+    ],
+    [
+      96,
+      227
+    ],
+    [
+      96,
+      272
+    ],
+    [
+      96,
+      273
+    ],
+    [
+      97,
+      227
+    ],
+    [
+      97,
+      229
+    ],
+    [
+      97,
+      270
+    ],
+    [
+      97,
+      272
+    ],
+    [
+      97,
+      273
+    ],
+    [
+      98,
+      227
+    ],
+    [
+      98,
+      229
+    ],
+    [
+      98,
+      270
+    ],
+    [
+      98,
+      272
+    ],
+    [
+      98,
+      273
+    ],
+    [
+      99,
+      227
+    ],
+    [
+      99,
+      272
+    ],
+    [
+      100,
+      227
+    ],
+    [
+      100,
+      228
+    ],
+    [
+      100,
+      229
+    ],
+    [
+      100,
+      230
+    ],
+    [
+      100,
+      231
+    ],
+    [
+      100,
+      232
+    ],
+    [
+      100,
+      233
+    ],
+    [
+      100,
+      234
+    ],
+    [
+      100,
+      235
+    ],
+    [
+      100,
+      236
+    ],
+    [
+      100,
+      237
+    ],
+    [
+      100,
+      238
+    ],
+    [
+      100,
+      239
+    ],
+    [
+      100,
+      240
+    ],
+    [
+      100,
+      241
+    ],
+    [
+      100,
+      242
+    ],
+    [
+      100,
+      243
+    ],
+    [
+      100,
+      244
+    ],
+    [
+      100,
+      245
+    ],
+    [
+      100,
+      246
+    ],
+    [
+      100,
+      247
+    ],
+    [
+      100,
+      248
+    ],
+    [
+      100,
+      249
+    ],
+    [
+      100,
+      250
+    ],
+    [
+      100,
+      251
+    ],
+    [
+      100,
+      252
+    ],
+    [
+      100,
+      253
+    ],
+    [
+      100,
+      254
+    ],
+    [
+      100,
+      255
+    ],
+    [
+      100,
+      256
+    ],
+    [
+      100,
+      257
+    ],
+    [
+      100,
+      258
+    ],
+    [
+      100,
+      259
+    ],
+    [
+      100,
+      260
+    ],
+    [
+      100,
+      261
+    ],
+    [
+      100,
+      262
+    ],
+    [
+      100,
+      263
+    ],
+    [
+      100,
+      264
+    ],
+    [
+      100,
+      265
+    ],
+    [
+      100,
+      266
+    ],
+    [
+      100,
+      267
+    ],
+    [
+      100,
+      268
+    ],
+    [
+      100,
+      269
+    ],
+    [
+      100,
+      270
+    ],
+    [
+      100,
+      271
+    ],
+    [
+      100,
+      272
+    ],
+    [
+      130,
+      159
+    ],
+    [
+      130,
+      160
+    ],
+    [
+      130,
+      161
+    ],
+    [
+      130,
+      162
+    ],
+    [
+      130,
+      163
+    ],
+    [
+      130,
+      164
+    ],
+    [
+      130,
+      165
+    ],
+    [
+      130,
+      166
+    ],
+    [
+      130,
+      167
+    ],
+    [
+      130,
+      168
+    ],
+    [
+      130,
+      169
+    ],
+    [
+      130,
+      170
+    ],
+    [
+      130,
+      171
+    ],
+    [
+      130,
+      172
+    ],
+    [
+      130,
+      173
+    ],
+    [
+      130,
+      174
+    ],
+    [
+      130,
+      175
+    ],
+    [
+      130,
+      176
+    ],
+    [
+      130,
+      177
+    ],
+    [
+      130,
+      178
+    ],
+    [
+      130,
+      179
+    ],
+    [
+      130,
+      180
+    ],
+    [
+      130,
+      181
+    ],
+    [
+      130,
+      182
+    ],
+    [
+      130,
+      183
+    ],
+    [
+      130,
+      184
+    ],
+    [
+      130,
+      185
+    ],
+    [
+      130,
+      186
+    ],
+    [
+      130,
+      187
+    ],
+    [
+      130,
+      188
+    ],
+    [
+      130,
+      189
+    ],
+    [
+      130,
+      190
+    ],
+    [
+      130,
+      191
+    ],
+    [
+      131,
+      159
+    ],
+    [
+      131,
+      191
+    ],
+    [
+      132,
+      112
+    ],
+    [
+      132,
+      113
+    ],
+    [
+      132,
+      114
+    ],
+    [
+      132,
+      115
+    ],
+    [
+      132,
+      116
+    ],
+    [
+      132,
+      117
+    ],
+    [
+      132,
+      118
+    ],
+    [
+      132,
+      119
+    ],
+    [
+      132,
+      120
+    ],
+    [
+      132,
+      121
+    ],
+    [
+      132,
+      122
+    ],
+    [
+      132,
+      123
+    ],
+    [
+      132,
+      124
+    ],
+    [
+      132,
+      125
+    ],
+    [
+      132,
+      126
+    ],
+    [
+      132,
+      127
+    ],
+    [
+      132,
+      128
+    ],
+    [
+      132,
+      129
+    ],
+    [
+      132,
+      130
+    ],
+    [
+      132,
+      131
+    ],
+    [
+      132,
+      132
+    ],
+    [
+      132,
+      133
+    ],
+    [
+      132,
+      134
+    ],
+    [
+      132,
+      135
+    ],
+    [
+      132,
+      136
+    ],
+    [
+      132,
+      137
+    ],
+    [
+      132,
+      138
+    ],
+    [
+      132,
+      139
+    ],
+    [
+      132,
+      140
+    ],
+    [
+      132,
+      141
+    ],
+    [
+      132,
+      142
+    ],
+    [
+      132,
+      143
+    ],
+    [
+      132,
+      144
+    ],
+    [
+      132,
+      159
+    ],
+    [
+      132,
+      161
+    ],
+    [
+      132,
+      189
+    ],
+    [
+      132,
+      191
+    ],
+    [
+      132,
+      192
+    ],
+    [
+      133,
+      112
+    ],
+    [
+      133,
+      144
+    ],
+    [
+      133,
+      159
+    ],
+    [
+      133,
+      161
+    ],
+    [
+      133,
+      189
+    ],
+    [
+      133,
+      191
+    ],
+    [
+      133,
+      192
+    ],
+    [
+      134,
+      112
+    ],
+    [
+      134,
+      114
+    ],
+    [
+      134,
+      142
+    ],
+    [
+      134,
+      144
+    ],
+    [
+      134,
+      145
+    ],
+    [
+      134,
+      159
+    ],
+    [
+      134,
+      191
+    ],
+    [
+      134,
+      192
+    ],
+    [
+      135,
+      112
+    ],
+    [
+      135,
+      114
+    ],
+    [
+      135,
+      142
+    ],
+    [
+      135,
+      144
+    ],
+    [
+      135,
+      145
+    ],
+    [
+      135,
+      159
+    ],
+    [
+      135,
+      191
+    ],
+    [
+      135,
+      192
+    ],
+    [
+      136,
+      112
+    ],
+    [
+      136,
+      144
+    ],
+    [
+      136,
+      145
+    ],
+    [
+      136,
+      159
+    ],
+    [
+      136,
+      191
+    ],
+    [
+      136,
+      192
+    ],
+    [
+      137,
+      112
+    ],
+    [
+      137,
+      144
+    ],
+    [
+      137,
+      145
+    ],
+    [
+      137,
+      159
+    ],
+    [
+      137,
+      191
+    ],
+    [
+      137,
+      192
+    ],
+    [
+      138,
+      112
+    ],
+    [
+      138,
+      144
+    ],
+    [
+      138,
+      145
+    ],
+    [
+      138,
+      159
+    ],
+    [
+      138,
+      191
+    ],
+    [
+      138,
+      192
+    ],
+    [
+      139,
+      112
+    ],
+    [
+      139,
+      144
+    ],
+    [
+      139,
+      145
+    ],
+    [
+      139,
+      159
+    ],
+    [
+      139,
+      191
+    ],
+    [
+      139,
+      192
+    ],
+    [
+      140,
+      112
+    ],
+    [
+      140,
+      144
+    ],
+    [
+      140,
+      145
+    ],
+    [
+      140,
+      159
+    ],
+    [
+      140,
+      191
+    ],
+    [
+      140,
+      192
+    ],
+    [
+      141,
+      112
+    ],
+    [
+      141,
+      144
+    ],
+    [
+      141,
+      145
+    ],
+    [
+      141,
+      159
+    ],
+    [
+      141,
+      191
+    ],
+    [
+      141,
+      192
+    ],
+    [
+      142,
+      112
+    ],
+    [
+      142,
+      144
+    ],
+    [
+      142,
+      145
+    ],
+    [
+      142,
+      159
+    ],
+    [
+      142,
+      191
+    ],
+    [
+      142,
+      192
+    ],
+    [
+      143,
+      112
+    ],
+    [
+      143,
+      144
+    ],
+    [
+      143,
+      145
+    ],
+    [
+      143,
+      159
+    ],
+    [
+      143,
+      191
+    ],
+    [
+      143,
+      192
+    ],
+    [
+      144,
+      112
+    ],
+    [
+      144,
+      144
+    ],
+    [
+      144,
+      145
+    ],
+    [
+      144,
+      159
+    ],
+    [
+      144,
+      191
+    ],
+    [
+      144,
+      192
+    ],
+    [
+      145,
+      112
+    ],
+    [
+      145,
+      144
+    ],
+    [
+      145,
+      145
+    ],
+    [
+      145,
+      159
+    ],
+    [
+      145,
+      191
+    ],
+    [
+      145,
+      192
+    ],
+    [
+      146,
+      112
+    ],
+    [
+      146,
+      144
+    ],
+    [
+      146,
+      145
+    ],
+    [
+      146,
+      159
+    ],
+    [
+      146,
+      191
+    ],
+    [
+      146,
+      192
+    ],
+    [
+      147,
+      112
+    ],
+    [
+      147,
+      144
+    ],
+    [
+      147,
+      145
+    ],
+    [
+      147,
+      159
+    ],
+    [
+      147,
+      191
+    ],
+    [
+      147,
+      192
+    ],
+    [
+      148,
+      112
+    ],
+    [
+      148,
+      144
+    ],
+    [
+      148,
+      145
+    ],
+    [
+      148,
+      159
+    ],
+    [
+      148,
+      191
+    ],
+    [
+      148,
+      192
+    ],
+    [
+      149,
+      112
+    ],
+    [
+      149,
+      144
+    ],
+    [
+      149,
+      145
+    ],
+    [
+      149,
+      159
+    ],
+    [
+      149,
+      191
+    ],
+    [
+      149,
+      192
+    ],
+    [
+      150,
+      112
+    ],
+    [
+      150,
+      144
+    ],
+    [
+      150,
+      145
+    ],
+    [
+      150,
+      159
+    ],
+    [
+      150,
+      191
+    ],
+    [
+      150,
+      192
+    ],
+    [
+      151,
+      112
+    ],
+    [
+      151,
+      144
+    ],
+    [
+      151,
+      145
+    ],
+    [
+      151,
+      159
+    ],
+    [
+      151,
+      191
+    ],
+    [
+      151,
+      192
+    ],
+    [
+      152,
+      112
+    ],
+    [
+      152,
+      144
+    ],
+    [
+      152,
+      145
+    ],
+    [
+      152,
+      159
+    ],
+    [
+      152,
+      191
+    ],
+    [
+      152,
+      192
+    ],
+    [
+      153,
+      112
+    ],
+    [
+      153,
+      144
+    ],
+    [
+      153,
+      145
+    ],
+    [
+      153,
+      159
+    ],
+    [
+      153,
+      191
+    ],
+    [
+      153,
+      192
+    ],
+    [
+      154,
+      112
+    ],
+    [
+      154,
+      144
+    ],
+    [
+      154,
+      145
+    ],
+    [
+      154,
+      159
+    ],
+    [
+      154,
+      191
+    ],
+    [
+      154,
+      192
+    ],
+    [
+      155,
+      112
+    ],
+    [
+      155,
+      144
+    ],
+    [
+      155,
+      145
+    ],
+    [
+      155,
+      159
+    ],
+    [
+      155,
+      191
+    ],
+    [
+      155,
+      192
+    ],
+    [
+      156,
+      112
+    ],
+    [
+      156,
+      144
+    ],
+    [
+      156,
+      145
+    ],
+    [
+      156,
+      159
+    ],
+    [
+      156,
+      191
+    ],
+    [
+      156,
+      192
+    ],
+    [
+      156,
+      319
+    ],
+    [
+      156,
+      320
+    ],
+    [
+      156,
+      321
+    ],
+    [
+      156,
+      322
+    ],
+    [
+      156,
+      323
+    ],
+    [
+      156,
+      324
+    ],
+    [
+      156,
+      325
+    ],
+    [
+      156,
+      326
+    ],
+    [
+      156,
+      327
+    ],
+    [
+      156,
+      328
+    ],
+    [
+      156,
+      329
+    ],
+    [
+      156,
+      330
+    ],
+    [
+      156,
+      331
+    ],
+    [
+      156,
+      332
+    ],
+    [
+      156,
+      333
+    ],
+    [
+      156,
+      334
+    ],
+    [
+      156,
+      335
+    ],
+    [
+      156,
+      336
+    ],
+    [
+      156,
+      337
+    ],
+    [
+      157,
+      112
+    ],
+    [
+      157,
+      144
+    ],
+    [
+      157,
+      145
+    ],
+    [
+      157,
+      159
+    ],
+    [
+      157,
+      191
+    ],
+    [
+      157,
+      192
+    ],
+    [
+      157,
+      319
+    ],
+    [
+      157,
+      337
+    ],
+    [
+      158,
+      112
+    ],
+    [
+      158,
+      144
+    ],
+    [
+      158,
+      145
+    ],
+    [
+      158,
+      159
+    ],
+    [
+      158,
+      191
+    ],
+    [
+      158,
+      192
+    ],
+    [
+      158,
+      319
+    ],
+    [
+      158,
+      321
+    ],
+    [
+      158,
+      335
+    ],
+    [
+      158,
+      337
+    ],
+    [
+      159,
+      112
+    ],
+    [
+      159,
+      144
+    ],
+    [
+      159,
+      145
+    ],
+    [
+      159,
+      159
+    ],
+    [
+      159,
+      191
+    ],
+    [
+      159,
+      192
+    ],
+    [
+      159,
+      319
+    ],
+    [
+      159,
+      321
+    ],
+    [
+      159,
+      335
+    ],
+    [
+      159,
+      337
+    ],
+    [
+      160,
+      112
+    ],
+    [
+      160,
+      144
+    ],
+    [
+      160,
+      145
+    ],
+    [
+      160,
+      159
+    ],
+    [
+      160,
+      191
+    ],
+    [
+      160,
+      192
+    ],
+    [
+      160,
+      319
+    ],
+    [
+      160,
+      337
+    ],
+    [
+      161,
+      112
+    ],
+    [
+      161,
+      144
+    ],
+    [
+      161,
+      145
+    ],
+    [
+      161,
+      159
+    ],
+    [
+      161,
+      191
+    ],
+    [
+      161,
+      192
+    ],
+    [
+      161,
+      319
+    ],
+    [
+      161,
+      337
+    ],
+    [
+      162,
+      112
+    ],
+    [
+      162,
+      144
+    ],
+    [
+      162,
+      145
+    ],
+    [
+      162,
+      159
+    ],
+    [
+      162,
+      191
+    ],
+    [
+      162,
+      192
+    ],
+    [
+      162,
+      319
+    ],
+    [
+      162,
+      337
+    ],
+    [
+      163,
+      112
+    ],
+    [
+      163,
+      144
+    ],
+    [
+      163,
+      145
+    ],
+    [
+      163,
+      159
+    ],
+    [
+      163,
+      191
+    ],
+    [
+      163,
+      192
+    ],
+    [
+      163,
+      319
+    ],
+    [
+      163,
+      337
+    ],
+    [
+      164,
+      112
+    ],
+    [
+      164,
+      144
+    ],
+    [
+      164,
+      145
+    ],
+    [
+      164,
+      159
+    ],
+    [
+      164,
+      191
+    ],
+    [
+      164,
+      192
+    ],
+    [
+      164,
+      319
+    ],
+    [
+      164,
+      337
+    ],
+    [
+      165,
+      112
+    ],
+    [
+      165,
+      144
+    ],
+    [
+      165,
+      145
+    ],
+    [
+      165,
+      159
+    ],
+    [
+      165,
+      191
+    ],
+    [
+      165,
+      192
+    ],
+    [
+      165,
+      319
+    ],
+    [
+      165,
+      337
+    ],
+    [
+      166,
+      112
+    ],
+    [
+      166,
+      144
+    ],
+    [
+      166,
+      145
+    ],
+    [
+      166,
+      159
+    ],
+    [
+      166,
+      161
+    ],
+    [
+      166,
+      189
+    ],
+    [
+      166,
+      191
+    ],
+    [
+      166,
+      192
+    ],
+    [
+      166,
+      319
+    ],
+    [
+      166,
+      321
+    ],
+    [
+      166,
+      335
+    ],
+    [
+      166,
+      337
+    ],
+    [
+      167,
+      112
+    ],
+    [
+      167,
+      144
+    ],
+    [
+      167,
+      145
+    ],
+    [
+      167,
+      159
+    ],
+    [
+      167,
+      161
+    ],
+    [
+      167,
+      189
+    ],
+    [
+      167,
+      191
+    ],
+    [
+      167,
+      192
+    ],
+    [
+      167,
+      319
+    ],
+    [
+      167,
+      321
+    ],
+    [
+      167,
+      335
+    ],
+    [
+      167,
+      337
+    ],
+    [
+      168,
+      112
+    ],
+    [
+      168,
+      144
+    ],
+    [
+      168,
+      145
+    ],
+    [
+      168,
+      159
+    ],
+    [
+      168,
+      191
+    ],
+    [
+      168,
+      319
+    ],
+    [
+      168,
+      337
+    ],
+    [
+      169,
+      112
+    ],
+    [
+      169,
+      144
+    ],
+    [
+      169,
+      145
+    ],
+    [
+      169,
+      159
+    ],
+    [
+      169,
+      160
+    ],
+    [
+      169,
+      161
+    ],
+    [
+      169,
+      162
+    ],
+    [
+      169,
+      163
+    ],
+    [
+      169,
+      164
+    ],
+    [
+      169,
+      165
+    ],
+    [
+      169,
+      166
+    ],
+    [
+      169,
+      167
+    ],
+    [
+      169,
+      168
+    ],
+    [
+      169,
+      169
+    ],
+    [
+      169,
+      170
+    ],
+    [
+      169,
+      171
+    ],
+    [
+      169,
+      172
+    ],
+    [
+      169,
+      173
+    ],
+    [
+      169,
+      174
+    ],
+    [
+      169,
+      175
+    ],
+    [
+      169,
+      176
+    ],
+    [
+      169,
+      177
+    ],
+    [
+      169,
+      178
+    ],
+    [
+      169,
+      179
+    ],
+    [
+      169,
+      180
+    ],
+    [
+      169,
+      181
+    ],
+    [
+      169,
+      182
+    ],
+    [
+      169,
+      183
+    ],
+    [
+      169,
+      184
+    ],
+    [
+      169,
+      185
+    ],
+    [
+      169,
+      186
+    ],
+    [
+      169,
+      187
+    ],
+    [
+      169,
+      188
+    ],
+    [
+      169,
+      189
+    ],
+    [
+      169,
+      190
+    ],
+    [
+      169,
+      191
+    ],
+    [
+      169,
+      319
+    ],
+    [
+      169,
+      320
+    ],
+    [
+      169,
+      321
+    ],
+    [
+      169,
+      322
+    ],
+    [
+      169,
+      323
+    ],
+    [
+      169,
+      324
+    ],
+    [
+      169,
+      325
+    ],
+    [
+      169,
+      326
+    ],
+    [
+      169,
+      327
+    ],
+    [
+      169,
+      328
+    ],
+    [
+      169,
+      329
+    ],
+    [
+      169,
+      330
+    ],
+    [
+      169,
+      331
+    ],
+    [
+      169,
+      332
+    ],
+    [
+      169,
+      333
+    ],
+    [
+      169,
+      334
+    ],
+    [
+      169,
+      335
+    ],
+    [
+      169,
+      336
+    ],
+    [
+      169,
+      337
+    ],
+    [
+      170,
+      112
+    ],
+    [
+      170,
+      144
+    ],
+    [
+      170,
+      145
+    ],
+    [
+      171,
+      112
+    ],
+    [
+      171,
+      144
+    ],
+    [
+      171,
+      145
+    ],
+    [
+      172,
+      112
+    ],
+    [
+      172,
+      114
+    ],
+    [
+      172,
+      142
+    ],
+    [
+      172,
+      144
+    ],
+    [
+      172,
+      145
+    ],
+    [
+      173,
+      112
+    ],
+    [
+      173,
+      114
+    ],
+    [
+      173,
+      142
+    ],
+    [
+      173,
+      144
+    ],
+    [
+      173,
+      145
+    ],
+    [
+      174,
+      112
+    ],
+    [
+      174,
+      144
+    ],
+    [
+      175,
+      112
+    ],
+    [
+      175,
+      113
+    ],
+    [
+      175,
+      114
+    ],
+    [
+      175,
+      115
+    ],
+    [
+      175,
+      116
+    ],
+    [
+      175,
+      117
+    ],
+    [
+      175,
+      118
+    ],
+    [
+      175,
+      119
+    ],
+    [
+      175,
+      120
+    ],
+    [
+      175,
+      121
+    ],
+    [
+      175,
+      122
+    ],
+    [
+      175,
+      123
+    ],
+    [
+      175,
+      124
+    ],
+    [
+      175,
+      125
+    ],
+    [
+      175,
+      126
+    ],
+    [
+      175,
+      127
+    ],
+    [
+      175,
+      128
+    ],
+    [
+      175,
+      129
+    ],
+    [
+      175,
+      130
+    ],
+    [
+      175,
+      131
+    ],
+    [
+      175,
+      132
+    ],
+    [
+      175,
+      133
+    ],
+    [
+      175,
+      134
+    ],
+    [
+      175,
+      135
+    ],
+    [
+      175,
+      136
+    ],
+    [
+      175,
+      137
+    ],
+    [
+      175,
+      138
+    ],
+    [
+      175,
+      139
+    ],
+    [
+      175,
+      140
+    ],
+    [
+      175,
+      141
+    ],
+    [
+      175,
+      142
+    ],
+    [
+      175,
+      143
+    ],
+    [
+      175,
+      144
+    ],
+    [
+      185,
+      159
+    ],
+    [
+      185,
+      160
+    ],
+    [
+      185,
+      161
+    ],
+    [
+      185,
+      162
+    ],
+    [
+      185,
+      163
+    ],
+    [
+      185,
+      164
+    ],
+    [
+      185,
+      165
+    ],
+    [
+      185,
+      166
+    ],
+    [
+      185,
+      167
+    ],
+    [
+      185,
+      168
+    ],
+    [
+      185,
+      169
+    ],
+    [
+      185,
+      170
+    ],
+    [
+      185,
+      171
+    ],
+    [
+      185,
+      172
+    ],
+    [
+      185,
+      173
+    ],
+    [
+      185,
+      174
+    ],
+    [
+      185,
+      175
+    ],
+    [
+      185,
+      176
+    ],
+    [
+      185,
+      177
+    ],
+    [
+      185,
+      178
+    ],
+    [
+      185,
+      179
+    ],
+    [
+      185,
+      180
+    ],
+    [
+      185,
+      181
+    ],
+    [
+      185,
+      182
+    ],
+    [
+      185,
+      183
+    ],
+    [
+      185,
+      184
+    ],
+    [
+      185,
+      185
+    ],
+    [
+      185,
+      186
+    ],
+    [
+      185,
+      187
+    ],
+    [
+      185,
+      188
+    ],
+    [
+      185,
+      189
+    ],
+    [
+      185,
+      190
+    ],
+    [
+      185,
+      191
+    ],
+    [
+      186,
+      159
+    ],
+    [
+      186,
+      191
+    ],
+    [
+      187,
+      159
+    ],
+    [
+      187,
+      161
+    ],
+    [
+      187,
+      189
+    ],
+    [
+      187,
+      191
+    ],
+    [
+      187,
+      192
+    ],
+    [
+      188,
+      159
+    ],
+    [
+      188,
+      161
+    ],
+    [
+      188,
+      189
+    ],
+    [
+      188,
+      191
+    ],
+    [
+      188,
+      192
+    ],
+    [
+      189,
+      112
+    ],
+    [
+      189,
+      113
+    ],
+    [
+      189,
+      114
+    ],
+    [
+      189,
+      115
+    ],
+    [
+      189,
+      116
+    ],
+    [
+      189,
+      117
+    ],
+    [
+      189,
+      118
+    ],
+    [
+      189,
+      119
+    ],
+    [
+      189,
+      120
+    ],
+    [
+      189,
+      121
+    ],
+    [
+      189,
+      122
+    ],
+    [
+      189,
+      123
+    ],
+    [
+      189,
+      124
+    ],
+    [
+      189,
+      125
+    ],
+    [
+      189,
+      126
+    ],
+    [
+      189,
+      127
+    ],
+    [
+      189,
+      128
+    ],
+    [
+      189,
+      129
+    ],
+    [
+      189,
+      130
+    ],
+    [
+      189,
+      131
+    ],
+    [
+      189,
+      132
+    ],
+    [
+      189,
+      133
+    ],
+    [
+      189,
+      134
+    ],
+    [
+      189,
+      135
+    ],
+    [
+      189,
+      136
+    ],
+    [
+      189,
+      137
+    ],
+    [
+      189,
+      138
+    ],
+    [
+      189,
+      139
+    ],
+    [
+      189,
+      140
+    ],
+    [
+      189,
+      141
+    ],
+    [
+      189,
+      142
+    ],
+    [
+      189,
+      143
+    ],
+    [
+      189,
+      144
+    ],
+    [
+      189,
+      159
+    ],
+    [
+      189,
+      191
+    ],
+    [
+      189,
+      192
+    ],
+    [
+      190,
+      112
+    ],
+    [
+      190,
+      144
+    ],
+    [
+      190,
+      159
+    ],
+    [
+      190,
+      191
+    ],
+    [
+      190,
+      192
+    ],
+    [
+      191,
+      112
+    ],
+    [
+      191,
+      114
+    ],
+    [
+      191,
+      142
+    ],
+    [
+      191,
+      144
+    ],
+    [
+      191,
+      145
+    ],
+    [
+      191,
+      159
+    ],
+    [
+      191,
+      191
+    ],
+    [
+      191,
+      192
+    ],
+    [
+      192,
+      112
+    ],
+    [
+      192,
+      114
+    ],
+    [
+      192,
+      142
+    ],
+    [
+      192,
+      144
+    ],
+    [
+      192,
+      145
+    ],
+    [
+      192,
+      159
+    ],
+    [
+      192,
+      191
+    ],
+    [
+      192,
+      192
+    ],
+    [
+      192,
+      329
+    ],
+    [
+      192,
+      330
+    ],
+    [
+      192,
+      331
+    ],
+    [
+      192,
+      332
+    ],
+    [
+      192,
+      333
+    ],
+    [
+      192,
+      334
+    ],
+    [
+      192,
+      335
+    ],
+    [
+      192,
+      336
+    ],
+    [
+      192,
+      337
+    ],
+    [
+      192,
+      338
+    ],
+    [
+      192,
+      339
+    ],
+    [
+      192,
+      340
+    ],
+    [
+      192,
+      341
+    ],
+    [
+      192,
+      342
+    ],
+    [
+      192,
+      343
+    ],
+    [
+      192,
+      344
+    ],
+    [
+      192,
+      345
+    ],
+    [
+      192,
+      346
+    ],
+    [
+      192,
+      347
+    ],
+    [
+      193,
+      112
+    ],
+    [
+      193,
+      144
+    ],
+    [
+      193,
+      145
+    ],
+    [
+      193,
+      159
+    ],
+    [
+      193,
+      191
+    ],
+    [
+      193,
+      192
+    ],
+    [
+      193,
+      329
+    ],
+    [
+      193,
+      347
+    ],
+    [
+      194,
+      112
+    ],
+    [
+      194,
+      144
+    ],
+    [
+      194,
+      145
+    ],
+    [
+      194,
+      159
+    ],
+    [
+      194,
+      191
+    ],
+    [
+      194,
+      192
+    ],
+    [
+      194,
+      329
+    ],
+    [
+      194,
+      331
+    ],
+    [
+      194,
+      345
+    ],
+    [
+      194,
+      347
+    ],
+    [
+      195,
+      112
+    ],
+    [
+      195,
+      144
+    ],
+    [
+      195,
+      145
+    ],
+    [
+      195,
+      159
+    ],
+    [
+      195,
+      191
+    ],
+    [
+      195,
+      192
+    ],
+    [
+      195,
+      329
+    ],
+    [
+      195,
+      331
+    ],
+    [
+      195,
+      345
+    ],
+    [
+      195,
+      347
+    ],
+    [
+      196,
+      112
+    ],
+    [
+      196,
+      144
+    ],
+    [
+      196,
+      145
+    ],
+    [
+      196,
+      159
+    ],
+    [
+      196,
+      191
+    ],
+    [
+      196,
+      192
+    ],
+    [
+      196,
+      329
+    ],
+    [
+      196,
+      347
+    ],
+    [
+      197,
+      112
+    ],
+    [
+      197,
+      144
+    ],
+    [
+      197,
+      145
+    ],
+    [
+      197,
+      159
+    ],
+    [
+      197,
+      191
+    ],
+    [
+      197,
+      192
+    ],
+    [
+      197,
+      329
+    ],
+    [
+      197,
+      347
+    ],
+    [
+      198,
+      112
+    ],
+    [
+      198,
+      144
+    ],
+    [
+      198,
+      145
+    ],
+    [
+      198,
+      159
+    ],
+    [
+      198,
+      191
+    ],
+    [
+      198,
+      192
+    ],
+    [
+      198,
+      329
+    ],
+    [
+      198,
+      347
+    ],
+    [
+      199,
+      112
+    ],
+    [
+      199,
+      144
+    ],
+    [
+      199,
+      145
+    ],
+    [
+      199,
+      159
+    ],
+    [
+      199,
+      191
+    ],
+    [
+      199,
+      192
+    ],
+    [
+      199,
+      329
+    ],
+    [
+      199,
+      347
+    ],
+    [
+      200,
+      112
+    ],
+    [
+      200,
+      144
+    ],
+    [
+      200,
+      145
+    ],
+    [
+      200,
+      159
+    ],
+    [
+      200,
+      191
+    ],
+    [
+      200,
+      192
+    ],
+    [
+      200,
+      329
+    ],
+    [
+      200,
+      347
+    ],
+    [
+      201,
+      112
+    ],
+    [
+      201,
+      144
+    ],
+    [
+      201,
+      145
+    ],
+    [
+      201,
+      159
+    ],
+    [
+      201,
+      191
+    ],
+    [
+      201,
+      192
+    ],
+    [
+      201,
+      329
+    ],
+    [
+      201,
+      347
+    ],
+    [
+      202,
+      112
+    ],
+    [
+      202,
+      144
+    ],
+    [
+      202,
+      145
+    ],
+    [
+      202,
+      159
+    ],
+    [
+      202,
+      191
+    ],
+    [
+      202,
+      192
+    ],
+    [
+      202,
+      329
+    ],
+    [
+      202,
+      331
+    ],
+    [
+      202,
+      345
+    ],
+    [
+      202,
+      347
+    ],
+    [
+      203,
+      112
+    ],
+    [
+      203,
+      144
+    ],
+    [
+      203,
+      145
+    ],
+    [
+      203,
+      159
+    ],
+    [
+      203,
+      191
+    ],
+    [
+      203,
+      192
+    ],
+    [
+      203,
+      329
+    ],
+    [
+      203,
+      331
+    ],
+    [
+      203,
+      345
+    ],
+    [
+      203,
+      347
+    ],
+    [
+      204,
+      112
+    ],
+    [
+      204,
+      144
+    ],
+    [
+      204,
+      145
+    ],
+    [
+      204,
+      159
+    ],
+    [
+      204,
+      191
+    ],
+    [
+      204,
+      192
+    ],
+    [
+      204,
+      329
+    ],
+    [
+      204,
+      347
+    ],
+    [
+      205,
+      112
+    ],
+    [
+      205,
+      144
+    ],
+    [
+      205,
+      145
+    ],
+    [
+      205,
+      159
+    ],
+    [
+      205,
+      191
+    ],
+    [
+      205,
+      192
+    ],
+    [
+      205,
+      329
+    ],
+    [
+      205,
+      330
+    ],
+    [
+      205,
+      331
+    ],
+    [
+      205,
+      332
+    ],
+    [
+      205,
+      333
+    ],
+    [
+      205,
+      334
+    ],
+    [
+      205,
+      335
+    ],
+    [
+      205,
+      336
+    ],
+    [
+      205,
+      337
+    ],
+    [
+      205,
+      338
+    ],
+    [
+      205,
+      339
+    ],
+    [
+      205,
+      340
+    ],
+    [
+      205,
+      341
+    ],
+    [
+      205,
+      342
+    ],
+    [
+      205,
+      343
+    ],
+    [
+      205,
+      344
+    ],
+    [
+      205,
+      345
+    ],
+    [
+      205,
+      346
+    ],
+    [
+      205,
+      347
+    ],
+    [
+      206,
+      112
+    ],
+    [
+      206,
+      144
+    ],
+    [
+      206,
+      145
+    ],
+    [
+      206,
+      159
+    ],
+    [
+      206,
+      191
+    ],
+    [
+      206,
+      192
+    ],
+    [
+      207,
+      112
+    ],
+    [
+      207,
+      144
+    ],
+    [
+      207,
+      145
+    ],
+    [
+      207,
+      159
+    ],
+    [
+      207,
+      191
+    ],
+    [
+      207,
+      192
+    ],
+    [
+      208,
+      112
+    ],
+    [
+      208,
+      144
+    ],
+    [
+      208,
+      145
+    ],
+    [
+      208,
+      159
+    ],
+    [
+      208,
+      191
+    ],
+    [
+      208,
+      192
+    ],
+    [
+      209,
+      112
+    ],
+    [
+      209,
+      144
+    ],
+    [
+      209,
+      145
+    ],
+    [
+      209,
+      159
+    ],
+    [
+      209,
+      191
+    ],
+    [
+      209,
+      192
+    ],
+    [
+      210,
+      112
+    ],
+    [
+      210,
+      144
+    ],
+    [
+      210,
+      145
+    ],
+    [
+      210,
+      159
+    ],
+    [
+      210,
+      191
+    ],
+    [
+      210,
+      192
+    ],
+    [
+      210,
+      337
+    ],
+    [
+      210,
+      338
+    ],
+    [
+      210,
+      339
+    ],
+    [
+      210,
+      340
+    ],
+    [
+      210,
+      341
+    ],
+    [
+      210,
+      342
+    ],
+    [
+      210,
+      343
+    ],
+    [
+      210,
+      344
+    ],
+    [
+      210,
+      345
+    ],
+    [
+      210,
+      346
+    ],
+    [
+      210,
+      347
+    ],
+    [
+      210,
+      348
+    ],
+    [
+      210,
+      349
+    ],
+    [
+      210,
+      350
+    ],
+    [
+      210,
+      351
+    ],
+    [
+      210,
+      352
+    ],
+    [
+      210,
+      353
+    ],
+    [
+      210,
+      354
+    ],
+    [
+      210,
+      355
+    ],
+    [
+      211,
+      112
+    ],
+    [
+      211,
+      144
+    ],
+    [
+      211,
+      145
+    ],
+    [
+      211,
+      159
+    ],
+    [
+      211,
+      191
+    ],
+    [
+      211,
+      192
+    ],
+    [
+      211,
+      337
+    ],
+    [
+      211,
+      355
+    ],
+    [
+      212,
+      112
+    ],
+    [
+      212,
+      144
+    ],
+    [
+      212,
+      145
+    ],
+    [
+      212,
+      159
+    ],
+    [
+      212,
+      191
+    ],
+    [
+      212,
+      192
+    ],
+    [
+      212,
+      337
+    ],
+    [
+      212,
+      339
+    ],
+    [
+      212,
+      353
+    ],
+    [
+      212,
+      355
+    ],
+    [
+      213,
+      112
+    ],
+    [
+      213,
+      144
+    ],
+    [
+      213,
+      145
+    ],
+    [
+      213,
+      159
+    ],
+    [
+      213,
+      191
+    ],
+    [
+      213,
+      192
+    ],
+    [
+      213,
+      337
+    ],
+    [
+      213,
+      339
+    ],
+    [
+      213,
+      353
+    ],
+    [
+      213,
+      355
+    ],
+    [
+      214,
+      112
+    ],
+    [
+      214,
+      144
+    ],
+    [
+      214,
+      145
+    ],
+    [
+      214,
+      159
+    ],
+    [
+      214,
+      191
+    ],
+    [
+      214,
+      192
+    ],
+    [
+      214,
+      337
+    ],
+    [
+      214,
+      355
+    ],
+    [
+      215,
+      112
+    ],
+    [
+      215,
+      144
+    ],
+    [
+      215,
+      145
+    ],
+    [
+      215,
+      159
+    ],
+    [
+      215,
+      191
+    ],
+    [
+      215,
+      192
+    ],
+    [
+      215,
+      337
+    ],
+    [
+      215,
+      355
+    ],
+    [
+      216,
+      112
+    ],
+    [
+      216,
+      144
+    ],
+    [
+      216,
+      145
+    ],
+    [
+      216,
+      159
+    ],
+    [
+      216,
+      191
+    ],
+    [
+      216,
+      192
+    ],
+    [
+      216,
+      337
+    ],
+    [
+      216,
+      355
+    ],
+    [
+      217,
+      112
+    ],
+    [
+      217,
+      144
+    ],
+    [
+      217,
+      145
+    ],
+    [
+      217,
+      159
+    ],
+    [
+      217,
+      191
+    ],
+    [
+      217,
+      192
+    ],
+    [
+      217,
+      337
+    ],
+    [
+      217,
+      355
+    ],
+    [
+      218,
+      112
+    ],
+    [
+      218,
+      144
+    ],
+    [
+      218,
+      145
+    ],
+    [
+      218,
+      159
+    ],
+    [
+      218,
+      191
+    ],
+    [
+      218,
+      192
+    ],
+    [
+      218,
+      337
+    ],
+    [
+      218,
+      355
+    ],
+    [
+      219,
+      112
+    ],
+    [
+      219,
+      144
+    ],
+    [
+      219,
+      145
+    ],
+    [
+      219,
+      159
+    ],
+    [
+      219,
+      191
+    ],
+    [
+      219,
+      192
+    ],
+    [
+      219,
+      337
+    ],
+    [
+      219,
+      355
+    ],
+    [
+      220,
+      112
+    ],
+    [
+      220,
+      144
+    ],
+    [
+      220,
+      145
+    ],
+    [
+      220,
+      159
+    ],
+    [
+      220,
+      191
+    ],
+    [
+      220,
+      192
+    ],
+    [
+      220,
+      337
+    ],
+    [
+      220,
+      339
+    ],
+    [
+      220,
+      353
+    ],
+    [
+      220,
+      355
+    ],
+    [
+      221,
+      112
+    ],
+    [
+      221,
+      144
+    ],
+    [
+      221,
+      145
+    ],
+    [
+      221,
+      159
+    ],
+    [
+      221,
+      161
+    ],
+    [
+      221,
+      189
+    ],
+    [
+      221,
+      191
+    ],
+    [
+      221,
+      192
+    ],
+    [
+      221,
+      337
+    ],
+    [
+      221,
+      339
+    ],
+    [
+      221,
+      353
+    ],
+    [
+      221,
+      355
+    ],
+    [
+      222,
+      112
+    ],
+    [
+      222,
+      144
+    ],
+    [
+      222,
+      145
+    ],
+    [
+      222,
+      159
+    ],
+    [
+      222,
+      161
+    ],
+    [
+      222,
+      189
+    ],
+    [
+      222,
+      191
+    ],
+    [
+      222,
+      192
+    ],
+    [
+      222,
+      337
+    ],
+    [
+      222,
+      355
+    ],
+    [
+      223,
+      112
+    ],
+    [
+      223,
+      144
+    ],
+    [
+      223,
+      145
+    ],
+    [
+      223,
+      159
+    ],
+    [
+      223,
+      191
+    ],
+    [
+      223,
+      337
+    ],
+    [
+      223,
+      338
+    ],
+    [
+      223,
+      339
+    ],
+    [
+      223,
+      340
+    ],
+    [
+      223,
+      341
+    ],
+    [
+      223,
+      342
+    ],
+    [
+      223,
+      343
+    ],
+    [
+      223,
+      344
+    ],
+    [
+      223,
+      345
+    ],
+    [
+      223,
+      346
+    ],
+    [
+      223,
+      347
+    ],
+    [
+      223,
+      348
+    ],
+    [
+      223,
+      349
+    ],
+    [
+      223,
+      350
+    ],
+    [
+      223,
+      351
+    ],
+    [
+      223,
+      352
+    ],
+    [
+      223,
+      353
+    ],
+    [
+      223,
+      354
+    ],
+    [
+      223,
+      355
+    ],
+    [
+      224,
+      112
+    ],
+    [
+      224,
+      144
+    ],
+    [
+      224,
+      145
+    ],
+    [
+      224,
+      159
+    ],
+    [
+      224,
+      160
+    ],
+    [
+      224,
+      161
+    ],
+    [
+      224,
+      162
+    ],
+    [
+      224,
+      163
+    ],
+    [
+      224,
+      164
+    ],
+    [
+      224,
+      165
+    ],
+    [
+      224,
+      166
+    ],
+    [
+      224,
+      167
+    ],
+    [
+      224,
+      168
+    ],
+    [
+      224,
+      169
+    ],
+    [
+      224,
+      170
+    ],
+    [
+      224,
+      171
+    ],
+    [
+      224,
+      172
+    ],
+    [
+      224,
+      173
+    ],
+    [
+      224,
+      174
+    ],
+    [
+      224,
+      175
+    ],
+    [
+      224,
+      176
+    ],
+    [
+      224,
+      177
+    ],
+    [
+      224,
+      178
+    ],
+    [
+      224,
+      179
+    ],
+    [
+      224,
+      180
+    ],
+    [
+      224,
+      181
+    ],
+    [
+      224,
+      182
+    ],
+    [
+      224,
+      183
+    ],
+    [
+      224,
+      184
+    ],
+    [
+      224,
+      185
+    ],
+    [
+      224,
+      186
+    ],
+    [
+      224,
+      187
+    ],
+    [
+      224,
+      188
+    ],
+    [
+      224,
+      189
+    ],
+    [
+      224,
+      190
+    ],
+    [
+      224,
+      191
+    ],
+    [
+      225,
+      112
+    ],
+    [
+      225,
+      144
+    ],
+    [
+      225,
+      145
+    ],
+    [
+      226,
+      112
+    ],
+    [
+      226,
+      144
+    ],
+    [
+      226,
+      145
+    ],
+    [
+      227,
+      112
+    ],
+    [
+      227,
+      144
+    ],
+    [
+      227,
+      145
+    ],
+    [
+      228,
+      112
+    ],
+    [
+      228,
+      144
+    ],
+    [
+      228,
+      145
+    ],
+    [
+      229,
+      112
+    ],
+    [
+      229,
+      114
+    ],
+    [
+      229,
+      142
+    ],
+    [
+      229,
+      144
+    ],
+    [
+      229,
+      145
+    ],
+    [
+      230,
+      112
+    ],
+    [
+      230,
+      114
+    ],
+    [
+      230,
+      142
+    ],
+    [
+      230,
+      144
+    ],
+    [
+      230,
+      145
+    ],
+    [
+      231,
+      112
+    ],
+    [
+      231,
+      144
+    ],
+    [
+      232,
+      112
+    ],
+    [
+      232,
+      113
+    ],
+    [
+      232,
+      114
+    ],
+    [
+      232,
+      115
+    ],
+    [
+      232,
+      116
+    ],
+    [
+      232,
+      117
+    ],
+    [
+      232,
+      118
+    ],
+    [
+      232,
+      119
+    ],
+    [
+      232,
+      120
+    ],
+    [
+      232,
+      121
+    ],
+    [
+      232,
+      122
+    ],
+    [
+      232,
+      123
+    ],
+    [
+      232,
+      124
+    ],
+    [
+      232,
+      125
+    ],
+    [
+      232,
+      126
+    ],
+    [
+      232,
+      127
+    ],
+    [
+      232,
+      128
+    ],
+    [
+      232,
+      129
+    ],
+    [
+      232,
+      130
+    ],
+    [
+      232,
+      131
+    ],
+    [
+      232,
+      132
+    ],
+    [
+      232,
+      133
+    ],
+    [
+      232,
+      134
+    ],
+    [
+      232,
+      135
+    ],
+    [
+      232,
+      136
+    ],
+    [
+      232,
+      137
+    ],
+    [
+      232,
+      138
+    ],
+    [
+      232,
+      139
+    ],
+    [
+      232,
+      140
+    ],
+    [
+      232,
+      141
+    ],
+    [
+      232,
+      142
+    ],
+    [
+      232,
+      143
+    ],
+    [
+      232,
+      144
+    ],
+    [
+      233,
+      205
+    ],
+    [
+      233,
+      206
+    ],
+    [
+      233,
+      207
+    ],
+    [
+      233,
+      208
+    ],
+    [
+      233,
+      209
+    ],
+    [
+      233,
+      210
+    ],
+    [
+      233,
+      211
+    ],
+    [
+      233,
+      212
+    ],
+    [
+      233,
+      213
+    ],
+    [
+      233,
+      214
+    ],
+    [
+      233,
+      215
+    ],
+    [
+      233,
+      216
+    ],
+    [
+      233,
+      217
+    ],
+    [
+      233,
+      218
+    ],
+    [
+      233,
+      219
+    ],
+    [
+      233,
+      220
+    ],
+    [
+      233,
+      221
+    ],
+    [
+      233,
+      222
+    ],
+    [
+      233,
+      223
+    ],
+    [
+      233,
+      224
+    ],
+    [
+      233,
+      225
+    ],
+    [
+      233,
+      226
+    ],
+    [
+      233,
+      227
+    ],
+    [
+      233,
+      228
+    ],
+    [
+      233,
+      229
+    ],
+    [
+      233,
+      230
+    ],
+    [
+      233,
+      231
+    ],
+    [
+      234,
+      205
+    ],
+    [
+      234,
+      231
+    ],
+    [
+      235,
+      205
+    ],
+    [
+      235,
+      207
+    ],
+    [
+      235,
+      229
+    ],
+    [
+      235,
+      231
+    ],
+    [
+      235,
+      232
+    ],
+    [
+      236,
+      205
+    ],
+    [
+      236,
+      207
+    ],
+    [
+      236,
+      229
+    ],
+    [
+      236,
+      231
+    ],
+    [
+      236,
+      232
+    ],
+    [
+      237,
+      205
+    ],
+    [
+      237,
+      231
+    ],
+    [
+      237,
+      232
+    ],
+    [
+      238,
+      205
+    ],
+    [
+      238,
+      231
+    ],
+    [
+      238,
+      232
+    ],
+    [
+      239,
+      205
+    ],
+    [
+      239,
+      231
+    ],
+    [
+      239,
+      232
+    ],
+    [
+      240,
+      205
+    ],
+    [
+      240,
+      231
+    ],
+    [
+      240,
+      232
+    ],
+    [
+      241,
+      205
+    ],
+    [
+      241,
+      231
+    ],
+    [
+      241,
+      232
+    ],
+    [
+      242,
+      205
+    ],
+    [
+      242,
+      231
+    ],
+    [
+      242,
+      232
+    ],
+    [
+      243,
+      205
+    ],
+    [
+      243,
+      231
+    ],
+    [
+      243,
+      232
+    ],
+    [
+      244,
+      205
+    ],
+    [
+      244,
+      231
+    ],
+    [
+      244,
+      232
+    ],
+    [
+      245,
+      96
+    ],
+    [
+      245,
+      205
+    ],
+    [
+      245,
+      231
+    ],
+    [
+      245,
+      232
+    ],
+    [
+      246,
+      205
+    ],
+    [
+      246,
+      231
+    ],
+    [
+      246,
+      232
+    ],
+    [
+      247,
+      3
+    ],
+    [
+      247,
+      40
+    ],
+    [
+      247,
+      205
+    ],
+    [
+      247,
+      231
+    ],
+    [
+      247,
+      232
+    ],
+    [
+      248,
+      3
+    ],
+    [
+      248,
+      205
+    ],
+    [
+      248,
+      231
+    ],
+    [
+      248,
+      232
+    ],
+    [
+      249,
+      205
+    ],
+    [
+      249,
+      231
+    ],
+    [
+      249,
+      232
+    ],
+    [
+      250,
+      205
+    ],
+    [
+      250,
+      231
+    ],
+    [
+      250,
+      232
+    ],
+    [
+      251,
+      205
+    ],
+    [
+      251,
+      231
+    ],
+    [
+      251,
+      232
+    ],
+    [
+      252,
+      205
+    ],
+    [
+      252,
+      231
+    ],
+    [
+      252,
+      232
+    ],
+    [
+      253,
+      205
+    ],
+    [
+      253,
+      231
+    ],
+    [
+      253,
+      232
+    ],
+    [
+      254,
+      205
+    ],
+    [
+      254,
+      231
+    ],
+    [
+      254,
+      232
+    ],
+    [
+      255,
+      205
+    ],
+    [
+      255,
+      231
+    ],
+    [
+      255,
+      232
+    ],
+    [
+      256,
+      205
+    ],
+    [
+      256,
+      231
+    ],
+    [
+      256,
+      232
+    ],
+    [
+      257,
+      205
+    ],
+    [
+      257,
+      231
+    ],
+    [
+      257,
+      232
+    ],
+    [
+      258,
+      205
+    ],
+    [
+      258,
+      231
+    ],
+    [
+      258,
+      232
+    ],
+    [
+      259,
+      205
+    ],
+    [
+      259,
+      231
+    ],
+    [
+      259,
+      232
+    ],
+    [
+      260,
+      205
+    ],
+    [
+      260,
+      231
+    ],
+    [
+      260,
+      232
+    ],
+    [
+      261,
+      205
+    ],
+    [
+      261,
+      231
+    ],
+    [
+      261,
+      232
+    ],
+    [
+      262,
+      205
+    ],
+    [
+      262,
+      231
+    ],
+    [
+      262,
+      232
+    ],
+    [
+      263,
+      205
+    ],
+    [
+      263,
+      231
+    ],
+    [
+      263,
+      232
+    ],
+    [
+      264,
+      205
+    ],
+    [
+      264,
+      231
+    ],
+    [
+      264,
+      232
+    ],
+    [
+      265,
+      205
+    ],
+    [
+      265,
+      231
+    ],
+    [
+      265,
+      232
+    ],
+    [
+      266,
+      205
+    ],
+    [
+      266,
+      231
+    ],
+    [
+      266,
+      232
+    ],
+    [
+      267,
+      205
+    ],
+    [
+      267,
+      231
+    ],
+    [
+      267,
+      232
+    ],
+    [
+      268,
+      205
+    ],
+    [
+      268,
+      231
+    ],
+    [
+      268,
+      232
+    ],
+    [
+      269,
+      205
+    ],
+    [
+      269,
+      231
+    ],
+    [
+      269,
+      232
+    ],
+    [
+      270,
+      205
+    ],
+    [
+      270,
+      231
+    ],
+    [
+      270,
+      232
+    ],
+    [
+      271,
+      205
+    ],
+    [
+      271,
+      231
+    ],
+    [
+      271,
+      232
+    ],
+    [
+      272,
+      205
+    ],
+    [
+      272,
+      207
+    ],
+    [
+      272,
+      229
+    ],
+    [
+      272,
+      231
+    ],
+    [
+      272,
+      232
+    ],
+    [
+      273,
+      205
+    ],
+    [
+      273,
+      207
+    ],
+    [
+      273,
+      229
+    ],
+    [
+      273,
+      231
+    ],
+    [
+      273,
+      232
+    ],
+    [
+      273,
+      256
+    ],
+    [
+      273,
+      257
+    ],
+    [
+      273,
+      258
+    ],
+    [
+      273,
+      259
+    ],
+    [
+      273,
+      260
+    ],
+    [
+      273,
+      261
+    ],
+    [
+      273,
+      262
+    ],
+    [
+      273,
+      263
+    ],
+    [
+      273,
+      264
+    ],
+    [
+      273,
+      265
+    ],
+    [
+      273,
+      266
+    ],
+    [
+      273,
+      267
+    ],
+    [
+      273,
+      268
+    ],
+    [
+      273,
+      269
+    ],
+    [
+      273,
+      270
+    ],
+    [
+      273,
+      271
+    ],
+    [
+      273,
+      272
+    ],
+    [
+      273,
+      273
+    ],
+    [
+      273,
+      274
+    ],
+    [
+      273,
+      275
+    ],
+    [
+      273,
+      276
+    ],
+    [
+      273,
+      277
+    ],
+    [
+      273,
+      278
+    ],
+    [
+      273,
+      279
+    ],
+    [
+      273,
+      280
+    ],
+    [
+      273,
+      281
+    ],
+    [
+      273,
+      282
+    ],
+    [
+      273,
+      283
+    ],
+    [
+      273,
+      284
+    ],
+    [
+      273,
+      285
+    ],
+    [
+      273,
+      286
+    ],
+    [
+      273,
+      287
+    ],
+    [
+      273,
+      288
+    ],
+    [
+      273,
+      289
+    ],
+    [
+      273,
+      290
+    ],
+    [
+      273,
+      291
+    ],
+    [
+      273,
+      292
+    ],
+    [
+      273,
+      293
+    ],
+    [
+      273,
+      294
+    ],
+    [
+      273,
+      295
+    ],
+    [
+      273,
+      296
+    ],
+    [
+      273,
+      297
+    ],
+    [
+      274,
+      205
+    ],
+    [
+      274,
+      231
+    ],
+    [
+      274,
+      256
+    ],
+    [
+      274,
+      297
+    ],
+    [
+      275,
+      205
+    ],
+    [
+      275,
+      206
+    ],
+    [
+      275,
+      207
+    ],
+    [
+      275,
+      208
+    ],
+    [
+      275,
+      209
+    ],
+    [
+      275,
+      210
+    ],
+    [
+      275,
+      211
+    ],
+    [
+      275,
+      212
+    ],
+    [
+      275,
+      213
+    ],
+    [
+      275,
+      214
+    ],
+    [
+      275,
+      215
+    ],
+    [
+      275,
+      216
+    ],
+    [
+      275,
+      217
+    ],
+    [
+      275,
+      218
+    ],
+    [
+      275,
+      219
+    ],
+    [
+      275,
+      220
+    ],
+    [
+      275,
+      221
+    ],
+    [
+      275,
+      222
+    ],
+    [
+      275,
+      223
+    ],
+    [
+      275,
+      224
+    ],
+    [
+      275,
+      225
+    ],
+    [
+      275,
+      226
+    ],
+    [
+      275,
+      227
+    ],
+    [
+      275,
+      228
+    ],
+    [
+      275,
+      229
+    ],
+    [
+      275,
+      230
+    ],
+    [
+      275,
+      231
+    ],
+    [
+      275,
+      256
+    ],
+    [
+      275,
+      258
+    ],
+    [
+      275,
+      295
+    ],
+    [
+      275,
+      297
+    ],
+    [
+      275,
+      298
+    ],
+    [
+      276,
+      256
+    ],
+    [
+      276,
+      258
+    ],
+    [
+      276,
+      295
+    ],
+    [
+      276,
+      297
+    ],
+    [
+      276,
+      298
+    ],
+    [
+      277,
+      256
+    ],
+    [
+      277,
+      297
+    ],
+    [
+      277,
+      298
+    ],
+    [
+      278,
+      256
+    ],
+    [
+      278,
+      297
+    ],
+    [
+      278,
+      298
+    ],
+    [
+      279,
+      256
+    ],
+    [
+      279,
+      297
+    ],
+    [
+      279,
+      298
+    ],
+    [
+      280,
+      256
+    ],
+    [
+      280,
+      297
+    ],
+    [
+      280,
+      298
+    ],
+    [
+      281,
+      256
+    ],
+    [
+      281,
+      297
+    ],
+    [
+      281,
+      298
+    ],
+    [
+      282,
+      59
+    ],
+    [
+      282,
+      96
+    ],
+    [
+      282,
+      256
+    ],
+    [
+      282,
+      297
+    ],
+    [
+      282,
+      298
+    ],
+    [
+      283,
+      59
+    ],
+    [
+      283,
+      96
+    ],
+    [
+      283,
+      256
+    ],
+    [
+      283,
+      297
+    ],
+    [
+      283,
+      298
+    ],
+    [
+      284,
+      40
+    ],
+    [
+      284,
+      256
+    ],
+    [
+      284,
+      297
+    ],
+    [
+      284,
+      298
+    ],
+    [
+      285,
+      40
+    ],
+    [
+      285,
+      256
+    ],
+    [
+      285,
+      297
+    ],
+    [
+      285,
+      298
+    ],
+    [
+      286,
+      256
+    ],
+    [
+      286,
+      258
+    ],
+    [
+      286,
+      295
+    ],
+    [
+      286,
+      297
+    ],
+    [
+      286,
+      298
+    ],
+    [
+      287,
+      256
+    ],
+    [
+      287,
+      258
+    ],
+    [
+      287,
+      295
+    ],
+    [
+      287,
+      297
+    ],
+    [
+      287,
+      298
+    ],
+    [
+      288,
+      256
+    ],
+    [
+      288,
+      297
+    ],
+    [
+      289,
+      256
+    ],
+    [
+      289,
+      257
+    ],
+    [
+      289,
+      258
+    ],
+    [
+      289,
+      259
+    ],
+    [
+      289,
+      260
+    ],
+    [
+      289,
+      261
+    ],
+    [
+      289,
+      262
+    ],
+    [
+      289,
+      263
+    ],
+    [
+      289,
+      264
+    ],
+    [
+      289,
+      265
+    ],
+    [
+      289,
+      266
+    ],
+    [
+      289,
+      267
+    ],
+    [
+      289,
+      268
+    ],
+    [
+      289,
+      269
+    ],
+    [
+      289,
+      270
+    ],
+    [
+      289,
+      271
+    ],
+    [
+      289,
+      272
+    ],
+    [
+      289,
+      273
+    ],
+    [
+      289,
+      274
+    ],
+    [
+      289,
+      275
+    ],
+    [
+      289,
+      276
+    ],
+    [
+      289,
+      277
+    ],
+    [
+      289,
+      278
+    ],
+    [
+      289,
+      279
+    ],
+    [
+      289,
+      280
+    ],
+    [
+      289,
+      281
+    ],
+    [
+      289,
+      282
+    ],
+    [
+      289,
+      283
+    ],
+    [
+      289,
+      284
+    ],
+    [
+      289,
+      285
+    ],
+    [
+      289,
+      286
+    ],
+    [
+      289,
+      287
+    ],
+    [
+      289,
+      288
+    ],
+    [
+      289,
+      289
+    ],
+    [
+      289,
+      290
+    ],
+    [
+      289,
+      291
+    ],
+    [
+      289,
+      292
+    ],
+    [
+      289,
+      293
+    ],
+    [
+      289,
+      294
+    ],
+    [
+      289,
+      295
+    ],
+    [
+      289,
+      296
+    ],
+    [
+      289,
+      297
+    ],
+    [
+      297,
+      310
+    ],
+    [
+      297,
+      311
+    ],
+    [
+      297,
+      312
+    ],
+    [
+      297,
+      313
+    ],
+    [
+      297,
+      314
+    ],
+    [
+      297,
+      315
+    ],
+    [
+      297,
+      316
+    ],
+    [
+      297,
+      317
+    ],
+    [
+      297,
+      318
+    ],
+    [
+      297,
+      319
+    ],
+    [
+      297,
+      320
+    ],
+    [
+      297,
+      321
+    ],
+    [
+      297,
+      322
+    ],
+    [
+      298,
+      310
+    ],
+    [
+      299,
+      310
+    ],
+    [
+      299,
+      312
+    ],
+    [
+      299,
+      321
+    ],
+    [
+      300,
+      310
+    ],
+    [
+      300,
+      312
+    ],
+    [
+      300,
+      321
+    ],
+    [
+      300,
+      323
+    ],
+    [
+      301,
+      310
+    ],
+    [
+      301,
+      323
+    ],
+    [
+      302,
+      310
+    ],
+    [
+      302,
+      323
+    ],
+    [
+      303,
+      310
+    ],
+    [
+      303,
+      323
+    ],
+    [
+      304,
+      310
+    ],
+    [
+      304,
+      323
+    ],
+    [
+      305,
+      310
+    ],
+    [
+      305,
+      323
+    ],
+    [
+      305,
+      324
+    ],
+    [
+      306,
+      310
+    ],
+    [
+      306,
+      323
+    ],
+    [
+      306,
+      324
+    ],
+    [
+      307,
+      310
+    ],
+    [
+      307,
+      323
+    ],
+    [
+      307,
+      324
+    ],
+    [
+      308,
+      310
+    ],
+    [
+      308,
+      312
+    ],
+    [
+      308,
+      321
+    ],
+    [
+      308,
+      323
+    ],
+    [
+      308,
+      324
+    ],
+    [
+      309,
+      310
+    ],
+    [
+      309,
+      312
+    ],
+    [
+      309,
+      321
+    ],
+    [
+      309,
+      323
+    ],
+    [
+      309,
+      324
+    ],
+    [
+      310,
+      310
+    ],
+    [
+      311,
+      310
+    ],
+    [
+      311,
+      311
+    ],
+    [
+      311,
+      312
+    ],
+    [
+      311,
+      313
+    ],
+    [
+      311,
+      314
+    ],
+    [
+      311,
+      315
+    ],
+    [
+      311,
+      316
+    ],
+    [
+      311,
+      317
+    ],
+    [
+      311,
+      318
+    ],
+    [
+      311,
+      319
+    ],
+    [
+      311,
+      320
+    ],
+    [
+      311,
+      321
+    ],
+    [
+      311,
+      322
+    ],
+    [
+      318,
+      247
+    ],
+    [
+      318,
+      248
+    ],
+    [
+      318,
+      249
+    ],
+    [
+      318,
+      250
+    ],
+    [
+      318,
+      251
+    ],
+    [
+      318,
+      252
+    ],
+    [
+      318,
+      253
+    ],
+    [
+      318,
+      254
+    ],
+    [
+      318,
+      255
+    ],
+    [
+      318,
+      256
+    ],
+    [
+      318,
+      257
+    ],
+    [
+      318,
+      258
+    ],
+    [
+      318,
+      259
+    ],
+    [
+      318,
+      260
+    ],
+    [
+      318,
+      261
+    ],
+    [
+      318,
+      262
+    ],
+    [
+      318,
+      263
+    ],
+    [
+      318,
+      264
+    ],
+    [
+      318,
+      265
+    ],
+    [
+      318,
+      299
+    ],
+    [
+      318,
+      300
+    ],
+    [
+      318,
+      301
+    ],
+    [
+      318,
+      302
+    ],
+    [
+      318,
+      303
+    ],
+    [
+      318,
+      304
+    ],
+    [
+      318,
+      305
+    ],
+    [
+      318,
+      306
+    ],
+    [
+      318,
+      307
+    ],
+    [
+      318,
+      308
+    ],
+    [
+      318,
+      309
+    ],
+    [
+      318,
+      310
+    ],
+    [
+      318,
+      311
+    ],
+    [
+      318,
+      312
+    ],
+    [
+      318,
+      313
+    ],
+    [
+      318,
+      314
+    ],
+    [
+      318,
+      315
+    ],
+    [
+      318,
+      316
+    ],
+    [
+      318,
+      317
+    ],
+    [
+      318,
+      325
+    ],
+    [
+      318,
+      326
+    ],
+    [
+      318,
+      327
+    ],
+    [
+      318,
+      328
+    ],
+    [
+      318,
+      329
+    ],
+    [
+      318,
+      330
+    ],
+    [
+      318,
+      331
+    ],
+    [
+      318,
+      332
+    ],
+    [
+      318,
+      333
+    ],
+    [
+      318,
+      334
+    ],
+    [
+      318,
+      335
+    ],
+    [
+      318,
+      336
+    ],
+    [
+      318,
+      337
+    ],
+    [
+      318,
+      338
+    ],
+    [
+      318,
+      339
+    ],
+    [
+      318,
+      340
+    ],
+    [
+      318,
+      341
+    ],
+    [
+      318,
+      342
+    ],
+    [
+      318,
+      343
+    ],
+    [
+      319,
+      247
+    ],
+    [
+      319,
+      265
+    ],
+    [
+      319,
+      299
+    ],
+    [
+      319,
+      317
+    ],
+    [
+      319,
+      325
+    ],
+    [
+      319,
+      343
+    ],
+    [
+      320,
+      247
+    ],
+    [
+      320,
+      249
+    ],
+    [
+      320,
+      263
+    ],
+    [
+      320,
+      265
+    ],
+    [
+      320,
+      299
+    ],
+    [
+      320,
+      301
+    ],
+    [
+      320,
+      315
+    ],
+    [
+      320,
+      317
+    ],
+    [
+      320,
+      325
+    ],
+    [
+      320,
+      327
+    ],
+    [
+      320,
+      341
+    ],
+    [
+      320,
+      343
+    ],
+    [
+      321,
+      247
+    ],
+    [
+      321,
+      249
+    ],
+    [
+      321,
+      263
+    ],
+    [
+      321,
+      265
+    ],
+    [
+      321,
+      299
+    ],
+    [
+      321,
+      301
+    ],
+    [
+      321,
+      315
+    ],
+    [
+      321,
+      317
+    ],
+    [
+      321,
+      325
+    ],
+    [
+      321,
+      327
+    ],
+    [
+      321,
+      341
+    ],
+    [
+      321,
+      343
+    ],
+    [
+      322,
+      247
+    ],
+    [
+      322,
+      265
+    ],
+    [
+      322,
+      299
+    ],
+    [
+      322,
+      317
+    ],
+    [
+      322,
+      325
+    ],
+    [
+      322,
+      343
+    ],
+    [
+      323,
+      247
+    ],
+    [
+      323,
+      265
+    ],
+    [
+      323,
+      299
+    ],
+    [
+      323,
+      317
+    ],
+    [
+      323,
+      325
+    ],
+    [
+      323,
+      343
+    ],
+    [
+      324,
+      247
+    ],
+    [
+      324,
+      265
+    ],
+    [
+      324,
+      299
+    ],
+    [
+      324,
+      317
+    ],
+    [
+      324,
+      325
+    ],
+    [
+      324,
+      343
+    ],
+    [
+      325,
+      247
+    ],
+    [
+      325,
+      265
+    ],
+    [
+      325,
+      299
+    ],
+    [
+      325,
+      317
+    ],
+    [
+      325,
+      325
+    ],
+    [
+      325,
+      343
+    ],
+    [
+      326,
+      247
+    ],
+    [
+      326,
+      265
+    ],
+    [
+      326,
+      299
+    ],
+    [
+      326,
+      317
+    ],
+    [
+      326,
+      325
+    ],
+    [
+      326,
+      343
+    ],
+    [
+      327,
+      247
+    ],
+    [
+      327,
+      265
+    ],
+    [
+      327,
+      299
+    ],
+    [
+      327,
+      317
+    ],
+    [
+      327,
+      325
+    ],
+    [
+      327,
+      343
+    ],
+    [
+      328,
+      247
+    ],
+    [
+      328,
+      249
+    ],
+    [
+      328,
+      263
+    ],
+    [
+      328,
+      265
+    ],
+    [
+      328,
+      299
+    ],
+    [
+      328,
+      301
+    ],
+    [
+      328,
+      315
+    ],
+    [
+      328,
+      317
+    ],
+    [
+      328,
+      325
+    ],
+    [
+      328,
+      327
+    ],
+    [
+      328,
+      341
+    ],
+    [
+      328,
+      343
+    ],
+    [
+      329,
+      247
+    ],
+    [
+      329,
+      249
+    ],
+    [
+      329,
+      263
+    ],
+    [
+      329,
+      265
+    ],
+    [
+      329,
+      299
+    ],
+    [
+      329,
+      301
+    ],
+    [
+      329,
+      315
+    ],
+    [
+      329,
+      317
+    ],
+    [
+      329,
+      325
+    ],
+    [
+      329,
+      327
+    ],
+    [
+      329,
+      341
+    ],
+    [
+      329,
+      343
+    ],
+    [
+      330,
+      247
+    ],
+    [
+      330,
+      265
+    ],
+    [
+      330,
+      299
+    ],
+    [
+      330,
+      317
+    ],
+    [
+      330,
+      325
+    ],
+    [
+      330,
+      343
+    ],
+    [
+      331,
+      247
+    ],
+    [
+      331,
+      248
+    ],
+    [
+      331,
+      249
+    ],
+    [
+      331,
+      250
+    ],
+    [
+      331,
+      251
+    ],
+    [
+      331,
+      252
+    ],
+    [
+      331,
+      253
+    ],
+    [
+      331,
+      254
+    ],
+    [
+      331,
+      255
+    ],
+    [
+      331,
+      256
+    ],
+    [
+      331,
+      257
+    ],
+    [
+      331,
+      258
+    ],
+    [
+      331,
+      259
+    ],
+    [
+      331,
+      260
+    ],
+    [
+      331,
+      261
+    ],
+    [
+      331,
+      262
+    ],
+    [
+      331,
+      263
+    ],
+    [
+      331,
+      264
+    ],
+    [
+      331,
+      265
+    ],
+    [
+      331,
+      299
+    ],
+    [
+      331,
+      300
+    ],
+    [
+      331,
+      301
+    ],
+    [
+      331,
+      302
+    ],
+    [
+      331,
+      303
+    ],
+    [
+      331,
+      304
+    ],
+    [
+      331,
+      305
+    ],
+    [
+      331,
+      306
+    ],
+    [
+      331,
+      307
+    ],
+    [
+      331,
+      308
+    ],
+    [
+      331,
+      309
+    ],
+    [
+      331,
+      310
+    ],
+    [
+      331,
+      311
+    ],
+    [
+      331,
+      312
+    ],
+    [
+      331,
+      313
+    ],
+    [
+      331,
+      314
+    ],
+    [
+      331,
+      315
+    ],
+    [
+      331,
+      316
+    ],
+    [
+      331,
+      317
+    ],
+    [
+      331,
+      325
+    ],
+    [
+      331,
+      326
+    ],
+    [
+      331,
+      327
+    ],
+    [
+      331,
+      328
+    ],
+    [
+      331,
+      329
+    ],
+    [
+      331,
+      330
+    ],
+    [
+      331,
+      331
+    ],
+    [
+      331,
+      332
+    ],
+    [
+      331,
+      333
+    ],
+    [
+      331,
+      334
+    ],
+    [
+      331,
+      335
+    ],
+    [
+      331,
+      336
+    ],
+    [
+      331,
+      337
+    ],
+    [
+      331,
+      338
+    ],
+    [
+      331,
+      339
+    ],
+    [
+      331,
+      340
+    ],
+    [
+      331,
+      341
+    ],
+    [
+      331,
+      342
+    ],
+    [
+      331,
+      343
+    ],
+    [
+      336,
+      247
+    ],
+    [
+      336,
+      248
+    ],
+    [
+      336,
+      249
+    ],
+    [
+      336,
+      250
+    ],
+    [
+      336,
+      251
+    ],
+    [
+      336,
+      252
+    ],
+    [
+      336,
+      253
+    ],
+    [
+      336,
+      254
+    ],
+    [
+      336,
+      255
+    ],
+    [
+      336,
+      256
+    ],
+    [
+      336,
+      257
+    ],
+    [
+      336,
+      258
+    ],
+    [
+      336,
+      259
+    ],
+    [
+      336,
+      260
+    ],
+    [
+      336,
+      261
+    ],
+    [
+      336,
+      262
+    ],
+    [
+      336,
+      263
+    ],
+    [
+      336,
+      264
+    ],
+    [
+      336,
+      265
+    ],
+    [
+      337,
+      247
+    ],
+    [
+      337,
+      265
+    ],
+    [
+      338,
+      247
+    ],
+    [
+      338,
+      249
+    ],
+    [
+      338,
+      263
+    ],
+    [
+      338,
+      265
+    ],
+    [
+      339,
+      247
+    ],
+    [
+      339,
+      249
+    ],
+    [
+      339,
+      263
+    ],
+    [
+      339,
+      265
+    ],
+    [
+      340,
+      247
+    ],
+    [
+      340,
+      265
+    ],
+    [
+      341,
+      247
+    ],
+    [
+      341,
+      265
+    ],
+    [
+      342,
+      247
+    ],
+    [
+      342,
+      265
+    ],
+    [
+      343,
+      247
+    ],
+    [
+      343,
+      265
+    ],
+    [
+      344,
+      247
+    ],
+    [
+      344,
+      265
+    ],
+    [
+      345,
+      247
+    ],
+    [
+      345,
+      265
+    ],
+    [
+      346,
+      247
+    ],
+    [
+      346,
+      249
+    ],
+    [
+      346,
+      263
+    ],
+    [
+      346,
+      265
+    ],
+    [
+      347,
+      247
+    ],
+    [
+      347,
+      249
+    ],
+    [
+      347,
+      263
+    ],
+    [
+      347,
+      265
+    ],
+    [
+      348,
+      247
+    ],
+    [
+      348,
+      265
+    ],
+    [
+      349,
+      247
+    ],
+    [
+      349,
+      248
+    ],
+    [
+      349,
+      249
+    ],
+    [
+      349,
+      250
+    ],
+    [
+      349,
+      251
+    ],
+    [
+      349,
+      252
+    ],
+    [
+      349,
+      253
+    ],
+    [
+      349,
+      254
+    ],
+    [
+      349,
+      255
+    ],
+    [
+      349,
+      256
+    ],
+    [
+      349,
+      257
+    ],
+    [
+      349,
+      258
+    ],
+    [
+      349,
+      259
+    ],
+    [
+      349,
+      260
+    ],
+    [
+      349,
+      261
+    ],
+    [
+      349,
+      262
+    ],
+    [
+      349,
+      263
+    ],
+    [
+      349,
+      264
+    ],
+    [
+      349,
+      265
+    ]
+  ],
+  "material_uv": {
+    "shell_side": [
+      122.0,
+      0.0,
+      123.0,
+      1.0
+    ],
+    "washer": [
+      216.0,
+      6.0,
+      217.0,
+      7.0
+    ],
+    "head": [
+      124.5,
+      2.5,
+      125.5,
+      3.5
+    ]
+  },
+  "notes": [
+    "Original face UVs are unchanged. New plate skins intentionally reuse the corresponding original panel UV subregions.",
+    "Washer and screw-head faces intentionally share constant-color material patches.",
+    "Only corresponding painted panel borders and large fastener marks were removed; internal vent and handle pixels remain."
+  ]
+}
