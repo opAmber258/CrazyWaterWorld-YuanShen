@@ -37,6 +37,8 @@ mex:
 
 `tools/asset_delivery.py` 提供 status、refresh、attest 和 card。默认只读短状态；refresh 只写唯一验证摘要，attest 记录明确的实际验收，card 生成固定 commit 的登记文本。它不渲染、不原生导出、不联网。规则见 `docs/ASSET_DELIVERY_CONVENTION.md`，数据和命令见 `docs/ASSET_VALIDATION.md`；不在这里复制字段或逐件资产规格。
 
+refresh 独占输入与测量基线，单项验收不刷新其他分类。历史预览豁免需要具名依据并绑定内容；导出齐备性按工程格式和变体逐一检查。具体字段与适用边界只维护在上述交付文档中。
+
 变更此工具时运行 `python -m unittest discover -s tools/tests -p test_asset_delivery.py -v`。这些检查验证内容变化后的失效与证据保留，不代替原生 Blockbench 或游戏验收。
 
 ## Overview

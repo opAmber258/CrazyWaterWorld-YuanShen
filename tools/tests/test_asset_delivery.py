@@ -60,6 +60,20 @@ class AssetDeliveryTests(unittest.TestCase):
     def state(self, report):
         return delivery.evaluate(self.asset, report)
 
+    def accept_all(self):
+        for check in delivery.DEPENDENCIES:
+            delivery.attest(self.asset, check, "tester", "Blockbench test fixture", "Explicit simulated acceptance",
+                            details=self.details if check == "native_reexport" else None)
+        return delivery.read_json(self.asset / "validation.json")
+
+    def migrate_historical_previews(self, published_on="2026-11-09"):
+        for view in ("front", "back", "side", "oblique"):
+            Image.new("RGBA", (640, 480), "black").save(self.asset / f"preview_{view}.png")
+        self.put("validation.json", self.metadata | {"date": published_on, "status": "complete"})
+        proof = {"published_on": published_on, "reference": "historical commit fixture",
+                 "by": "tester", "note": "Geometry and previews unchanged since historical publication"}
+        return delivery.refresh(self.asset, {"preview_legacy": proof}, self.root / "historical-before.json")
+
     def test_fresh_report_never_infers_native_or_visual_pass(self):
         report = delivery.refresh(self.asset, self.metadata)
         self.assertEqual(report["status"], "incomplete")
@@ -169,6 +183,95 @@ class AssetDeliveryTests(unittest.TestCase):
         self.assertIn("validation.json", text)
         self.assertNotIn("cubes", text)
         self.assertNotIn("/main/", text)
+
+    def test_historical_previews_survive_migration_and_document_only_change(self):
+        self.migrate_historical_previews()
+        report = self.accept_all()
+        self.put("README.md", "Description changed; geometry and previews untouched")
+        self.assertEqual(self.state(report)["status"], "complete")
+        with Image.open(self.asset / "preview_front.png") as image:
+            self.assertEqual(image.size, (640, 480))
+
+    def test_preview_exemption_rejects_cutoff_date(self):
+        with self.assertRaisesRegex(ValueError, "pre-2026-11-10"):
+            self.migrate_historical_previews("2026-11-10")
+        self.assertFalse((self.root / "historical-before.json").exists())
+        self.assertNotIn("schema_version", delivery.read_json(self.asset / "validation.json"))
+
+    def test_historical_preview_exemption_expires_after_geometry_change(self):
+        old = self.migrate_historical_previews()
+        self.model["elements"][0]["to"][0] = 2
+        self.put("pump.bbmodel", self.model)
+        report = delivery.refresh(self.asset)
+        self.assertTrue(any("1200x900" in item for item in report["unresolved"]))
+        self.assertEqual(report["preview_legacy"]["inputs"], old["preview_legacy"]["inputs"])
+
+    def test_historical_preview_exemption_expires_after_preview_replacement(self):
+        self.migrate_historical_previews()
+        Image.new("RGBA", (640, 480), "green").save(self.asset / "preview_front.png")
+        report = delivery.refresh(self.asset)
+        self.assertTrue(any("1200x900" in item for item in report["unresolved"]))
+
+    def test_new_asset_cannot_claim_historical_preview_exemption(self):
+        for view in ("front", "back", "side", "oblique"):
+            Image.new("RGBA", (640, 480), "black").save(self.asset / f"preview_{view}.png")
+        self.metadata["preview_legacy"] = {"published_on": "2026-11-09", "reference": "fixture",
+                                            "by": "tester", "note": "Unsupported historical claim"}
+        report = delivery.refresh(self.asset, self.metadata)
+        self.assertTrue(any("1200x900" in item for item in report["unresolved"]))
+
+    def test_missing_java_export_blocks_completion_and_card(self):
+        self.model["meta"]["model_format"] = "java_block"
+        self.put("pump.bbmodel", self.model)
+        (self.asset / "pump.geo.json").unlink()
+        report = self.ready()
+        self.assertEqual(self.state(report)["status"], "incomplete")
+        self.assertTrue(any("pump.json" in item for item in report["unresolved"]))
+        with self.assertRaises(ValueError):
+            delivery.card(self.asset, report, "a" * 40, "https://example.com/repo")
+
+    def test_matching_java_export_satisfies_file_requirement(self):
+        self.model["meta"]["model_format"] = "java_block"
+        self.put("pump.bbmodel", self.model)
+        (self.asset / "pump.geo.json").unlink()
+        self.put("pump.json", {"parent": "minecraft:block/cube_all", "textures": {"all": "test:pump"}})
+        self.assertEqual(self.state(self.ready())["status"], "complete")
+
+    def test_unrelated_json_does_not_satisfy_java_export_requirement(self):
+        self.model["meta"]["model_format"] = "java_block"
+        self.put("pump.bbmodel", self.model)
+        self.put("other.json", {"parent": "minecraft:block/cube_all"})
+        report = self.ready()
+        self.assertEqual(self.state(report)["status"], "incomplete")
+
+    def test_each_java_variant_needs_its_own_export(self):
+        self.model["meta"]["model_format"] = "java_block"
+        self.put("pump.bbmodel", self.model)
+        self.put("pump_variant.bbmodel", self.model)
+        self.put("pump.json", {"parent": "minecraft:block/cube_all"})
+        report = self.ready()
+        self.assertTrue(any("pump_variant.json" in item for item in report["unresolved"]))
+
+    def test_geometry_attestation_cannot_refresh_unrelated_texture_baseline(self):
+        report = self.ready()
+        baseline = dict(report["inputs"])
+        measurements = report["measurements"]
+        self.paint("blue")
+        updated = delivery.attest(self.asset, "native_reexport", "tester", "fixture", "Geometry-only check",
+                                   details=self.details)
+        self.assertEqual(updated["inputs"], baseline)
+        self.assertEqual(updated["measurements"], measurements)
+        with self.assertRaisesRegex(ValueError, "Inputs changed"):
+            delivery.attest(self.asset, "editor_reopen", "tester", "fixture", "Attempt without refresh")
+        with patch("sys.stdout", new_callable=io.StringIO) as output:
+            self.assertEqual(delivery.main(["status", str(self.asset), "--full"]), 1)
+            expanded = json.loads(output.getvalue())
+        self.assertEqual(expanded["inputs"], baseline)
+        self.assertNotEqual(expanded["current_inputs"]["textures"], baseline["textures"])
+        refreshed = delivery.refresh(self.asset)
+        self.assertNotEqual(refreshed["inputs"]["textures"], baseline["textures"])
+        accepted = delivery.attest(self.asset, "editor_reopen", "tester", "fixture", "Rechecked after refresh")
+        self.assertEqual(accepted["checks"]["editor_reopen"], "passed")
 
 
 if __name__ == "__main__":

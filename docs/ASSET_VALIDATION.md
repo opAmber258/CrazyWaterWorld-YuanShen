@@ -10,7 +10,7 @@
 python tools/asset_delivery.py status art/models/<资产目录>
 ```
 
-默认只输出标识、状态、少量规格和最多 8 个待处理项；`unresolved_count` 保留总数。`--full` 才展开元数据、有效检查状态和原始验收证据。status 不改文件，也不把整个 bbmodel 或内嵌图片输出到上下文。
+默认只输出标识、状态、少量规格和最多 8 个待处理项；`unresolved_count` 保留总数。`--full` 才展开元数据、有效检查状态和原始验收证据；其中 `inputs` / `measurements` 保留最近 refresh 的基线，`current_inputs` / `current_measurements` 展示当前实测，两者不混写。status 不改文件，也不把整个 bbmodel 或内嵌图片输出到上下文。
 
 ## 初始化与刷新
 
@@ -36,9 +36,12 @@ python tools/asset_delivery.py refresh art/models/<资产目录>
 默认跟踪根目录工程、导出、动画、`*_tex.png` 与 `preview_*.png`。非标准位置的交付依赖（例如四状态备用贴图）在同一记录声明 `"tracked_files":{"textures":["reference/screen_states/half.png"]}`；可用分类为 geometry/textures/previews。文件必须位于资产目录内，缺失会阻止完成。不要将无关原作参考图加入交付依赖。
 
 - `inputs`：几何、贴图、预览三组内容摘要。模型像素与几何分开跟踪；说明文字不进入这些摘要。
+- `inputs` 和 `measurements` 仅由 refresh 更新。登记某一项验收只更新该项证据和当前有效状态，不能替其他输入分类确认变更。
 - `measurements`：从实际工程/导出提取的计数与实际 PNG 尺寸。没有实现的测量不写成已验证；包围盒由原生测量提供，保存在下述验收证据中。
 - `acceptance`：明确登记的实际操作证据；包含操作者、时间、工具版本、说明及该项依赖的内容摘要。
 - `checks` / `status`：每次 status 重新计算，不能沿用旧文件中的 `complete` 或布尔值。退出码 `0` 表示本工具覆盖的检查与验收记录齐备，`1` 表示未完成/旧格式，`2` 表示输入或操作错误。
+
+必需导出按工程格式检查：Bedrock 需要 `.geo.json`；每个 `java_block` 工程需要同名 Java 模型 JSON（例如 `pump_variant.bbmodel` 对应 `pump_variant.json`）。临时导出、其他名称的 JSON 和验收声明不能代替交付目录里的必需文件。
 
 ## 实际操作后登记验收
 
@@ -86,6 +89,18 @@ python tools/asset_delivery.py refresh art/models/<资产目录> --legacy-backup
 ```
 
 备份必须在资产目录之外、不能覆盖已有文件，并且不提交该本地备份。旧的成功标记不会继承为新证据；只有真实保存了文件摘要的新版验收才可复用。历史 detailed audit 可保留，但正常发布不默认读取它。
+
+### 历史预览尺寸豁免
+
+交付约定中的尺寸生效边界保留。若资产在 2026-11-10 前已发布，几何和预览都保持原状，迁移旧报告时可通过 `--metadata` 显式提供如下历史依据：
+
+```json
+{"preview_legacy":{"published_on":"2026-11-09","reference":"原发布 commit 或定位链接","by":"核实者","note":"已核对历史版本，当前几何和四向预览未改动"}}
+```
+
+仅迁移旧报告时捕获对应几何和预览摘要；常规 refresh 不重写这份豁免基线。日期、引用和具名核实说明缺一不可，不能仅凭目录日期或文件时间自动豁免；工具不联网核实引用，作者对历史依据负责。新资产不会自动获得豁免。
+
+仅改说明时，原尺寸预览可以保留。几何或任一预览变化后，这份豁免失效，重出的预览须为 1200×900。空白、缺失预览不在豁免范围内。截止日当天及之后发布的资产不适用该豁免。
 
 ## 工具边界
 

@@ -14,15 +14,16 @@ import math
 import re
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
 from PIL import Image
 
-VERSION = 1
+VERSION = 2
+PREVIEW_CUTOFF = date(2026, 11, 10)
 METADATA = ("asset_id", "display_name_zh", "display_name_en",
-            "contributors", "sources", "tracked_files")
+            "contributors", "sources", "tracked_files", "preview_legacy")
 DEPENDENCIES = {
     "editor_reopen": ("geometry", "textures"),
     "native_reexport": ("geometry",),
@@ -52,11 +53,27 @@ def source_label(report):
     return category + "（" + " + ".join(human + ai) + "）"
 
 
-def scan(folder, tracked_files=None):
+def legacy_preview_applies(proof, inputs):
+    """An explicit historical claim applies only to the original geometry and previews."""
+    if not isinstance(proof, dict):
+        return False
+    if not all(isinstance(proof.get(k), str) and proof[k].strip()
+               for k in ("published_on", "reference", "by", "note")):
+        return False
+    try:
+        historical = date.fromisoformat(proof["published_on"]) < PREVIEW_CUTOFF
+    except ValueError:
+        return False
+    return historical and all(proof.get("inputs", {}).get(k) == inputs[k]
+                              for k in ("geometry", "previews"))
+
+
+def scan(folder, tracked_files=None, preview_legacy=None):
     """Read actual files; omit UI state and image bytes from returned context."""
     groups = {"geometry": {}, "textures": {}, "previews": {}}
-    measured = {"projects": [], "exports": [], "textures": [], "previews": []}
+    measured = {"projects": [], "exports": [], "java_exports": [], "textures": [], "previews": []}
     issues = []
+    preview_size_issues = []
     projects = sorted(folder.glob("*.bbmodel"))
     textures = sorted(folder.glob("*_tex.png"))
     for path in projects:
@@ -113,6 +130,10 @@ def scan(folder, tracked_files=None):
         data = read_json(path)
         if any(k in data for k in ("elements", "animations", "parent")):
             groups["geometry"][path.name] = digest(data)
+        if (isinstance(data.get("elements"), list)
+                or isinstance(data.get("parent"), str) and data["parent"].strip()):
+            measured["java_exports"].append({"path": path.name,
+                                              "elements": len(data.get("elements", []))})
     for category, paths in (("textures", textures), ("previews", sorted(folder.glob("preview_*.png")))):
         for path in paths:
             groups[category][path.name] = file_hash(path)
@@ -124,8 +145,11 @@ def scan(folder, tracked_files=None):
                 if category == "textures":
                     if im.mode != "RGBA" or any(n <= 0 or n & (n - 1) for n in im.size):
                         issues.append(f"{path.name}: expected RGBA, power-of-two dimensions")
-                elif im.size != (1200, 900) or im.convert("RGBA").getbbox() is None:
-                    issues.append(f"{path.name}: expected nonempty 1200x900 preview")
+                else:
+                    if im.size != (1200, 900):
+                        preview_size_issues.append(f"{path.name}: expected 1200x900 preview")
+                    if im.convert("RGBA").getbbox() is None:
+                        issues.append(f"{path.name}: empty preview")
     for category, paths in (tracked_files or {}).items():
         if category not in groups:
             raise ValueError(f"Unknown tracked_files category: {category}")
@@ -150,7 +174,16 @@ def scan(folder, tracked_files=None):
         issues.append("missing *_tex.png")
     if any(p["format"] in ("bedrock", "bedrock_block") for p in measured["projects"]) and not exports:
         issues.append("Bedrock project has no .geo.json")
-    return {k: digest(v) for k, v in groups.items()}, measured, issues
+    java_exports = {p["path"] for p in measured["java_exports"]}
+    for project in measured["projects"]:
+        if project["format"] == "java_block":
+            expected = Path(project["path"]).with_suffix(".json").name
+            if expected not in java_exports:
+                issues.append(f"{project['path']}: missing Java model export {expected}")
+    inputs = {k: digest(v) for k, v in groups.items()}
+    if not legacy_preview_applies(preview_legacy, inputs):
+        issues.extend(preview_size_issues)
+    return inputs, measured, issues
 
 
 def effective(report, inputs):
@@ -184,7 +217,7 @@ def evaluate(folder, report):
     if report.get("schema_version") != 2:
         return {"asset_id": folder.name, "status": "legacy", "unresolved": ["legacy_report"],
                 "hint": "Refresh with --legacy-backup outside the asset directory to migrate metadata only."}
-    inputs, measured, issues = scan(folder, report.get("tracked_files"))
+    inputs, measured, issues = scan(folder, report.get("tracked_files"), report.get("preview_legacy"))
     if not all(report.get(k) for k in ("asset_id", "display_name_zh", "display_name_en")):
         issues.append("missing asset name metadata")
     if not re.fullmatch(r"[a-z][a-z0-9_]*", report.get("asset_id", "")):
@@ -232,6 +265,13 @@ def refresh(folder, metadata=None, legacy_backup=None):
     report["schema_version"] = 2
     report["creation_source"] = source_label(report)
     report.setdefault("acceptance", {})
+    if legacy and report.get("preview_legacy"):
+        proof = copy.deepcopy(report["preview_legacy"])
+        inputs, _, _ = scan(folder, report.get("tracked_files"))
+        proof["inputs"] = {k: inputs[k] for k in ("geometry", "previews")}
+        if not legacy_preview_applies(proof, inputs):
+            raise ValueError("Historical preview claim needs a pre-2026-11-10 publication date, reference, inspector and note.")
+        report["preview_legacy"] = proof
     result = evaluate(folder, report)
     report.update({k: result[k] for k in ("inputs", "measurements", "checks", "status")})
     report["unresolved"] = result["unresolved"]
@@ -268,7 +308,9 @@ def attest(folder, check, by, tool, note, result="passed", details=None):
         report["acceptance"][check]["details"] = details
     current = evaluate(folder, report)
     report["creation_source"] = source_label(report)
-    report.update({k: current[k] for k in ("inputs", "measurements", "checks", "status", "unresolved")})
+    # Only refresh owns the input/measurement baseline. A geometry-only attestation
+    # must not silently acknowledge a texture change for subsequent attestations.
+    report.update({k: current[k] for k in ("checks", "status", "unresolved")})
     write_report(folder, report)
     return report
 
@@ -333,7 +375,14 @@ def main(argv=None):
                 raise ValueError("card requires --commit")
             print(card(folder, report, args.commit, args.repo), end="")
             return 0
-        state = (report | evaluate(folder, report)) if args.full else summary(folder, report)
+        if args.full:
+            current = evaluate(folder, report)
+            state = report | {k: current[k] for k in ("status", "unresolved")}
+            state.update({"checks": current.get("checks", {}),
+                          "current_inputs": current.get("inputs", {}),
+                          "current_measurements": current.get("measurements", {})})
+        else:
+            state = summary(folder, report)
         print(json.dumps(state, ensure_ascii=False, indent=2 if args.full else None))
         return 0 if state["status"] == "complete" else 1
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
