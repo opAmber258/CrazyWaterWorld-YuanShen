@@ -1,0 +1,99 @@
+{
+  "identifier": "geometry.medical_fabricator",
+  "native": {
+    "version": "5.2.2",
+    "format": "bedrock",
+    "cubes": 86,
+    "bones": 7,
+    "textures": 1,
+    "texture_error": 0,
+    "min": [
+      -22,
+      0.05500000596046434,
+      -8.5
+    ],
+    "max": [
+      22,
+      37.150001525878906,
+      8.5
+    ],
+    "reopened_export_equal": true
+  },
+  "world_extent_BB": [
+    44,
+    37.095,
+    17.0
+  ],
+  "extent_blocks_xyz": [
+    2.75,
+    2.31844,
+    1.0625
+  ],
+  "geometry_cubes": 86,
+  "bones": 7,
+  "editor_export_equivalent_faces": 516,
+  "actual_and_embedded_png_identical": true,
+  "texture": {
+    "width": 512,
+    "height": 512,
+    "channels": "RGBA",
+    "target_pixels_per_block": 32,
+    "uv_density": {
+      "faces_checked": 516,
+      "fractional_pixel_boundaries": 0,
+      "target_density": 2.0,
+      "density_basis": "local cube extent including inflate; group scale not applied",
+      "max_axis_density_ratio": 2.6316
+    }
+  },
+  "preview_size": [
+    1200,
+    900
+  ],
+  "preview_alpha_bounds": {
+    "front": [
+      144,
+      66,
+      1056,
+      834
+    ],
+    "back": [
+      144,
+      66,
+      1056,
+      834
+    ],
+    "side": [
+      424,
+      66,
+      776,
+      834
+    ],
+    "oblique": [
+      184,
+      73,
+      1028,
+      772
+    ]
+  },
+  "projection": {
+    "front": "orthographic",
+    "back": "orthographic",
+    "side": "orthographic",
+    "oblique": "perspective"
+  },
+  "structure_errors": 0,
+  "structure_warnings": 0,
+  "uv_errors": 0,
+  "uv_warnings": 0,
+  "minecraft_client_tested": false,
+  "files_sha256": {
+    "medical_fabricator.bbmodel": "6411cc339a9b2603dd4519a27ca2ff598dcaf5e586809934abca032a9eebeb78",
+    "medical_fabricator.geo.json": "a203f59d6aa0d9c98d6045cfc98f757cfa05a5625bd42eacd6c4e5840f8eda62",
+    "medical_fabricator_tex.png": "8db6383a961e3fc4cc1818156a1c3fd058de36bf92d828cc63876b5c00356af1",
+    "preview_front.png": "9f084a21e2f4e056d86fd2a23c0a92f7c33173d7fba9dd8926de30048020257c",
+    "preview_back.png": "6b497bc63786aa649f99b4cf0bed6c0ea1cd1a7735b6d7bb5719fc9bbb8c509f",
+    "preview_side.png": "d9a356ee821101282cf403123e2bfd3f0ee9a38720f4521529aee2d18fc497fd",
+    "preview_oblique.png": "15c5249911e8f7d72f4c01a087e33e677ceefb9296e9b050238aeebb25d7b52c"
+  }
+}

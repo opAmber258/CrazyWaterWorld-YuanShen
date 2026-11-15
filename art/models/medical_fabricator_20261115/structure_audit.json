@@ -1,0 +1,41 @@
+{
+  "input": "medical_fabricator.geo.json",
+  "kind": "bedrock_geometry",
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance.",
+    "Bounds are unrotated source-coordinate extents; bone/element transforms and inflate are not applied."
+  ],
+  "identifier": "geometry.medical_fabricator",
+  "uv_space": {
+    "width": 512,
+    "height": 512,
+    "source": "Bedrock description"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "geometries": 1,
+    "bones": 7,
+    "cubes": 86,
+    "declared_faces": 516
+  },
+  "bounds": [
+    [
+      -22,
+      -0.45235,
+      -8.5
+    ],
+    [
+      22,
+      37.15,
+      8.5
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 0
+}
