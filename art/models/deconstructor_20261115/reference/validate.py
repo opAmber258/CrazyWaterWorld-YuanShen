@@ -9,10 +9,21 @@ from render_previews import connect
 ROOT=Path(__file__).resolve().parents[1]
 def doc(path):return json.loads(path.read_text(encoding='utf-8-sig'))
 def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def shift(obj,dx):
+    """Return a copy of a project with every X coordinate shifted by dx."""
+    import copy
+    o=copy.deepcopy(obj)
+    for e in o['elements']:
+        e['from'][0]=round(e['from'][0]+dx,6);e['to'][0]=round(e['to'][0]+dx,6)
+        if 'origin' in e:e['origin'][0]=round(e['origin'][0]+dx,6)
+    for g in o['groups']:
+        if 'origin' in g:g['origin'][0]=round(g['origin'][0]+dx,6)
+    return o
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--source',type=Path,required=True);ap.add_argument('--port',type=int,required=True)
-    args=ap.parse_args();m=doc(ROOT/'deconstructor.bbmodel');original=doc(args.source)
-    assert all(m[k]==v for k,v in original.items() if k!='textures')
+    ap.add_argument('--dx',type=float,default=0.0,help='X shift applied on top of the source, in model units')
+    args=ap.parse_args();m=doc(ROOT/'deconstructor.bbmodel');original=shift(doc(args.source),args.dx)
+    assert all(m[k]==v for k,v in original.items() if k!='textures'),'project differs from source(+dx) outside textures'
     assert set(m)==set(original)|{'animations'}
     assert len(m['textures'])==1
     tex=m['textures'][0];assert all(tx==tex[k] for k,tx in original['textures'][0].items() if k not in {'path','relative_path'})
@@ -23,7 +34,10 @@ def main():
         [{'hex':'#%02x%02x%02x'%rgba[:3],'pixels':n} for n,rgba in colors if rgba[3]==255]},indent=2),encoding='utf8')
     a=m['animations'][0];clip=doc(ROOT/'deconstructor.animation.json')['animations'][a['name']]
     assert clip['loop'] is True and a['loop']=='loop' and a['length']==clip['animation_length']==1
-    assert set(clip['bones'])=={'left_cutters','right_cutters'} and len(a['animators'])==2
+    assert set(clip['bones'])=={'left_cutters','right_cutters'}
+    # Blockbench keeps an animator entry per group; only two carry keyframes.
+    active={u for u,an in a['animators'].items() if an.get('keyframes')}
+    assert len(active)==2, active
     for name,sign in [('left_cutters',-1),('right_cutters',1)]:
         group=next(g for g in m['groups'] if g['name']==name);track=a['animators'][group['uuid']]
         assert set(clip['bones'][name])=={'rotation'}
@@ -43,13 +57,20 @@ def main():
       for(let i=0;i<=48;i++){Timeline.setTime(i/48);Animator.preview();
         samples.push(Group.all.map(g=>[g.name,...g.mesh.rotation.toArray().slice(0,3)]));}
       Timeline.setTime(0);Animator.preview();return samples;})()""")
+    # Groups may carry a static tilt (feed_hopper is tilted 5 deg on X); the animation
+    # only adds Z rotation to the two cutter groups, so compare against those statics.
+    static={g['name']:[math.radians(v) for v in g.get('rotation',[0,0,0])] for g in m['groups']}
     for i,groups in enumerate(samples):
         for name,x,y,z in groups:
+            bx,by,bz=static[name]
             theta=math.tau*i/48*({'left_cutters':-1,'right_cutters':1}.get(name,0))
-            assert abs(x)+abs(y)+abs(z-theta)<1e-6
+            assert abs(x-bx)+abs(y-by)+abs(z-bz-theta)<1e-6,(i,name,x,y,z,bx,by,bz)
     geometry=exported['minecraft:geometry'][0]
     assert sum(len(b['cubes']) for b in geometry['bones'])==170
-    assert all(not any(g['rotation']) for g in m['groups'])
+    # feed_hopper carries an intentional static tilt; nothing else may be rotated.
+    tilted={g['name']:g['rotation'] for g in m['groups'] if any(g.get('rotation',[0,0,0]))}
+    assert set(tilted)<={'feed_hopper'}, tilted
+    assert tilted.get('feed_hopper')==[5,0,0], tilted
     import itertools
     corners=[]
     for c in m['elements']:
@@ -61,6 +82,7 @@ def main():
     for v in ['front','back','side','oblique']:
         im=Image.open(ROOT/f'preview_{v}.png');assert im.size==(1200,900) and im.getbbox()
     report={'source_sha256':digest(args.source),'project_sha256':digest(ROOT/'deconstructor.bbmodel'),
+      'recenter_dx':args.dx,
       'blockbench_version':js('Blockbench.version'),'geometry_and_animation_reexport_equal':True,
       'all_source_cube_group_outliner_uv_values_identical':True,'identical_embedded_texture':True,
       'rest_bounds_BB':[lo.round(6).tolist(),hi.round(6).tolist()],'dimensions_blocks_WHD':((hi-lo)/16).round(6).tolist(),

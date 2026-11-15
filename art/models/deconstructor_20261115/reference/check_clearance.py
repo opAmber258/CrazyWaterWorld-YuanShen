@@ -15,24 +15,40 @@ def obb(c):
     R=rotation(c.get('rotation',[0,0,0]))
     return pivot+R@((lo+hi)*.5-pivot),R.T,(hi-lo)*.5
 
+def apply_group_rotation(center,axes,half,gpivot,grot):
+    """Apply a parent group's rotation to an element's oriented box."""
+    gR=rotation(grot);gc=np.array(gpivot,float)
+    return gc+gR@(center-gc), axes@gR.T, half
+
 def sweep(m):
     groups={g['uuid']:g for g in m['groups']};els={c['uuid']:c for c in m['elements']};parts={}
     def walk(n):
-        g=groups[n['uuid']];assert not any(g['rotation'])
-        parts[g['name']]=(np.array(g['origin']),[els[k] for k in n['children'] if isinstance(k,str)])
+        g=groups[n['uuid']]
+        parts[g['name']]=(np.array(g['origin']),[els[k] for k in n['children'] if isinstance(k,str)],
+                          g.get('rotation',[0,0,0]))
         for k in n['children']:
             if isinstance(k,dict):walk(k)
     for n in m['outliner']:walk(n)
-    hull=[(c['name'],*obb(c)) for c in parts['feed_hopper'][1]]
+    hull=[]
+    for c in parts['feed_hopper'][1]:
+        center,axes,half=obb(c)
+        center,axes,half=apply_group_rotation(center,axes,half,
+                                              parts['feed_hopper'][0],parts['feed_hopper'][2])
+        hull.append((c['name'],center,axes,half))
     results={};radii=[]
+    hopper_pivot,hopper_rot=parts['feed_hopper'][0],parts['feed_hopper'][2]
     for key,sign in [('left_cutters',-1),('right_cutters',1)]:
-        pivot,pieces=parts[key];rz=np.array([rotation([0,0,deg*sign]) for deg in range(360)])
+        pivot,pieces,_grot=parts[key]
+        pivot_t=hopper_pivot+rotation(hopper_rot)@(pivot-np.array(hopper_pivot,float))
+        rz=np.array([rotation([0,0,deg*sign]) for deg in range(360)])
         contacts={};collected=[]
         for c in pieces:
             center,axes,half=obb(c)
+            # The cradle group is tilted, and the cutter groups are its children.
+            center,axes,half=apply_group_rotation(center,axes,half,hopper_pivot,hopper_rot)
             corners=np.array(list(itertools.product(*zip(-half,half))))@axes+center
-            collected.append(np.linalg.norm((corners-pivot)[:,:2],axis=1).max())
-            moving_centers=np.einsum('tij,j->ti',rz,center-pivot)+pivot
+            collected.append(np.linalg.norm((corners-pivot_t)[:,:2],axis=1).max())
+            moving_centers=np.einsum('tij,j->ti',rz,center-pivot_t)+pivot_t
             moving_axes=np.einsum('tij,kj->tki',rz,axes)
             for name,fc,fa,fh in hull:
                 fixed=np.broadcast_to(fa,(360,3,3))
