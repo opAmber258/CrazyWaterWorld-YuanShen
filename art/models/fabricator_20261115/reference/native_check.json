@@ -1,0 +1,26 @@
+{
+  "version": "5.2.2",
+  "format": "bedrock",
+  "cubes": 151,
+  "bones": 9,
+  "texture": [
+    [
+      "fabricator_tex.png",
+      512,
+      512
+    ]
+  ],
+  "bounds": [
+    [
+      -21,
+      0,
+      -13.75
+    ],
+    [
+      20,
+      47.500000005960466,
+      11.399999976158142
+    ]
+  ],
+  "geometry_roundtrip": true
+}

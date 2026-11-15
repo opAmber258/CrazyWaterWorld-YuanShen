@@ -1,0 +1,64 @@
+{
+  "display_name_zh": "加工台",
+  "display_name_en": "Fabricator",
+  "identifier": "geometry.fabricator",
+  "creation_source": "人工 + AI（TakaraMiyuki + GPT-6 / Codex）",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex / Blockbench 5.2.2",
+        "role": "初稿、像素材质、发布导出与核验"
+      }
+    ],
+    "division": "TakaraMiyuki 手动修订最终工程和贴图，发布输入逐字节保留。"
+  },
+  "format_version": "1.12.0",
+  "blockbench": "5.2.2",
+  "cubes": 151,
+  "bones": 9,
+  "faces": 906,
+  "bounds_bb": [
+    [
+      -21,
+      0,
+      -13.75
+    ],
+    [
+      20,
+      47.5,
+      11.4
+    ]
+  ],
+  "size_blocks_xyz": [
+    2.5625,
+    2.96875,
+    1.571875
+  ],
+  "logical_uv": [
+    256,
+    256
+  ],
+  "texture_px": [
+    512,
+    512
+  ],
+  "shortest_local_edge_in_32x_texels": 1.1499999999999915,
+  "faces_including_translucent_or_transparent_pixels": [],
+  "model_and_texture_sha256": {
+    "fabricator.bbmodel": "0818f0ac2e600f428464758a3df8330eef83cd357d2d67b21117748cbbdfc58e",
+    "fabricator_tex.png": "5307fe9d5858868e10d77866e3e0c9f8941035bc854cdf836291129a85be45d5"
+  },
+  "all_cubes_groups_uv_match": true,
+  "embedded_texture_matches_png": true,
+  "native_geometry_reimport_reexport": true,
+  "previews": "1200x900 RGBA x4, front/back/side orthographic; oblique perspective",
+  "structure_errors": 0,
+  "structure_warnings": [
+    "texture_export_size_mismatch"
+  ],
+  "minecraft_tested": false
+}
