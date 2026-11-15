@@ -100,10 +100,12 @@ public class JunctionBoxBlock extends BaseEntityBlock {
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, net.minecraft.world.phys.BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            // 面板统一用装配坐标；物理船的方块实体在船坞里，距离按世界坐标算。
-            BlockPos cell = com.opamb.barotrauma.ship.vs.VsState.active()
+            // 只有船坞里的方块才做装配坐标换算；普通世界的接线盒仍用世界坐标。
+            boolean physical = com.opamb.barotrauma.ship.vs.VsState.active()
+                    && com.opamb.barotrauma.ship.vs.VsPilot.isYardBlock(pos);
+            BlockPos cell = physical
                     ? com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(pos) : pos;
-            net.minecraft.world.phys.Vec3 center = com.opamb.barotrauma.ship.vs.VsState.active()
+            net.minecraft.world.phys.Vec3 center = physical
                     ? com.opamb.barotrauma.ship.vs.VsPilot.assemblyToWorld(cell)
                     : net.minecraft.world.phys.Vec3.atCenterOf(pos);
             if (center == null || serverPlayer.distanceToSqr(center) > 64.0D) {

@@ -1013,10 +1013,9 @@ public final class DeepSeaEvents {
                         new com.opamb.barotrauma.world.MissionInstance.RouteLevel(
                                 slot, type, round.levelSeed(), round.levelDifficulty(),
                                 distance));
-                if (round.phase() == com.opamb.barotrauma.campaign.RoundPhase.DIVING) {
-                    com.opamb.barotrauma.world.MissionInstance.setRouteOutposts(
-                            slot, round.startHasOutpost(), round.endHasOutpost());
-                }
+                // AT_NODE 也要恢复：否则 routeSlot 还是 MIN_VALUE，无人航路点会被误判成要建站。
+                com.opamb.barotrauma.world.MissionInstance.setRouteOutposts(
+                        slot, round.startHasOutpost(), round.endHasOutpost());
             }
         }
         // P4 持久化实测（两段式）：

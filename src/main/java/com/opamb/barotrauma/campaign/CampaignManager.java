@@ -342,11 +342,11 @@ public final class CampaignManager {
             MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
                     slot, type, round.levelSeed(), round.levelDifficulty(), distance));
         }
+        // AT_NODE 也恢复哨站标记：routeSlot 不随存档保存，重启后默认 true 会在无人航路点建站。
+        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
         if (round.phase() != RoundPhase.DIVING) {
             return;
         }
-        // 中途生成的新区块也要按本轮站点类型来（读档后静态标记可能没设上）
-        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
         if (round.endHasOutpost()) {
             return; // 有目的站：靠泊由 VsPilot.dock → onDocked 触发
         }

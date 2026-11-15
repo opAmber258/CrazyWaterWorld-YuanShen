@@ -120,14 +120,12 @@ public final class RoundState {
         endHasOutpost = endOutpost;
     }
 
-    /** 抵达：回到节点状态，终点清空。 */
+    /** 抵达：回到节点状态，终点清空。保留本轮的哨站标记，供重启后恢复关卡配置。 */
     public void arrive(int node) {
         phase = RoundPhase.AT_NODE;
         origin = node;
         destination = -1;
         startedAtGameTime = 0L;
-        startHasOutpost = true;
-        endHasOutpost = true;
     }
 
     public void fail() {

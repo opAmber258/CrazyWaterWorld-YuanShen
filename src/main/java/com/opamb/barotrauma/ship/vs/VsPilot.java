@@ -999,6 +999,28 @@ public final class VsPilot {
         return assemblyPos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
     }
 
+    /** 这个坐标是不是当前物理船的装配坐标（落在船体包围盒内）。 */
+    public static boolean isAssemblyCell(BlockPos cell) {
+        if (cell == null || state == null) {
+            return false;
+        }
+        return state.geometry().bounds().contains(cell);
+    }
+
+    /** 这个方块坐标是不是当前物理船在船坞里的方块（落在船坞包围盒内）。 */
+    public static boolean isYardBlock(BlockPos pos) {
+        if (pos == null || state == null || yardOffsetX == Integer.MIN_VALUE) {
+            return false;
+        }
+        var bounds = state.geometry().bounds();
+        return pos.getX() >= bounds.minX() + yardOffsetX
+                && pos.getX() <= bounds.maxX() + yardOffsetX
+                && pos.getY() >= bounds.minY() + yardOffsetY
+                && pos.getY() <= bounds.maxY() + yardOffsetY
+                && pos.getZ() >= bounds.minZ() + yardOffsetZ
+                && pos.getZ() <= bounds.maxZ() + yardOffsetZ;
+    }
+
     /**
      * 装配快照里所有泵的锚点：压载泵只取六格机器的主方块，普通泵/小型泵各占一格。
      *
