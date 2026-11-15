@@ -1,14 +1,20 @@
 # AGENTS.md
 
-本项目使用 MEX 作为项目记忆与协作入口。开工前读 `.mex/AGENTS.md` → `.mex/ROUTER.md`，再按 `ROUTER.md` 加载相关上下文。
+本项目使用 MEX 作为项目记忆与协作入口。通用任务先读 `.mex/AGENTS.md` → `.mex/ROUTER.md`。纯美术任务只按下方入口及 ROUTER 的「美术任务入口」按需读取，不自动加载全局代码状态与其他资产历史。
+
+## 纯美术入口
+
+- 已有资产先运行 `python tools/asset_delivery.py status <资产目录>`，需要定位问题时再展开对应证据；不默认读取整份 bbmodel、内嵌图片或完整审计。
+- 规则只维护在 `docs/ASSET_DELIVERY_CONVENTION.md`；执行顺序见 `.mex/patterns/deliver-model-asset.md` 与 `publish.md`；建档/迁移命令按需查 `docs/ASSET_VALIDATION.md`。
+- 验证摘要只维护一份 validation；README 写设计说明并链接验证，Discussion 使用生成条目。制作仍遵守工作目录级 art-vault 规则。
 
 ## 防遗忘机制（仓库内，务必遵守）
 
 - **PR 模板**：`.github/pull_request_template.md`，每个 PR 都必须回答"MEX 是否更新"。
 - **CI 门禁**：`.github/workflows/mex-guard.yml`——改了 `src/` 或 `tools/` 却没改 `.mex/` 或 `docs/` 的 PR 会变红；例外是给 PR 加 `mex-skip` 标签并在说明里写一行原因。
-- **发布命令**：`.zcode/commands/publish.md`（`/publish` 或用户说"走流程"）。其中第 2 步是 MEX 记账，不是可选项；发布时把代码和文档改动一起提交。
+- **发布命令**：`.zcode/commands/publish.md`（`/publish` 或用户说"走流程"）。纯美术资产以资产文档与 Discussion 记账并直推 `main`；代码、共享工具及规则变更仍按通用流程做 MEX 记账并走 PR。
 
-Git 提交、推送和拉取均需要人类明确授权；AI 不得默认执行。用户要求“推到仓库/提交并推送”等完整发布时，默认走任务分支 → 提交 → 推送分支 → 创建 PR → 等审核通过并处理完意见 → 合并 PR → 删除分支（本地和远端）。只有用户明确要求直推主分支时，才直接在 `main` 上提交并推送。不强推；拉取仍需另行明确授权；用户只授权限定动作时不得扩展范围。审核有未解决意见或合并冲突时停下来报告，不硬合。CodeRabbit 只审 PR，直推 `main` 不会触发自动审查。
+Git 提交、推送和拉取均需要人类明确授权；AI 不得默认执行。用户明确要求发布指定的**纯美术资产**时，默认完成交付检查 → 普通直推上游 `main` → 登记 Discussion #39，不创建 PR，也不再次询问是否直推；范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7，制作请求本身不含发布授权。代码、运行时资源、共享工具和规则变更仍默认走任务分支 → 提交 → 推送分支 → PR → 审查 → 合并 → 删除分支，除非用户明确指定其他方式。不强推；实际 pull 仍需另行授权；用户只授权限定动作时不得扩展范围。PR 有未解决意见或合并冲突时停下来报告，不硬合。CodeRabbit 只审 PR；资产直推由交付自查和维护者评选验收。
 
 ## 新机器：先装 MEX 工具
 
