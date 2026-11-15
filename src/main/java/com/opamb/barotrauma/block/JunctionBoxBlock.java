@@ -120,7 +120,7 @@ public class JunctionBoxBlock extends BaseEntityBlock {
                         Component.translatable("power.repaired", (int) Math.round(box.condition())), true);
                 return InteractionResult.CONSUME;
             }
-            PowerPanelState.send(serverPlayer, cell);
+            PowerPanelState.send(serverPlayer, cell, physical);
             return InteractionResult.CONSUME;
         }
         return InteractionResult.SUCCESS;

@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -19,9 +20,9 @@ import java.util.List;
 /**
  * 服务端电力面板数据：从一个接线盒出发，收集它附近 16 格内的用电设备。
  *
- * <p>属于物理船的盒子/设备用<b>装配坐标</b>；普通世界里的盒子用世界坐标。
- * 物理船的方块实体在船坞里，读写前用 {@link VsPilot#toYard(BlockPos)} 换算。
- * 绑定只改变设备的 {@code PowerBox}（存同一套坐标），不改任何方块。</p>
+ * <p>坐标系由调用方显式传入（物理船用装配坐标，普通世界用世界坐标），不再按
+ * 坐标数值推断。客户端回传的绑定坐标由服务端按“方块实体实际在哪”判定坐标系，
+ * 不直接采信客户端标志。</p>
  */
 public final class PowerPanelState {
 
@@ -33,10 +34,12 @@ public final class PowerPanelState {
     private PowerPanelState() {
     }
 
-    /** @param boxCell 接线盒坐标：物理船是装配坐标，普通世界是世界坐标 */
-    public static PowerStatePacket build(ServerPlayer player, BlockPos boxCell) {
+    /**
+     * @param boxCell  接线盒坐标：物理船是装配坐标，普通世界是世界坐标
+     * @param physical 是否物理船坐标系（由服务端调用方显式提供）
+     */
+    public static PowerStatePacket build(ServerPlayer player, BlockPos boxCell, boolean physical) {
         ServerLevel level = player.serverLevel();
-        boolean physical = isPhysicalCell(boxCell);
         BlockPos boxYard = physical ? VsPilot.toYard(boxCell) : boxCell;
         if (boxYard == null) {
             return null;
@@ -72,9 +75,12 @@ public final class PowerPanelState {
                 box.condition(), ship.simulation().boxLoad(boxCell), devices);
     }
 
-    /** @param boxCell 接线盒坐标：物理船是装配坐标，普通世界是世界坐标 */
-    public static void send(ServerPlayer player, BlockPos boxCell) {
-        PowerStatePacket state = build(player, boxCell);
+    /**
+     * @param boxCell  接线盒坐标：物理船是装配坐标，普通世界是世界坐标
+     * @param physical 是否物理船坐标系
+     */
+    public static void send(ServerPlayer player, BlockPos boxCell, boolean physical) {
+        PowerStatePacket state = build(player, boxCell, physical);
         if (state != null) {
             ModNetwork.sendToPlayer(player, state);
         }
@@ -83,13 +89,11 @@ public final class PowerPanelState {
     /** 服务端绑定校验：发送者站在盒子 8 格内，设备在盒子 16 格内且确实是 PowerConsumer。 */
     public static boolean bind(ServerPlayer player, BlockPos boxCell, BlockPos deviceCell, boolean bind) {
         ServerLevel level = player.serverLevel();
-        boolean boxPhysical = isPhysicalCell(boxCell);
-        boolean devicePhysical = isPhysicalCell(deviceCell);
-        // 物理船盒子只能绑物理船设备，世界盒子只能绑世界设备，避免坐标系混用。
-        if (boxPhysical != devicePhysical) {
+        // 坐标来自客户端：按方块实体实际位置判定坐标系，不信任客户端标志。
+        Boolean physical = physicalOf(level, boxCell);
+        if (physical == null) {
             return false;
         }
-        boolean physical = boxPhysical;
         if (boxCell.distSqr(deviceCell) > (double) RANGE * RANGE) {
             return false;
         }
@@ -117,9 +121,34 @@ public final class PowerPanelState {
         return true;
     }
 
-    /** 这个坐标是否属于当前物理船（装配坐标在船体包围盒内）。 */
-    private static boolean isPhysicalCell(BlockPos cell) {
-        return VsState.active() && VsPilot.isAssemblyCell(cell);
+    /** 绑定成功后刷新面板：按方块实体实际位置重新判定坐标系。 */
+    public static void refresh(ServerPlayer player, BlockPos boxCell) {
+        Boolean physical = physicalOf(player.serverLevel(), boxCell);
+        if (physical != null) {
+            send(player, boxCell, physical);
+        }
+    }
+
+    /**
+     * 判定这个接线盒坐标属于哪套坐标系：世界坐标直接能取到方块实体就是世界；
+     * 否则在船坞坐标能取到就是物理船；都取不到返回 null。
+     */
+    @Nullable
+    private static Boolean physicalOf(ServerLevel level, BlockPos boxCell) {
+        if (boxCell == null) {
+            return null;
+        }
+        if (level.getBlockEntity(boxCell) instanceof JunctionBoxBlockEntity) {
+            return false;
+        }
+        if (!VsState.active()) {
+            return null;
+        }
+        BlockPos yard = VsPilot.toYard(boxCell);
+        if (yard != null && level.getBlockEntity(yard) instanceof JunctionBoxBlockEntity) {
+            return true;
+        }
+        return null;
     }
 
     private static ShipState resolveShip(ServerLevel level, BlockPos pos, boolean physical) {

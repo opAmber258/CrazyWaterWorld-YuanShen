@@ -999,14 +999,6 @@ public final class VsPilot {
         return assemblyPos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
     }
 
-    /** 这个坐标是不是当前物理船的装配坐标（落在船体包围盒内）。 */
-    public static boolean isAssemblyCell(BlockPos cell) {
-        if (cell == null || state == null) {
-            return false;
-        }
-        return state.geometry().bounds().contains(cell);
-    }
-
     /** 这个方块坐标是不是当前物理船在船坞里的方块（落在船坞包围盒内）。 */
     public static boolean isYardBlock(BlockPos pos) {
         if (pos == null || state == null || yardOffsetX == Integer.MIN_VALUE) {

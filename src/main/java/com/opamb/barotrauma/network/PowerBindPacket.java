@@ -28,7 +28,7 @@ public record PowerBindPacket(BlockPos boxPos, BlockPos devicePos, boolean bind)
                 return;
             }
             if (PowerPanelState.bind(player, boxPos, devicePos, bind)) {
-                PowerPanelState.send(player, boxPos);
+                PowerPanelState.refresh(player, boxPos);
             }
             context.setPacketHandled(true);
         });

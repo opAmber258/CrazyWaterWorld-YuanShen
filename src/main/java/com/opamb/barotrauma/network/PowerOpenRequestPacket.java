@@ -54,7 +54,7 @@ public record PowerOpenRequestPacket() {
                 player.displayClientMessage(Component.translatable("power.no_box"), true);
                 return;
             }
-            PowerPanelState.send(player, best);
+            PowerPanelState.send(player, best, com.opamb.barotrauma.ship.vs.VsState.active());
         });
         context.setPacketHandled(true);
     }
