@@ -31,17 +31,21 @@ edges:
   - target: patterns/run-tests.md
     condition: when building or running the verification layers
   - target: patterns/publish.md
-    condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
+    condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 ---
 
 # Session Bootstrap
 
 If you haven't already read `AGENTS.md`, read it now — it contains the project identity, non-negotiables, and commands.
 
-Then read this file fully before doing anything else in this session.
+General code/shared-tool tasks read this file fully. Art-only tasks use the entry below and need not load the unrelated handoff, module roadmap, architecture or Current Project State sections.
+
+## 美术任务入口
+
+先运行 `python tools/asset_delivery.py status <资产目录>` 获取短状态，再按任务读 `.mex/patterns/deliver-model-asset.md` 或 `publish.md` 的相应分流。规则见 `docs/ASSET_DELIVERY_CONVENTION.md`，建档/迁移才查 `docs/ASSET_VALIDATION.md`。事实从资产提取，validation 是唯一验证摘要；无需默认加载详细审计、内嵌图片、其他资产或历史版本。
 
 ## 交接快照（2026-11-10）
 
@@ -58,6 +62,10 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 这是随 Git 分享的开工阅读入口，不是自动通知；合作者获取包含本提醒的提交后才能看到。
 
 ## Current Project State
+
+- **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
+
+- **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。
 
 - **大型钢柜 LargeSteelCabinet 候选 A（2026-11-13）**：`art/models/large_steel_cabinet_20261113/` 收录按用户授权直推 main 的低多边形静态设备（制作来源：人工 + AI，用户修订几何/贴图，GPT-6 Codex + Blockbench 5.2.2 完成初稿与交付）。103 cubes / 10 bones / 618 声明面，512² RGBA，3×2.5×0.8753125 格；三列五门、八边形观察窗，五门独立分组并预留铰链轴心，X 居中、Y 贴地；保留用户背部伸出导致的 Z 中点 -0.1 BB。内嵌贴图工程、Bedrock 原生几何、四向 1200×900 原生预览、可重跑脚本和验证记录齐备；最终工程重开后原生导出完全一致，独立几何、UV、贴图检查通过。Discussion #39 登记候选 A；本地按用户要求归入 curated，不代表上游评选通过。仅美术归档，无开门动画和交互，未接入游戏、客户端未测试。
 
@@ -149,6 +157,8 @@ Load the relevant file based on the current task. Always load `context/architect
 
 For every task, follow this loop:
 
+纯美术资产发布的 VERIFY 使用对应格式的交付检查，GROW 以资产 README、validation 与 Discussion 登记完成，不为每个资产重复更新全局 ROUTER。共享约定、工具或项目能力变化仍执行下方完整流程。
+
 1. **CONTEXT** — Load the relevant context file(s) from the routing table above. Check `patterns/INDEX.md` for a matching pattern. If one exists, follow it.
 2. **BUILD** — Do the work. If a pattern exists, follow its Steps. If you are about to deviate from an established pattern, say so before writing any code — state the deviation and why.
 3. **VERIFY** — Load `context/conventions.md` and run the Verify Checklist item by item. State each item and whether the output passes. Do not summarise — enumerate explicitly.
@@ -160,4 +170,4 @@ For every task, follow this loop:
    - **Orient:** If this task can recur and no pattern exists, create one in `patterns/` using `patterns/README.md`, then add it to `patterns/INDEX.md`. If a pattern exists but you learned a gotcha, update it.
    - **Write:** Bump `last_updated` in every scaffold file you changed. Read `mex logging --json` before optional `mex log` notes: `significant` records material rationale, `checkpoints` batches useful notes at task/session boundaries, and `manual` avoids unsolicited notes. Honor explicit user log requests in every mode; mandatory workflow Activity and recovery audits remain required.
 
-发布时走 `.zcode/commands/publish.md`（`/publish`，或用户说「走流程」）：MEX 记账是流程的第 2 步，不是可选项。PR 阶段的兜底是 `.github/workflows/mex-guard.yml`——只统计 `src/` 与 `tools/`：改这两处却不补 `.mex/` 或 `docs/` 会让检查变红；豁免方式是给 PR 加 `mex-skip` 标签（门禁只校验标签，原因须写在说明里，靠 reviewer 把关）。`mex check` 需要 CLI 在 PATH 里；若提示 `command not found`，先按 `AGENTS.md` 的"新机器"一节处理。
+发布时走 `.zcode/commands/publish.md`（`/publish`，或用户说「走流程」）：先分流，纯美术资产按交付约定 §7 自查后直推 `main`，以资产文档和 Discussion 登记记账；通用发布仍做 MEX 记账并走 PR。PR 阶段的 `.github/workflows/mex-guard.yml` 只统计 `src/` 与 `tools/`：改这两处却不补 `.mex/` 或 `docs/` 会失败，豁免方式是加 `mex-skip` 并说明原因。`mex check` 需要 CLI 在 PATH 里；若提示 `command not found`，先按 `AGENTS.md` 的"新机器"一节处理。

@@ -13,7 +13,7 @@ edges:
   - target: context/conventions.md
     condition: when adding a new generated asset or test fixture
 grounds_to: []
-last_updated: 2026-11-03
+last_updated: 2026-11-15
 mex:
   id: mx_01M6FTMGAC6EFK2JXPVN38G81K
   type: component
@@ -31,7 +31,13 @@ mex:
 
 # Tools
 
-`tools/` 只放开发期脚本，不进入模组运行时。三个入口互相独立：贴图生成、GameTest 结构模板、程序集元数据导出。
+`tools/` 只放开发期脚本，不进入模组运行时。常用入口为素材生成、GameTest 结构模板、程序集元数据导出，以及下方资产交付工具。
+
+## 资产交付工具
+
+`tools/asset_delivery.py` 提供 status、refresh、attest 和 card。默认只读短状态；refresh 只写唯一验证摘要，attest 记录明确的实际验收，card 生成固定 commit 的登记文本。它不渲染、不原生导出、不联网。规则见 `docs/ASSET_DELIVERY_CONVENTION.md`，数据和命令见 `docs/ASSET_VALIDATION.md`；不在这里复制字段或逐件资产规格。
+
+变更此工具时运行 `python -m unittest discover -s tools/tests -p test_asset_delivery.py -v`。这些检查验证内容变化后的失效与证据保留，不代替原生 Blockbench 或游戏验收。
 
 ## Overview
 
