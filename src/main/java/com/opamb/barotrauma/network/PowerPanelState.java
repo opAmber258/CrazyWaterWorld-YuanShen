@@ -7,8 +7,10 @@ import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -16,13 +18,17 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 服务端电力面板数据：从一个接线盒出发，收集它附近 16 格内的用电设备。
  *
- * <p>坐标系由调用方显式传入（物理船用装配坐标，普通世界用世界坐标），不再按
- * 坐标数值推断。客户端回传的绑定坐标由服务端按“方块实体实际在哪”判定坐标系，
- * 不直接采信客户端标志。</p>
+ * <p>坐标系由调用方显式传入（物理船用装配坐标，普通世界用世界坐标），并且打开
+ * 面板时把目标身份（维度 + 坐标 + 坐标系）记在服务端会话里。之后的绑定/刷新只
+ * 认这份记录，不再按“这个坐标当前有没有方块实体”重新猜坐标系——否则别人在原
+ * 装配位置另放一个接线盒，物理船面板就会被错当成普通世界面板。</p>
  */
 public final class PowerPanelState {
 
@@ -30,6 +36,12 @@ public final class PowerPanelState {
     public static final int MAX_DEVICES = 24;
     /** 玩家必须站在接线盒 8 格内才能打开/改绑定。 */
     private static final double MAX_PLAYER_DISTANCE_SQ = 8.0D * 8.0D;
+
+    /** 一次面板会话的目标身份。 */
+    private record Panel(ResourceKey<Level> dimension, BlockPos boxCell, boolean physical) {
+    }
+
+    private static final Map<UUID, Panel> PANELS = new ConcurrentHashMap<>();
 
     private PowerPanelState() {
     }
@@ -41,7 +53,8 @@ public final class PowerPanelState {
     public static PowerStatePacket build(ServerPlayer player, BlockPos boxCell, boolean physical) {
         ServerLevel level = player.serverLevel();
         BlockPos boxYard = physical ? VsPilot.toYard(boxCell) : boxCell;
-        if (boxYard == null) {
+        if (boxYard == null || !level.hasChunkAt(boxYard)) {
+            // 客户端给的坐标绝不能触发同步区块加载。
             return null;
         }
         BlockEntity raw = level.getBlockEntity(boxYard);
@@ -58,7 +71,8 @@ public final class PowerPanelState {
                 continue;
             }
             BlockPos deviceYard = physical ? VsPilot.toYard(info.pos()) : info.pos();
-            BlockEntity deviceBe = deviceYard == null ? null : level.getBlockEntity(deviceYard);
+            BlockEntity deviceBe = deviceYard == null || !level.hasChunkAt(deviceYard)
+                    ? null : level.getBlockEntity(deviceYard);
             String key = deviceBe == null
                     ? "block.barotrauma.junction_box.unknown"
                     : deviceBe.getBlockState().getBlock().getDescriptionId();
@@ -76,22 +90,50 @@ public final class PowerPanelState {
     }
 
     /**
+     * 打开面板并记下目标身份。
+     *
      * @param boxCell  接线盒坐标：物理船是装配坐标，普通世界是世界坐标
      * @param physical 是否物理船坐标系
      */
     public static void send(ServerPlayer player, BlockPos boxCell, boolean physical) {
         PowerStatePacket state = build(player, boxCell, physical);
-        if (state != null) {
-            ModNetwork.sendToPlayer(player, state);
+        if (state == null) {
+            PANELS.remove(player.getUUID());
+            return;
         }
+        PANELS.put(player.getUUID(),
+                new Panel(player.serverLevel().dimension(), boxCell.immutable(), physical));
+        ModNetwork.sendToPlayer(player, state);
     }
 
-    /** 服务端绑定校验：发送者站在盒子 8 格内，设备在盒子 16 格内且确实是 PowerConsumer。 */
+    /**
+     * 服务端绑定校验：只接受该玩家当前打开面板的目标坐标。
+     *
+     * <p>坐标系、维度和盒子坐标都取自打开面板时的记录，客户端回传的坐标只有
+     * 与记录一致才处理，避免绑定落到原装配位置或普通世界里的其它设备上。</p>
+     */
     public static boolean bind(ServerPlayer player, BlockPos boxCell, BlockPos deviceCell, boolean bind) {
         ServerLevel level = player.serverLevel();
-        // 坐标来自客户端：按方块实体实际位置判定坐标系，不信任客户端标志。
-        Boolean physical = physicalOf(level, boxCell);
-        if (physical == null) {
+        Panel panel = PANELS.get(player.getUUID());
+        if (panel == null
+                || !panel.dimension().equals(level.dimension())
+                || !panel.boxCell().equals(boxCell)
+                || deviceCell == null) {
+            return false;
+        }
+        boolean physical = panel.physical();
+        BlockPos boxYard = physical ? VsPilot.toYard(boxCell) : boxCell;
+        BlockPos deviceYard = physical ? VsPilot.toYard(deviceCell) : deviceCell;
+        if (boxYard == null || deviceYard == null) {
+            return false;
+        }
+        // 先查区块是否已加载，绝不因客户端坐标同步加载区块。
+        if (!level.hasChunkAt(boxYard) || !level.hasChunkAt(deviceYard)) {
+            return false;
+        }
+        if (!(level.getBlockEntity(boxYard) instanceof JunctionBoxBlockEntity)) {
+            // 面板目标已经不存在，这次会话作废。
+            PANELS.remove(player.getUUID());
             return false;
         }
         if (boxCell.distSqr(deviceCell) > (double) RANGE * RANGE) {
@@ -101,14 +143,6 @@ public final class PowerPanelState {
                 ? VsPilot.assemblyToWorld(boxCell)
                 : Vec3.atCenterOf(boxCell);
         if (boxWorld == null || player.distanceToSqr(boxWorld) > MAX_PLAYER_DISTANCE_SQ) {
-            return false;
-        }
-        BlockPos boxYard = physical ? VsPilot.toYard(boxCell) : boxCell;
-        BlockPos deviceYard = physical ? VsPilot.toYard(deviceCell) : deviceCell;
-        if (boxYard == null || deviceYard == null) {
-            return false;
-        }
-        if (!(level.getBlockEntity(boxYard) instanceof JunctionBoxBlockEntity)) {
             return false;
         }
         BlockEntity raw = level.getBlockEntity(deviceYard);
@@ -121,34 +155,17 @@ public final class PowerPanelState {
         return true;
     }
 
-    /** 绑定成功后刷新面板：按方块实体实际位置重新判定坐标系。 */
+    /** 绑定成功后刷新面板：沿用打开时记录的坐标系，不重新推断。 */
     public static void refresh(ServerPlayer player, BlockPos boxCell) {
-        Boolean physical = physicalOf(player.serverLevel(), boxCell);
-        if (physical != null) {
-            send(player, boxCell, physical);
+        Panel panel = PANELS.get(player.getUUID());
+        if (panel != null && panel.boxCell().equals(boxCell)) {
+            send(player, boxCell, panel.physical());
         }
     }
 
-    /**
-     * 判定这个接线盒坐标属于哪套坐标系：世界坐标直接能取到方块实体就是世界；
-     * 否则在船坞坐标能取到就是物理船；都取不到返回 null。
-     */
-    @Nullable
-    private static Boolean physicalOf(ServerLevel level, BlockPos boxCell) {
-        if (boxCell == null) {
-            return null;
-        }
-        if (level.getBlockEntity(boxCell) instanceof JunctionBoxBlockEntity) {
-            return false;
-        }
-        if (!VsState.active()) {
-            return null;
-        }
-        BlockPos yard = VsPilot.toYard(boxCell);
-        if (yard != null && level.getBlockEntity(yard) instanceof JunctionBoxBlockEntity) {
-            return true;
-        }
-        return null;
+    /** 玩家退出时丢掉面板会话。 */
+    public static void clear(ServerPlayer player) {
+        PANELS.remove(player.getUUID());
     }
 
     private static ShipState resolveShip(ServerLevel level, BlockPos pos, boolean physical) {
