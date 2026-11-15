@@ -41,6 +41,7 @@ public record PowerOpenRequestPacket() {
             ServerLevel level = player.serverLevel();
             BlockPos best = null;
             boolean bestPhysical = false;
+            ShipState bestShip = null;
             boolean hadShip = false;
             double bestDistance = Double.MAX_VALUE;
 
@@ -61,6 +62,7 @@ public record PowerOpenRequestPacket() {
                             bestDistance = distance;
                             best = cell;
                             bestPhysical = true;
+                            bestShip = physical;
                         }
                     }
                 }
@@ -92,6 +94,7 @@ public record PowerOpenRequestPacket() {
                         bestDistance = distance;
                         best = cell;
                         bestPhysical = false;
+                        bestShip = blockShip;
                     }
                 }
             }
@@ -101,7 +104,7 @@ public record PowerOpenRequestPacket() {
                         Component.translatable(hadShip ? "power.no_box" : "power.no_ship"), true);
                 return;
             }
-            PowerPanelState.send(player, best, bestPhysical);
+            PowerPanelState.send(player, best, bestPhysical, bestShip);
         });
         context.setPacketHandled(true);
     }

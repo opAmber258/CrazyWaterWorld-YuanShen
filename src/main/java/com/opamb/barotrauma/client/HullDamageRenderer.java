@@ -172,12 +172,17 @@ public final class HullDamageRenderer {
         Camera camera = event.getCamera();
         Vec3 cameraPos = camera.getPosition();
         ShipMapping mapping = resolveMapping(level, data);
+        // 矿脉的切割进度条和船壳血条共用同一套 billboard 渲染，但不依赖船壳映射：
+        // 映射失败时船壳血条/裂痕画不了，矿脉进度条仍要照常显示。
+        List<Target> veinBars = MineralVeinClient.bars(cameraPos);
         if (mapping == null) {
+            if (!veinBars.isEmpty()) {
+                PoseStack pose = event.getPoseStack();
+                drawBars(mc, camera, pose.last().pose(), veinBars, cameraPos);
+            }
             return;
         }
         List<Target> targets = targets(cameraPos, mapping.toWorld());
-        // 矿脉的切割进度条和船壳血条共用同一套 billboard 渲染。
-        List<Target> veinBars = MineralVeinClient.bars(cameraPos);
         if (targets.isEmpty() && veinBars.isEmpty()) {
             return;
         }

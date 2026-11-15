@@ -63,6 +63,11 @@
   物理船不再全局屏蔽方块船面板。
 - 第五轮：新增 `ShipCores.coresNear`，快捷面板遍历附近每艘方块船（跳过已装配物理船），
   不再只认最近核心；`core.state()` 为空时先 `rescan(level)`，读档后不会 NPE。
+- outside-diff 补修：`VsPilot.toWorld` 改读已加载船句柄；`PowerPanelState` 接收打开请求
+  已选中的船并记进会话（`refresh` 复用），找船半径统一 64 格；矿脉进度条不再被船壳
+  映射失败吞掉。
+- **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
+  靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的
   `PowerPanelState.java`/`PowerStatePacket.java`），主工作区未改动。
 

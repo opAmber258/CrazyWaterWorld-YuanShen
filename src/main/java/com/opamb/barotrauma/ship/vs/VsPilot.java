@@ -1596,12 +1596,15 @@ public final class VsPilot {
         if (ship == null) {
             return Vec3.atCenterOf(original);
         }
-        org.joml.Vector3dc positionInShip = ship.getTransform().getPositionInShip();
+        // 和 view 一样读“已加载”句柄：装配时拿到的 ServerShip 快照 transform
+        // 不随物理更新，船开走后会一直返回装配那一刻的旧坐标。
+        ServerShip live = lastLevel == null ? ship : view(lastLevel);
+        org.joml.Vector3dc positionInShip = live.getTransform().getPositionInShip();
         org.joml.Vector3d shipSpace = new org.joml.Vector3d(
                 original.getX() + 0.5D + positionInShip.x() - assembledPos.x,
                 original.getY() + 0.5D + positionInShip.y() - assembledPos.y,
                 original.getZ() + 0.5D + positionInShip.z() - assembledPos.z);
-        org.joml.Vector3d world = ship.getTransform().getShipToWorld()
+        org.joml.Vector3d world = live.getTransform().getShipToWorld()
                 .transformPosition(shipSpace, new org.joml.Vector3d());
         return new Vec3(world.x, world.y, world.z);
     }

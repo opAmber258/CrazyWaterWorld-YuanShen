@@ -38,7 +38,8 @@ public final class PowerPanelState {
     private static final double MAX_PLAYER_DISTANCE_SQ = 8.0D * 8.0D;
 
     /** 一次面板会话的目标身份。 */
-    private record Panel(ResourceKey<Level> dimension, BlockPos boxCell, boolean physical) {
+    private record Panel(ResourceKey<Level> dimension, BlockPos boxCell, boolean physical,
+                         ShipState ship) {
     }
 
     private static final Map<UUID, Panel> PANELS = new ConcurrentHashMap<>();
@@ -49,8 +50,10 @@ public final class PowerPanelState {
     /**
      * @param boxCell  接线盒坐标：物理船是装配坐标，普通世界是世界坐标
      * @param physical 是否物理船坐标系（由服务端调用方显式提供）
+     * @param ship     这面盒子所属的船（打开请求已经选好，不要在这里重新搜）
      */
-    public static PowerStatePacket build(ServerPlayer player, BlockPos boxCell, boolean physical) {
+    public static PowerStatePacket build(ServerPlayer player, BlockPos boxCell, boolean physical,
+                                         ShipState ship) {
         ServerLevel level = player.serverLevel();
         BlockPos boxYard = physical ? VsPilot.toYard(boxCell) : boxCell;
         if (boxYard == null || !level.hasChunkAt(boxYard)) {
@@ -61,7 +64,6 @@ public final class PowerPanelState {
         if (!(raw instanceof JunctionBoxBlockEntity box)) {
             return null;
         }
-        ShipState ship = resolveShip(level, boxCell, physical);
         if (ship == null) {
             return null;
         }
@@ -96,13 +98,25 @@ public final class PowerPanelState {
      * @param physical 是否物理船坐标系
      */
     public static void send(ServerPlayer player, BlockPos boxCell, boolean physical) {
-        PowerStatePacket state = build(player, boxCell, physical);
+        send(player, boxCell, physical,
+                resolveShip(player.serverLevel(), boxCell, physical));
+    }
+
+    /**
+     * 打开面板并记下目标身份；船由调用方选定（快捷打开已经按最近接线盒挑好）。
+     *
+     * @param boxCell  接线盒坐标：物理船是装配坐标，普通世界是世界坐标
+     * @param physical 是否物理船坐标系
+     * @param ship     这面盒子所属的船
+     */
+    public static void send(ServerPlayer player, BlockPos boxCell, boolean physical, ShipState ship) {
+        PowerStatePacket state = build(player, boxCell, physical, ship);
         if (state == null) {
             PANELS.remove(player.getUUID());
             return;
         }
         PANELS.put(player.getUUID(),
-                new Panel(player.serverLevel().dimension(), boxCell.immutable(), physical));
+                new Panel(player.serverLevel().dimension(), boxCell.immutable(), physical, ship));
         ModNetwork.sendToPlayer(player, state);
     }
 
@@ -155,11 +169,11 @@ public final class PowerPanelState {
         return true;
     }
 
-    /** 绑定成功后刷新面板：沿用打开时记录的坐标系，不重新推断。 */
+    /** 绑定成功后刷新面板：沿用打开时记录的坐标系和船，不重新搜索。 */
     public static void refresh(ServerPlayer player, BlockPos boxCell) {
         Panel panel = PANELS.get(player.getUUID());
         if (panel != null && panel.boxCell().equals(boxCell)) {
-            send(player, boxCell, panel.physical());
+            send(player, boxCell, panel.physical(), panel.ship());
         }
     }
 
@@ -168,11 +182,17 @@ public final class PowerPanelState {
         PANELS.remove(player.getUUID());
     }
 
+    /** 没有快捷打开请求时自己找船：方块船的核心可能离盒子很远，按 64 格找。 */
+    @Nullable
     private static ShipState resolveShip(ServerLevel level, BlockPos pos, boolean physical) {
         if (physical) {
             return VsState.activeState();
         }
-        var core = ShipCores.nearestCore(level, pos, 32.0D);
-        return core == null ? null : core.state();
+        var core = ShipCores.nearestCore(level, pos, 64.0D);
+        if (core == null) {
+            return null;
+        }
+        // 方块船 state 不存档，重载后要等 rescan 才有。
+        return core.state() != null ? core.state() : core.rescan(level);
     }
 }
