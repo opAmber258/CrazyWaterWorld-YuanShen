@@ -62,10 +62,13 @@ public final class MissionInstance {
      * 由 {@code CampaignManager.startTravel} 在预加载新区块之前写入，
      * {@code tick} 和服务器启动时从 {@code RoundState} 重放。
      *
+     * <p>{@code anchorX} 是保存下来的实际锚点 x：读档时旧存档的槽位间距可能和
+     * 当前 {@link #SPACING} 不同，不能再用 slot 乘间距重新算锚点。</p>
+     *
      * <p>{@code null} = 没有活动关卡，地形完全走原来的全局 {@link SeaTerrain}。</p>
      */
     public record RouteLevel(int slot, LevelType type, long seed, int difficulty,
-                             int startDistance) {
+                             int startDistance, int anchorX) {
     }
 
     private static volatile RouteLevel routeLevel;
@@ -336,7 +339,16 @@ public final class MissionInstance {
     /** 第 {@code roundIndex} 轮出勤的锚点；轮次从 0 开始（= 战役已完成的轮数）。 */
     public static Anchor anchorForRound(int roundIndex) {
         int slot = Math.max(0, roundIndex);
-        return new Anchor(slot, BASE_X + slot * SPACING, ANCHOR_Y, 0);
+        RouteLevel level = routeLevel;
+        // 读档恢复的关卡用保存下来的锚点：旧存档的槽位间距可能是 1024。
+        int x = level != null && level.slot() == slot ? level.anchorX() : BASE_X + slot * SPACING;
+        return new Anchor(slot, x, ANCHOR_Y, 0);
+    }
+
+    /** 从实例坐标反推槽位；{@code spacing <= 0} 时用当前布局。 */
+    public static int slotForX(int x, int spacing) {
+        int step = spacing > 0 ? spacing : SPACING;
+        return Math.max(0, Math.round((x - BASE_X) / (float) step));
     }
 
     /** 坐标附近的实例站点锚点 x（世界生成用；不在任何站净空范围内返回 null）。 */

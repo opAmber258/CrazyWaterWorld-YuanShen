@@ -76,6 +76,12 @@
   全船负载跳过断开支路；门/舱口自动化按船身份换算坐标；商店行数上限统一 64；
   快捷面板只认同维度物理船；面板绑定状态直接读 BE；物品浮力用完整干湿链；
   `LevelSelector` 改读 `LevelParams`。
+- 第二次 full review 批次（11 条 + outside-diff + nitpick）：旧存档关卡锚点/间距
+  持久化（`RouteLevel.anchorX`、`RoundState.levelSpacing`，旧档回退 192/1024）；
+  `CampaignManager.restoreRoute` 统一三处恢复；接线盒 tick 用 `VsState.isPhysical`
+  判归属；矿脉密度改 `floorMod` 模数、邻列用邻列 `floorY`；旧焊接购买价对齐 150；
+  切割穿过打开的门/舱口并加 `player.mayBuild`；`ShipMover` 保留接线盒耐久 NBT；
+  反应堆警报用 `effectCenter`；声纳矿脉点可作自动驾驶目标。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的

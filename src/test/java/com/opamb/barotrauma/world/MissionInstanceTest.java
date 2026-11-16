@@ -92,7 +92,7 @@ class MissionInstanceTest {
         LevelParams basic = LevelType.BASIC.params();
         MissionInstance.Anchor anchor = MissionInstance.anchorForRound(4);
         MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
-                4, LevelType.BASIC, 123L, 3, basic.routeLength()));
+                4, LevelType.BASIC, 123L, 3, basic.routeLength(), anchor.x()));
 
         assertEquals(basic.routeLength(), MissionInstance.startDistanceFor(anchor));
         assertEquals(anchor.x(), MissionInstance.startSite(anchor).x(),
@@ -120,7 +120,7 @@ class MissionInstanceTest {
         LevelParams advanced = LevelType.ADVANCED.params();
         MissionInstance.Anchor even = MissionInstance.anchorForRound(8);
         MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
-                8, LevelType.ADVANCED, 1L, 9, advanced.routeLength()));
+                8, LevelType.ADVANCED, 1L, 9, advanced.routeLength(), even.x()));
         var north = MissionInstance.startSite(even);
         assertEquals(even.x(), north.x(), "长路线 x 不变");
         assertEquals(even.z() - advanced.routeLength(), north.z(), "slot 8 偶数走北");
@@ -128,7 +128,7 @@ class MissionInstanceTest {
 
         MissionInstance.Anchor odd = MissionInstance.anchorForRound(9);
         MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
-                9, LevelType.ADVANCED, 2L, 9, advanced.routeLength()));
+                9, LevelType.ADVANCED, 2L, 9, advanced.routeLength(), odd.x()));
         var south = MissionInstance.startSite(odd);
         assertEquals(odd.x(), south.x());
         assertEquals(odd.z() + advanced.routeLength(), south.z(), "slot 9 奇数走南");

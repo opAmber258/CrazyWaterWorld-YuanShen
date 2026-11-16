@@ -1518,7 +1518,10 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         double bestOffset = 4.5D;
         if (frame != null) {
             for (int point : frame.points()) {
-                if (SonarScan.type(point) != SonarScan.TYPE_TERRAIN) {
+                // 矿脉点也能当自动驾驶目标：玩家看到金色矿点并点击时，
+                // 提交的坐标必须和显示位置一致（与上方的 terrainLike 判定一致）。
+                int pointType = SonarScan.type(point);
+                if (pointType != SonarScan.TYPE_TERRAIN && pointType != SonarScan.TYPE_ORE) {
                     continue;
                 }
                 double px = SonarScan.x(point) - camX;

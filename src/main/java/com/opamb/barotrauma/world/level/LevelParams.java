@@ -146,14 +146,14 @@ public record LevelParams(
         return type.isConnection();
     }
 
-    /** 海底矿脉密度 mask（原版 basic 0.2 对应 1023）。 */
-    public int seafloorVeinMask() {
-        return chanceMask(content.resourceSpawnChance(), 1023);
+    /** 海底矿脉密度模数（basic 0.2 → 1/1024）。 */
+    public int seafloorVeinModulus() {
+        return veinModulus(content.resourceSpawnChance(), 0.2D, 1024);
     }
 
-    /** 岩壁矿脉密度 mask（原版 basic 0.35 对应 255）。 */
-    public int wallVeinMask() {
-        return chanceMask(content.caveResourceSpawnChance(), 255);
+    /** 岩壁矿脉密度模数（basic 0.35 → 1/256）。 */
+    public int wallVeinModulus() {
+        return veinModulus(content.caveResourceSpawnChance(), 0.35D, 256);
     }
 
     /**
@@ -169,12 +169,19 @@ public record LevelParams(
         return Math.max(8, Math.min(32, (int) Math.round(16.0D * 0.2D / chance)));
     }
 
-    private static int chanceMask(double chance, int base) {
+    /**
+     * 按“每 N 列/采样命中一次”的模数算密度。
+     *
+     * <p>生成器用 {@code Math.floorMod(hash, modulus) == 0} 判定：概率恰好是
+     * 1/modulus。之前返回的是位掩码，但掩码可能不连续（如 682=1010101010），
+     * 实际通过率变成 1/2^popcount，和设计密度差几十倍。</p>
+     */
+    private static int veinModulus(double chance, double baselineChance, int baselineModulus) {
         if (chance <= 0.0D) {
-            return base * 4;
+            return baselineModulus * 4;
         }
-        int mask = (int) Math.round(base * 0.2D / chance);
-        return Math.max(32, Math.min(base * 4, mask));
+        long scaled = Math.round(baselineModulus * baselineChance / chance);
+        return (int) Math.max(128L, Math.min(baselineModulus * 4L, scaled));
     }
 
     private static final LevelParams[] CACHE = new LevelParams[LevelType.values().length];

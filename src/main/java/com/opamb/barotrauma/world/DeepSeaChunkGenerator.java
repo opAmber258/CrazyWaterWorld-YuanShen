@@ -300,8 +300,8 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
         int slot = Math.max(0, Math.round((originX - MissionInstance.BASE_X)
                 / (float) MissionInstance.SPACING));
         LevelParams params = MissionInstance.paramsForSlot(slot);
-        int floorMask = params == null ? 1023 : params.seafloorVeinMask();
-        int wallMask = params == null ? 255 : params.wallVeinMask();
+        int floorModulus = params == null ? 1024 : params.seafloorVeinModulus();
+        int wallModulus = params == null ? 256 : params.wallVeinModulus();
         long veinSeed = params == null ? seed
                 : seed ^ MissionInstance.routeLevel().seed();
         // 环境矿脉：原作资源点间隔 96–192 格 × 0.2–0.3 概率；这里按区块门控，
@@ -332,7 +332,7 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                     continue;
                 }
                 // 海底表面：密度由关卡 resourceSpawnChance 决定（basic 0.2 → 1/1024）。
-                if (!placed[0] && (hash & floorMask) == 0L && floor > minY
+                if (!placed[0] && Math.floorMod(hash, floorModulus) == 0 && floor > minY
                         && floor < ModDimensions.CEILING_BOTTOM_Y) {
                     BlockState vein = veins[(int) Math.floorMod(hash >>> 10, 3L)];
                     setBlock(chunk, x, floor, z, vein);
@@ -341,7 +341,13 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                     if (((hash >>> 11) & 1L) == 0L) {
                         int nx = lx < 15 ? lx + 1 : lx - 1;
                         if (nx >= 0) {
-                            setBlock(chunk, originX + nx, floor, z, vein);
+                            int nxWorld = originX + nx;
+                            // 邻列海底高度可能不同：必须用邻列自己的 floorY，
+                            // 否则矿脉会悬空或埋进岩石里。
+                            if (MissionInstance.inMiningZone(nxWorld, z)
+                                    && SeaTerrain.floorY(seed, nxWorld, z) == floor) {
+                                setBlock(chunk, nxWorld, floor, z, vein);
+                            }
                         }
                     }
                 }
@@ -351,7 +357,7 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                 }
                 for (int sample = 0; sample < 2 && !placed[0]; sample++) {
                     long sampleHash = veinHash(hash ^ (0x632BE59BD9B4E019L * (sample + 1L)), x, z);
-                    if ((sampleHash & wallMask) != 0L) {
+                    if (Math.floorMod(sampleHash, wallModulus) != 0) {
                         continue;
                     }
                     int y = floor + 3 + (int) Math.floorMod(sampleHash >>> 8,

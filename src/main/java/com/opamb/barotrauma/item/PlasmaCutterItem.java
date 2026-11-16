@@ -160,6 +160,11 @@ public class PlasmaCutterItem extends Item {
 
     /** 服务端一次切割应用；返回 true 表示确实切到了矿脉/船壳/舱门。 */
     private boolean cutSomething(ServerLevel level, ServerPlayer player) {
+        // 和原版方块破坏同一套权限判定：冒险模式/领地限制下不能靠切割器绕过。
+        if (!player.mayBuild()) {
+            clearProgress(player, level);
+            return false;
+        }
         HitResult hit = player.pick(REACH, 0.0F, false);
         if (hit instanceof BlockHitResult blockHit && hit.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = blockHit.getBlockPos();

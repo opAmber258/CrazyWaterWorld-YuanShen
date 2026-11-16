@@ -99,7 +99,7 @@ class DeepSeaTerrainTest {
         MissionInstance.setRouteOutposts(8, true, true);
         LevelParams advanced = LevelType.ADVANCED.params();
         MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
-                8, LevelType.ADVANCED, 55L, 9, advanced.routeLength()));
+                8, LevelType.ADVANCED, 55L, 9, advanced.routeLength(), anchor.x()));
 
         RoutePath path = MissionInstance.activePath();
         assertNotNull(path, "活动关卡必须生成主航道");

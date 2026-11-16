@@ -64,10 +64,15 @@ public final class ShipMover {
         }
         // setBlock 会重建方块实体，接线盒绑定（PowerBox）不会跟着走，先记下来。
         Map<BlockPos, BlockPos> powerBoxes = new HashMap<>();
+        // 接线盒耐久只存在方块实体 NBT 里；不搬就会在新位置重置成 100%。
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> junctionTags = new HashMap<>();
         for (BlockPos pos : moving) {
             if (level.getBlockEntity(pos) instanceof PowerConsumer consumer
                     && consumer.powerBox() != null) {
                 powerBoxes.put(pos.immutable(), consumer.powerBox());
+            }
+            if (level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity junction) {
+                junctionTags.put(pos.immutable(), junction.saveWithoutMetadata());
             }
         }
         List<BlockPos> interior = new ArrayList<>();
@@ -101,6 +106,15 @@ public final class ShipMover {
             if (level.getBlockEntity(target) instanceof PowerConsumer consumer) {
                 consumer.setPowerBox(entry.getValue().offset(dx, dy, dz));
                 level.getBlockEntity(target).setChanged();
+            }
+        }
+        // 恢复接线盒耐久/宽限期：重建的方块实体默认 100%，搬一次就白修了。
+        for (Map.Entry<BlockPos, net.minecraft.nbt.CompoundTag> entry : junctionTags.entrySet()) {
+            BlockPos target = entry.getKey().offset(dx, dy, dz);
+            if (level.getBlockEntity(target)
+                    instanceof com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity junction) {
+                junction.load(entry.getValue());
+                junction.setChanged();
             }
         }
 

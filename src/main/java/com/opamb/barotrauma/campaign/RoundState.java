@@ -25,6 +25,11 @@ public final class RoundState {
      * 航道端点挪走；旧存档没有这个字段（0）时回退到关卡参数的 routeLength。
      */
     private int levelDistance;
+    /**
+     * 写这轮实例时用的槽位间距。旧存档没有（0）：按 1024 的旧布局还原，
+     * 否则 instanceX 会被新间距算到别的槽位，航道和已生成的站点错开。
+     */
+    private int levelSpacing;
 
     public RoundPhase phase() {
         return phase;
@@ -86,6 +91,10 @@ public final class RoundState {
         return levelDistance;
     }
 
+    public int levelSpacing() {
+        return levelSpacing;
+    }
+
     /** 记录本轮关卡类型/种子/难度（在 beginTravel 之后调用，失败回滚会恢复上一轮）。 */
     public void setLevel(String typeId, long seed, int difficulty) {
         setLevel(typeId, seed, difficulty, 0);
@@ -93,10 +102,16 @@ public final class RoundState {
 
     /** 记录本轮关卡类型/种子/难度/实际路线距离。 */
     public void setLevel(String typeId, long seed, int difficulty, int distance) {
+        setLevel(typeId, seed, difficulty, distance, 0);
+    }
+
+    /** 记录本轮关卡类型/种子/难度/实际路线距离/槽位间距。 */
+    public void setLevel(String typeId, long seed, int difficulty, int distance, int spacing) {
         this.levelType = typeId == null || typeId.isBlank() ? "coldcavernsbasic" : typeId;
         this.levelSeed = seed;
         this.levelDifficulty = Math.max(0, difficulty);
         this.levelDistance = Math.max(0, distance);
+        this.levelSpacing = Math.max(0, spacing);
     }
 
     /** 记录本轮任务海域实例锚点（同一轮内不变）。 */
@@ -154,6 +169,7 @@ public final class RoundState {
         tag.putLong("levelSeed", levelSeed);
         tag.putInt("levelDifficulty", levelDifficulty);
         tag.putInt("levelDistance", levelDistance);
+        tag.putInt("levelSpacing", levelSpacing);
         return tag;
     }
 
@@ -184,6 +200,18 @@ public final class RoundState {
                 ? Math.max(0, tag.getInt("levelDifficulty")) : 0;
         levelDistance = tag.contains("levelDistance")
                 ? Math.max(0, tag.getInt("levelDistance")) : 0;
+        levelSpacing = tag.contains("levelSpacing")
+                ? Math.max(0, tag.getInt("levelSpacing")) : 0;
+        if (hasInstance()) {
+            // 旧存档：当时固定出发距离 192、槽位间距 1024。留 0 会让恢复逻辑
+            // 用新关卡的默认值，把已经生成的出发站/航道端点挪走。
+            if (levelDistance <= 0) {
+                levelDistance = 192;
+            }
+            if (levelSpacing <= 0) {
+                levelSpacing = 1024;
+            }
+        }
         if (!CampaignMap.isValid(origin)) {
             origin = CampaignMap.START_NODE;
         }

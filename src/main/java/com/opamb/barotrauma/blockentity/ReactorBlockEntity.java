@@ -121,8 +121,10 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
             be.alarmTimer += SECONDS_PER_TICK;
             if (be.alarmTimer >= 2.0D) {
                 be.alarmTimer = 0.0D;
-                level.playSound(null, pos, ModSounds.REACTOR_ALARM.get(),
-                        SoundSource.BLOCKS, 1.2F, 1.0F);
+                // 物理船的 pos 是船坞坐标，警报要在船体当前世界位置播放。
+                net.minecraft.world.phys.Vec3 center = be.effectCenter(server);
+                server.playSound(null, center.x, center.y, center.z,
+                        ModSounds.REACTOR_ALARM.get(), SoundSource.BLOCKS, 1.2F, 1.0F);
             }
         } else {
             be.alarmTimer = 0.0D;

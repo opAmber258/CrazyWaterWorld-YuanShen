@@ -52,11 +52,14 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
         if (!(level instanceof ServerLevel server) || be.isRemoved()) {
             return;
         }
-        ShipState ship = resolveShip(server, pos);
+        // 先判断这个盒子是否真的属于活动物理船：物理船 A 活动时，
+        // 方块船 B 的盒子不能减 A 的船坞偏移，否则 tracksHullBlock 会拒绝、设备断电。
+        boolean physical = VsState.isPhysical(server, pos);
+        ShipState ship = physical ? VsState.activeState() : resolveBlockShip(server, pos);
         if (ship == null) {
             return;
         }
-        BlockPos cell = assemblyPos(pos);
+        BlockPos cell = physical ? VsPilot.toAssembly(pos) : pos;
         if (!ship.tracksHullBlock(cell)) {
             return;
         }
@@ -123,16 +126,14 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
         return Component.translatable(getBlockState().getBlock().getDescriptionId());
     }
 
-    private static BlockPos assemblyPos(BlockPos pos) {
-        return VsState.active() ? VsPilot.toAssembly(pos) : pos;
-    }
-
-    private static ShipState resolveShip(ServerLevel level, BlockPos pos) {
-        if (VsState.active()) {
-            return VsState.activeState();
+    /** 不属于活动物理船：按附近核心找方块船。 */
+    private static ShipState resolveBlockShip(ServerLevel level, BlockPos pos) {
+        ShipCoreBlockEntity core = ShipCores.nearestCore(level, pos, 64.0D);
+        if (core == null) {
+            return null;
         }
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, pos, 32.0D);
-        return core == null ? null : core.state();
+        // 方块船 state 不存档，重载后要等 rescan。
+        return core.state() != null ? core.state() : core.rescan(level);
     }
 
     @Override

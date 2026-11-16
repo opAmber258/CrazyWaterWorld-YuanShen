@@ -999,29 +999,9 @@ public final class DeepSeaEvents {
         if (adoptDeep != null) {
             com.opamb.barotrauma.campaign.CampaignState campaign =
                     com.opamb.barotrauma.campaign.CampaignState.wallet(adoptDeep);
-            com.opamb.barotrauma.campaign.RoundState round = campaign.round();
-            // 到达站后（AT_NODE）也要恢复关卡配置：站体和码头竖井依赖关卡剖面。
-            if (round.hasInstance()) {
-                int slot = Math.max(0, Math.round((round.instanceX()
-                        - com.opamb.barotrauma.world.MissionInstance.BASE_X)
-                        / (float) com.opamb.barotrauma.world.MissionInstance.SPACING));
-                com.opamb.barotrauma.world.level.LevelType type =
-                        com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
-                com.opamb.barotrauma.world.level.LevelParams params = type.params();
-                int distance = round.levelDistance() > 0
-                        ? round.levelDistance() : params.routeLength();
-                com.opamb.barotrauma.world.MissionInstance.setRouteLevel(
-                        new com.opamb.barotrauma.world.MissionInstance.RouteLevel(
-                                slot, type, round.levelSeed(), round.levelDifficulty(),
-                                distance));
-                // AT_NODE 也要恢复：否则 routeSlot 还是 MIN_VALUE，无人航路点会被误判成要建站。
-                com.opamb.barotrauma.world.MissionInstance.setRouteOutposts(
-                        slot, round.startHasOutpost(), round.endHasOutpost());
-            } else {
-                // 本世界没有活动关卡：清掉上一个世界留下的静态路线，
-                // 否则同槽位的新区块会套用旧关卡的种子/密度。
-                com.opamb.barotrauma.world.MissionInstance.setRouteLevel(null);
-            }
+            // 到达站后（AT_NODE）也要恢复；没有实例时这里会清掉上一个世界的静态路线。
+            // 槽位换算/距离回退/哨站标记统一在 CampaignManager.restoreRoute 里。
+            com.opamb.barotrauma.campaign.CampaignManager.restoreRoute(campaign.round());
         }
         // P4 持久化实测（两段式）：
         //   .smoketest-persist       → 造初始潜艇 + 装配成物理船 + 损伤两格，然后正常停服存档

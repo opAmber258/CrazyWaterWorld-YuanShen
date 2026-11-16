@@ -1361,6 +1361,28 @@ public final class VsPilot {
     }
 
     /**
+     * 船坞里这个格子当前是不是开着的舱门/舱口。
+     *
+     * <p>要读船坞当前方块状态而不是快照里的 {@code OPEN}：快照可能已经过期。</p>
+     */
+    private static boolean isOpenDoorway(ServerLevel level, BlockPos assemblyPos) {
+        if (yardOffsetX == Integer.MIN_VALUE) {
+            return false;
+        }
+        BlockState at = level.getBlockState(
+                assemblyPos.offset(yardOffsetX, yardOffsetY, yardOffsetZ));
+        if (at.getBlock() instanceof com.opamb.barotrauma.block.BulkheadDoorBlock
+                && at.hasProperty(com.opamb.barotrauma.block.BulkheadDoorBlock.OPEN)) {
+            return at.getValue(com.opamb.barotrauma.block.BulkheadDoorBlock.OPEN);
+        }
+        if (at.getBlock() instanceof com.opamb.barotrauma.block.HatchBlock
+                && at.hasProperty(com.opamb.barotrauma.block.HatchBlock.OPEN)) {
+            return at.getValue(com.opamb.barotrauma.block.HatchBlock.OPEN);
+        }
+        return false;
+    }
+
+    /**
      * @param skipBreached 切割用：0% 的破口船壳无碰撞但仍留在快照里，
      *                     不能挡住后方舱门/舱口的切割射线；焊接仍要能命中破口。
      */
@@ -1402,6 +1424,10 @@ public final class VsPilot {
                 BlockState at = snapshot.get(pos);
                 if (at != null && at.hasProperty(HullBlock.BREACHED)
                         && at.getValue(HullBlock.BREACHED)) {
+                    continue;
+                }
+                // 开着的舱门/舱口没有实体阻挡：切割射线要穿过去打后方目标。
+                if (isOpenDoorway(level, pos)) {
                     continue;
                 }
             }

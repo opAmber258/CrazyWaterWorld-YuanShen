@@ -43,7 +43,13 @@ public record MissionActionPacket(int action) {
     private static final int COST_DEEP_PERMIT = 500;
 
     private static final int COST_OXYGEN = 40;
-    private static final int COST_WELDER = 30;
+    /**
+     * 和 {@code StoreCatalog} 的焊接工具基础价保持一致。
+     *
+     * <p>旧接口不扣商店库存；如果这里卖 30、新商店回收价 43–47，玩家可以
+     * 反复"旧接口买 → 新商店卖"套利。</p>
+     */
+    private static final int COST_WELDER = 150;
     private static final int COST_REPAIR_PER_HP = 1;
     private static final int COST_UPGRADE_BASE = 150;
 

@@ -99,7 +99,8 @@ public final class CampaignManager {
                         state.roundsCompleted() == 0, levelDifficulty, levelSeed);
         com.opamb.barotrauma.world.level.LevelParams levelParams = levelType.params();
         MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
-                anchor.slot(), levelType, levelSeed, levelDifficulty, levelParams.routeLength()));
+                anchor.slot(), levelType, levelSeed, levelDifficulty,
+                levelParams.routeLength(), anchor.x()));
         com.opamb.barotrauma.world.DockingBay.Site startSite = MissionInstance.startSite(anchor);
         boolean startHasOutpost = originNode != null && originNode.type() == NodeType.OUTPOST;
         boolean endHasOutpost = destNode != null && destNode.type() == NodeType.OUTPOST;
@@ -172,7 +173,7 @@ public final class CampaignManager {
         state.beginTravel(destination, deep.getGameTime(), startHasOutpost, endHasOutpost);
         state.setInstance(anchor.x(), anchor.y(), anchor.z());
         state.round().setLevel(levelType.id(), levelSeed, levelDifficulty,
-                levelParams.routeLength());
+                levelParams.routeLength(), MissionInstance.SPACING);
         for (int i = 0; i < players.size(); i++) {
             ServerPlayer online = players.get(i);
             Vec3 pos = positions.get(i);
@@ -316,6 +317,32 @@ public final class CampaignManager {
     }
 
     /**
+     * 把 RoundState 里的关卡配置重放回 {@code MissionInstance} 静态桥。
+     *
+     * <p>读档、每 tick、服务器启动都走这里：槽位换算/距离回退/哨站标记只有一份规则。
+     * 旧存档的槽位间距和锚点以保存值为准。</p>
+     */
+    public static void restoreRoute(RoundState round) {
+        if (!round.hasInstance()) {
+            MissionInstance.setRouteLevel(null);
+            return;
+        }
+        int slot = MissionInstance.slotForX(round.instanceX(), round.levelSpacing());
+        MissionInstance.RouteLevel level = MissionInstance.routeLevel();
+        if (level == null || level.slot() != slot || level.anchorX() != round.instanceX()) {
+            com.opamb.barotrauma.world.level.LevelType type =
+                    com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
+            com.opamb.barotrauma.world.level.LevelParams params = type.params();
+            int distance = round.levelDistance() > 0 ? round.levelDistance() : params.routeLength();
+            MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                    slot, type, round.levelSeed(), round.levelDifficulty(), distance,
+                    round.instanceX()));
+        }
+        // AT_NODE 也恢复哨站标记：routeSlot 不随存档保存，重启后默认 true 会在无人航路点建站。
+        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
+    }
+
+    /**
      * 每 server tick：无人航路点目的地没有站，靠近目的坐标就算抵达
      * （原作无人地点的 AtEndExit 近似）。有目的站时仍由靠泊触发。
      */
@@ -326,24 +353,12 @@ public final class CampaignManager {
         }
         CampaignState state = CampaignState.wallet(deep);
         var round = state.round();
+        // 读档后静态关卡配置可能没设上：从 RoundState 重放（必须在新区块生成前）。
+        // 到达站后（AT_NODE）也要恢复：站体和码头竖井依赖关卡剖面，不能退回全局地形。
+        restoreRoute(round);
         if (!round.hasInstance()) {
             return;
         }
-        // 读档后静态关卡配置可能没设上：从 RoundState 重放（必须在新区块生成前）。
-        // 到达站后（AT_NODE）也要恢复：站体和码头竖井依赖关卡剖面，不能退回全局地形。
-        int slot = Math.max(0, Math.round((round.instanceX() - MissionInstance.BASE_X)
-                / (float) MissionInstance.SPACING));
-        MissionInstance.RouteLevel level = MissionInstance.routeLevel();
-        if (level == null || level.slot() != slot) {
-            com.opamb.barotrauma.world.level.LevelType type =
-                    com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
-            com.opamb.barotrauma.world.level.LevelParams params = type.params();
-            int distance = round.levelDistance() > 0 ? round.levelDistance() : params.routeLength();
-            MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
-                    slot, type, round.levelSeed(), round.levelDifficulty(), distance));
-        }
-        // AT_NODE 也恢复哨站标记：routeSlot 不随存档保存，重启后默认 true 会在无人航路点建站。
-        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
         if (round.phase() != RoundPhase.DIVING) {
             return;
         }

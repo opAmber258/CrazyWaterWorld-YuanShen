@@ -67,14 +67,18 @@ class LevelParamsTest {
     }
 
     @Test
-    @DisplayName("资源 mask 随 resourceSpawnChance 缩放")
+    @DisplayName("资源密度模数随 resourceSpawnChance 缩放")
     void veinMasks() {
-        assertEquals(1023, LevelType.BASIC.params().seafloorVeinMask());
-        assertTrue(LevelType.ADVANCED.params().seafloorVeinMask()
-                < LevelType.BASIC.params().seafloorVeinMask());
-        assertTrue(LevelType.BASIC.params().wallVeinMask() > 32);
-        assertEquals(LevelType.BASIC.params().wallVeinMask(),
-                LevelType.BASIC.params().wallVeinMask(), "同类型 mask 必须稳定");
+        assertEquals(1024, LevelType.BASIC.params().seafloorVeinModulus());
+        assertTrue(LevelType.ADVANCED.params().seafloorVeinModulus()
+                < LevelType.BASIC.params().seafloorVeinModulus(),
+                "0.3 比 0.2 更密 → 模数更小");
+        assertEquals(256, LevelType.BASIC.params().wallVeinModulus());
+        assertTrue(LevelType.TUTORIAL.params().wallVeinModulus()
+                < LevelType.BASIC.params().wallVeinModulus(),
+                "0.6 比 0.35 更密 → 模数更小");
+        assertEquals(LevelType.BASIC.params().wallVeinModulus(),
+                LevelType.BASIC.params().wallVeinModulus(), "同类型模数必须稳定");
     }
 
     @Test
