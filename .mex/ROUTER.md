@@ -31,7 +31,7 @@ edges:
   - target: patterns/run-tests.md
     condition: when building or running the verification layers
   - target: patterns/publish.md
-    condition: when publishing changes (走流程 / /publish) — MEX bookkeeping is a required step
+    condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
 last_updated: 2026-11-15
@@ -41,7 +41,11 @@ last_updated: 2026-11-15
 
 If you haven't already read `AGENTS.md`, read it now — it contains the project identity, non-negotiables, and commands.
 
-Then read this file fully before doing anything else in this session.
+General code/shared-tool tasks read this file fully. Art-only tasks use the entry below and need not load the unrelated handoff, module roadmap, architecture or Current Project State sections.
+
+## 美术任务入口
+
+先运行 `python tools/asset_delivery.py status <资产目录>` 获取短状态，再按任务读 `.mex/patterns/deliver-model-asset.md` 或 `publish.md` 的相应分流。规则见 `docs/ASSET_DELIVERY_CONVENTION.md`，建档/迁移才查 `docs/ASSET_VALIDATION.md`。事实从资产提取，validation 是唯一验证摘要；无需默认加载详细审计、内嵌图片、其他资产或历史版本。
 
 ## 交接快照（2026-11-10）
 
@@ -59,7 +63,7 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 
 ## Current Project State
 
-- **哨站服务 + 关卡洞窟网络 + 电力/采矿/装备批次（2026-11-15，PR 待审）**：工作区累积的未提交改动一次性提交到 `feat/outpost-batch-20261115` 并开 PR，**未合并**。内容：① 哨站服务——商人/医生/站务员三个独立 NPC，商店真实库存/商人余额 5000/±5%/补货、三标签（购买/出售/潜艇）、购物车数量选择、购买确认两个交付选项（立即获得 / 起航时送至潜艇，`StoreDeliverySavedData`）、医疗诊所原作收费公式；② 关卡地形——`RoutePath` 大洞窟网络（主航道随机上下+左右游走、侧隧道可挂侧隧道、洞室、`distanceToNetwork`）、`LevelType/LevelParams/LevelSelector`、`RoundState` 持久化；③ 电力——`PowerGrid`/接线盒/配电界面/螺丝刀；④ 采矿与装备——`MineralVeins`、矿脉方块、等离子切割机、玻璃潜水服、物品浮力；⑤ 配套任务/船只/渲染修正。`./gradlew test --offline` 272 项 0 失败（47 个测试类）；客户端未起，实机验收待用户。细节见 `docs/OUTPOST_SERVICES.md`。本地 `main` 仍在 `77009a7`，`origin/main` 已多 3 个美术提交，**还没 pull**；PR 合并后需用户明确授权再 pull。
+- **哨站服务 + 关卡洞窟网络 + 电力/采矿/装备批次（2026-11-15，PR 待审）**：工作区累积的未提交改动一次性提交到 `feat/outpost-batch-20261115` 并开 PR，**未合并**。内容：① 哨站服务——商人/医生/站务员三个独立 NPC，商店真实库存/商人余额 5000/±5%/补货、三标签（购买/出售/潜艇）、购物车数量选择、购买确认两个交付选项（立即获得 / 起航时送至潜艇，`StoreDeliverySavedData`）、医疗诊所原作收费公式；② 关卡地形——`RoutePath` 大洞窟网络（主航道随机上下+左右游走、侧隧道可挂侧隧道、洞室、`distanceToNetwork`）、`LevelType/LevelParams/LevelSelector`、`RoundState` 持久化；③ 电力——`PowerGrid`/接线盒/配电界面/螺丝刀；④ 采矿与装备——`MineralVeins`、矿脉方块、等离子切割机、玻璃潜水服、物品浮力；⑤ 配套任务/船只/渲染修正。`./gradlew test --offline` 272 项 0 失败（47 个测试类）；客户端未起，实机验收待用户。细节见 `docs/OUTPOST_SERVICES.md`。本地 `main` 仍在 `77009a7`，`origin/main` 已到 `7de2fc5`（多个美术提交）；本地 `feat/outpost-batch-20261115` 还停在 `6a07c48`，主工作区有未提交的电池/修理改动，**还没 pull/ff**；要拉需先提交或暂存那批改动。
 
   **第四轮 CodeRabbit 修复（`6a07c48` 之后）**：电力面板改为服务端按玩家记录目标身份（维度 + 盒子坐标 + 坐标系），`bind`/`refresh` 不再按“坐标处有没有方块实体”重猜坐标系；`build`/`bind` 查询前先 `hasChunkAt`，客户端坐标不会触发同步区块加载；快捷打开面板同时扫描活动物理船和附近方块船，取最近的有效接线盒（物理船不再全局屏蔽方块船）；玩家退出时清面板会话。因并行电池任务正在改 `PowerPanelState.java`，本轮修复在独立 worktree `barotrauma-pr61` 里完成，主工作区未动。
 
@@ -69,9 +73,13 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 
   **第六轮（`04dc30d`）**：面板会话改存船核心坐标，`refresh` 按核心取当前 `ShipState`（rescan 出新对象后不再显示旧设备表）；`fixtureCut` 按装配生命周期清空（launch/dock/dropStale/reset）；靠泊吸附只搬真正在舱内的玩家和 `TAG_PINNED` 任务货（世界坐标逆变换回装配坐标查 `interiorCells`）。
 
+- **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
+
+- **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。
+
 - **大型钢柜 LargeSteelCabinet 候选 A（2026-11-13）**：`art/models/large_steel_cabinet_20261113/` 收录按用户授权直推 main 的低多边形静态设备（制作来源：人工 + AI，用户修订几何/贴图，GPT-6 Codex + Blockbench 5.2.2 完成初稿与交付）。103 cubes / 10 bones / 618 声明面，512² RGBA，3×2.5×0.8753125 格；三列五门、八边形观察窗，五门独立分组并预留铰链轴心，X 居中、Y 贴地；保留用户背部伸出导致的 Z 中点 -0.1 BB。内嵌贴图工程、Bedrock 原生几何、四向 1200×900 原生预览、可重跑脚本和验证记录齐备；最终工程重开后原生导出完全一致，独立几何、UV、贴图检查通过。Discussion #39 登记候选 A；本地按用户要求归入 curated，不代表上游评选通过。仅美术归档，无开门动画和交互，未接入游戏、客户端未测试。
 
-- **引擎 Engine 第三候选（2026-11-13）**：`art/models/engine_20261113/` 收录按用户授权直推 main 的独立低多边形静态设备（制作来源：AI，GPT 6.1 Sol / Codex + Blockbench 5.2.2）。143 cubes / 10 bones / 858 声明面，512² RGBA，约 5.4125×2.625×2.19375 格；三联百叶、仪表、电控区、开放八边形推进罩与静态四叶转子，X/Z 居中、Y 贴地。完整内嵌贴图工程、Bedrock 几何、四向 1200×900 原生预览、脚本和验证记录齐备；工程重开和原生几何导入重出完全一致，离线结构与 UV 核对通过，保留窄边纹素取整密度警告。Discussion #39 登记为引擎候选 C，A/B 保留；本地按用户要求归入 curated，不代表上游评选通过。仅美术归档，未接入游戏、客户端未测试。
+- **引擎 Engine（2026-11-15 实体检修板与三条动画版，取代 2026-11-13 候选 C）**：`art/models/engine_20261115/`（制作来源：人工 + AI，TakaraMiyuki + GPT-6 / Codex + Blockbench 5.2.2）。200 cubes / 35 bones / 1200 声明面，512² RGBA 映射 256² 逻辑 UV，约 5.377×2.75×2.259 格；在用户手改候选 C 的基础上补实体检修板与背板电机结构、把转子改四叶并新增双活塞，删除此前新增的 76 组螺钉与垫片。新增 `engine.animation.json` 三条 clip：`animation.engine.running`（2.4 s 组合，默认）、`rotor_spin`（0.8 s）、`pistons`（1.2 s）。四向 1200×900 原生预览 + 三条 GIF。本版是仓库首件 schema 2 验证记录（`validation.json`），三项验收均有实际操作证据；工程重开与原生重导出的 geo 逐字节一致。**原 `art/models/engine_20261113/` 已删除**，候选 A（扁平 `engine.*`）与候选 B（`engine_20261111_v2`）保留。仅美术交付，未改 `src/main/resources`、未接入游戏、客户端未测试；尚待评选。
 
 - **高级注射器枪 AdvancedSyringeGun 美术资产（2026-11-14 最终人工调整版）**：按用户授权直接覆盖 `art/models/advanced_syringe_gun_20261113/` 原候选（人工 + AI：TakaraMiyuki + GPT-6 / Codex + Blockbench 5.2.2）。82 cubes / 8 bones / 492 声明面，256² 单贴图、64² 逻辑 UV，约 1.054×0.531×0.161 格；完整保留人工几何、UV、骨骼语义及内嵌 PNG，仅清理外部路径与编辑器选择标记。原生重开、重新导出严格一致，六向 1200×900 预览与离线检查齐备；同路径替换旧 69-cube 版本，更新 Discussion #39 已有候选 A，仍待评审，不新增候选。本地 curated 同步当前版本，不代表上游评审通过；未接入游戏、客户端未测试。
 
@@ -84,6 +92,7 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 - **小型泵 SmallPump 4.0 美术资产（2026-11-12）**：`art/models/small_pump_20261112/` 收录人工重制的 4.0 版（纯人工：Han-xing-official，无 AI 参与）。18 bones / 38 cubes / 228 面，64² 单贴图；`art/models/small_pump_20261112/small_pump.geo.json` 为 Bedrock Entity `geometry.small_pump`，`visible_bounds` 2 / 2.5 / offset 0.75，工程 `visible_box` 已统一为 `[2, 2.5, 0.75]`，导出可复现；四张 1200×900 预览。仅美术交付，未接入游戏、客户端未测试。**验收已完成（2026-11-12）**：已在 Blockbench 5.2.2 内重开（18 骨骼 / 38 cube / 1 张 64² 内嵌贴图 / Visible box 2·2.5·0.75，无报错），并用原生 Export Bedrock Geometry 重出与仓库 geo 逐字段 0 差异（仓库 geo 即原生导出原件，sha256 `2a9fc222…`）；`validation.json` 为 `complete`，26 项全通过，PR #56 待合并。注意：本工程为 5.x 工程格式（骨骼存于独立 `groups` 表），用 4.x 打开会静默丢失骨骼名与 pivot，验收须 5.2.x 及以上。
 
 **Working:**
+- **解构仪 Deconstructor 双轴工作动画（2026-11-15，11:26 版 → 16:09 人工手调版）**：[资产说明](../art/models/deconstructor_20261115/README.md) 对应 `art/models/deconstructor_20261115/`。制作来源：人工 + AI（用户完成外形与材质手调，Codex / GPT-6 在 Blockbench 5.2.2 制作工作循环）。170 cubes / 10 bones，512² PNG 映射 256² 逻辑 UV，静止姿态约 2.0×2.519×1.569 格，X 轴居中 `centerX = 0`。`deconstructor.geo.json` 为 Bedrock Entity `geometry.deconstructor`；`deconstructor.animation.json` 的 clip `animation.deconstructor.work` 长 1 s、双刀轴各每秒一圈且方向相反、线性关键帧、首尾姿态一致。四张 1200×900 预览 + 50 帧 1 s 实速 GIF。**2026-11-15 16:09 用户手调**（`feed_hopper` 料斗静态前倾 5°、位置与深度微调），手调版外框曾偏到 −9…+23（`centerX = 7`），按项目惯例平移 −7 归中，平移量记入 `validation.json` 的 `recenter_dx`，`reference/recenter_x.py` 可复现；手调原稿随 `reference/manual_handedit_20261115_1609.bbmodel` 入库。间隙检测已改为计入父级分组旋转（刀组是料斗子级），重算结果：刀组之间约 0.61 单位，与同侧料斗侧板重叠最多约 0.97 单位，齿尖进入底板约 0.66、侧唇约 0.29，轴端与挡板相交（均未修）。仅美术交付，未改 `src/main/resources`、未接入游戏、客户端未测试；尚待评选。
 - **加工台 Fabricator 人工修订美术资产（2026-11-14）**：[资产说明](../art/models/fabricator_20261114/README.md) 对应 `art/models/fabricator_20261114/`，按用户授权直推 main，并在 Discussion #39 登记候选 A。制作来源：人工 + AI（TakaraMiyuki + GPT-6 / Codex）；108 cubes / 11 bones / 648 声明面，512² PNG、256² 逻辑 UV，约 2.75×3.28125×1.4609375 格，X/Z 居中、Y 贴地。完整保留人工几何、UV、骨骼层级及 PNG 字节；重出原生几何和四向 1200×900 预览，工程重开与几何导入重出一致。保留逻辑 UV 与图像尺寸口径、纹素密度差异警告。仅静态美术归档，尚待评选，未接入游戏、客户端未测试；本地仍为 production。
 - 1.20.1 Forge mod builds and loads; air-ocean deep dimension, outposts, and starter submarine generate.
 - VS2 physical ships: launch, dock, thruster control, breach reconciliation, sonar proxy, and water-state sync.
@@ -158,6 +167,8 @@ Load the relevant file based on the current task. Always load `context/architect
 
 For every task, follow this loop:
 
+纯美术资产发布的 VERIFY 使用对应格式的交付检查，GROW 以资产 README、validation 与 Discussion 登记完成，不为每个资产重复更新全局 ROUTER。共享约定、工具或项目能力变化仍执行下方完整流程。
+
 1. **CONTEXT** — Load the relevant context file(s) from the routing table above. Check `patterns/INDEX.md` for a matching pattern. If one exists, follow it.
 2. **BUILD** — Do the work. If a pattern exists, follow its Steps. If you are about to deviate from an established pattern, say so before writing any code — state the deviation and why.
 3. **VERIFY** — Load `context/conventions.md` and run the Verify Checklist item by item. State each item and whether the output passes. Do not summarise — enumerate explicitly.
@@ -169,4 +180,4 @@ For every task, follow this loop:
    - **Orient:** If this task can recur and no pattern exists, create one in `patterns/` using `patterns/README.md`, then add it to `patterns/INDEX.md`. If a pattern exists but you learned a gotcha, update it.
    - **Write:** Bump `last_updated` in every scaffold file you changed. Read `mex logging --json` before optional `mex log` notes: `significant` records material rationale, `checkpoints` batches useful notes at task/session boundaries, and `manual` avoids unsolicited notes. Honor explicit user log requests in every mode; mandatory workflow Activity and recovery audits remain required.
 
-发布时走 `.zcode/commands/publish.md`（`/publish`，或用户说「走流程」）：MEX 记账是流程的第 2 步，不是可选项。PR 阶段的兜底是 `.github/workflows/mex-guard.yml`——只统计 `src/` 与 `tools/`：改这两处却不补 `.mex/` 或 `docs/` 会让检查变红；豁免方式是给 PR 加 `mex-skip` 标签（门禁只校验标签，原因须写在说明里，靠 reviewer 把关）。`mex check` 需要 CLI 在 PATH 里；若提示 `command not found`，先按 `AGENTS.md` 的"新机器"一节处理。
+发布时走 `.zcode/commands/publish.md`（`/publish`，或用户说「走流程」）：先分流，纯美术资产按交付约定 §7 自查后直推 `main`，以资产文档和 Discussion 登记记账；通用发布仍做 MEX 记账并走 PR。PR 阶段的 `.github/workflows/mex-guard.yml` 只统计 `src/` 与 `tools/`：改这两处却不补 `.mex/` 或 `docs/` 会失败，豁免方式是加 `mex-skip` 并说明原因。`mex check` 需要 CLI 在 PATH 里；若提示 `command not found`，先按 `AGENTS.md` 的"新机器"一节处理。

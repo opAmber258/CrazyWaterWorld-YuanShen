@@ -1,0 +1,45 @@
+{
+  "source_before": {
+    "uuid": "f2c43d6c-80d3-81eb-46cd-3447da4ec993",
+    "name": "navigation_terminal",
+    "path": "F:\\BarotraumaMinecraft\\art-vault\\production\\navigation_terminal_20261116\\navigation_terminal.bbmodel",
+    "saved": true,
+    "textures": [
+      {
+        "uuid": "4258f231-dcac-962c-eb9a-54c8bdec4688",
+        "name": "navigation_terminal_tex.png",
+        "saved": false
+      }
+    ]
+  },
+  "source_after": {
+    "uuid": "f2c43d6c-80d3-81eb-46cd-3447da4ec993",
+    "name": "navigation_terminal",
+    "path": "F:\\BarotraumaMinecraft\\art-vault\\production\\navigation_terminal_20261116\\navigation_terminal.bbmodel",
+    "saved": true,
+    "textures": [
+      {
+        "uuid": "4258f231-dcac-962c-eb9a-54c8bdec4688",
+        "name": "navigation_terminal_tex.png",
+        "saved": false
+      }
+    ]
+  },
+  "blockbench": "5.2.2",
+  "sha256": "b2f8cb3ea056f632fd1a029d2be16442c9e53b1a57e4c9439806af679a5bb726",
+  "textures": [
+    {
+      "index": 0,
+      "uuid": "4258f231-dcac-962c-eb9a-54c8bdec4688",
+      "name": "navigation_terminal_tex.png",
+      "embedded": true,
+      "snapshot_file": "texture_000.png",
+      "sha256": "a31a0fefe1d313c7ebdf5abb72c1a9690993e895f93711a4a7af6bf15e3487b4"
+    }
+  ],
+  "limitations": [
+    "Not a runtime export; external textures and custom dependencies are not copied.",
+    "Unregistered plugin metadata may be omitted by the codec; retain original files and sidecars.",
+    "Transport session close is best-effort; unsupported DELETE falls back to server expiration."
+  ]
+}

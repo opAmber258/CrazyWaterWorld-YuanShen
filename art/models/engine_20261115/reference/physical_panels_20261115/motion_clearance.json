@@ -1,0 +1,8 @@
+{
+  "method": "Native mesh OBB separating-axis tests; 60 samples across the 2.4 second combined loop",
+  "added_static_cubes": 248,
+  "moving_original_cubes": 37,
+  "tested_pairs": 527496,
+  "intersections": [],
+  "limitation": "Sampled mesh check, not continuous collision or Minecraft validation"
+}

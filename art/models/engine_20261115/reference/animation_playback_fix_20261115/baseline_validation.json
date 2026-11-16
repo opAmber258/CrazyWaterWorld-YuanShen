@@ -1,0 +1,176 @@
+{
+  "asset": "引擎 Engine",
+  "identifier": "geometry.engine",
+  "date": "2026-11-15",
+  "creation_source": "人工 + AI（TakaraMiyuki + Codex / GPT-6）",
+  "revision": "Delete all previously AI-added modeled screws and washers; retain inspection covers",
+  "status": "complete local revision",
+  "baseline": "reference/remove_screws_20261115/baseline_engine.bbmodel",
+  "metrics": {
+    "cubes": 200,
+    "bones": 35,
+    "declared_faces": 1200,
+    "removed_fasteners": 76,
+    "removed_cubes": 228,
+    "retained_new_plate_cubes": 20,
+    "logical_uv_size": [
+      256,
+      256
+    ],
+    "physical_png_size": [
+      512,
+      512
+    ],
+    "transformed_bbox": {
+      "min": [
+        -43.30000002384186,
+        0,
+        -17.549999237060547
+      ],
+      "max": [
+        42.735,
+        43.99999995231629,
+        18.599999952316285
+      ],
+      "size": [
+        86.03500002384186,
+        43.99999995231629,
+        36.14999918937683
+      ]
+    },
+    "size_blocks": [
+      5.377187501490116,
+      2.749999997019768,
+      2.2593749493360518
+    ]
+  },
+  "checks": {
+    "exact_deletion_only": true,
+    "retained_geometry_uv_texture_animation_unchanged": true,
+    "native_roundtrip": {
+      "blockbench_version": "5.2.2",
+      "reopened_project_geometry_match": true,
+      "reopened_project_animation_match": true,
+      "geo_import_reexport_match": true,
+      "animation_import_reexport_match": true,
+      "imported_cubes": 200,
+      "imported_bones": 35,
+      "imported_clips": [
+        "animation.engine.rotor_spin",
+        "animation.engine.pistons",
+        "animation.engine.running"
+      ],
+      "bbox": {
+        "min": [
+          -43.30000002384186,
+          0,
+          -17.549999237060547
+        ],
+        "max": [
+          42.735,
+          43.99999995231629,
+          18.599999952316285
+        ],
+        "size": [
+          86.03500002384186,
+          43.99999995231629,
+          36.14999918937683
+        ]
+      }
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        190,
+        1109,
+        710
+      ]
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        190,
+        1109,
+        710
+      ]
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        286,
+        68,
+        914,
+        832
+      ]
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        121,
+        194,
+        977,
+        780
+      ]
+    },
+    "running": {
+      "size": [
+        960,
+        720
+      ],
+      "frames": 60
+    },
+    "rotor": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 20
+    },
+    "pistons": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 30
+    }
+  },
+  "runtime_verified": false,
+  "publishing": {
+    "committed": false,
+    "pushed": false,
+    "discussion_updated": false
+  },
+  "files_sha256": {
+    "engine.animation.json": "87d0312846254d0ff795108c4e7aa82a01d575e20d387a19a48447064566be1c",
+    "engine.bbmodel": "407f3ad074901cd9df8d073dc61d256ab043b6c1322e8176d36fd996caad973b",
+    "engine.geo.json": "2bc4a081c6827b60076240be055c28f0a351e24da5cb4a532b0fd5d8122f8a8d",
+    "engine_tex.png": "087aa8e171037aa7d24783c7d63c085be257d6a8a77f574a802a3a79aaa6a454",
+    "preview_back.png": "521de034cb4ad7c29c35d06149761eed9979a8d219532f194b282652d187111a",
+    "preview_front.png": "5f86263319adc4a10731654989664f03f5c2c2d8fef8a229c65cc4a696ce3fed",
+    "preview_oblique.png": "37a9da9ef804316794874b8e4b9a56248947a2c23a50a43d3f931d25e999475c",
+    "preview_pistons.gif": "405b9e609a2d29d09a718bb42d452bc3fc53231c0376e4aa83ed0dc5136bd321",
+    "preview_rotor.gif": "38628fe6ff4e61391d855f9de538cbadf65b55b2e109686df53924ca77cee1a2",
+    "preview_running.gif": "be248838e355d810f544a6873ec99887afafee6b2f75849a289b8aae71f5b102",
+    "preview_side.png": "24223ae43a58099d7c54c6698011f137a748c7dfadac4162af636f473b1b3da9",
+    "README.md": "6316328a33266128e97d8cbcc8f2278b9858fc8ac2f03c24baaaa849ef855c36",
+    "structure_audit.json": "ffc7a9313fa717472106e372573310f80dbe656f66679bef31ac1bb86295c085"
+  }
+}

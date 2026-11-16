@@ -1,0 +1,19 @@
+{
+  "version": "5.2.2",
+  "format": "bedrock",
+  "cubes": 86,
+  "bones": 7,
+  "textures": 1,
+  "texture_error": 0,
+  "min": [
+    -22,
+    0.05500000596046434,
+    -8.5
+  ],
+  "max": [
+    22,
+    37.150001525878906,
+    8.5
+  ],
+  "reopened_export_equal": true
+}

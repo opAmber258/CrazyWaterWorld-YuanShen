@@ -26,6 +26,7 @@ desktop.ini
 .DS_Store
 
 # 工具构建产物
+__pycache__/
 tools/AsmDump/bin/
 tools/AsmDump/obj/
 tools/AsmDump/AsmDump.dll

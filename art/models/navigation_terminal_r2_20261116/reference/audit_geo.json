@@ -1,0 +1,46 @@
+{
+  "input": "navigation_terminal.geo.json",
+  "kind": "bedrock_geometry",
+  "errors": [],
+  "warnings": [
+    {
+      "code": "texture_export_size_mismatch",
+      "message": "actual PNG is (512, 512), export description is (256, 256)"
+    }
+  ],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance.",
+    "Bounds are unrotated source-coordinate extents; bone/element transforms and inflate are not applied."
+  ],
+  "identifier": "geometry.navigation_terminal",
+  "uv_space": {
+    "width": 256,
+    "height": 256,
+    "source": "Bedrock description"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "geometries": 1,
+    "bones": 13,
+    "cubes": 130,
+    "declared_faces": 780
+  },
+  "bounds": [
+    [
+      -20,
+      -2.125,
+      -7.71563
+    ],
+    [
+      20,
+      32.475,
+      7.78437
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 1
+}

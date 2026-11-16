@@ -1,0 +1,163 @@
+{
+  "stage": "user-edited surface-detail pass 2026-11-15",
+  "errors": [],
+  "warnings": [],
+  "cubes": 180,
+  "bones": 18,
+  "declared_faces": 1080,
+  "geometry_uv_groups_and_animations_unchanged": true,
+  "unchanged_cube_count": 180,
+  "logical_uv_size": [
+    256,
+    256
+  ],
+  "physical_png_size": [
+    512,
+    512
+  ],
+  "physical_pixels_per_logical_uv": 2,
+  "distinct_face_uvs": 1080,
+  "overlapping_uv_pairs": 0,
+  "modified_faces": 25,
+  "modified_pixels": 2446,
+  "pixels_outside_registered_regions_preserved": true,
+  "original_non_base_user_strokes_preserved": true,
+  "native_roundtrip": {
+    "blockbench_version": "5.2.2",
+    "reopened_project_geometry_match": true,
+    "reopened_project_animation_match": true,
+    "geo_import_reexport_match": true,
+    "animation_import_reexport_match": true,
+    "imported_cubes": 180,
+    "imported_bones": 18,
+    "imported_clips": [
+      "animation.engine.rotor_spin",
+      "animation.engine.pistons",
+      "animation.engine.running"
+    ],
+    "bbox": {
+      "min": [
+        -43.30000002384186,
+        0,
+        -17.549999237060547
+      ],
+      "max": [
+        42.20000391508465,
+        43.99999995231629,
+        18.599999952316285
+      ],
+      "size": [
+        85.50000393892651,
+        43.99999995231629,
+        36.14999918937683
+      ]
+    }
+  },
+  "transformed_bbox": {
+    "min": [
+      -43.30000002384186,
+      0,
+      -17.549999237060547
+    ],
+    "max": [
+      42.20000391508465,
+      43.99999995231629,
+      18.599999952316285
+    ],
+    "size": [
+      85.50000393892651,
+      43.99999995231629,
+      36.14999918937683
+    ]
+  },
+  "size_blocks": [
+    5.343750246182907,
+    2.749999997019768,
+    2.2593749493360518
+  ],
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        188,
+        1109,
+        712
+      ],
+      "projection": "orthographic"
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        188,
+        1109,
+        712
+      ],
+      "projection": "orthographic"
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        286,
+        68,
+        914,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        121,
+        192,
+        980,
+        781
+      ],
+      "projection": "perspective"
+    },
+    "running": {
+      "size": [
+        960,
+        720
+      ],
+      "frames": 60,
+      "duration_ms": 2400,
+      "loop": true
+    },
+    "rotor": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 20,
+      "duration_ms": 800,
+      "loop": true
+    },
+    "pistons": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 30,
+      "duration_ms": 1200,
+      "loop": true
+    }
+  },
+  "notes": [
+    "The user-authored 256px logical UV atlas / 512px PNG relationship is preserved.",
+    "No geometry, UV or animation changes were made."
+  ]
+}

@@ -1,0 +1,1 @@
+JSON.stringify({loadFile:AnimationCodec.codecs.bedrock.loadFile.toString().slice(0,4200),compileFile:AnimationCodec.codecs.bedrock.compileFile.toString().slice(0,1800),timeline:Object.getOwnPropertyNames(Timeline).filter(k=>typeof Timeline[k]==='function')})

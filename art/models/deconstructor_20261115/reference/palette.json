@@ -1,0 +1,237 @@
+{
+  "source": "opaque colors from the final embedded texture",
+  "colors": [
+    {
+      "hex": "#43504c",
+      "pixels": 20868
+    },
+    {
+      "hex": "#526057",
+      "pixels": 17878
+    },
+    {
+      "hex": "#798479",
+      "pixels": 12619
+    },
+    {
+      "hex": "#6a7874",
+      "pixels": 9791
+    },
+    {
+      "hex": "#56645e",
+      "pixels": 3800
+    },
+    {
+      "hex": "#5b504a",
+      "pixels": 3792
+    },
+    {
+      "hex": "#303a37",
+      "pixels": 3551
+    },
+    {
+      "hex": "#929b8b",
+      "pixels": 2290
+    },
+    {
+      "hex": "#566053",
+      "pixels": 1859
+    },
+    {
+      "hex": "#323d3b",
+      "pixels": 1738
+    },
+    {
+      "hex": "#3b4942",
+      "pixels": 1719
+    },
+    {
+      "hex": "#4d5957",
+      "pixels": 1120
+    },
+    {
+      "hex": "#686f63",
+      "pixels": 868
+    },
+    {
+      "hex": "#536059",
+      "pixels": 864
+    },
+    {
+      "hex": "#7f8d84",
+      "pixels": 724
+    },
+    {
+      "hex": "#3d3735",
+      "pixels": 696
+    },
+    {
+      "hex": "#938776",
+      "pixels": 672
+    },
+    {
+      "hex": "#70665b",
+      "pixels": 672
+    },
+    {
+      "hex": "#1c2425",
+      "pixels": 527
+    },
+    {
+      "hex": "#6d7565",
+      "pixels": 400
+    },
+    {
+      "hex": "#57635b",
+      "pixels": 398
+    },
+    {
+      "hex": "#535e52",
+      "pixels": 392
+    },
+    {
+      "hex": "#647165",
+      "pixels": 381
+    },
+    {
+      "hex": "#79857d",
+      "pixels": 379
+    },
+    {
+      "hex": "#25302f",
+      "pixels": 376
+    },
+    {
+      "hex": "#8b8e7e",
+      "pixels": 300
+    },
+    {
+      "hex": "#a5a797",
+      "pixels": 294
+    },
+    {
+      "hex": "#343e3e",
+      "pixels": 261
+    },
+    {
+      "hex": "#36403a",
+      "pixels": 246
+    },
+    {
+      "hex": "#8b917e",
+      "pixels": 226
+    },
+    {
+      "hex": "#677163",
+      "pixels": 222
+    },
+    {
+      "hex": "#46524a",
+      "pixels": 159
+    },
+    {
+      "hex": "#40504b",
+      "pixels": 147
+    },
+    {
+      "hex": "#75665a",
+      "pixels": 72
+    },
+    {
+      "hex": "#39453f",
+      "pixels": 72
+    },
+    {
+      "hex": "#343b37",
+      "pixels": 58
+    },
+    {
+      "hex": "#8a794b",
+      "pixels": 54
+    },
+    {
+      "hex": "#464d47",
+      "pixels": 54
+    },
+    {
+      "hex": "#28292a",
+      "pixels": 48
+    },
+    {
+      "hex": "#adb0a0",
+      "pixels": 40
+    },
+    {
+      "hex": "#9a8855",
+      "pixels": 40
+    },
+    {
+      "hex": "#998454",
+      "pixels": 34
+    },
+    {
+      "hex": "#2b3431",
+      "pixels": 34
+    },
+    {
+      "hex": "#849081",
+      "pixels": 30
+    },
+    {
+      "hex": "#7c4c3f",
+      "pixels": 21
+    },
+    {
+      "hex": "#a1a79b",
+      "pixels": 20
+    },
+    {
+      "hex": "#beb99e",
+      "pixels": 18
+    },
+    {
+      "hex": "#b19a58",
+      "pixels": 14
+    },
+    {
+      "hex": "#acaf99",
+      "pixels": 12
+    },
+    {
+      "hex": "#455249",
+      "pixels": 11
+    },
+    {
+      "hex": "#5b685c",
+      "pixels": 9
+    },
+    {
+      "hex": "#798376",
+      "pixels": 8
+    },
+    {
+      "hex": "#776752",
+      "pixels": 5
+    },
+    {
+      "hex": "#87907c",
+      "pixels": 4
+    },
+    {
+      "hex": "#a69564",
+      "pixels": 3
+    },
+    {
+      "hex": "#899c80",
+      "pixels": 2
+    },
+    {
+      "hex": "#8d9788",
+      "pixels": 1
+    },
+    {
+      "hex": "#3b4740",
+      "pixels": 1
+    }
+  ]
+}

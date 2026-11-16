@@ -1,0 +1,25 @@
+{
+  "English": {
+    "path": "F:\\SteamLibrary\\steamapps\\common\\Barotrauma\\Content\\Texts\\English\\EnglishVanilla.xml",
+    "key": "entityname.navterminal",
+    "value": "Navigation Terminal"
+  },
+  "SimplifiedChinese": {
+    "path": "F:\\SteamLibrary\\steamapps\\common\\Barotrauma\\Content\\Texts\\SimplifiedChinese\\SimplifiedChineseVanilla.xml",
+    "key": "entityname.navterminal",
+    "value": "导航终端"
+  },
+  "entity": {
+    "path": "Content/Items/Command/command.xml",
+    "identifier": "navterminal",
+    "scale": 0.5,
+    "sprite": "Content/Items/Command/CommandDevices.png",
+    "source_rect": [
+      0,
+      0,
+      384,
+      304
+    ]
+  },
+  "web": "https://www.barotraumagame.com/wiki/Navigation_Terminal"
+}

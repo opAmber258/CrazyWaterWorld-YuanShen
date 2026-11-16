@@ -1,0 +1,151 @@
+{
+  "stage": "remove AI-added modeled screws and washers",
+  "errors": [],
+  "warnings": [],
+  "cubes": 200,
+  "bones": 35,
+  "declared_faces": 1200,
+  "removed_fasteners": 76,
+  "removed_cubes": 228,
+  "removed_empty_groups": 2,
+  "retained_new_plate_cubes": 20,
+  "remaining_elements_exactly_preserved": true,
+  "textures_and_animations_exactly_preserved": true,
+  "logical_uv_size": [
+    256,
+    256
+  ],
+  "physical_png_size": [
+    512,
+    512
+  ],
+  "transformed_bbox": {
+    "min": [
+      -43.30000002384186,
+      0,
+      -17.549999237060547
+    ],
+    "max": [
+      42.735,
+      43.99999995231629,
+      18.599999952316285
+    ],
+    "size": [
+      86.03500002384186,
+      43.99999995231629,
+      36.14999918937683
+    ]
+  },
+  "size_blocks": [
+    5.377187501490116,
+    2.749999997019768,
+    2.2593749493360518
+  ],
+  "native_roundtrip": {
+    "blockbench_version": "5.2.2",
+    "reopened_project_geometry_match": true,
+    "reopened_project_animation_match": true,
+    "geo_import_reexport_match": true,
+    "animation_import_reexport_match": true,
+    "imported_cubes": 200,
+    "imported_bones": 35,
+    "imported_clips": [
+      "animation.engine.rotor_spin",
+      "animation.engine.pistons",
+      "animation.engine.running"
+    ],
+    "bbox": {
+      "min": [
+        -43.30000002384186,
+        0,
+        -17.549999237060547
+      ],
+      "max": [
+        42.735,
+        43.99999995231629,
+        18.599999952316285
+      ],
+      "size": [
+        86.03500002384186,
+        43.99999995231629,
+        36.14999918937683
+      ]
+    }
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        190,
+        1109,
+        710
+      ]
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        190,
+        1109,
+        710
+      ]
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        286,
+        68,
+        914,
+        832
+      ]
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        121,
+        194,
+        977,
+        780
+      ]
+    },
+    "running": {
+      "size": [
+        960,
+        720
+      ],
+      "frames": 60
+    },
+    "rotor": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 20
+    },
+    "pistons": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 30
+    }
+  },
+  "notes": [
+    "Only the 228 UUID-listed washer/head cubes and two now-empty rear-fastener groups were removed.",
+    "All retained cubes, their UVs, the PNG, and all animations are identical to the frozen input.",
+    "Intentional UV sharing by the 20 retained panel cubes remains."
+  ]
+}

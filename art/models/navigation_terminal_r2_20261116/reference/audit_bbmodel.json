@@ -1,0 +1,50 @@
+{
+  "input": "navigation_terminal.bbmodel",
+  "kind": "bbmodel",
+  "errors": [],
+  "warnings": [
+    {
+      "code": "texture_project_size_mismatch",
+      "message": "actual PNG is (512, 512), project UV resolution is (256, 256); UV checked in project space"
+    }
+  ],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance.",
+    "Bounds are unrotated source-coordinate extents; bone/element transforms and inflate are not applied."
+  ],
+  "identifier": "navigation_terminal",
+  "uv_space": {
+    "width": 256,
+    "height": 256,
+    "source": "project resolution"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "elements": 130,
+    "cubes": 130,
+    "groups": 13,
+    "declared_faces": 780,
+    "rotated_cubes": 76,
+    "animations": null,
+    "missing_uv_faces": 0,
+    "missing_texture_faces": 0
+  },
+  "bounds": [
+    [
+      -20,
+      -2.125,
+      -7.71563
+    ],
+    [
+      20,
+      32.475,
+      7.78437
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 1
+}

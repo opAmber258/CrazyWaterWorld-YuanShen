@@ -1,0 +1,2 @@
+# Preserve recorded hashes and the byte-exact project/texture on all platforms.
+* -text whitespace=cr-at-eol

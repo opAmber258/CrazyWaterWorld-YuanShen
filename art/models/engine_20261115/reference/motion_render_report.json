@@ -1,0 +1,65 @@
+[
+  {
+    "name": "running",
+    "clip": "animation.engine.running",
+    "length": 2.4,
+    "frames": 60,
+    "width": 960,
+    "height": 720,
+    "center": [
+      0,
+      21,
+      0
+    ],
+    "direction": [
+      -1,
+      0.52,
+      1.25
+    ],
+    "distance": 129,
+    "fov": 35,
+    "renderer": "Blockbench WebGL / Canvas.withoutGizmos"
+  },
+  {
+    "name": "rotor",
+    "clip": "animation.engine.rotor_spin",
+    "length": 0.8,
+    "frames": 20,
+    "width": 600,
+    "height": 600,
+    "center": [
+      -39.6,
+      21,
+      0
+    ],
+    "direction": [
+      -1,
+      0.15,
+      0.3
+    ],
+    "distance": 62,
+    "fov": 36,
+    "renderer": "Blockbench WebGL / Canvas.withoutGizmos"
+  },
+  {
+    "name": "pistons",
+    "clip": "animation.engine.pistons",
+    "length": 1.2,
+    "frames": 30,
+    "width": 600,
+    "height": 600,
+    "center": [
+      24.2,
+      11.5,
+      16.5
+    ],
+    "direction": [
+      -0.28,
+      0.15,
+      1
+    ],
+    "distance": 32,
+    "fov": 36,
+    "renderer": "Blockbench WebGL / Canvas.withoutGizmos"
+  }
+]

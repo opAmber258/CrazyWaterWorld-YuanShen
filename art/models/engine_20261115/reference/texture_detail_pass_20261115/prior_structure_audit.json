@@ -1,0 +1,156 @@
+{
+  "errors": [],
+  "warnings": [
+    "User baseline geometry/UV scaling and narrow whole-texel patches have different pixel densities; no global UV repack was performed."
+  ],
+  "cubes": 179,
+  "bones": 18,
+  "declared_faces": 1074,
+  "unique_uv_islands": 185,
+  "transformed_bbox": {
+    "min": [
+      -43.3,
+      0.0,
+      -17.549999999999997
+    ],
+    "max": [
+      43.3,
+      42.0,
+      18.6
+    ],
+    "size": [
+      86.6,
+      42.0,
+      36.15
+    ]
+  },
+  "size_blocks": [
+    5.4125,
+    2.625,
+    2.259375
+  ],
+  "preserved_user_cubes": 127,
+  "original_opaque_texels_preserved": true,
+  "native_roundtrip": {
+    "blockbench_version": "5.2.2",
+    "reopened_project_geometry_match": true,
+    "reopened_project_animation_match": true,
+    "geo_import_reexport_match": true,
+    "animation_import_reexport_match": true,
+    "imported_cubes": 179,
+    "imported_bones": 18,
+    "imported_clips": [
+      "animation.engine.rotor_spin",
+      "animation.engine.pistons",
+      "animation.engine.running"
+    ],
+    "bbox": {
+      "min": [
+        -43.30000002384186,
+        0,
+        -17.549999237060547
+      ],
+      "max": [
+        43.3,
+        41.99999995231629,
+        18.599999952316285
+      ],
+      "size": [
+        86.60000002384186,
+        41.99999995231629,
+        36.14999918937683
+      ]
+    }
+  },
+  "motion": {
+    "spin_seconds_per_turn": 0.8,
+    "piston_period_seconds": 1.2,
+    "piston_total_stroke_bb": 3,
+    "phase_offset_degrees": 180,
+    "blade_max_radius_bb": 12.911615952820979,
+    "mouth_inradius_bb": 14.95,
+    "conservative_radial_clearance_bb": 2.0383840471790204,
+    "guide_head_min_gap_bb": 0.3000000000000007
+  },
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        203,
+        1109,
+        697
+      ],
+      "projection": "orthographic"
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        203,
+        1109,
+        697
+      ],
+      "projection": "orthographic"
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        271,
+        68,
+        929,
+        832
+      ],
+      "projection": "orthographic"
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        114,
+        202,
+        967,
+        773
+      ],
+      "projection": "perspective"
+    },
+    "running": {
+      "size": [
+        960,
+        720
+      ],
+      "frames": 60,
+      "frame_duration_ms": 40,
+      "loop": true
+    },
+    "rotor": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 20,
+      "frame_duration_ms": 40,
+      "loop": true
+    },
+    "pistons": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 30,
+      "frame_duration_ms": 40,
+      "loop": true
+    }
+  }
+}

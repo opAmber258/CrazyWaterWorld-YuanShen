@@ -1,7 +1,7 @@
 ---
 name: agents
 description: Always-loaded project anchor. Read this first. Contains project identity, non-negotiables, commands, and pointer to ROUTER.md for full context.
-last_updated: 2026-11-06
+last_updated: 2026-11-15
 ---
 
 # Barotrauma Minecraft Mod
@@ -14,7 +14,7 @@ A Minecraft 1.20.1 Forge mod that simulates Barotrauma-style deep-sea submarines
 - Never add real water blocks to the deep-sea dimension; it is an air ocean by design (see `context/decisions.md`).
 - Keep all Valkyrien Skies 2 types inside `ship/vs/`; never bundle VS2 in the mod jar.
 - After changing world generation, delete `run/world` before testing — existing chunks are never regenerated.
-- Never commit, push, or pull without explicit human authorization. A request to publish changes (e.g. “推到仓库/提交并推送”) defaults to a task branch → commit → push the branch → open a PR → wait for review to pass and resolve findings → merge the PR → delete the branch (local and remote). Commit directly to main only when the user explicitly asks for a direct main push. Never force-push; pulling still needs separate explicit authorization. If review findings remain unresolved or the merge conflicts, stop and report instead of forcing it. CodeRabbit only reviews PRs, so direct main pushes skip automated review. Honor narrower authorizations without expanding their scope.
+- Never commit, push, or pull without explicit human authorization. A request to publish specified art-only assets authorizes delivery checks → ordinary direct push to upstream main → Discussion #39 registration, without a PR or another direct-push confirmation; see `docs/ASSET_DELIVERY_CONVENTION.md` §7 for scope. Modeling or preview requests do not authorize publication. Code, runtime resources, shared tools, and policy changes still default to branch → commit → push → PR → review → merge → delete branch unless explicitly directed otherwise. Never force-push; actual pulls need separate authorization. An isolated worktree based on fetched origin/main may be used for art publication without changing another worktree's local main. Stop on unresolved PR findings or merge conflicts. Honor narrower authorizations.
 
 ## Commands
 - Build: `./gradlew build --offline` (set `JAVA_HOME` to JDK 17 first)
@@ -43,6 +43,7 @@ The repo is indexed into `.mex/graph.db`. Use it to avoid re-reading code you al
 
 ## Scaffold Growth
 After meaningful work, run GROW:
+Art-only publication uses the asset README, validation, and Discussion #39 as its record under the delivery convention §7; do not update global ROUTER solely for each asset. Shared policy or capability changes still use the full GROW steps below.
 - Ground: what changed in reality?
 - Record: update `ROUTER.md` and relevant `context/` files
 - Connect: keep each section linked to its enclosing knowledge with `refines`; preview missing structural links with `mex wiki link-sections`, then apply explicitly. Add semantic relationships only with evidence; backlinks are derived.
@@ -57,8 +58,7 @@ When earlier work may inform the task, use `mex timeline --query "subject phrase
 The scaffold grows from real work, not just setup. See the GROW step in `ROUTER.md` for details.
 
 ## Navigation
-At the start of every session, read `ROUTER.md` before doing anything else.
-For full project context, patterns, and task guidance — everything is there.
+For general tasks, read `ROUTER.md` at session start. Art-only tasks use its short art entry and load only linked material relevant to the task, not unrelated global state or historical asset reports.
 
 <!-- mex-agent:skills:start -->
 ## MEX context policy
