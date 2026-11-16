@@ -56,14 +56,15 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity {
         if (ship == null) {
             return;
         }
-        BlockPos cell = VsState.active() ? VsPilot.toAssembly(pos) : pos;
+        boolean physical = AutomationUtil.isPhysicalShip(ship);
+        BlockPos cell = physical ? VsPilot.toAssembly(pos) : pos;
         if (!ship.tracksHullBlock(cell)) {
             return;
         }
         boolean open = state.getValue(HatchBlock.OPEN);
         boolean want = open;
         if (be.automation == AutomationMode.MOTION) {
-            boolean near = AutomationUtil.playerNear(server, cell, 3.0D);
+            boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
             if (near) {
                 be.motionHold = 40;
             } else if (be.motionHold > 0) {
@@ -71,11 +72,16 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity {
             }
             want = near || be.motionHold > 0;
         } else if (be.automation == AutomationMode.WATERTIGHT) {
-            double water = AutomationUtil.maxWaterFraction(ship, cell);
-            if (water > 0.3D) {
+            if (AutomationUtil.opensToSea(ship, cell)) {
+                // 开在海里的舱口：水密模式不能自动打开。
                 want = false;
-            } else if (water < 0.1D) {
-                want = true;
+            } else {
+                double water = AutomationUtil.maxWaterFraction(ship, cell);
+                if (water > 0.3D) {
+                    want = false;
+                } else if (water < 0.1D) {
+                    want = true;
+                }
             }
         }
         if (want != open) {

@@ -73,6 +73,8 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 
   **第六轮（`04dc30d`）**：面板会话改存船核心坐标，`refresh` 按核心取当前 `ShipState`（rescan 出新对象后不再显示旧设备表）；`fixtureCut` 按装配生命周期清空（launch/dock/dropStale/reset）；靠泊吸附只搬真正在舱内的玩家和 `TAG_PINNED` 任务货（世界坐标逆变换回装配坐标查 `interiorCells`）。
 
+  **full review 批次（`361011b` 之后，20 条）**：诊所包区分首次打开/刷新（协议 14）；接线盒操作文字本地化 + 面板高度自适应 240 高窗口；接线盒宽限 setChanged、按盒高判泡水；`ShipMover` 平移保留重绑定（坐标随位移）；水密门/舱口遇 `SEA_BODY` 连线保持关闭；切割按整套拆三格舱口、只掉一次、射线跳过 `BREACHED` 船壳；`interiorCells` 改查真正船内格、靠泊乘员不再用 32 格球预筛；全船负载跳过断开支路；门/舱口自动化按船身份换算坐标；商店车行数上限统一 64 并提示；快捷面板只认同维度物理船；面板绑定后直接读 BE 绑定显示；物品浮力用完整干湿链；`LevelSelector` 改读 `LevelParams`。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

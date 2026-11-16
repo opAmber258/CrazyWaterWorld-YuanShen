@@ -410,5 +410,10 @@
   "tooltip.barotrauma.equipment.slot.body_armor": "护甲槽",
   "tooltip.barotrauma.equipment.slot.bag": "腰带/背包槽",
   "tooltip.barotrauma.equipment.slot.diving_suit": "潜水服槽",
-  "tooltip.barotrauma.equipment.slot.oxygen_tank": "氧气瓶槽"
+  "tooltip.barotrauma.equipment.slot.oxygen_tank": "氧气瓶槽",
+  "power.bind": "绑定",
+  "power.unbind": "解绑",
+  "power.other_box": "→ 其他盒子",
+  "power.scroll_hint": "第 %s–%s / %s 项 · 滚轮翻页",
+  "store.too_many_lines": "一次最多提交 %s 行，请分批交易"
 }

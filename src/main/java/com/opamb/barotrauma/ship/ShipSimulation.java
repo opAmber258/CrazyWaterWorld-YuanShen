@@ -355,6 +355,16 @@ public final class ShipSimulation {
             }
         }
 
+        // 接线盒上报（耐久）：超过 40 tick 没上报视为拆掉。先清理，再算负载。
+        boxTick++;
+        var boxIterator = boxes.entrySet().iterator();
+        while (boxIterator.hasNext()) {
+            var entry = boxIterator.next();
+            if (boxTick - entry.getValue().lastSeen() > BOX_STALE_TICKS) {
+                boxIterator.remove();
+            }
+        }
+
         // 设备上报的电网负载（原作 Powered）：每台设备有自己的功率和最低电压。
         consumerTick++;
         double consumerDemand = 0.0D;
@@ -366,17 +376,15 @@ public final class ShipSimulation {
                 consumerIterator.remove();
                 continue;
             }
-            consumerDemand += report.demandKw();
-        }
-
-        // 接线盒上报（耐久）：超过 40 tick 没上报视为拆掉。
-        boxTick++;
-        var boxIterator = boxes.entrySet().iterator();
-        while (boxIterator.hasNext()) {
-            var entry = boxIterator.next();
-            if (boxTick - entry.getValue().lastSeen() > BOX_STALE_TICKS) {
-                boxIterator.remove();
+            // 支路断开（接线盒拆掉/耐久 0）的设备不再吃全船供电：
+            // 把它的需求算进来会把正常支路也拖到欠压停机。
+            if (report.box() != null) {
+                BoxReport box = boxes.get(report.box());
+                if (box == null || box.condition() <= 0.0D) {
+                    continue;
+                }
             }
+            consumerDemand += report.demandKw();
         }
 
         // 还没改造完的设备走旧的全船统计；全部改造后 consumers 非空，用设备上报值。

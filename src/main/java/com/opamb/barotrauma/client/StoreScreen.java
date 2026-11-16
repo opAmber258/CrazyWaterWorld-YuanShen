@@ -555,7 +555,7 @@ public final class StoreScreen extends Screen {
                         lines.add(new StoreActionPacket.Line("", line.getKey(), line.getValue()));
                     }
                 }
-                ModNetwork.sendToServer(new StoreActionPacket(StoreActionPacket.SELL, lines, false));
+                sendLines(StoreActionPacket.SELL, lines, false);
             } else {
                 List<StoreActionPacket.Line> lines = new ArrayList<>();
                 for (Map.Entry<String, Integer> line : subCart.entrySet()) {
@@ -563,7 +563,7 @@ public final class StoreScreen extends Screen {
                         lines.add(new StoreActionPacket.Line(line.getKey(), -1, line.getValue()));
                     }
                 }
-                ModNetwork.sendToServer(new StoreActionPacket(StoreActionPacket.SELL_SUB, lines, false));
+                sendLines(StoreActionPacket.SELL_SUB, lines, false);
             }
             return true;
         }
@@ -602,8 +602,22 @@ public final class StoreScreen extends Screen {
                 lines.add(new StoreActionPacket.Line(line.getKey(), -1, line.getValue()));
             }
         }
-        ModNetwork.sendToServer(new StoreActionPacket(StoreActionPacket.BUY, lines,
-                deliverImmediately));
+        sendLines(StoreActionPacket.BUY, lines, deliverImmediately);
+    }
+
+    /**
+     * 提交购物车；行数上限和服务端解码用同一个常量。
+     * 超上限时服务端会直接丢包，所以这里先在客户端拦下并提示。
+     */
+    private void sendLines(int action, List<StoreActionPacket.Line> lines, boolean deliver) {
+        if (lines.size() > StoreActionPacket.MAX_LINES) {
+            if (minecraft != null && minecraft.player != null) {
+                minecraft.player.displayClientMessage(Component.translatable(
+                        "store.too_many_lines", StoreActionPacket.MAX_LINES), true);
+            }
+            return;
+        }
+        ModNetwork.sendToServer(new StoreActionPacket(action, lines, deliver));
     }
 
     @Override

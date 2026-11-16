@@ -37,7 +37,7 @@ public final class MedicalClinicService {
         if (player.distanceToSqr(npc) > MAX_DISTANCE_SQ) {
             return;
         }
-        sendState(player);
+        sendState(player, true);
     }
 
     public static void handle(ServerPlayer player, ClinicActionPacket packet) {
@@ -64,7 +64,7 @@ public final class MedicalClinicService {
         }
         if (selected.isEmpty()) {
             message(player, "没有找到要治疗的病症", ChatFormatting.GRAY);
-            sendState(player);
+            sendState(player, false);
             return;
         }
         int total = 0;
@@ -75,7 +75,7 @@ public final class MedicalClinicService {
         if (!wallet.spendCredits(total)) {
             message(player, "治疗需要 " + total + " mk，余额不足（当前 "
                     + wallet.credits() + "）", ChatFormatting.RED);
-            sendState(player);
+            sendState(player, false);
             return;
         }
         int healed = 0;
@@ -96,7 +96,7 @@ public final class MedicalClinicService {
                     ChatFormatting.GREEN);
         }
         MedicalSyncPacket.respondSnapshot(player, player);
-        sendState(player);
+        sendState(player, false);
     }
 
     private static List<ClinicStatePacket.Entry> entries(AfflictionContainer container) {
@@ -148,12 +148,16 @@ public final class MedicalClinicService {
         return found.isEmpty() ? null : found.get(0);
     }
 
-    private static void sendState(ServerPlayer player) {
+    /**
+     * @param open true = 首次打开（客户端可以切屏）；false = 治疗后刷新，
+     *             客户端只在诊所界面仍开着时更新，不抢玩家当前界面。
+     */
+    private static void sendState(ServerPlayer player, boolean open) {
         AfflictionContainer container = MedicalCapabilities.container(player);
         List<ClinicStatePacket.Entry> entries = container == null
                 ? List.of() : entries(container);
         ModNetwork.sendToPlayer(player, new ClinicStatePacket(
-                CampaignState.wallet(player.serverLevel()).credits(), entries));
+                CampaignState.wallet(player.serverLevel()).credits(), entries, open));
     }
 
     private static void message(ServerPlayer player, String text, ChatFormatting color) {

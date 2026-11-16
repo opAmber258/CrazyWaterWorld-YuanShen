@@ -18,11 +18,21 @@ public final class AutomationUtil {
     private AutomationUtil() {
     }
 
+    /**
+     * 这艘船是不是当前装配中的物理船。
+     *
+     * <p>不能只看全局 {@code VsState.active()}：物理船 A 活动时，方块船 B 的
+     * 门也会被当成装配坐标换算，导致 B 的门用 A 的世界位置做判定。</p>
+     */
+    public static boolean isPhysicalShip(ShipState ship) {
+        return ship != null && VsState.active() && VsState.activeState() == ship;
+    }
+
     /** 装配坐标下，玩家是否在 cell 的 range 格内（物理船会把玩家坐标转成装配坐标）。 */
-    public static boolean playerNear(ServerLevel level, BlockPos cell, double range) {
+    public static boolean playerNear(ServerLevel level, ShipState ship, BlockPos cell, double range) {
         double rangeSq = range * range;
         // 物理船的 cell 是装配坐标；先换到世界坐标再和玩家世界位置比较。
-        net.minecraft.world.phys.Vec3 center = VsState.active()
+        net.minecraft.world.phys.Vec3 center = isPhysicalShip(ship)
                 ? VsPilot.assemblyToWorld(cell)
                 : net.minecraft.world.phys.Vec3.atCenterOf(cell);
         if (center == null) {
@@ -42,6 +52,23 @@ public final class AutomationUtil {
      * <p>门格本身是“水密墙”，不在任何舱室里；要看它两侧的邻居。取最大值，
      * 任意一侧进水超过阈值就关门。</p>
      */
+    /**
+     * 这扇门/舱口是否直接连到外海（门格在船壳外表面，几何里有 SEA_BODY 连线）。
+     *
+     * <p>水密模式要单独看这一项：舱内干燥时 {@link #maxWaterFraction} 是 0，
+     * 但门一开海水就会沿 SEA_BODY 连线灌进来。</p>
+     */
+    public static boolean opensToSea(ShipState ship, BlockPos cell) {
+        for (ShipGeometry.DoorLink link : ship.geometry().doorLinks()) {
+            if (link.cell().equals(cell)
+                    && (link.body() == ShipGeometry.SEA_BODY
+                    || link.other() == ShipGeometry.SEA_BODY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static double maxWaterFraction(ShipState ship, BlockPos cell) {
         double max = 0.0D;
         for (Direction direction : Direction.values()) {

@@ -1017,6 +1017,10 @@ public final class DeepSeaEvents {
                 // AT_NODE 也要恢复：否则 routeSlot 还是 MIN_VALUE，无人航路点会被误判成要建站。
                 com.opamb.barotrauma.world.MissionInstance.setRouteOutposts(
                         slot, round.startHasOutpost(), round.endHasOutpost());
+            } else {
+                // 本世界没有活动关卡：清掉上一个世界留下的静态路线，
+                // 否则同槽位的新区块会套用旧关卡的种子/密度。
+                com.opamb.barotrauma.world.MissionInstance.setRouteLevel(null);
             }
         }
         // P4 持久化实测（两段式）：

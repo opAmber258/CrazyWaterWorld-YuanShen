@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /** 服务端 → 客户端：医疗诊所里玩家当前的病症与治疗价格。 */
-public record ClinicStatePacket(int wallet, List<Entry> entries) {
+public record ClinicStatePacket(int wallet, List<Entry> entries, boolean open) {
 
     /** limb 为空 = 全身病症。 */
     public record Entry(String afflictionId, String limb, double strength, int price) {
@@ -25,6 +25,7 @@ public record ClinicStatePacket(int wallet, List<Entry> entries) {
             buf.writeFloat((float) entry.strength());
             buf.writeVarInt(Math.max(0, entry.price()));
         }
+        buf.writeBoolean(open);
     }
 
     public static ClinicStatePacket decode(FriendlyByteBuf buf) {
@@ -37,7 +38,8 @@ public record ClinicStatePacket(int wallet, List<Entry> entries) {
         for (int i = 0; i < count; i++) {
             entries.add(new Entry(buf.readUtf(64), buf.readUtf(32), buf.readFloat(), buf.readVarInt()));
         }
-        return new ClinicStatePacket(wallet, List.copyOf(entries));
+        boolean open = buf.readBoolean();
+        return new ClinicStatePacket(wallet, List.copyOf(entries), open);
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

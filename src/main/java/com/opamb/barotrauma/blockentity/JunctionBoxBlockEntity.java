@@ -63,16 +63,22 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
         double voltage = ship.simulation().voltage();
         be.lastVoltage = voltage;
         boolean powered = voltage > 0.1D;
-        be.submerged = ship.simulation().bodyIsWet(ship.simulation().bodyOf(cell));
+        // 按接线盒所在高度判泡水：舱底有积水不代表墙上的盒子被淹。
+        int body = ship.simulation().bodyOf(cell);
+        be.submerged = ship.simulation().bodyIsWet(body)
+                && cell.getY() < ship.simulation().bodyLevel(body);
 
         if (be.graceTicks < 0L) {
             be.graceTicks = 2400L + level.random.nextInt(12000);
+            be.setChanged();
         }
 
         double before = be.condition;
         if (powered) {
             if (be.graceTicks > 0L) {
                 be.graceTicks--;
+                // 持久字段变了要标脏，否则区块没别的变化时宽限期会回退。
+                be.setChanged();
             } else {
                 be.condition -= DECAY_POWERED / 20.0D;
             }

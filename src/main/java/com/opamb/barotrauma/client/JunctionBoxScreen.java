@@ -35,6 +35,16 @@ public class JunctionBoxScreen extends Screen {
         this.state = state;
     }
 
+    /** 面板高度按窗口可用高度收缩；小窗口（逻辑高 240）不能画到屏幕外。 */
+    private int panelHeight() {
+        return Math.max(200, Math.min(H, height - 16));
+    }
+
+    /** 可见行数跟着面板高度走，文字、按钮和滚动范围必须用同一个值。 */
+    private int visibleRows() {
+        return Math.max(1, Math.min(MAX_ROWS, (panelHeight() - 150) / ROW));
+    }
+
     public static void updateOrOpen(PowerStatePacket state) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen instanceof JunctionBoxScreen screen
@@ -52,36 +62,37 @@ public class JunctionBoxScreen extends Screen {
     }
 
     private int maxScroll() {
-        return Math.max(0, state.devices().size() - MAX_ROWS);
+        return Math.max(0, state.devices().size() - visibleRows());
     }
 
     @Override
     protected void init() {
         int left = (width - W) / 2;
-        int top = (height - H) / 2;
+        int top = (height - panelHeight()) / 2;
         List<PowerStatePacket.Device> devices = state.devices();
         scroll = Mth.clamp(scroll, 0, maxScroll());
-        int rows = Math.min(MAX_ROWS, Math.max(0, devices.size() - scroll));
+        int rows = Math.min(visibleRows(), Math.max(0, devices.size() - scroll));
         for (int i = 0; i < rows; i++) {
             PowerStatePacket.Device device = devices.get(scroll + i);
             boolean boundHere = state.boxPos().equals(device.box());
-            String label = boundHere ? "解绑" : "绑定";
+            Component label = Component.translatable(boundHere ? "power.unbind" : "power.bind");
             int y = top + 118 + i * ROW;
-            addRenderableWidget(Button.builder(Component.literal(label), b -> {
+            addRenderableWidget(Button.builder(label, b -> {
                 ModNetwork.sendToServer(new PowerBindPacket(state.boxPos(), device.pos(), !boundHere));
                 b.active = false;
             }).bounds(left + W - 92, y, 72, 20).build());
         }
-        addRenderableWidget(Button.builder(Component.literal("关闭"), b -> onClose())
-                .bounds(left + W / 2 - 40, top + H - 30, 80, 20).build());
+        addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
+                .bounds(left + W / 2 - 40, top + panelHeight() - 30, 80, 20).build());
     }
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g);
         int left = (width - W) / 2;
-        int top = (height - H) / 2;
-        g.fill(left, top, left + W, top + H, 0xE0101418);
+        int top = (height - panelHeight()) / 2;
+        int panelH = panelHeight();
+        g.fill(left, top, left + W, top + panelH, 0xE0101418);
         g.fill(left, top, left + W, top + 2, 0xFF5A6672);
         g.drawCenteredString(font, Component.translatable("block.barotrauma.junction_box"),
                 left + W / 2, top + 10, 0xFFFFFFFF);
@@ -107,7 +118,7 @@ public class JunctionBoxScreen extends Screen {
             g.drawString(font, Component.translatable("power.no_devices"), left + 18, top + 122, 0xFF8A96A2);
         }
         scroll = Mth.clamp(scroll, 0, maxScroll());
-        int rows = Math.min(MAX_ROWS, Math.max(0, devices.size() - scroll));
+        int rows = Math.min(visibleRows(), Math.max(0, devices.size() - scroll));
         for (int i = 0; i < rows; i++) {
             PowerStatePacket.Device device = devices.get(scroll + i);
             int rowY = top + 118 + i * ROW;
@@ -117,13 +128,14 @@ public class JunctionBoxScreen extends Screen {
             int color = boundHere ? 0xFF77DD77 : 0xFFE8EDF2;
             g.drawString(font, text, left + 18, rowY, color);
             if (device.box() != null && !boundHere) {
-                g.drawString(font, "→ 其他盒子", left + 18, rowY + 10, 0xFF8A96A2);
+                g.drawString(font, Component.translatable("power.other_box"),
+                        left + 18, rowY + 10, 0xFF8A96A2);
             }
         }
         if (maxScroll() > 0) {
-            String hint = "第 " + (scroll + 1) + "–" + (scroll + rows) + " / "
-                    + devices.size() + " 项 · 滚轮翻页";
-            g.drawString(font, hint, left + 18, top + 118 + MAX_ROWS * ROW, 0xFF8A96A2);
+            Component hint = Component.translatable("power.scroll_hint",
+                    scroll + 1, scroll + rows, devices.size());
+            g.drawString(font, hint, left + 18, top + 118 + rows * ROW, 0xFF8A96A2);
         }
         super.render(g, mouseX, mouseY, partialTick);
     }

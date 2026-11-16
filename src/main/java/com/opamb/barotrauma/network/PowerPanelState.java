@@ -79,8 +79,12 @@ public final class PowerPanelState {
             String key = deviceBe == null
                     ? "block.barotrauma.junction_box.unknown"
                     : deviceBe.getBlockState().getBlock().getDescriptionId();
+            // 绑定只改设备的 BE，ShipSimulation 的快照要等下一 tick 才更新；
+            // 直接读 BE，绑定后立刻刷新也能显示新状态。
+            BlockPos bound = deviceBe instanceof PowerConsumer consumer
+                    ? consumer.powerBox() : info.box();
             devices.add(new PowerStatePacket.Device(info.pos(), key, info.demandKw(),
-                    info.minVoltage(), info.box()));
+                    info.minVoltage(), bound));
         }
         devices.sort(Comparator.comparingDouble(d -> d.pos().distSqr(boxCell)));
         if (devices.size() > MAX_DEVICES) {
@@ -183,6 +187,16 @@ public final class PowerPanelState {
     /** 玩家退出时丢掉面板会话。 */
     public static void clear(ServerPlayer player) {
         PANELS.remove(player.getUUID());
+    }
+
+    /**
+     * 船停用/靠泊/重新装配/换世界时清掉所有面板会话。
+     *
+     * <p>物理面板只记装配坐标；同一坐标上换了另一艘船时，旧会话不能再去
+     * 绑定或刷新新船。</p>
+     */
+    public static void clearAll() {
+        PANELS.clear();
     }
 
     /** 没有快捷打开请求时自己找船：方块船的核心可能离盒子很远，按 64 格找。 */

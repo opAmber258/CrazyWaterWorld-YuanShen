@@ -49,9 +49,13 @@ public final class MedicalClinicScreen extends Screen {
             screen.state = packet;
             screen.scroll = Math.max(0, Math.min(screen.scroll,
                     Math.max(0, packet.entries().size() - VISIBLE_ROWS)));
-        } else {
-            minecraft.setScreen(new MedicalClinicScreen(packet));
+            return;
         }
+        // 治疗后的刷新包：玩家已经按 Esc 或换了界面，不能把诊所重新弹出来。
+        if (!packet.open()) {
+            return;
+        }
+        minecraft.setScreen(new MedicalClinicScreen(packet));
     }
 
     @Override

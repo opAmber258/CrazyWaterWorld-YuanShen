@@ -375,6 +375,7 @@ public final class VsPilot {
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
         clearFixtureCut();
+        com.opamb.barotrauma.network.PowerPanelState.clearAll();
         VsState.deactivate();
     }
 
@@ -426,6 +427,7 @@ public final class VsPilot {
         lastRecordFlushGameTime = Long.MIN_VALUE;
         lastWaterPacket = ShipWaterStatePacket.empty();
         clearFixtureCut();
+        com.opamb.barotrauma.network.PowerPanelState.clearAll();
         VsState.deactivate();
         if (hadShip) {
             LOGGER.info("[vs] 服务器生命周期切换：已清理上一世界的物理船静态状态");
@@ -479,7 +481,7 @@ public final class VsPilot {
      */
     private static boolean isInsideInterior(Level level, Vec3 pos) {
         if (ship == null || state == null || pos == null
-                || !(level instanceof ServerLevel server) || interiorCells.isEmpty()) {
+                || !(level instanceof ServerLevel server)) {
             return false;
         }
         org.valkyrienskies.core.api.ships.ServerShip live = view(server);
@@ -502,7 +504,19 @@ public final class VsPilot {
         }
         BlockPos cell = BlockPos.containing(shipSpace.x - origin.x,
                 shipSpace.y - origin.y, shipSpace.z - origin.z);
-        return interiorCells.contains(cell);
+        // 用 interiorCells（船壳以内）而不是 pocket.cells()：圆角船体包围盒里的
+        // 船外空气也属于连海空腔，但不该把站台上的玩家算进乘客。
+        for (var compartment : state.compartments()) {
+            if (compartment.interiorCells().contains(cell)) {
+                return true;
+            }
+        }
+        for (var pocket : state.geometry().openPockets()) {
+            if (pocket.interiorCells().contains(cell)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1343,6 +1357,15 @@ public final class VsPilot {
      */
     @Nullable
     private static BlockPos pickHullBlock(ServerLevel level, ServerPlayer player) {
+        return pickHullBlock(level, player, false);
+    }
+
+    /**
+     * @param skipBreached 切割用：0% 的破口船壳无碰撞但仍留在快照里，
+     *                     不能挡住后方舱门/舱口的切割射线；焊接仍要能命中破口。
+     */
+    @Nullable
+    private static BlockPos pickHullBlock(ServerLevel level, ServerPlayer player, boolean skipBreached) {
         if (ship == null || state == null || snapshot.isEmpty()) {
             return null;
         }
@@ -1375,6 +1398,13 @@ public final class VsPilot {
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
         for (BlockPos pos : snapshot.keySet()) {
+            if (skipBreached) {
+                BlockState at = snapshot.get(pos);
+                if (at != null && at.hasProperty(HullBlock.BREACHED)
+                        && at.getValue(HullBlock.BREACHED)) {
+                    continue;
+                }
+            }
             java.util.Optional<Vec3> hit = new AABB(pos).clip(from, to);
             if (hit.isEmpty()) {
                 continue;
@@ -1522,7 +1552,8 @@ public final class VsPilot {
         if (yardOffsetX == Integer.MIN_VALUE) {
             return false;
         }
-        BlockPos best = pickHullBlock(level, player);
+        // 切割射线跳过 0% 的破口船壳：它无碰撞，不能挡住后方舱门/舱口。
+        BlockPos best = pickHullBlock(level, player, true);
         if (best == null) {
             return false;
         }
@@ -1581,11 +1612,44 @@ public final class VsPilot {
 
     /** 切穿舱门/舱口：清船坞方块、移出快照、重扫几何，并在切口掉回物品。 */
     private static void removeFixture(ServerLevel level, BlockPos original, BlockState block) {
+        // 舱口是三格构件（LEFT/MIDDLE/RIGHT）；只拆命中格会留下两半，
+        // 两边再各切一次又能刷出完整物品。这里按整套删除、只掉一次。
+        List<BlockPos> cells = new ArrayList<>();
+        if (block.getBlock() instanceof com.opamb.barotrauma.block.HatchBlock
+                && block.hasProperty(com.opamb.barotrauma.block.HatchBlock.PART)
+                && block.hasProperty(com.opamb.barotrauma.block.HatchBlock.FACING)) {
+            net.minecraft.core.Direction facing =
+                    block.getValue(com.opamb.barotrauma.block.HatchBlock.FACING);
+            net.minecraft.core.Direction longAxis = facing.getClockWise();
+            int offset = block.getValue(com.opamb.barotrauma.block.HatchBlock.PART).ordinal() - 1;
+            BlockPos middle = original.relative(longAxis, -offset);
+            BlockState middleState = snapshot.get(middle);
+            if (middleState != null
+                    && middleState.getBlock() instanceof com.opamb.barotrauma.block.HatchBlock
+                    && middleState.hasProperty(com.opamb.barotrauma.block.HatchBlock.PART)
+                    && middleState.getValue(com.opamb.barotrauma.block.HatchBlock.PART)
+                    == com.opamb.barotrauma.block.HatchBlock.Part.MIDDLE
+                    && middleState.getValue(com.opamb.barotrauma.block.HatchBlock.FACING) == facing) {
+                cells.add(middle);
+                cells.add(middle.relative(longAxis));
+                cells.add(middle.relative(longAxis.getOpposite()));
+            } else {
+                cells.add(original);
+            }
+        } else {
+            cells.add(original);
+        }
         Vec3 world = toWorld(original);
-        level.setBlock(original.offset(yardOffsetX, yardOffsetY, yardOffsetZ),
-                Blocks.AIR.defaultBlockState(), 3);
-        snapshot.remove(original);
-        rebuildGeometry(level, List.of(original));
+        for (BlockPos cell : cells) {
+            if (!snapshot.containsKey(cell)) {
+                continue;
+            }
+            level.setBlock(cell.offset(yardOffsetX, yardOffsetY, yardOffsetZ),
+                    Blocks.AIR.defaultBlockState(), 3);
+            snapshot.remove(cell);
+            fixtureCut.remove(cell);
+        }
+        rebuildGeometry(level, cells);
         net.minecraft.world.item.ItemStack drop =
                 new net.minecraft.world.item.ItemStack(block.getBlock().asItem());
         if (!drop.isEmpty()) {
@@ -1996,6 +2060,7 @@ public final class VsPilot {
         lastLevel = level;
         // 新一次装配：丢掉上一艘船残留的构件切割进度。
         clearFixtureCut();
+        com.opamb.barotrauma.network.PowerPanelState.clearAll();
         // 离站：先把对接口舱口都关上，免得装成物理船后艇顶还开着洞。
         com.opamb.barotrauma.world.DockingBay.close(level);
         if (ship != null && !stillExists(level)) {
@@ -2374,11 +2439,10 @@ public final class VsPilot {
         List<ServerPlayer> riders = new ArrayList<>();
         List<net.minecraft.world.entity.item.ItemEntity> pinnedCargo = new ArrayList<>();
         if (oldCoreWorld != null) {
-            double riderRadius = 32.0D;
+            // 不再用固定 32 格球预先排除：核心扫描是每轴 24 格的立方体，
+            // 斜角舱室里的玩家距离可能超过 32。直接按“是否真在舱内”判断。
             for (ServerPlayer candidate : level.players()) {
-                if (candidate.level() == level
-                        && candidate.position().distanceToSqr(oldCoreWorld) <= riderRadius * riderRadius
-                        && isInsideInterior(level, candidate.position())) {
+                if (candidate.level() == level && isInsideInterior(level, candidate.position())) {
                     riders.add(candidate);
                 }
             }
@@ -2522,6 +2586,7 @@ public final class VsPilot {
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
         clearFixtureCut();
+        com.opamb.barotrauma.network.PowerPanelState.clearAll();
         VsState.deactivate();
         // 5) 靠泊成功：船已经回到方块形态，再打开该站舱口并结算本轮出勤。
         if (dockSite != null) {
@@ -2954,6 +3019,12 @@ public final class VsPilot {
         }
         ServerShip loaded = VsBridge.loaded(level, ship);
         return loaded != null ? loaded : ship;
+    }
+
+    /** 当前活动物理船所在的世界；没有物理船返回 null。 */
+    @Nullable
+    public static ServerLevel activeLevel() {
+        return ship == null ? null : lastLevel;
     }
 
     /** 数一下船中心周围有多少非空气方块——拆船后应该是满的。 */

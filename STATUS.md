@@ -70,6 +70,12 @@
   后不再显示旧设备表）；`fixtureCut` 按装配生命周期清空（launch/dock/dropStale/reset）；
   靠泊吸附只搬真正在舱内的玩家和 `TAG_PINNED` 任务货（世界坐标逆变换回装配坐标查
   `interiorCells`）。
+- full review 批次（20 条）：诊所包区分首次打开/刷新（协议 14）；接线盒文字本地化、
+  面板高度自适应 240 高窗口、宽限 setChanged、按盒高判泡水；`ShipMover` 平移保留
+  接线盒绑定；水密门/舱口遇外海连线保持关闭；三格舱口整套拆除、切割跳过 `BREACHED`；
+  全船负载跳过断开支路；门/舱口自动化按船身份换算坐标；商店行数上限统一 64；
+  快捷面板只认同维度物理船；面板绑定状态直接读 BE；物品浮力用完整干湿链；
+  `LevelSelector` 改读 `LevelParams`。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的

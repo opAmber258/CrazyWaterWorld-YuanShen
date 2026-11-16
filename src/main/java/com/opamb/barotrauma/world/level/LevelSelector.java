@@ -39,10 +39,15 @@ public final class LevelSelector {
         }
         List<LevelType> types = new ArrayList<>(3);
         List<Integer> weights = new ArrayList<>(3);
-        // basic：0–5；advanced：5+；maze：8+，commonness 25。
-        add(types, weights, LevelType.BASIC, 100, difficulty <= 5);
-        add(types, weights, LevelType.ADVANCED, 100, difficulty >= 5);
-        add(types, weights, LevelType.MAZE, 25, difficulty >= 8);
+        // 类型分布的唯一真值在 LevelParams：commonness 是权重，min/maxDifficulty 是门槛。
+        for (LevelType type : LevelType.values()) {
+            LevelParams params = type.params();
+            if (!type.isConnection() || params.commonness() <= 0) {
+                continue;
+            }
+            add(types, weights, type, params.commonness(),
+                    difficulty >= params.minDifficulty() && difficulty <= params.maxDifficulty());
+        }
         if (types.isEmpty()) {
             // 理论上不会发生（难度 0–15 至少 basic/advanced 有一个），兜底。
             return LevelType.BASIC;

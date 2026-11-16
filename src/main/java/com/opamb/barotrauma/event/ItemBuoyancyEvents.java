@@ -2,7 +2,6 @@ package com.opamb.barotrauma.event;
 
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.registry.ModItems;
-import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.world.ModDimensions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -90,9 +89,9 @@ public final class ItemBuoyancyEvents {
             }
             return;
         }
-        // 物理船舱内是干燥区：保持正常重力，物品会落在甲板上。
-        Boolean dry = VsState.queryPlayerInDryCompartment(level, item.position());
-        if (Boolean.TRUE.equals(dry)) {
+        // 干燥区（物理船舱 / 哨站内 / 方块船舱）保持原版重力，物品落在甲板上。
+        // 不能只查物理船舱：没有物理船时这里会返回 null，哨站里的物品就会浮上天花板。
+        if (!com.opamb.barotrauma.world.OceanEnvironment.isOceanWaterAt(level, item.position())) {
             if (item.isNoGravity()) {
                 item.setNoGravity(false);
             }

@@ -24,6 +24,8 @@ public record StoreActionPacket(int action, List<Line> lines, boolean deliverImm
     public static final int SELL = 2;
     /** 照原作 {@code StoreTab.SellSub}：从潜艇货柜出售。 */
     public static final int SELL_SUB = 3;
+    /** 单次提交的购物车行数上限；客户端必须用同一个值裁剪/提示。 */
+    public static final int MAX_LINES = 64;
 
     public record Line(String itemId, int slot, int quantity) {
     }
@@ -42,7 +44,7 @@ public record StoreActionPacket(int action, List<Line> lines, boolean deliverImm
     public static StoreActionPacket decode(FriendlyByteBuf buf) {
         int action = buf.readVarInt();
         int count = buf.readVarInt();
-        if (count < 0 || count > 64) {
+        if (count < 0 || count > MAX_LINES) {
             throw new IllegalArgumentException("store cart size");
         }
         List<Line> lines = new ArrayList<>(count);

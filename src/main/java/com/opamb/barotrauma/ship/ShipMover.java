@@ -62,6 +62,14 @@ public final class ShipMover {
         for (BlockPos pos : moving) {
             blocks.put(pos, level.getBlockState(pos));
         }
+        // setBlock 会重建方块实体，接线盒绑定（PowerBox）不会跟着走，先记下来。
+        Map<BlockPos, BlockPos> powerBoxes = new HashMap<>();
+        for (BlockPos pos : moving) {
+            if (level.getBlockEntity(pos) instanceof PowerConsumer consumer
+                    && consumer.powerBox() != null) {
+                powerBoxes.put(pos.immutable(), consumer.powerBox());
+            }
+        }
         List<BlockPos> interior = new ArrayList<>();
         for (ShipGeometry.Compartment compartment : state.compartments()) {
             interior.addAll(compartment.cells());
@@ -86,6 +94,14 @@ public final class ShipMover {
         }
         for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
             level.setBlock(entry.getKey().offset(dx, dy, dz), entry.getValue(), 3);
+        }
+        // 恢复设备绑定：接线盒和设备一起平移，绑定坐标也要跟着走。
+        for (Map.Entry<BlockPos, BlockPos> entry : powerBoxes.entrySet()) {
+            BlockPos target = entry.getKey().offset(dx, dy, dz);
+            if (level.getBlockEntity(target) instanceof PowerConsumer consumer) {
+                consumer.setPowerBox(entry.getValue().offset(dx, dy, dz));
+                level.getBlockEntity(target).setChanged();
+            }
         }
 
         // 5) 把船范围内的实体一起搬走

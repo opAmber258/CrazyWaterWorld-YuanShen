@@ -410,5 +410,10 @@
   "tooltip.barotrauma.equipment.slot.body_armor": "Body Armor Slot",
   "tooltip.barotrauma.equipment.slot.bag": "Belt / Backpack Slot",
   "tooltip.barotrauma.equipment.slot.diving_suit": "Diving Suit Slot",
-  "tooltip.barotrauma.equipment.slot.oxygen_tank": "Oxygen Tank Slot"
+  "tooltip.barotrauma.equipment.slot.oxygen_tank": "Oxygen Tank Slot",
+  "power.bind": "Bind",
+  "power.unbind": "Unbind",
+  "power.other_box": "→ Other box",
+  "power.scroll_hint": "Showing %s–%s of %s · scroll to page",
+  "store.too_many_lines": "At most %s lines per trade; please split it"
 }

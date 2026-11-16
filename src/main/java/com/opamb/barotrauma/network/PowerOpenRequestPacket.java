@@ -46,7 +46,8 @@ public record PowerOpenRequestPacket() {
             double bestDistance = Double.MAX_VALUE;
 
             // 物理船优先按玩家附近的有效接线盒判断；全局活动船不能挡住方块船。
-            if (VsState.active()) {
+            // 活动船可能在另一个维度：世界坐标相同也不能参与本维度的距离排序。
+            if (VsState.active() && VsPilot.activeLevel() == level) {
                 ShipState physical = VsState.activeState();
                 if (physical != null) {
                     hadShip = true;
