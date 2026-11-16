@@ -232,11 +232,20 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
         if (VsState.isPhysical(level, pos)) {
             return VsState.activeState();
         }
-        // 方块船按船体几何归属选核心：附近另一艘船的核心更近也不能顶替。
-        for (ShipCoreBlockEntity core : ShipCores.coresNear(level, pos, 32.0D)) {
+        ShipCoreBlockEntity core = resolveCore(level, pos);
+        if (core == null) {
+            return null;
+        }
+        return core.state() != null ? core.state() : core.rescan(level);
+    }
+
+    /** 按船体几何归属找这个方块所属的核心；门/舱口开合后要直接 rescan 它。 */
+    @Nullable
+    public static ShipCoreBlockEntity resolveCore(ServerLevel level, BlockPos pos) {
+        for (ShipCoreBlockEntity core : ShipCores.coresNear(level, pos, 64.0D)) {
             ShipState state = core.state() != null ? core.state() : core.rescan(level);
             if (state != null && state.tracksHullBlock(pos)) {
-                return state;
+                return core;
             }
         }
         return null;

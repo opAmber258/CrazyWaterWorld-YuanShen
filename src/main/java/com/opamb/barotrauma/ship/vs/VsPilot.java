@@ -1607,7 +1607,7 @@ public final class VsPilot {
         long now = level.getGameTime();
         if (!worldPos.equals(protectCheckedPos)
                 || !player.getUUID().equals(protectPlayer)
-                || (now - protectCheckedTick > 4L && !protectDenied)) {
+                || now - protectCheckedTick > 4L) {
             net.minecraft.world.level.GameType mode = player.gameMode.getGameModeForPlayer();
             protectDenied = net.minecraftforge.common.ForgeHooks
                     .onBlockBreakEvent(level, mode, player, worldPos) == -1

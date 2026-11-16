@@ -346,7 +346,8 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                 }
                 // 海底表面：密度由关卡 resourceSpawnChance 决定（basic 0.2 → 1/1024）。
                 if (!placed[0] && Math.floorMod(hash, floorModulus) == 0 && floor > minY
-                        && floor < ModDimensions.CEILING_BOTTOM_Y) {
+                        && floor < ModDimensions.CEILING_BOTTOM_Y
+                        && touchesAir(chunk, x, floor, z, lx, lz)) {
                     BlockState vein = veins[(int) Math.floorMod(hash >>> 10, 3L)];
                     setBlock(chunk, x, floor, z, vein);
                     placed[0] = true;
@@ -358,7 +359,8 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                             // 邻列海底高度可能不同：必须用邻列自己的 floorY，
                             // 否则矿脉会悬空或埋进岩石里。
                             if (MissionInstance.inMiningZone(nxWorld, z)
-                                    && SeaTerrain.floorY(seed, nxWorld, z) == floor) {
+                                    && SeaTerrain.floorY(seed, nxWorld, z) == floor
+                                    && touchesAir(chunk, nxWorld, floor, z, nx, lz)) {
                                 setBlock(chunk, nxWorld, floor, z, vein);
                             }
                         }

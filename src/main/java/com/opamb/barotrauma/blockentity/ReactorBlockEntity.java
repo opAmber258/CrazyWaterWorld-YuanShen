@@ -355,7 +355,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         level.sendParticles(ParticleTypes.LARGE_SMOKE, center.x, center.y + 1.0D, center.z,
                 60, 3.0D, 2.0D, 3.0D, 0.05D);
 
-        if (VsState.active()) {
+        if (VsState.isPhysical(level, worldPosition)) {
             // 物理船：按世界坐标对装配快照扣船体耐久，别把爆炸砸在船坞里。
             VsState.damageExplosion(level, center, 7.0D, 300.0F);
         } else {

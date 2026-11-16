@@ -3,7 +3,6 @@ package com.opamb.barotrauma.block;
 import com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.registry.ModSounds;
-import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -198,8 +197,16 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
         level.playSound(null, pos, ModSounds.DOOR_TOGGLE.get(),
                 SoundSource.BLOCKS, 1.0F, 0.95F + level.random.nextFloat() * 0.1F);
         // 方块船：重扫世界几何；物理船：方块类型没变，必须显式重扫船坞几何。
-        ShipCores.rescanNear(level, pos, 16);
         if (level instanceof ServerLevel server) {
+            // 按船体归属找核心再重扫：固定 16 格扫描会漏掉离核心更远的门。
+            if (!VsState.isPhysical(server, pos)) {
+                com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core =
+                        com.opamb.barotrauma.blockentity.DrainPumpBlockEntity
+                                .resolveCore(server, pos);
+                if (core != null) {
+                    core.rescan(server);
+                }
+            }
             VsState.refreshGeometry(server);
         }
         return true;

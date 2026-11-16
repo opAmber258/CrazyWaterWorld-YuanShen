@@ -127,7 +127,10 @@ public class JunctionBoxScreen extends Screen {
             int rowY = top + 118 + i * ROW;
             boolean boundHere = state.boxPos().equals(device.box());
             String name = Component.translatable(device.nameKey()).getString();
-            String text = name + "  " + fmt(device.demandKw()) + " kW  ≥" + fmt(device.minVoltage() * 100.0D) + "%";
+            String pos = Component.translatable("power.device_pos",
+                    device.pos().getX(), device.pos().getY(), device.pos().getZ()).getString();
+            String text = name + " " + pos + "  " + fmt(device.demandKw())
+                    + " kW  ≥" + fmt(device.minVoltage() * 100.0D) + "%";
             int color = boundHere ? 0xFF77DD77 : 0xFFE8EDF2;
             g.drawString(font, text, left + 18, rowY, color);
             if (device.box() != null && !boundHere) {

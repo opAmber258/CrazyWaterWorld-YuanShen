@@ -165,7 +165,10 @@ public class PlasmaCutterItem extends Item {
     @Override
     public void releaseUsing(ItemStack stack, Level level, LivingEntity living, int timeLeft) {
         if (level.isClientSide) {
-            com.opamb.barotrauma.client.MineralVeinClient.reset();
+            // 只有本地玩家释放才清共享进度，远端玩家的事件不能串台。
+            if (living == net.minecraft.client.Minecraft.getInstance().player) {
+                com.opamb.barotrauma.client.MineralVeinClient.reset();
+            }
         } else if (living instanceof ServerPlayer player && level instanceof ServerLevel server) {
             clearProgress(player, server);
         }

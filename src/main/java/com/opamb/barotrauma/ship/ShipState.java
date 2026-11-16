@@ -821,12 +821,13 @@ public final class ShipState {
             aimAtTarget(corePos);
         }
         double dt = 0.1D;
-        // 硬核供电：没反应堆/没开机时 supply=0；没有引擎时 engineFactor=0，推进器不出力。
-        double supply = simulation().powerRatio();
-        int engineFactor = Math.min(8, Math.max(0, simulation().engineCount()));
+        // 硬核供电：每台引擎按自己实际拿到的电压贡献推力；没有引擎/没电时为 0。
+        // 引擎数量上限仍然按 8 台算。
+        double engineSupply = Math.min(8.0D,
+                Math.max(0.0D, simulation().engineSupplyFactor()));
         if (autopilotHold && autopilotTarget != null) {
             // P 控制：离目标越远目标速度越大；靠近时目标速度自己收敛到 0，不用额外刹车
-            double gain = 0.7D * power / 100.0D * supply * engineFactor;
+            double gain = 0.7D * power / 100.0D * engineSupply;
             double tx = net.minecraft.util.Mth.clamp(
                     (autopilotTarget.getX() - corePos.getX()) * gain, -ShipPhysics.MAX_SPEED, ShipPhysics.MAX_SPEED);
             double ty = net.minecraft.util.Mth.clamp(
@@ -835,7 +836,7 @@ public final class ShipState {
                     (autopilotTarget.getZ() - corePos.getZ()) * gain, -ShipPhysics.MAX_SPEED, ShipPhysics.MAX_SPEED);
             physics.tickAuto(dt, tx, ty, tz);
         } else {
-            int effectivePower = (int) Math.round(power * supply * engineFactor);
+            int effectivePower = (int) Math.round(power * engineSupply);
             physics.tickManual(dt, throttleX, throttleY, throttleZ, effectivePower,
                     simulation().ballastPercent(), floodRatio());
         }

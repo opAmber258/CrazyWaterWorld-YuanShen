@@ -422,6 +422,7 @@
   "power.unbind": "解绑",
   "power.other_box": "→ 其他盒子",
   "power.scroll_hint": "第 %s–%s / %s 项 · 滚轮翻页",
+  "power.device_pos": "[%s, %s, %s]",
   "store.too_many_lines": "一次最多提交 %s 行，请分批交易",
   "store.title": "商人",
   "store.wallet": "钱包 %s mk",

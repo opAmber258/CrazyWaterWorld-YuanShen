@@ -116,6 +116,13 @@
   航道缓存用关卡快照、相同关卡不抢写锁；矿脉候选深度跨度修正（原公式恒为负，
   4 个中间候选从未生成）、簇数下限按需求量；`PowerPanelState.bind` 校验设备属于
   本船；声纳按 section Y 预剪枝。
+- 第八次 full review 批次（9 条 + 1 条 outside-diff）：门/舱口开合按 `resolveCore`
+  重扫归属核心（不再固定 16 格）；接线盒面板显示设备坐标；矿脉客户端只让本地玩家
+  写进度；接线盒归属核心按几何选；`ShipMover` 也搬舱壁门自动模式；推进改
+  `engineSupplyFactor()`；物理船熔毁走 `isPhysical`；海底矿脉要求邻接空气。
+  **跳过**：物品浮力在物理船上的 `getBlockState` 坐标映射 —— 需要实机确认 VS2
+  世界里船体方块是否仍可查询，且没有已验证的世界→装配逆变换 API，等客户端验收
+  后再定。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的

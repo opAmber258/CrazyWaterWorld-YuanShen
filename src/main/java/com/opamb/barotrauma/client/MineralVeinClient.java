@@ -47,6 +47,10 @@ public final class MineralVeinClient {
     public static void tickFromPlayer(net.minecraft.world.level.Level level,
                                       net.minecraft.world.entity.player.Player player,
                                       double reach) {
+        // 客户端共享静态进度：只允许本地玩家写，远端玩家的事件会串台。
+        if (player != Minecraft.getInstance().player) {
+            return;
+        }
         BlockPos vein = null;
         net.minecraft.world.phys.HitResult hit = player.pick(reach, 1.0F, false);
         if (hit instanceof net.minecraft.world.phys.BlockHitResult blockHit

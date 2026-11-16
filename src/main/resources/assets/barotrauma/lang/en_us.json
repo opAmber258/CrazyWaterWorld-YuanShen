@@ -422,6 +422,7 @@
   "power.unbind": "Unbind",
   "power.other_box": "→ Other box",
   "power.scroll_hint": "Showing %s–%s of %s · scroll to page",
+  "power.device_pos": "[%s, %s, %s]",
   "store.too_many_lines": "At most %s lines per trade; please split it",
   "store.title": "Merchant",
   "store.wallet": "Wallet %s mk",

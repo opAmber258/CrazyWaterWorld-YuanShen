@@ -230,6 +230,14 @@ public final class PowerPanelState {
         if (physical) {
             return null; // 物理船用 VsState.activeState()，不需要核心坐标
         }
+        // 两艘船靠近时最近核心可能属于另一艘：优先按船体几何归属选。
+        for (ShipCoreBlockEntity core : ShipCores.coresNear(level, pos, 64.0D)) {
+            ShipState state = core.state() != null ? core.state() : core.rescan(level);
+            if (state != null && state.tracksHullBlock(pos)) {
+                return core.getBlockPos();
+            }
+        }
+        // 盒子还没进船体几何时退回最近核心，保持原来的兜底行为。
         var core = ShipCores.nearestCore(level, pos, 64.0D);
         return core == null ? null : core.getBlockPos();
     }
