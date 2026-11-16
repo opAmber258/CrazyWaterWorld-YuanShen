@@ -117,10 +117,16 @@ class RoutePathTest {
         LevelParams advanced = LevelType.ADVANCED.params();
         RoutePath a = RoutePath.build(advanced, 7L, 0.0D, 0.0D, 0.0D, -1500.0D);
         RoutePath b = RoutePath.build(advanced, 7L, 0.0D, 0.0D, 0.0D, -1500.0D);
-        assertEquals(a.pointAt(0.37D), b.pointAt(0.37D));
+        // 比较完整网络：每条隧道（主航道 + 所有分支）的全部航点、宽高和洞室。
+        assertEquals(a.tunnels().size(), b.tunnels().size());
+        for (int i = 0; i < a.tunnels().size(); i++) {
+            RoutePath.Tunnel ta = a.tunnels().get(i);
+            RoutePath.Tunnel tb = b.tunnels().get(i);
+            assertEquals(ta.main(), tb.main(), "隧道 " + i + " 的主/分支标记必须一致");
+            org.junit.jupiter.api.Assertions.assertArrayEquals(ta.points(), tb.points(),
+                    "隧道 " + i + " 的全部航点与尺寸必须一致");
+        }
         assertEquals(a.chambers(), b.chambers());
-        assertEquals(a.branches().size(), b.branches().size());
-        assertEquals(a.branches().get(0).points()[2], b.branches().get(0).points()[2]);
     }
 
     @Test

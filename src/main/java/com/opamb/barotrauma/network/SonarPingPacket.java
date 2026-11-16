@@ -72,12 +72,12 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                 net.minecraft.world.phys.Vec3 shipPos =
                         com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
                 boolean nearShip = shipPos != null
-                        && shipPos.distanceToSqr(player.position()) <= 128.0D * 128.0D;
+                        && shipPos.distanceToSqr(player.position()) <= SonarShipOwnership.NEAR_SHIP_RANGE_SQ;
                 boolean blockShipNearby = com.opamb.barotrauma.ship.ShipCores
-                        .nearestCore(level, player.blockPosition(), 48.0D) != null;
-                // 已确认属于物理船时，旁边另一艘船的核心不能把归属改掉；
-                // 只有靠距离兜底时才用方块船核心做消歧。
-                physical = confirmed || (nearShip && !blockShipNearby);
+                        .nearestCore(level, player.blockPosition(),
+                                SonarShipOwnership.BLOCK_SHIP_RANGE) != null;
+                physical = SonarShipOwnership.ownedByPhysicalShip(
+                        confirmed, nearShip, blockShipNearby);
             }
             BlockState sonarState = level.getBlockState(sonarPos);
             BlockPos center;

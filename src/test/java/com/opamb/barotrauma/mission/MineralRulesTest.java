@@ -22,6 +22,12 @@ class MineralRulesTest {
     }
 
     @Test
+    void 十进制进位不会因浮点误差少交() {
+        // 50 × 0.29 的二进制乘积是 14.499999999999998，Math.round 会得 14。
+        assertEquals(15, mineral(50, 0.29D).mineralHandoverCount());
+    }
+
+    @Test
     void 铀矿四个上交一个() {
         Mission mission = new Mission(2, MissionType.MINERAL, BlockPos.ZERO, 0, 1400);
         mission.setMineral("barotrauma:uraniumore", 4, 0.25D);

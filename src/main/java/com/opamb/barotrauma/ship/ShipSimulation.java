@@ -659,6 +659,15 @@ public final class ShipSimulation {
         return 0;
     }
 
+    /** 连海空腔列水位缓存：空腔下标 → (水量, 破口入口, 计算结果)。 */
+    private final java.util.Map<Integer, PocketLevelCache> pocketLevelCache =
+            new java.util.HashMap<>();
+
+    private record PocketLevelCache(double units,
+                                    java.util.List<net.minecraft.core.BlockPos> sources,
+                                    ShipPocketWater.Shape shape) {
+    }
+
     /**
      * 某一格的实际水位（格）：密闭舱室用整块水位；连海空腔按列水位
      * （和渲染同一套 {@link ShipPocketWater}），避免把空腔统一水位当成该列水位。
@@ -683,9 +692,19 @@ public final class ShipSimulation {
         if (pocket < 0 || pocket >= pockets.size() || pocketWater[pocket] <= 0.0D) {
             return 0.0D;
         }
-        ShipPocketWater.Shape shape = ShipPocketWater.compute(pockets.get(pocket).cells(),
-                breachSources, pocketWater[pocket]);
-        float level = shape.levelAt(cell.getX(), cell.getZ());
+        java.util.List<net.minecraft.core.BlockPos> sources = breachSources == null
+                ? java.util.List.of() : java.util.List.copyOf(breachSources);
+        // 同一空腔里 20 个接线盒会每 tick 重复算 20 次；水量/破口入口不变时直接复用。
+        // 几何在本实例里是 final（整船平移不会重建 simulation），不需要额外版本号。
+        PocketLevelCache cache = pocketLevelCache.get(pocket);
+        if (cache == null || cache.units() != pocketWater[pocket]
+                || !cache.sources().equals(sources)) {
+            ShipPocketWater.Shape shape = ShipPocketWater.compute(pockets.get(pocket).cells(),
+                    sources, pocketWater[pocket]);
+            cache = new PocketLevelCache(pocketWater[pocket], sources, shape);
+            pocketLevelCache.put(pocket, cache);
+        }
+        float level = cache.shape().levelAt(cell.getX(), cell.getZ());
         return Float.isNaN(level) ? bodyLevel(body) : level;
     }
 
@@ -720,6 +739,24 @@ public final class ShipSimulation {
         }
         boxes.clear();
         boxes.putAll(movedBoxes);
+        // 引擎/反应堆报告也要跟着走：engineSupplyFactor 用引擎格子去查消费者，
+        // 旧格子查不到已迁移的消费者会回退到默认总线电压，损坏支路因此产生推力。
+        java.util.Map<net.minecraft.core.BlockPos, EngineReport> movedEngines =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, EngineReport> entry
+                : engines.entrySet()) {
+            movedEngines.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        engines.clear();
+        engines.putAll(movedEngines);
+        java.util.Map<net.minecraft.core.BlockPos, ReactorReport> movedReactors =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, ReactorReport> entry
+                : reactors.entrySet()) {
+            movedReactors.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        reactors.clear();
+        reactors.putAll(movedReactors);
     }
 
     /**

@@ -82,7 +82,7 @@ public record PowerOpenRequestPacket() {
             for (ShipCoreBlockEntity core : ShipCores.coresNear(
                     level, player.blockPosition(), CORE_SEARCH)) {
                 if (VsState.isPhysical(level, core.getBlockPos())
-                        || VsPilot.isYardBlock(core.getBlockPos())) {
+                        || (VsState.active() && VsPilot.isYardBlock(core.getBlockPos()))) {
                     // 已装配成物理船：接线盒坐标是装配坐标，由上面的分支处理。
                     // yardOffset 已换算但 probe 还没就绪时 isPhysical 可能为 false，
                     // 所以再用船坞包围盒兜一层。

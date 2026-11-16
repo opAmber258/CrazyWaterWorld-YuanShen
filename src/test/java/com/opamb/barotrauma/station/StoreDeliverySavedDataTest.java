@@ -42,4 +42,15 @@ class StoreDeliverySavedDataTest {
     void takeAllEmpty() {
         assertTrue(new StoreDeliverySavedData().takeAll().isEmpty());
     }
+
+    @Test
+    @DisplayName("空 itemId / 非正数量不会进待交付列表")
+    void invalidInputIgnored() {
+        StoreDeliverySavedData data = new StoreDeliverySavedData();
+        UUID id = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        data.add(id, "", 1);
+        data.add(id, "barotrauma:oxygen_tank", 0);
+        data.add(id, "barotrauma:oxygen_tank", -1);
+        assertTrue(data.takeAll().isEmpty());
+    }
 }

@@ -44,4 +44,17 @@ class StorePricingTest {
         assertTrue(modifier >= -5 && modifier <= 5);
         assertEquals(modifier, StorePricing.modifierFor(20000, 0));
     }
+
+    @Test
+    @DisplayName("边界输入：非正基础价 / 负库存 / 负坐标")
+    void boundaryInputs() {
+        assertEquals(0, StorePricing.sellPrice(0, 0));
+        assertEquals(0, StorePricing.sellPrice(-100, 5));
+        // 负库存按 0 钳制后补 1；负初始库存按 0 算上限（0 + 5）。
+        assertEquals(1, StorePricing.restock(-3, 5));
+        assertEquals(1, StorePricing.restock(0, -4));
+        // 负坐标必须用 floorMod：换成 % 会得到 < -5 的修正。
+        int modifier = StorePricing.modifierFor(-20000, -17);
+        assertTrue(modifier >= -5 && modifier <= 5);
+    }
 }

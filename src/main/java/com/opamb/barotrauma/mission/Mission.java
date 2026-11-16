@@ -186,7 +186,11 @@ public final class Mission {
         if (mineralCount <= 0 || mineralHandover <= 0.0D) {
             return 0;
         }
-        return Math.max(1, (int) Math.round(mineralCount * mineralHandover));
+        // 用十进制算：50 × 0.29 在二进制里是 14.499999999999998，
+        // Math.round 会少交一个（应为 14.5 → 15）。
+        java.math.BigDecimal exact = java.math.BigDecimal.valueOf(mineralCount)
+                .multiply(java.math.BigDecimal.valueOf(mineralHandover));
+        return Math.max(1, exact.setScale(0, java.math.RoundingMode.HALF_UP).intValue());
     }
 
     public void setClientTaken(boolean taken) {
