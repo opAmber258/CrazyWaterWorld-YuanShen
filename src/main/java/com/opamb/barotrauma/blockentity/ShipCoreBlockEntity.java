@@ -441,6 +441,8 @@ public class ShipCoreBlockEntity extends BlockEntity {
             // 重扫会换一个新的 ShipState 对象；不迁走引擎倍率的话，
             // 开关一次门或拆一次船，买过的引擎升级就回到 1.0。
             state.setEngineMultiplier(previous.engineMultiplier());
+            // 航行控制（油门、功率、自动驾驶）同样属于旧实例，重扫不能重置。
+            state.inheritControlFrom(previous);
             state.hullDamage().retain(pos -> ModShipBlocks.isRepairableHull(level.getBlockState(pos)));
             // 开合门也会重扫：水量必须按格子搬过来，否则一关门水就全跑到漏水侧。
             state.inheritWaterFrom(previous);

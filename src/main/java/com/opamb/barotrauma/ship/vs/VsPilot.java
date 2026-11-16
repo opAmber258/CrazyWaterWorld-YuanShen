@@ -2202,15 +2202,18 @@ public final class VsPilot {
 
     public static String launch(ServerLevel level, Collection<BlockPos> blocks,
                                 @Nullable ShipState shipState, @Nullable BlockPos core) {
-        lastLevel = level;
+        // 存在性检查必须用船真正所在的维度（lastLevel），不能用请求所在维度；
+        // 否则在另一维度 /launch 被拒绝时，lastLevel 已经被改错，活动船的面板/
+        // 几何刷新都会指向错误维度。
         // 离站：先把对接口舱口都关上，免得装成物理船后艇顶还开着洞。
         com.opamb.barotrauma.world.DockingBay.close(level);
-        if (ship != null && !stillExists(level)) {
+        if (ship != null && !stillExists(lastLevel)) {
             dropStale();
         }
         if (ship != null) {
             return "已经有一艘物理船了，先 /barotrauma ship vs dock 拆掉";
         }
+        lastLevel = level;
         // 新一次装配：丢掉上一艘船残留的构件切割进度和电力面板会话。
         // 必须放在"已有物理船"的拒绝之后：这次装配没有发生，别把别人开着的面板会话清掉。
         clearFixtureCut();

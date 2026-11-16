@@ -164,7 +164,7 @@
   "power.no_devices": "No bindable devices in range",
   "key.barotrauma.power": "Power Panel",
   "power.no_ship": "Not on a ship",
-  "power.no_box": "No junction box on this ship",
+  "power.no_box": "No usable junction box within 8 blocks; move closer and try again",
   "item.barotrauma.screwdriver": "Screwdriver",
   "power.repaired": "Junction box repaired: %s%%",
   "automation.mode.manual": "Door: Manual",

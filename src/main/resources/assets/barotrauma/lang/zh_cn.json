@@ -164,7 +164,7 @@
   "power.no_devices": "16 格内没有可绑定的设备",
   "key.barotrauma.power": "电力面板",
   "power.no_ship": "不在船上",
-  "power.no_box": "本船没有接线盒",
+  "power.no_box": "8 格内没有可用接线盒，请靠近后重试",
   "item.barotrauma.screwdriver": "螺丝刀",
   "power.repaired": "接线盒已修复：%s%%",
   "automation.mode.manual": "门：手动",

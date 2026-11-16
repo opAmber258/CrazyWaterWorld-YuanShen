@@ -1015,6 +1015,11 @@ public final class StoreScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (delta != 0) {
             scroll = Math.max(0, Math.min(maxScroll(), scroll + (delta > 0 ? -1 : 1)));
+            // 滚轮把焦点行滚出可视区后，回车不能再去改看不见的商品数量。
+            if (focusRow >= 0) {
+                focusRow = Math.max(scroll,
+                        Math.min(focusRow, scroll + visibleRows() - 1));
+            }
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, delta);

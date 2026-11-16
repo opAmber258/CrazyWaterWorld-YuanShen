@@ -791,6 +791,23 @@ public final class ShipState {
     }
 
     /**
+     * 重扫换了新 ShipState 对象时，把航行控制状态从旧实例带过来。
+     *
+     * <p>不迁的话开合一次门/放一台机器就会把油门、功率和自动驾驶目标重置成默认值。</p>
+     */
+    public void inheritControlFrom(ShipState previous) {
+        if (previous == null) {
+            return;
+        }
+        this.throttleX = previous.throttleX;
+        this.throttleY = previous.throttleY;
+        this.throttleZ = previous.throttleZ;
+        this.power = previous.power;
+        this.autopilotHold = previous.autopilotHold;
+        this.autopilotTarget = previous.autopilotTarget;
+    }
+
+    /**
      * 平移后的船状态：几何整体偏移，模拟实例原样带过去。
      *
      * <p>船是刚体，挪一格不改变舱室，所以不需要重扫；温度和舱内水位也跟着保留——

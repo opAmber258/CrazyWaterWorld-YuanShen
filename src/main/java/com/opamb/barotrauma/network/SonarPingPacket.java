@@ -52,6 +52,14 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             if (player == null) {
                 return;
             }
+            // 服务端限频：客户端 10Hz 发请求，但每次扫描要翻已加载区块；
+            // 每名玩家最多 5Hz，多余请求直接丢掉。
+            long lastScan = player.getPersistentData().getLong("BarotraumaSonarScanTick");
+            if (lastScan > 0L && lastScan <= player.tickCount
+                    && player.tickCount - lastScan < 4L) {
+                return;
+            }
+            player.getPersistentData().putLong("BarotraumaSonarScanTick", player.tickCount);
             ServerLevel level = player.serverLevel();
             // 声纳扫描中心必须和自动驾驶/目标标记用同一个基准：
             // 方块船 = 声纳台方块；物理船 = 船核心的世界坐标（方块在 VS2 船坞里，
@@ -63,12 +71,12 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             if (physical) {
                 // 代理方块的世界坐标不一定被 managingShip 认出来，补上舱室/船心距离判定；
                 // 玩家仍在方块船上（附近有方块船核心）时不能算物理船。
+                // 舱室判定必须用实时船体变换（偏航后旧包围盒会把旁边方块船的玩家
+                // 误判成物理船）；null = 不在物理船舱内。
                 boolean confirmed = com.opamb.barotrauma.ship.vs.VsState
                         .isPhysical(level, sonarPos)
                         || com.opamb.barotrauma.ship.vs.VsState
-                        .isPhysical(level, player.blockPosition())
-                        || com.opamb.barotrauma.ship.vs.VsPilot
-                        .isInsideCompartment(level, player.position());
+                        .queryPlayerInDryCompartment(level, player.position()) != null;
                 net.minecraft.world.phys.Vec3 shipPos =
                         com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
                 boolean nearShip = shipPos != null
