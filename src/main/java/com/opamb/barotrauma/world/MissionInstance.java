@@ -248,39 +248,43 @@ public final class MissionInstance {
      */
     public static boolean inRouteZone(int x, int z) {
         int base = Math.max(0, Math.round((x - BASE_X) / (float) SPACING));
-        int min = Math.max(0, base - 1);
-        int max = base + 1;
+        int first = Math.max(0, base - 1);
+        int last = base + 1;
+        for (int slot = first; slot <= last; slot++) {
+            if (inRouteSlot(slot, x, z)) {
+                return true;
+            }
+        }
         RouteLevel active = routeLevel;
         if (active != null) {
-            // 旧存档的锚点不按当前 SPACING 排列：活动槽位始终参与判定，
-            // 否则 x 落在两个新槽位之间时整条活动航道都不会清空。
-            min = Math.min(min, Math.max(0, active.slot() - 1));
-            max = Math.max(max, active.slot() + 1);
-        }
-        for (int slot = min; slot <= max; slot++) {
-            Anchor anchor = anchorForRound(slot);
-            DockingBay.Site start = startSite(anchor);
-            if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 64.0D) {
-                return true;
-            }
-            if (Math.hypot(x - start.x(), z - start.z()) <= 64.0D) {
-                return true;
-            }
-            RouteLevel level = routeLevel;
-            if (level != null && level.slot() == slot) {
-                // 活动关卡：主航道 + 侧隧道是网络，净空按到整个网络的距离算。
-                RoutePath path = activePath();
-                if (path != null && path.distanceToNetwork(x, z)
-                        <= Math.max(48.0D, routeClearRadius(slot))) {
-                    return true;
-                }
-            } else if (distanceToSegment(x, z, anchor.x(), anchor.z(),
-                    start.x(), start.z()) <= routeClearRadius(slot)) {
-                // 旧槽位没有活动关卡，保持原来的直线水道。
+            // 旧存档的活动锚点不按当前 SPACING 排列：单独补查活动槽位，
+            // 但不把两个布局之间的槽位全部遍历（slot 100 时那会放大成 50 次）。
+            int slot = Math.max(0, active.slot());
+            if ((slot < first || slot > last) && inRouteSlot(slot, x, z)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** 单个槽位的航道净空判定。 */
+    private static boolean inRouteSlot(int slot, int x, int z) {
+        Anchor anchor = anchorForRound(slot);
+        DockingBay.Site start = startSite(anchor);
+        if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 64.0D
+                || Math.hypot(x - start.x(), z - start.z()) <= 64.0D) {
+            return true;
+        }
+        RouteLevel level = routeLevel;
+        if (level != null && level.slot() == slot) {
+            // 活动关卡：主航道 + 侧隧道是网络，净空按到整个网络的距离算。
+            RoutePath path = activePath();
+            return path != null && path.distanceToNetwork(x, z)
+                    <= Math.max(48.0D, routeClearRadius(slot));
+        }
+        // 旧槽位没有活动关卡，保持原来的直线水道。
+        return distanceToSegment(x, z, anchor.x(), anchor.z(),
+                start.x(), start.z()) <= routeClearRadius(slot);
     }
 
     /** 主航道净空半径：活动槽位用大洞窟横向半宽，其它槽位用原来的 48。 */
@@ -312,38 +316,44 @@ public final class MissionInstance {
      */
     public static boolean inMiningZone(int x, int z) {
         int base = Math.max(0, Math.round((x - BASE_X) / (float) SPACING));
-        int min = Math.max(0, base - 1);
-        int max = base + 1;
-        RouteLevel active = routeLevel;
-        if (active != null) {
-            // 和 inRouteZone 一样：旧存档的活动槽位坐标不按当前 SPACING 排列。
-            min = Math.min(min, Math.max(0, active.slot() - 1));
-            max = Math.max(max, active.slot() + 1);
-        }
-        for (int slot = min; slot <= max; slot++) {
-            Anchor anchor = anchorForRound(slot);
-            DockingBay.Site start = startSite(anchor);
-            if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 24.0D
-                    || Math.hypot(x - start.x(), z - start.z()) <= 24.0D) {
-                continue;
-            }
-            if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 150.0D
-                    || Math.hypot(x - start.x(), z - start.z()) <= 150.0D) {
+        int first = Math.max(0, base - 1);
+        int last = base + 1;
+        for (int slot = first; slot <= last; slot++) {
+            if (inMiningSlot(slot, x, z)) {
                 return true;
             }
-            RouteLevel level = routeLevel;
-            if (level != null && level.slot() == slot) {
-                RoutePath path = activePath();
-                double radius = level.type().params().cavernHalfWidth() + 80.0D;
-                if (path != null && path.distanceToNetwork(x, z) <= Math.max(140.0D, radius)) {
-                    return true;
-                }
-            } else if (distanceToSegment(x, z, anchor.x(), anchor.z(),
-                    start.x(), start.z()) <= 120.0D) {
+        }
+        RouteLevel active = routeLevel;
+        if (active != null) {
+            // 和 inRouteZone 一样：活动槽位单独补查，不遍历中间无关槽位。
+            int slot = Math.max(0, active.slot());
+            if ((slot < first || slot > last) && inMiningSlot(slot, x, z)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** 单个槽位的矿区判定；码头正下方 24 格排除。 */
+    private static boolean inMiningSlot(int slot, int x, int z) {
+        Anchor anchor = anchorForRound(slot);
+        DockingBay.Site start = startSite(anchor);
+        double toAnchor = Math.hypot(x - anchor.x(), z - anchor.z());
+        double toStart = Math.hypot(x - start.x(), z - start.z());
+        if (toAnchor <= 24.0D || toStart <= 24.0D) {
+            return false;
+        }
+        if (toAnchor <= 150.0D || toStart <= 150.0D) {
+            return true;
+        }
+        RouteLevel level = routeLevel;
+        if (level != null && level.slot() == slot) {
+            RoutePath path = activePath();
+            double radius = level.type().params().cavernHalfWidth() + 80.0D;
+            return path != null && path.distanceToNetwork(x, z) <= Math.max(140.0D, radius);
+        }
+        return distanceToSegment(x, z, anchor.x(), anchor.z(),
+                start.x(), start.z()) <= 120.0D;
     }
 
     private static double distanceToSegment(double px, double pz,
@@ -379,22 +389,21 @@ public final class MissionInstance {
 
     /** 坐标附近的实例站点锚点 x（世界生成用；不在任何站净空范围内返回 null）。 */
     public static Integer siteXAt(int x, int z) {
-        if (Math.abs(z) > SITE_RADIUS) {
-            return null;
-        }
         RouteLevel level = routeLevel;
         if (level != null) {
             // 活动关卡按保存的 anchorX 认站：旧存档槽位 3 用当前间距会算出别的 x。
+            // 先认活动站点再套默认布局的 |z| 过滤：南北出发站的 z 可以到 ±1600。
             Anchor anchor = anchorForRound(level.slot());
-            if (Math.abs(x - anchor.x()) <= SITE_RADIUS
-                    && Math.abs(z - anchor.z()) <= SITE_RADIUS) {
+            if (withinSite(x, z, anchor.x(), anchor.z())) {
                 return anchor.x();
             }
             DockingBay.Site start = startSite(anchor);
-            if (Math.abs(x - start.x()) <= SITE_RADIUS
-                    && Math.abs(z - start.z()) <= SITE_RADIUS) {
+            if (withinSite(x, z, start.x(), start.z())) {
                 return start.x();
             }
+        }
+        if (Math.abs(z) > SITE_RADIUS) {
+            return null;
         }
         int slot = Math.round((x - BASE_X) / (float) SPACING);
         if (slot < 0) {
@@ -402,6 +411,10 @@ public final class MissionInstance {
         }
         int ax = BASE_X + slot * SPACING;
         return Math.abs(x - ax) <= SITE_RADIUS ? ax : null;
+    }
+
+    private static boolean withinSite(int x, int z, int siteX, int siteZ) {
+        return Math.abs(x - siteX) <= SITE_RADIUS && Math.abs(z - siteZ) <= SITE_RADIUS;
     }
 
     // ------------------------------------------------------------------

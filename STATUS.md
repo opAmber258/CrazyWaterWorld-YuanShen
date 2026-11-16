@@ -88,6 +88,10 @@
   旧存档活动槽位改按保存的 `anchorX` 认站（`siteSlot`/`siteXAt`/`inRouteZone`/
   `inMiningZone`，含 1024 间距槽位 2/3 回归测试）；`LevelParamsTest` 删恒真断言、
   补模数边界用例（零概率 baseline×4、极大概率 128）。
+- 第四次 full review 批次（3 条）：`onUseTick` 区分未命中/被拒绝，拒绝记录保留到换目标，
+  按住被拒目标不再每 2 tick 重发 `BreakEvent`；`inRouteZone`/`inMiningZone` 保持
+  base±1 候选并单独补查活动槽位（旧槽位 100 时不会遍历 50 个中间槽位）；
+  `siteXAt` 先认活动站点再套默认 `|z| <= 64` 过滤（南北出发站 z 可到 ±1600）。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的

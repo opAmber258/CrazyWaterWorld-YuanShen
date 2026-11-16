@@ -99,6 +99,10 @@ class MissionInstanceTest {
                 "basic 700 已超过 432，改走南北：x 与目的站相同");
         assertEquals(anchor.z() - basic.routeLength(), MissionInstance.startSite(anchor).z(),
                 "slot 4 偶数走北，距离是 basic 的路线长度");
+        var north = MissionInstance.startSite(anchor);
+        assertEquals(Integer.valueOf(north.x()),
+                MissionInstance.siteXAt(north.x(), north.z()),
+                "南北出发站的 z 超出默认 |z|<=64 过滤，也必须能认出来");
         assertEquals(MissionInstance.START_DISTANCE,
                 MissionInstance.startDistanceFor(MissionInstance.anchorForRound(5)),
                 "非活动槽位仍用默认 192");

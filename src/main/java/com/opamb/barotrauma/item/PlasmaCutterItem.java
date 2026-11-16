@@ -73,6 +73,9 @@ public class PlasmaCutterItem extends Item {
     private record CutTarget(BlockPos pos, int applications, boolean allowed) {
     }
 
+    /** 一次切割应用的结果：切到了 / 没命中 / 目标被权限拒绝。 */
+    private enum CutResult { CUT, MISS, DENIED }
+
     public PlasmaCutterItem(Properties properties) {
         super(properties);
     }
@@ -138,10 +141,14 @@ public class PlasmaCutterItem extends Item {
             return;
         }
         ServerLevel server = (ServerLevel) level;
-        boolean cut = cutSomething(server, (ServerPlayer) player);
-        if (!cut) {
+        CutResult result = cutSomething(server, (ServerPlayer) player);
+        if (result == CutResult.MISS) {
             // 没切到东西：清掉半截进度，别让下次瞄到同一格时直接完成。
             clearProgress((ServerPlayer) player, server);
+            return;
+        }
+        if (result == CutResult.DENIED) {
+            // 被拒绝的目标保留记录：按住不放时不再每 2 tick 重发破坏事件。
             return;
         }
         if (player.tickCount % OXYGEN_INTERVAL == 0) {
@@ -160,12 +167,12 @@ public class PlasmaCutterItem extends Item {
         }
     }
 
-    /** 服务端一次切割应用；返回 true 表示确实切到了矿脉/船壳/舱门。 */
-    private boolean cutSomething(ServerLevel level, ServerPlayer player) {
+    /** 服务端一次切割应用：区分切到、没命中、被权限拒绝三种结果。 */
+    private CutResult cutSomething(ServerLevel level, ServerPlayer player) {
         // 和原版方块破坏同一套权限判定：冒险模式/领地限制下不能靠切割器绕过。
         if (!player.mayBuild()) {
             clearProgress(player, level);
-            return false;
+            return CutResult.MISS;
         }
         HitResult hit = player.pick(REACH, 0.0F, false);
         if (hit instanceof BlockHitResult blockHit && hit.getType() == HitResult.Type.BLOCK) {
@@ -173,11 +180,11 @@ public class PlasmaCutterItem extends Item {
             BlockState state = level.getBlockState(pos);
             if (state.getBlock() instanceof MineralVeinBlock vein) {
                 if (denied(player, pos)) {
-                    return false;
+                    return CutResult.DENIED;
                 }
                 if (startingCut(player, pos) && !canBreak(level, player, pos)) {
                     deny(level, player, pos);
-                    return false;
+                    return CutResult.DENIED;
                 }
                 return progress(level, player, pos, VEIN_CUT_APPLICATIONS, () -> {
                     level.destroyBlock(pos, false);
@@ -189,19 +196,20 @@ public class PlasmaCutterItem extends Item {
                     level.sendParticles(ParticleTypes.CRIT,
                             pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D,
                             12, 0.3D, 0.3D, 0.3D, 0.05D);
-                });
+                }) ? CutResult.CUT : CutResult.MISS;
             }
             // 方块船（没装配成物理船）：门/舱口切烂，船壳走船核心耐久。
             if (VsState.active()) {
-                return VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION);
+                return VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION)
+                        ? CutResult.CUT : CutResult.MISS;
             }
             if (isFixture(state)) {
                 if (denied(player, pos)) {
-                    return false;
+                    return CutResult.DENIED;
                 }
                 if (startingCut(player, pos) && !canBreak(level, player, pos)) {
                     deny(level, player, pos);
-                    return false;
+                    return CutResult.DENIED;
                 }
                 return progress(level, player, pos, FIXTURE_CUT_APPLICATIONS, () -> {
                     ItemStack drop = new ItemStack(state.getBlock().asItem());
@@ -211,19 +219,21 @@ public class PlasmaCutterItem extends Item {
                     }
                     level.playSound(null, pos, SoundEvents.NETHERITE_BLOCK_BREAK,
                             SoundSource.PLAYERS, 0.8F, 0.8F);
-                });
+                }) ? CutResult.CUT : CutResult.MISS;
             }
             if (ModShipBlocks.isRepairableHull(state)) {
                 ShipCoreBlockEntity core = ShipCores.nearestCore(level, pos, 64.0D);
                 if (core == null || core.state() == null) {
-                    return false;
+                    return CutResult.MISS;
                 }
-                return core.damageBlock(level, pos, HULL_DAMAGE_PER_APPLICATION, player);
+                return core.damageBlock(level, pos, HULL_DAMAGE_PER_APPLICATION, player)
+                        ? CutResult.CUT : CutResult.MISS;
             }
-            return false;
+            return CutResult.MISS;
         }
         // 物理船的方块在世界里是空气，只能按装配快照做视线检测。
-        return VsState.active() && VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION);
+        return VsState.active() && VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION)
+                ? CutResult.CUT : CutResult.MISS;
     }
 
     /** 是否刚开始切这一格：只有第一次应用才发破坏事件，别每 2 tick 重复触发。 */
