@@ -78,6 +78,8 @@ public final class ShipSimulation {
     /** 引擎上报表：格子 → (目标力%, 耗电 kW, 最大推力, 最后上报 tick)。 */
     private final java.util.Map<net.minecraft.core.BlockPos, EngineReport> engines =
             new java.util.HashMap<>();
+    /** 推进最多吃几台引擎的推力：超出部分不叠加（和 {@code VsThruster} 的上限一致）。 */
+    public static final int MAX_ENGINES = 8;
     private long engineTick;
     private static final int ENGINE_STALE_TICKS = 40;
     private int lastEngineCount;
@@ -1014,9 +1016,12 @@ public final class ShipSimulation {
      *
      * <p>物理推进不能直接用"全船电压 × 引擎数"：某台引擎绑的接线盒坏了/缺失时
      * 它实际拿不到电，必须单独扣掉。</p>
+     *
+     * <p>最多只算 {@link #MAX_ENGINES} 台：9 台引擎在额定电压下加起来是 9，
+     * 远低于系数上限（8×2^(2/3)≈12.7），不按台数截断就会凭空多出一台推力。</p>
      */
     public double engineSupplyFactor() {
-        double sum = 0.0D;
+        java.util.List<Double> powered = new java.util.ArrayList<>(engines.size());
         for (var entry : engines.entrySet()) {
             EngineReport report = entry.getValue();
             if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS) {
@@ -1024,8 +1029,14 @@ public final class ShipSimulation {
             }
             double voltage = consumerVoltage(entry.getKey());
             if (voltage >= 0.5D) {
-                sum += Math.pow(Math.min(voltage, 2.0D), 2.0D / 3.0D);
+                powered.add(Math.pow(Math.min(voltage, 2.0D), 2.0D / 3.0D));
             }
+        }
+        // 按系数从大到小取前 8 台：结果和 HashMap 遍历顺序无关。
+        powered.sort(java.util.Comparator.reverseOrder());
+        double sum = 0.0D;
+        for (int i = 0; i < powered.size() && i < MAX_ENGINES; i++) {
+            sum += powered.get(i);
         }
         return sum;
     }

@@ -276,6 +276,12 @@ public final class MedicalClinicScreen extends Screen {
         if (delta != 0) {
             int max = Math.max(0, state.entries().size() - VISIBLE_ROWS);
             scroll = Math.max(0, Math.min(max, scroll + (delta > 0 ? -1 : 1)));
+            // 焦点行被滚出可视区后，Enter 不能再去治那一行（会误治并扣费）：
+            // 把焦点夹回可视范围，高亮仍在玩家看得见的那一行上。
+            if (focusRow >= 0) {
+                focusRow = Math.max(scroll,
+                        Math.min(focusRow, scroll + VISIBLE_ROWS - 1));
+            }
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, delta);

@@ -109,6 +109,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第十七次 full review（`94eeede` 之后，2 条）**：`ShipSavedData.AssembledShip` 新增 `knownInterior`（历史舱内格，LongArray 落盘）：`recordAssembled`（含 `shipState` 几何里的 interior）、每 5 秒 `syncAssembledRecord`、认领 `adopt` 三处都带上它——切掉外壁舱口后几何 interior 会被外部洪泛裁空，存档/重启后靠泊吸附仍能认出房里的人/任务货（新增 `ShipSavedDataTest` 2 条 NBT 往返/旧档回退）；起航交付改 `StoreService.deliverPendingOnDeparture` + `StoreDeliverySavedData.takeAll()`，按待交付订单 UUID 遍历（含已下线玩家），货柜交付不需要玩家对象、只有背包回退才要在线玩家，离线送不出去的继续留待下次起航（新增 `StoreDeliverySavedDataTest` 2 条）。**跳过**：`restoreBlocks` 的 PowerBox 坐标平移、矿脉批量预加载、`fillFromNoise` 关卡快照穿透；两条端到端回归（切舱口→重载→靠泊、A 下单退出→B 起航）需活的 ServerLevel/VS2 运行时，留待实机验收。
 
+  **第十八次 full review（`7f07a3e` 之后，6 条）**：`VsPilot.rebuildGeometry` 增加维度守卫（`lastLevel != level` 直接返回）：主世界开关/放置门不再用那边方块当船坞重扫，深海活动船的几何/水量/耐久记录不会被清空；`MedicalClinicScreen.mouseScrolled` 把焦点行夹回可视区（滚出屏幕后 Enter 不会误治不可见行）；`StoreScreen.keyPressed` 在 `awaitingState` 期间只放行 Esc（等待交易响应时键盘不能改购物车）；`VsPilot.dock` 的任务散箱搜索框中心改用 `toWorld(corePos)` 的当前变换位置（偏航后不再整体偏出舱室）；`ShipSimulation.engineSupplyFactor` 只取系数最高的 `MAX_ENGINES=8` 台（9 台引擎额定电压不再多出一台推力；`VsThruster.setEngineCount` 共用常量，新增 `EngineSupplyFactorTest` 3 条）；`MissionInstance.paramsForColumn` 负槽位返回 null（`BASE_X` 以西的列不再误用槽位 0 的活动参数，新增回归）。**跳过**：`restoreBlocks` 的 PowerBox 坐标平移、矿脉批量预加载、`fillFromNoise` 关卡快照穿透；跨维度/靠泊搜索框两条端到端回归需活的 ServerLevel/VS2，留待实机验收。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

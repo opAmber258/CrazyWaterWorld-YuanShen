@@ -779,6 +779,11 @@ public final class StoreScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (awaitingState && keyCode != 256) {
+            // 上一单还在等服务端快照：键盘也不许改购物车（响应到达时 receive() 会清空
+            // 这些选择，玩家看到的选择和实际成交对不上）。Esc 仍放行，可以关界面。
+            return true;
+        }
         if (deliveryPrompt) {
             if (keyCode == 256) {
                 deliveryPrompt = false;

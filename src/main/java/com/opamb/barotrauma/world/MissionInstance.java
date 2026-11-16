@@ -189,7 +189,10 @@ public final class MissionInstance {
                 return level.type().params();
             }
         }
-        return paramsForSlot(Math.max(0, Math.round((x - BASE_X) / (float) SPACING)));
+        int slot = Math.round((x - BASE_X) / (float) SPACING);
+        // 负槽位不属于任何关卡：钳到 0 会让 BASE_X 以西的列误用槽位 0 的活动参数
+        // （海底高度和矿脉密度都会跟着变），按"非活动槽位"返回 null。
+        return slot < 0 ? null : paramsForSlot(slot);
     }
 
     /**

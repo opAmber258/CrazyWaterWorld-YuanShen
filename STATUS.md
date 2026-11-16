@@ -3,7 +3,7 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-17（PR #61 第十七轮 CodeRabbit 修复，289 项测试通过，协议 16；
+> 上次更新：2026-11-17（PR #61 第十八轮 CodeRabbit 修复，293 项测试通过，协议 16；
 > 本地 `main` 仍在 `77009a7`，`origin/main` 已多 3 个美术提交，**还没 pull**）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
@@ -51,7 +51,7 @@
 - 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
 
 ### 4. 验证 / 未做
-- `./gradlew compileJava test --offline`：**289 项测试 0 失败（51 个测试类）**（2026-11-17 第十七轮后）。
+- `./gradlew compileJava test --offline`：**293 项测试 0 失败（52 个测试类）**（2026-11-17 第十八轮后）。
 - 客户端本轮未起（用户要求等通知）；实机验收待用户。
 - 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
   任务/沉船/怪物等 P0 缺口。
@@ -214,6 +214,16 @@
   （`ShipSavedDataTest` 2 条、`StoreDeliverySavedDataTest` 2 条）。
   **仍跳过**：上面三项。两条端到端回归（切舱口→重载→靠泊、A 下单退出→B 起航）
   需要活的 ServerLevel/VS2 运行时，当前单测环境没有，待实机验收一起看。
+- 第十八次 full review 批次（6 条）：`VsPilot.rebuildGeometry` 拒绝非活动船维度
+  （主世界开关/放置门不再拿那边方块当船坞重扫、清空深海船的几何与耐久记录）；
+  诊所滚动时把焦点行夹回可视区（滚出屏幕后按 Enter 不会误治不可见的那一行）；
+  商店 `keyPressed` 在 `awaitingState` 期间只放行 Esc（等待交易响应时键盘也不能
+  改购物车）；靠泊时任务散箱搜索框改用 `toWorld(corePos)` 的当前变换中心（偏航
+  后不再整体偏出舱室）；`ShipSimulation.engineSupplyFactor` 按系数取前
+  `MAX_ENGINES=8` 台（9 台引擎额定电压不再凭空多一台推力，`VsThruster` 共用
+  同一常量，新增 3 条测试）；`paramsForColumn` 对负槽位返回 null（`BASE_X` 以西
+  的列不再误用槽位 0 的活动参数，新增回归）。**仍跳过**：上面三项 + PowerBox。
+  跨维度/靠泊搜索框两条端到端回归同样需要活的 ServerLevel/VS2，待实机验收。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。第十五轮 CodeRabbit
   又按 `restoreBlocks` 提了一次，仍按用户"先不管电力那块"跳过。

@@ -172,9 +172,9 @@ public final class VsThruster implements ShipPhysicsListener {
         return supply;
     }
 
-    /** 船上引擎数量；多台叠加推力，0 台完全不推进。 */
+    /** 船上引擎数量；多台叠加推力，0 台完全不推进（最多 8 台，见 ShipSimulation.MAX_ENGINES）。 */
     public void setEngineCount(int count) {
-        engineCount = Math.max(0, Math.min(count, 8));
+        engineCount = Math.max(0, Math.min(count, com.opamb.barotrauma.ship.ShipSimulation.MAX_ENGINES));
     }
 
     public int engineCount() {

@@ -1293,6 +1293,12 @@ public final class VsPilot {
         if (current == null || core == null || yardOffsetX == Integer.MIN_VALUE) {
             return;
         }
+        if (lastLevel != null && lastLevel != level) {
+            // 活动物理船在另一个维度：那边开关门/放门时也会走到这个刷新入口，
+            // 但船坞坐标只在活动船自己的维度里有效。拿别的维度去读会把活动船的
+            // 几何清空，replaceGeometry 还会顺手清掉船壳耐久记录。
+            return;
+        }
         final int ox = yardOffsetX;
         final int oy = yardOffsetY;
         final int oz = yardOffsetZ;
@@ -2595,12 +2601,13 @@ public final class VsPilot {
         Map<BlockPos, BlockState> restore = snapshot;
         BlockPos oldCore = corePos;
         // 靠泊吸附会整体平移船；先把"在船上"的玩家和任务散箱记下来，拆完一起搬。
-        int moveX = dx;
-        int moveY = dy;
-        int moveZ = dz;
-        Vec3 oldCoreWorld = oldCore == null ? null
-                : new Vec3(oldCore.getX() + moveX + 0.5D, oldCore.getY() + moveY + 0.5D,
-                        oldCore.getZ() + moveZ + 0.5D);
+        // 核心世界位置用当前船体变换算：只加平移的话，偏航后核心相对旋转中心的偏移
+        // 会算错（180° 时差 2·cu），任务散箱搜索框可能整体偏出舱室。
+        Vec3 oldCoreWorld = oldCore == null ? null : toWorld(oldCore);
+        if (oldCoreWorld == null && oldCore != null) {
+            oldCoreWorld = new Vec3(oldCore.getX() + dx + 0.5D, oldCore.getY() + dy + 0.5D,
+                    oldCore.getZ() + dz + 0.5D);
+        }
         List<ServerPlayer> riders = new ArrayList<>();
         List<net.minecraft.world.entity.item.ItemEntity> pinnedCargo = new ArrayList<>();
         if (oldCoreWorld != null) {

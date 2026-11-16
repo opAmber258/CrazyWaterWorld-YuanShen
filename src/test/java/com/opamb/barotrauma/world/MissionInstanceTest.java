@@ -184,6 +184,19 @@ class MissionInstanceTest {
     }
 
     @Test
+    @DisplayName("活动槽位 0 时，BASE_X 以西的列不用活动关卡参数")
+    void negativeColumnsDoNotUseActiveLevel() {
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                0, LevelType.ADVANCED, 7L, 9,
+                LevelType.ADVANCED.params().routeLength(), MissionInstance.BASE_X));
+        MissionInstance.setRouteOutposts(0, true, true);
+
+        // BASE_X 以西 1 个间距：按间距反推是槽位 -1，不是活动槽位 0。
+        assertNull(MissionInstance.paramsForColumn(MissionInstance.BASE_X - MissionInstance.SPACING),
+                "负槽位不属于任何关卡，不能钳到 0 去用活动参数");
+    }
+
+    @Test
     @DisplayName("没有活动关卡时出发站距离回退 192")
     void noRouteLevelFallback() {
         MissionInstance.setRouteLevel(null);
