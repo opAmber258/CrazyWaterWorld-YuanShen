@@ -47,11 +47,13 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 先运行 `python tools/asset_delivery.py status <资产目录>` 获取短状态，再按任务读 `.mex/patterns/deliver-model-asset.md` 或 `publish.md` 的相应分流。规则见 `docs/ASSET_DELIVERY_CONVENTION.md`，建档/迁移才查 `docs/ASSET_VALIDATION.md`。事实从资产提取，validation 是唯一验证摘要；无需默认加载详细审计、内嵌图片、其他资产或历史版本。
 
-## 交接快照（2026-11-10）
+## 交接快照（2026-11-16）
 
-**新会话先读仓库根 `STATUS.md` 顶部「2026-11-10」一节。** 那里是当前交接：任务目录 Phase 0 +
-任务界面迁到导航终端，代码全在工作区（14 改 + 6 未跟踪，**未提交、未 push、未 pull**），
-L1 203 项通过，等实机验收和用户的「提交」授权。本文件以下只保留长期项目状态。
+**新会话先读仓库根 `STATUS.md` 顶部「2026-11-15」一节。** 那里是当前交接：
+哨站服务 + 关卡洞窟网络 + 电力/采矿/装备批次在 PR #61
+（`feat/outpost-batch-20261115`）等 CodeRabbit 复审；PR 的修复在独立 worktree
+`barotrauma-pr61` 完成，主工作区还有未验收的电池/修理改动，**本地 `main` 还没 pull**。
+本文件以下只保留长期项目状态。
 
 ## 合作者下次开工提醒：先读模块还原路线
 
@@ -80,6 +82,8 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
   **第三次 full review（`b08b508` 之后，3 条 + nitpick）**：声纳目标选择套用 `drawCloud` 的 `depth >= camDistance`，相机背后的矿脉不再能被点成自动驾驶目标；切割器在矿脉/舱门分支前调用 `ForgeHooks.onBlockBreakEvent` + `blockActionRestricted`（只在换目标后的第一次应用触发，拒绝时清进度）；旧存档活动槽位改按保存的 `anchorX` 认站（`siteSlot`/`siteXAt` 精确匹配活动锚点与出发站，`inRouteZone`/`inMiningZone` 强制包含活动槽位），补 1024 间距槽位 2/3 单测；`LevelParamsTest` 删恒真断言并补 `veinModulus` 边界（零概率 baseline×4、极大概率 128）。
 
   **第四次 full review（`f3a07ff` 之后，3 条）**：`onUseTick` 改看三态 `CutResult`（CUT/MISS/DENIED），拒绝目标保留 `allowed=false` 记录到换目标，按住被拒方块不再每 2 tick 重发 `BreakEvent`；`inRouteZone`/`inMiningZone` 保持 base±1 候选、活动槽位单独补查并去重（旧槽位 100 时不会遍历 50 个中间槽位）；`siteXAt` 先认活动锚点/出发站再套默认 `|z| <= 64` 过滤，南北出发站（z 可到 ±1600）也能识别，补对应断言。
+
+  **第五次 full review（`fc8e028` 之后，10 条 + outside-diff）**：舱口水密判定取左/中/右三段最大水量（三格下可能是两个舱）；接线盒按船体几何归属选核心（不再只认最近核心）；反应堆 `effectCenter` 先判 `VsState.isPhysical` 再换算警报/烟雾坐标；诊所与商店界面文字全部改 `Component.translatable` 并补 `zh_cn`/`en_us` 键；`resetShipRuntime` 先清 `MissionInstance.routeLevel`（单人换世界不重启 JVM）；切割器只在命中格真属于物理船时走 `VsState.tryCut`，三格舱口整套拆除且只掉一个；`maxWaterFraction` 只看直接相邻水体（不再经 `pumpBody` 穿墙，新增 `AutomationWaterTest`）；`StoreService.sellCart` 拒绝任务货箱；`ROUTER.md` 交接入口指到 STATUS 顶部的 2026-11-15 节。
 
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 

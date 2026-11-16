@@ -126,14 +126,18 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
         return Component.translatable(getBlockState().getBlock().getDescriptionId());
     }
 
-    /** 不属于活动物理船：按附近核心找方块船。 */
+    /** 不属于活动物理船：按附近核心找船体几何包含该坐标的方块船。 */
     private static ShipState resolveBlockShip(ServerLevel level, BlockPos pos) {
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, pos, 64.0D);
-        if (core == null) {
-            return null;
+        // 两艘船靠近时，最近的核心可能属于另一艘船；必须按船体归属选，
+        // 否则 tracksHullBlock 会失败，这个盒子的设备就被判成断电。
+        for (ShipCoreBlockEntity core : ShipCores.coresNear(level, pos, 64.0D)) {
+            // 方块船 state 不存档，重载后要等 rescan。
+            ShipState state = core.state() != null ? core.state() : core.rescan(level);
+            if (state != null && state.tracksHullBlock(pos)) {
+                return state;
+            }
         }
-        // 方块船 state 不存档，重载后要等 rescan。
-        return core.state() != null ? core.state() : core.rescan(level);
+        return null;
     }
 
     @Override

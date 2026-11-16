@@ -61,7 +61,7 @@ public final class StoreScreen extends Screen {
     }
 
     private StoreScreen(StoreStatePacket state) {
-        super(Component.literal("商人"));
+        super(Component.translatable("store.title"));
         this.state = state;
     }
 
@@ -259,15 +259,19 @@ public final class StoreScreen extends Screen {
         g.fill(x, y, x + 1, y + PANEL_H, EDGE);
         g.fill(x + PANEL_W - 1, y, x + PANEL_W, y + PANEL_H, EDGE);
 
-        g.drawString(font, "商人", x + 10, y + 6, ACCENT, false);
-        String wallet = "钱包 " + state.wallet() + " mk";
+        g.drawString(font, Component.translatable("store.title"), x + 10, y + 6, ACCENT, false);
+        String wallet = Component.translatable("store.wallet", state.wallet()).getString();
         g.drawString(font, wallet, x + PANEL_W - 10 - font.width(wallet), y + 6, GREEN, false);
-        String balance = "商人余额 " + state.merchantBalance() + " mk";
+        String balance = Component.translatable("store.merchant_balance",
+                state.merchantBalance()).getString();
         g.drawString(font, balance, x + PANEL_W - 10 - font.width(balance), y + 18, DIM, false);
 
-        drawTab(g, x + 10, y + 22, "购买", tab == TAB_BUY, mouseX, mouseY);
-        drawTab(g, x + 70, y + 22, "出售", tab == TAB_SELL, mouseX, mouseY);
-        drawTab(g, x + 130, y + 22, "潜艇", tab == TAB_SUB, mouseX, mouseY);
+        drawTab(g, x + 10, y + 22, Component.translatable("store.tab.buy").getString(),
+                tab == TAB_BUY, mouseX, mouseY);
+        drawTab(g, x + 70, y + 22, Component.translatable("store.tab.sell").getString(),
+                tab == TAB_SELL, mouseX, mouseY);
+        drawTab(g, x + 130, y + 22, Component.translatable("store.tab.sub").getString(),
+                tab == TAB_SUB, mouseX, mouseY);
         g.fill(x + 8, listTop() - 3, x + PANEL_W - 8, listTop() - 2, EDGE);
 
         if (tab == TAB_BUY) {
@@ -281,9 +285,12 @@ public final class StoreScreen extends Screen {
         int total = tab == TAB_BUY ? buyTotal() : tab == TAB_SELL ? sellTotal() : subTotal();
         int cartY = y + PANEL_H - 38;
         String cartText = switch (tab) {
-            case TAB_BUY -> "购物车 " + cartCount() + " 件 · 总价 " + total + " mk";
-            case TAB_SELL -> "出售车 " + cartCount() + " 件 · 总价 " + total + " mk";
-            default -> "从潜艇出售 " + cartCount() + " 件 · 总价 " + total + " mk";
+            case TAB_BUY -> Component.translatable("store.cart.buy",
+                    cartCount(), total).getString();
+            case TAB_SELL -> Component.translatable("store.cart.sell",
+                    cartCount(), total).getString();
+            default -> Component.translatable("store.cart.sub",
+                    cartCount(), total).getString();
         };
         g.drawString(font, cartText, x + 10, cartY + 5, total > state.wallet()
                 && tab == TAB_BUY ? RED : TEXT, false);
@@ -294,10 +301,11 @@ public final class StoreScreen extends Screen {
         g.fill(buttonX, cartY, buttonX + 110, cartY + 18,
                 can ? hover ? HOVER : 0xFF3A4A3C : BOX);
         g.fill(buttonX, cartY, buttonX + 110, cartY + 1, EDGE);
-        g.drawCenteredString(font, tab == TAB_BUY ? "购买" : "出售",
+        g.drawCenteredString(font, Component.translatable(
+                        tab == TAB_BUY ? "store.tab.buy" : "store.tab.sell"),
                 buttonX + 55, cartY + 5, can ? TEXT : DIM);
 
-        g.drawString(font, "−/+ 调数量 · 左键行 +1 · 滚轮翻页 · Esc 关闭",
+        g.drawString(font, Component.translatable("store.hint"),
                 x + 10, y + PANEL_H - 14, DIM, false);
 
         if (deliveryPrompt) {
@@ -317,12 +325,17 @@ public final class StoreScreen extends Screen {
         g.fill(px, py + h - 1, px + w, py + h, EDGE);
         g.fill(px, py, px + 1, py + h, EDGE);
         g.fill(px + w - 1, py, px + w, py + h, EDGE);
-        g.drawString(font, "要立即获得已购买物品，还是在起航时送至潜艇？", px + 10, py + 8, TEXT, false);
-        g.drawString(font, "立即获得：直接进背包", px + 10, py + 24, DIM, false);
-        g.drawString(font, "送至潜艇：起航时放进船上货柜", px + 10, py + 36, DIM, false);
+        g.drawString(font, Component.translatable("store.delivery.title"),
+                px + 10, py + 8, TEXT, false);
+        g.drawString(font, Component.translatable("store.delivery.immediate_desc"),
+                px + 10, py + 24, DIM, false);
+        g.drawString(font, Component.translatable("store.delivery.sub_desc"),
+                px + 10, py + 36, DIM, false);
         int by = py + h - 26;
-        drawPromptButton(g, "立即获得", px + 12, by, 110, mouseX, mouseY);
-        drawPromptButton(g, "送至潜艇", px + 138, by, 110, mouseX, mouseY);
+        drawPromptButton(g, Component.translatable("store.delivery.immediate").getString(),
+                px + 12, by, 110, mouseX, mouseY);
+        drawPromptButton(g, Component.translatable("store.delivery.sub").getString(),
+                px + 138, by, 110, mouseX, mouseY);
     }
 
     private void drawPromptButton(GuiGraphics g, String label, int x, int y, int w,
@@ -359,7 +372,9 @@ public final class StoreScreen extends Screen {
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
             g.drawString(font, name, x + 34, rowY + 5, TEXT, false);
             g.drawString(font, "[" + entry.category() + "]", x + 196, rowY + 5, DIM, false);
-            String stock = entry.stock() > 0 ? "库存 " + entry.stock() : "售罄";
+            String stock = entry.stock() > 0
+                    ? Component.translatable("store.stock", entry.stock()).getString()
+                    : Component.translatable("store.sold_out").getString();
             g.drawString(font, stock, x + 262, rowY + 5,
                     entry.stock() > 0 ? DIM : RED, false);
             drawQuantity(g, x, rowY, buyQuantity(entry.itemId()), entry.stock(), mouseX, mouseY);
@@ -368,7 +383,8 @@ public final class StoreScreen extends Screen {
                     state.wallet() >= entry.buyPrice() ? GREEN : RED, false);
         }
         if (entries.isEmpty()) {
-            g.drawString(font, "货架空了", x + 12, top + 6, DIM, false);
+            g.drawString(font, Component.translatable("store.empty_shelf"),
+                    x + 12, top + 6, DIM, false);
         }
     }
 
@@ -385,14 +401,16 @@ public final class StoreScreen extends Screen {
             g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H, hover ? HOVER : BOX);
             g.renderItem(row.stack(), x + 12, rowY + 1);
             g.drawString(font, row.stack().getHoverName().getString(), x + 34, rowY + 5, TEXT, false);
-            g.drawString(font, "槽位 " + row.slot(), x + 196, rowY + 5, DIM, false);
+            g.drawString(font, Component.translatable("store.slot", row.slot()),
+                    x + 196, rowY + 5, DIM, false);
             g.drawString(font, "×" + row.stack().getCount(), x + 262, rowY + 5, DIM, false);
             drawQuantity(g, x, rowY, sellQuantity(row.slot()), row.stack().getCount(), mouseX, mouseY);
             String price = row.entry().sellPrice() + " mk";
             g.drawString(font, price, x + PANEL_W - 14 - font.width(price), rowY + 5, GREEN, false);
         }
         if (rows.isEmpty()) {
-            g.drawString(font, "背包里没有商店收购的物品", x + 12, top + 6, DIM, false);
+            g.drawString(font, Component.translatable("store.empty_bag"),
+                    x + 12, top + 6, DIM, false);
         }
     }
 
@@ -414,13 +432,15 @@ public final class StoreScreen extends Screen {
             }
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
             g.drawString(font, name, x + 34, rowY + 5, TEXT, false);
-            g.drawString(font, "船上 ×" + entry.quantity(), x + 196, rowY + 5, DIM, false);
+            g.drawString(font, Component.translatable("store.on_ship", entry.quantity()),
+                    x + 196, rowY + 5, DIM, false);
             drawQuantity(g, x, rowY, subQuantity(entry.itemId()), entry.quantity(), mouseX, mouseY);
             String price = entry.sellPrice() + " mk";
             g.drawString(font, price, x + PANEL_W - 14 - font.width(price), rowY + 5, GREEN, false);
         }
         if (entries.isEmpty()) {
-            g.drawString(font, "潜艇里没有商店收购的物品", x + 12, top + 6, DIM, false);
+            g.drawString(font, Component.translatable("store.empty_sub"),
+                    x + 12, top + 6, DIM, false);
         }
     }
 

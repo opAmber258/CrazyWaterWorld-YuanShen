@@ -8,6 +8,7 @@ import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -76,7 +77,14 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity {
                 // 开在海里的舱口：水密模式不能自动打开。
                 want = false;
             } else {
-                double water = AutomationUtil.maxWaterFraction(ship, cell);
+                // 三格宽的舱口下面可能是两个舱：取左/中/右三段的最大水量，
+                // 只查中间格会漏掉左右段下方的湿舱。
+                Direction longAxis = state.getValue(HatchBlock.FACING).getClockWise();
+                double water = 0.0D;
+                for (int offset = -1; offset <= 1; offset++) {
+                    water = Math.max(water, AutomationUtil.maxWaterFraction(
+                            ship, cell.relative(longAxis, offset)));
+                }
                 if (water > 0.3D) {
                     want = false;
                 } else if (water < 0.1D) {

@@ -330,6 +330,10 @@ public final class StoreService {
                 message(player, "商店不收这个物品", ChatFormatting.RED);
                 return;
             }
+            if (MissionCargo.isMissionCrate(stack)) {
+                message(player, "任务货箱不能出售", ChatFormatting.RED);
+                return;
+            }
             if (!canSell(stack)) {
                 message(player, "这个物品不能出售：耐久低于 90% 或里面还装着东西",
                         ChatFormatting.RED);

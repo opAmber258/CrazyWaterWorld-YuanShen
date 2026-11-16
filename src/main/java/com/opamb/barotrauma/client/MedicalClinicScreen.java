@@ -39,7 +39,7 @@ public final class MedicalClinicScreen extends Screen {
     private int scroll;
 
     private MedicalClinicScreen(ClinicStatePacket state) {
-        super(Component.literal("医疗诊所"));
+        super(Component.translatable("clinic.title"));
         this.state = state;
     }
 
@@ -94,10 +94,11 @@ public final class MedicalClinicScreen extends Screen {
         g.fill(x, y, x + 1, y + PANEL_H, EDGE);
         g.fill(x + PANEL_W - 1, y, x + PANEL_W, y + PANEL_H, EDGE);
 
-        g.drawString(font, "医疗诊所", x + 10, y + 6, ACCENT, false);
-        String wallet = "钱包 " + state.wallet() + " mk";
+        g.drawString(font, Component.translatable("clinic.title"), x + 10, y + 6, ACCENT, false);
+        String wallet = Component.translatable("clinic.wallet", state.wallet()).getString();
         g.drawString(font, wallet, x + PANEL_W - 10 - font.width(wallet), y + 6, GREEN, false);
-        g.drawString(font, "医生按病症强度收费（原作公式）", x + 10, y + 20, DIM, false);
+        g.drawString(font, Component.translatable("clinic.price_hint"),
+                x + 10, y + 20, DIM, false);
         g.fill(x + 8, listTop() - 3, x + PANEL_W - 8, listTop() - 2, EDGE);
 
         List<ClinicStatePacket.Entry> entries = state.entries();
@@ -114,7 +115,7 @@ public final class MedicalClinicScreen extends Screen {
                     state.wallet() >= entry.price() ? GREEN : RED, false);
         }
         if (entries.isEmpty()) {
-            g.drawString(font, "没有需要治疗的病症。你看起来很健康。", x + 14, listTop() + 6,
+            g.drawString(font, Component.translatable("clinic.empty"), x + 14, listTop() + 6,
                     GREEN, false);
         }
 
@@ -126,11 +127,12 @@ public final class MedicalClinicScreen extends Screen {
         g.fill(x + 10, buttonY, x + 190, buttonY + 18,
                 entries.isEmpty() ? BOX : hover ? HOVER : 0xFF3A4A3C);
         g.fill(x + 10, buttonY, x + 190, buttonY + 1, EDGE);
-        g.drawCenteredString(font, entries.isEmpty() ? "全部治疗"
-                        : "全部治疗（" + total + " mk）",
+        g.drawCenteredString(font, entries.isEmpty()
+                        ? Component.translatable("clinic.heal_all")
+                        : Component.translatable("clinic.heal_all_price", total),
                 x + 100, buttonY + 5, canAll ? TEXT : RED);
 
-        g.drawString(font, "左键一行治疗该病症 · 滚轮翻页 · Esc 关闭",
+        g.drawString(font, Component.translatable("clinic.hint"),
                 x + 10, y + PANEL_H - 14, DIM, false);
     }
 

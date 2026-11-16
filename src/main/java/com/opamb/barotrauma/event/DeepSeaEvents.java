@@ -22,6 +22,7 @@ import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.ship.vs.VsSupport;
 import com.opamb.barotrauma.ship.water.ShipVolumeGuard;
 import com.opamb.barotrauma.sonar.SonarScan;
+import com.opamb.barotrauma.world.MissionInstance;
 import com.opamb.barotrauma.world.ModDimensions;
 import com.opamb.barotrauma.world.StarterSub;
 import net.minecraft.ChatFormatting;
@@ -969,6 +970,9 @@ public final class DeepSeaEvents {
     private static void resetShipRuntime(String phase) {
         VsState.deactivate();
         ShipVolumeGuard.deactivate();
+        // 单人退出世界后 JVM 不重启：上一世界的航道配置会残留到新世界。
+        // onServerStarted 随后会按当前存档 restoreRoute 重新写入。
+        MissionInstance.setRouteLevel(null);
         if (VsSupport.available()) {
             VsPilot.resetForServerLifecycle();
         }

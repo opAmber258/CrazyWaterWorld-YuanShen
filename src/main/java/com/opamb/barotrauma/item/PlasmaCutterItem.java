@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.item;
 
+import com.opamb.barotrauma.block.HatchBlock;
 import com.opamb.barotrauma.block.MineralVeinBlock;
 import com.opamb.barotrauma.equipment.ItemSubSlot;
 import com.opamb.barotrauma.registry.ModItems;
@@ -198,8 +199,9 @@ public class PlasmaCutterItem extends Item {
                             12, 0.3D, 0.3D, 0.3D, 0.05D);
                 }) ? CutResult.CUT : CutResult.MISS;
             }
-            // 方块船（没装配成物理船）：门/舱口切烂，船壳走船核心耐久。
-            if (VsState.active()) {
+            // 只有命中格真的属于物理船才走快照切割；否则普通舱口/未装配船壳
+            // 会被 tryCut 吞掉，永远进不了下面的普通分支。
+            if (VsState.isPhysical(level, pos)) {
                 return VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION)
                         ? CutResult.CUT : CutResult.MISS;
             }
@@ -212,11 +214,7 @@ public class PlasmaCutterItem extends Item {
                     return CutResult.DENIED;
                 }
                 return progress(level, player, pos, FIXTURE_CUT_APPLICATIONS, () -> {
-                    ItemStack drop = new ItemStack(state.getBlock().asItem());
-                    level.destroyBlock(pos, false);
-                    if (!drop.isEmpty()) {
-                        Block.popResource(level, pos, drop);
-                    }
+                    breakFixture(level, pos, state);
                     level.playSound(null, pos, SoundEvents.NETHERITE_BLOCK_BREAK,
                             SoundSource.PLAYERS, 0.8F, 0.8F);
                 }) ? CutResult.CUT : CutResult.MISS;
@@ -298,6 +296,35 @@ public class PlasmaCutterItem extends Item {
         return block == ModShipBlocks.BULKHEAD_DOOR.get()
                 || block == ModShipBlocks.HATCH.get()
                 || block == ModShipBlocks.HATCH_LADDER.get();
+    }
+
+    /**
+     * 拆掉命中的设施。三格舱口要整套拆（左/中/右），只掉一个物品；
+     * 只删命中格会让玩家切三格拿三个舱口。
+     */
+    private static void breakFixture(ServerLevel level, BlockPos pos, BlockState state) {
+        if (state.getBlock() instanceof HatchBlock) {
+            var longAxis = state.getValue(HatchBlock.FACING).getClockWise();
+            int offset = state.getValue(HatchBlock.PART).ordinal() - 1;
+            BlockPos middle = pos.relative(longAxis, -offset);
+            BlockState middleState = level.getBlockState(middle);
+            if (middleState.getBlock() instanceof HatchBlock
+                    && middleState.getValue(HatchBlock.PART) == HatchBlock.Part.MIDDLE) {
+                ItemStack drop = new ItemStack(middleState.getBlock().asItem());
+                for (int i = -1; i <= 1; i++) {
+                    level.destroyBlock(middle.relative(longAxis, i), false);
+                }
+                if (!drop.isEmpty()) {
+                    Block.popResource(level, middle, drop);
+                }
+                return;
+            }
+        }
+        ItemStack drop = new ItemStack(state.getBlock().asItem());
+        level.destroyBlock(pos, false);
+        if (!drop.isEmpty()) {
+            Block.popResource(level, pos, drop);
+        }
     }
 
     /** 子格里的氧气瓶还有氧气吗（原作 plasmacutter 只接受 oxygensource）。 */

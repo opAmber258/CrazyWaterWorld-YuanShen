@@ -50,7 +50,7 @@
 - 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
 
 ### 4. 验证 / 未做
-- `./gradlew compileJava test --offline`：**274 项测试 0 失败（47 个测试类）**。
+- `./gradlew compileJava test --offline`：**275 项测试 0 失败（48 个测试类）**。
 - 客户端本轮未起（用户要求等通知）；实机验收待用户。
 - 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
   任务/沉船/怪物等 P0 缺口。
@@ -92,6 +92,11 @@
   按住被拒目标不再每 2 tick 重发 `BreakEvent`；`inRouteZone`/`inMiningZone` 保持
   base±1 候选并单独补查活动槽位（旧槽位 100 时不会遍历 50 个中间槽位）；
   `siteXAt` 先认活动站点再套默认 `|z| <= 64` 过滤（南北出发站 z 可到 ±1600）。
+- 第五次 full review 批次（10 条 + outside-diff）：三格舱口水密判定取左/中/右最大水量；
+  接线盒按船体归属选核心；反应堆特效坐标先判 `isPhysical`；诊所/商店界面文字全部走
+  `zh_cn`/`en_us` 语言键；服务器启动前清空 `MissionInstance.routeLevel`；切割器只对
+  命中格真属于物理船时走 `tryCut`，舱口整套拆除只掉一个；门水量只算直接相邻水体
+  （新增 `AutomationWaterTest`）；`sellCart` 拒绝任务货箱；`ROUTER.md` 交接入口更新。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的

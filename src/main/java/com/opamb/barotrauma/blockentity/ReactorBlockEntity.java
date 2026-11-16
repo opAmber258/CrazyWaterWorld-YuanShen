@@ -255,7 +255,9 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
 
     /** 玩家/物理船所在的世界坐标；物理船的方块实体在船坞里，要用船体变换换算。 */
     private Vec3 effectCenter(ServerLevel level) {
-        if (VsState.active()) {
+        // 只有本反应堆属于物理船时才换算坐标：另一艘物理船活动时，
+        // 普通方块船反应堆不能套用它的船坞偏移。
+        if (VsState.isPhysical(level, worldPosition)) {
             Vec3 mapped = VsPilot.assemblyToWorld(VsPilot.toAssembly(worldPosition));
             if (mapped != null) {
                 return mapped;

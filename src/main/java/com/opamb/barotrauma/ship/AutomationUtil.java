@@ -72,11 +72,9 @@ public final class AutomationUtil {
     public static double maxWaterFraction(ShipState ship, BlockPos cell) {
         double max = 0.0D;
         for (Direction direction : Direction.values()) {
-            BlockPos neighbor = cell.relative(direction);
-            int body = ship.simulation().bodyOf(neighbor);
-            if (body < 0) {
-                body = ship.simulation().pumpBody(neighbor);
-            }
+            // 只看直接相邻的水体。pumpBody 会为了实心泵再多跳一格，
+            // 用在这里会穿过一格隔墙读到另一个舱室，把干舱之间的门关掉。
+            int body = ship.simulation().bodyOf(cell.relative(direction));
             if (body >= 0) {
                 max = Math.max(max, ship.simulation().bodyWaterFraction(body));
             }
