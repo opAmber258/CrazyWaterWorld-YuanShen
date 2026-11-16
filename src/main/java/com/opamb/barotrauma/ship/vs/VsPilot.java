@@ -1303,7 +1303,8 @@ public final class VsPilot {
                     }
                     BlockState shell = level.getBlockState(pos.offset(ox, oy, oz));
                     return ModShipBlocks.isRepairableHull(shell) || ModShipBlocks.isDoorway(shell);
-                });
+                },
+                pos -> ModShipBlocks.isEquipment(level.getBlockState(pos.offset(ox, oy, oz))));
         current.replaceGeometry(geometry);
         // breached 方块仍是 ship block，重新装配/重扫后耐久表可能是空的：按 blockstate 补 0%。
         List<BlockPos> breached = new ArrayList<>();
@@ -2584,15 +2585,21 @@ public final class VsPilot {
         }
         // 靠泊吸附把船整体搬走时，船上的玩家和任务散箱要一起搬：否则船瞬移到码头、
         // 人还留在海里，散箱也会被落下导致货运结算 0 箱（用户实测）。
-        if (snapX != 0 || snapY != 0 || snapZ != 0) {
+        // 位移 = 恢复后的方块位置 - 拆船前的实际位置，含取整差；不能只用 snap，
+        // 也不能漏掉航行过程中已经产生的位移。
+        double shiftX = dx - (now.x - assembledPos.x);
+        double shiftY = dy - (now.y - assembledPos.y);
+        double shiftZ = dz - (now.z - assembledPos.z);
+        if (Math.abs(shiftX) > 1.0E-6D || Math.abs(shiftY) > 1.0E-6D
+                || Math.abs(shiftZ) > 1.0E-6D) {
             for (ServerPlayer rider : riders) {
-                rider.teleportTo(level, rider.getX() + snapX, rider.getY() + snapY,
-                        rider.getZ() + snapZ, rider.getYRot(), rider.getXRot());
+                rider.teleportTo(level, rider.getX() + shiftX, rider.getY() + shiftY,
+                        rider.getZ() + shiftZ, rider.getYRot(), rider.getXRot());
                 rider.setDeltaMovement(Vec3.ZERO);
                 rider.fallDistance = 0.0F;
             }
             for (net.minecraft.world.entity.item.ItemEntity item : pinnedCargo) {
-                item.setPos(item.getX() + snapX, item.getY() + snapY, item.getZ() + snapZ);
+                item.setPos(item.getX() + shiftX, item.getY() + shiftY, item.getZ() + shiftZ);
                 item.setDeltaMovement(Vec3.ZERO);
             }
         }
@@ -2977,7 +2984,11 @@ public final class VsPilot {
             }
         };
         ShipGeometry.Result geometry = ShipGeometry.scanShip(core, ShipCoreBlockEntity.RADIUS,
-                snap::containsKey, probe);
+                snap::containsKey, probe, 0, null,
+                pos -> {
+                    BlockState st = snap.get(pos);
+                    return st != null && ModShipBlocks.isEquipment(st);
+                });
         ShipState rebuilt = new ShipState(geometry,
                 new MachineCount(0, 0, 0, 0, 0, 0, sonar));
         rebuilt.setHullHealthMultiplier(record.hullMultiplier);

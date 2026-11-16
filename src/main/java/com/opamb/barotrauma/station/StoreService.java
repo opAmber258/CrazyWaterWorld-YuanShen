@@ -121,20 +121,19 @@ public final class StoreService {
         for (Map.Entry<String, Integer> entry : cart.entrySet()) {
             StoreCatalog.Entry catalog = StoreCatalog.byItemId(entry.getKey());
             if (catalog == null || !catalog.buyable()) {
-                message(player, "商店不出售这个物品", ChatFormatting.RED);
+                message(player, "store.no_such_item", ChatFormatting.RED);
                 return;
             }
             int quantity = Math.min(entry.getValue(), store.stock(entry.getKey()));
             if (quantity <= 0) {
-                message(player, catalog.itemId() + " 已经售罄，等下一趟再来", ChatFormatting.GRAY);
+                message(player, "store.out_of_stock", ChatFormatting.GRAY, catalog.itemId());
                 return;
             }
             total += StorePricing.buyPrice(catalog.basePrice(), store.modifier()) * quantity;
             valid.add(new StoreActionPacket.Line(entry.getKey(), -1, quantity));
         }
         if (!wallet.spendCredits(total)) {
-            message(player, "整单需要 " + total + " mk，余额不足（当前 " + wallet.credits() + "）",
-                    ChatFormatting.RED);
+            message(player, "store.not_enough_money", ChatFormatting.RED, total, wallet.credits());
             return;
         }
 
@@ -195,13 +194,15 @@ public final class StoreService {
         }
         data.setDirty();
         if (bought <= 0) {
-            message(player, "购买失败（已退款）", ChatFormatting.RED);
+            message(player, "store.purchase_failed_refund", ChatFormatting.RED);
             return;
         }
-        String where = deliverImmediately ? "" : "，起航时送至潜艇";
-        String suffix = failed > 0 ? "，" + failed + " 件放不下已退款" : "";
-        message(player, "已购买 " + firstName + " ×" + bought + where + suffix
-                + "（-" + charged + " mk）", ChatFormatting.GREEN);
+        String where = deliverImmediately ? ""
+                : Component.translatable("store.purchased.deliver").getString();
+        String suffix = failed > 0
+                ? Component.translatable("store.purchased.failed_suffix", failed).getString() : "";
+        message(player, "store.purchased", ChatFormatting.GREEN,
+                firstName, bought, where, suffix, charged);
     }
 
     /**
@@ -253,13 +254,12 @@ public final class StoreService {
         }
         if (delivered > 0) {
             player.getInventory().setChanged();
-            message(player, "商店订购的货已送到潜艇：" + firstName + " 等 " + delivered + " 件",
-                    ChatFormatting.GREEN);
+            message(player, "store.delivered", ChatFormatting.GREEN, firstName, delivered);
         }
         if (!remaining.isEmpty()) {
             data.restore(player.getUUID(), remaining);
             int count = remaining.values().stream().mapToInt(Integer::intValue).sum();
-            message(player, count + " 件货柜放不下，下次起航再送", ChatFormatting.GRAY);
+            message(player, "store.delivery_remaining", ChatFormatting.GRAY, count);
         }
     }
 
@@ -318,12 +318,12 @@ public final class StoreService {
             }
             String expected = line.itemId();
             if (expected == null || expected.isEmpty()) {
-                message(player, "购物车里的物品已经变了，请重新选择", ChatFormatting.RED);
+                message(player, "store.cart_changed", ChatFormatting.RED);
                 return;
             }
             String previous = expectedIds.putIfAbsent(line.slot(), expected);
             if (previous != null && !previous.equals(expected)) {
-                message(player, "购物车里的物品已经变了，请重新选择", ChatFormatting.RED);
+                message(player, "store.cart_changed", ChatFormatting.RED);
                 return;
             }
             cart.merge(line.slot(), quantity, Integer::sum);
@@ -336,7 +336,9 @@ public final class StoreService {
         List<SellUnit> valid = new ArrayList<>();
         for (Map.Entry<Integer, Integer> entry : cart.entrySet()) {
             int slot = entry.getKey();
-            if (slot < 0 || slot >= player.getInventory().getContainerSize()) {
+            if (slot < 0
+                    || slot >= net.minecraft.world.entity.player.Inventory.INVENTORY_SIZE) {
+                // 商店只收主背包 0..35；护甲槽/副手槽不能通过出售行写入。
                 continue;
             }
             ItemStack stack = player.getInventory().getItem(slot);
@@ -346,21 +348,20 @@ public final class StoreService {
             String expected = expectedIds.get(slot);
             String actual = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
             if (expected == null || !expected.equals(actual)) {
-                message(player, "购物车里的物品已经变了，请重新选择", ChatFormatting.RED);
+                message(player, "store.cart_changed", ChatFormatting.RED);
                 return;
             }
             StoreCatalog.Entry catalog = catalogFor(stack);
             if (catalog == null) {
-                message(player, "商店不收这个物品", ChatFormatting.RED);
+                message(player, "store.not_buying", ChatFormatting.RED);
                 return;
             }
             if (MissionCargo.isMissionCrate(stack)) {
-                message(player, "任务货箱不能出售", ChatFormatting.RED);
+                message(player, "store.mission_crate", ChatFormatting.RED);
                 return;
             }
             if (!canSell(stack)) {
-                message(player, "这个物品不能出售：耐久低于 90% 或里面还装着东西",
-                        ChatFormatting.RED);
+                message(player, "store.cant_sell", ChatFormatting.RED);
                 return;
             }
             int quantity = Math.min(entry.getValue(), stack.getCount());
@@ -375,7 +376,7 @@ public final class StoreService {
             return;
         }
         if (!store.canPay(total)) {
-            message(player, "商人余额不足，买不起你手里的货", ChatFormatting.RED);
+            message(player, "store.merchant_broke", ChatFormatting.RED);
             return;
         }
 
@@ -408,8 +409,7 @@ public final class StoreService {
         wallet.addCredits(earned);
         store.pay(earned);
         data.setDirty();
-        message(player, "已出售 " + firstName + " ×" + sold + "（+" + earned + " mk）",
-                ChatFormatting.GREEN);
+        message(player, "store.sold", ChatFormatting.GREEN, firstName, sold, earned);
     }
 
     // ------------------------------------------------------------------
@@ -442,12 +442,12 @@ public final class StoreService {
         for (Map.Entry<String, Integer> entry : cart.entrySet()) {
             StoreCatalog.Entry catalog = StoreCatalog.byItemId(entry.getKey());
             if (catalog == null) {
-                message(player, "商店不收这个物品", ChatFormatting.RED);
+                message(player, "store.not_buying", ChatFormatting.RED);
                 return;
             }
             int quantity = Math.min(entry.getValue(), available.getOrDefault(entry.getKey(), 0));
             if (quantity <= 0) {
-                message(player, "潜艇里没有可以出售的 " + entry.getKey(), ChatFormatting.GRAY);
+                message(player, "store.sub_missing", ChatFormatting.GRAY, entry.getKey());
                 return;
             }
             int unitPrice = StorePricing.sellPrice(catalog.basePrice(), store.modifier());
@@ -458,7 +458,7 @@ public final class StoreService {
             return;
         }
         if (!store.canPay(total)) {
-            message(player, "商人余额不足，买不起你船上的货", ChatFormatting.RED);
+            message(player, "store.merchant_broke_sub", ChatFormatting.RED);
             return;
         }
 
@@ -499,8 +499,7 @@ public final class StoreService {
         wallet.addCredits(earned);
         store.pay(earned);
         data.setDirty();
-        message(player, "已从潜艇出售 " + firstName + " ×" + sold + "（+" + earned + " mk）",
-                ChatFormatting.GREEN);
+        message(player, "store.sub_sold", ChatFormatting.GREEN, firstName, sold, earned);
     }
 
     private record SubSale(String itemId, int quantity, int unitPrice) {
@@ -629,7 +628,9 @@ public final class StoreService {
 
     private static Item resolveItem(String itemId) {
         try {
-            return ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
+            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
+            // 找不到的 ID 在部分注册表实现里会返回 AIR，不能当成合法商品。
+            return item == null || item == net.minecraft.world.item.Items.AIR ? null : item;
         } catch (RuntimeException e) {
             return null;
         }
@@ -668,7 +669,8 @@ public final class StoreService {
                 new StoreStatePacket(wallet.credits(), store.balance(), open, entries, subEntries));
     }
 
-    private static void message(ServerPlayer player, String text, ChatFormatting color) {
-        player.sendSystemMessage(Component.literal(text).withStyle(color));
+    private static void message(ServerPlayer player, String key, ChatFormatting color,
+                                Object... args) {
+        player.sendSystemMessage(Component.translatable(key, args).withStyle(color));
     }
 }

@@ -98,8 +98,14 @@ class RoutePathTest {
                     double t = step / 10.0D;
                     double x = a.x() + (b.x() - a.x()) * t;
                     double z = a.z() + (b.z() - a.z()) * t;
-                    assertNotNull(path.openAt(x, z, SEED),
+                    double y = a.y() + (b.y() - a.y()) * t;
+                    RoutePath.Open open = path.openAt(x, z, SEED);
+                    assertNotNull(open,
                             "侧隧道中心线被岩壁截断 @" + Math.round(x) + "," + Math.round(z));
+                    assertTrue(y <= open.top() + 1.0E-6D && y >= open.bottom() - 1.0E-6D,
+                            "中心线高度必须落在洞窟区间内 @" + Math.round(x) + "," + Math.round(z)
+                                    + " y=" + Math.round(y) + " open=" + open.bottom()
+                                    + ".." + open.top());
                 }
             }
         }

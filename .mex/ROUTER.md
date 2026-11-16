@@ -91,6 +91,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第八次 full review（`2afa0ec` 之后，9 条 + 1 条 outside-diff）**：`HatchBlock`/`BulkheadDoorBlock` 开合改用 `DrainPumpBlockEntity.resolveCore` 重扫归属核心（不再固定 16 格扫描）；接线盒面板每行显示设备坐标；`MineralVeinClient` 只接受本地玩家写入/复位；`PowerPanelState.corePosFor` 按船体几何选核心；`ShipMover` 同时搬舱壁门自动模式 NBT；`ShipState.tickMovement` 用 `engineSupplyFactor()`（每台引擎按实际电压，8 台上限）；物理船熔毁判定改 `VsState.isPhysical`；海底矿脉要求 `touchesAir`。**跳过**：物品浮力在物理船上的方块查询坐标 —— 需实机确认 VS2 世界方块可查性，且当前没有已验证的世界→装配逆变换 API，留待客户端验收。
 
+  **第九次 full review（`c07454e` 之后，13 条 + 1 条 nitpick）**：`docs/OUTPOST_SERVICES.md` 协议更新到 16 并注明出售只收主背包 0–35；`PowerBindPacket` 成功/失败都回刷新，接线盒按钮不会永久禁用；商店提交 3 秒超时解锁；`PlayerSneakEdgeMixin` 改用只判物理船的 `isInsidePhysicalShipCompartment`；`SonarPingPacket` 按声纳/玩家归属解析物理船；`ShipGeometry.collectHull` 增加设备谓词，孤立接线盒不再抢走最近船体（新增回归用例）；靠泊搬人/货改用 `dx - (now - assembledPos)` 的完整位移；`sellCart` 限主背包槽、`resolveItem` 拒绝 AIR；商店/诊所提示全部 `Component.translatable` 并补双语键；`RoutePathTest` 增加中心线高度断言。**跳过**：出生站矿脉预加载耗时（需实机 profile）、旧区块矿脉产量保证（需产品层提示方案）。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

@@ -206,6 +206,13 @@ public final class OceanEnvironment {
         return zone != null && zone.isInsideCompartment(level, pos);
     }
 
+    /** 只判物理船舱室（不含方块船干舱）：潜行防掉边 mixin 专用。 */
+    public static boolean isInsidePhysicalShipCompartment(Level level, Vec3 pos) {
+        return isInOcean(level, pos)
+                && com.opamb.barotrauma.ship.vs.VsState
+                .queryPlayerInDryCompartment(level, pos) != null;
+    }
+
     /**
      * 游泳/溺水的权威浸没判定（issue #31）：在 {@link #isSubmerged} 之上追加
      * 方块船干舱兜底与物理船舱内干湿询问。

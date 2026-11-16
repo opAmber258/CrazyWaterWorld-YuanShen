@@ -27,9 +27,10 @@ public record PowerBindPacket(BlockPos boxPos, BlockPos devicePos, boolean bind)
             if (player == null) {
                 return;
             }
-            if (PowerPanelState.bind(player, boxPos, devicePos, bind)) {
-                PowerPanelState.refresh(player, boxPos);
-            }
+            // 成功失败都要回一次刷新：客户端按"提交后禁用按钮"处理，
+            // 失败时没有回包会让按钮永远点不了。
+            PowerPanelState.bind(player, boxPos, devicePos, bind);
+            PowerPanelState.refresh(player, boxPos);
             context.setPacketHandled(true);
         });
     }

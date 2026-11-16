@@ -61,6 +61,8 @@ public final class StoreScreen extends Screen {
     private final Map<String, Integer> subCart = new LinkedHashMap<>();
     /** 已提交、等服务端快照返回：期间禁止再次提交，避免重复扣物品/扣钱。 */
     private boolean awaitingState;
+    /** 提交时刻；服务端没回包时 3 秒后自动解锁，别让界面永久卡死。 */
+    private long awaitingSince;
     /** 照原作购买确认：先问"现在拿"还是"送到潜艇"。 */
     private boolean deliveryPrompt;
 
@@ -260,6 +262,10 @@ public final class StoreScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        if (awaitingState && System.currentTimeMillis() - awaitingSince > 3000L) {
+            // 服务端拒绝/断线时可能没有回包：超时解锁，避免界面永久卡死。
+            awaitingState = false;
+        }
         renderBackground(g);
         int x = leftPos();
         int y = topPos();
@@ -662,6 +668,7 @@ public final class StoreScreen extends Screen {
             return;
         }
         awaitingState = true;
+        awaitingSince = System.currentTimeMillis();
         ModNetwork.sendToServer(new StoreActionPacket(action, lines, deliver));
     }
 

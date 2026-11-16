@@ -56,7 +56,12 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             // 声纳扫描中心必须和自动驾驶/目标标记用同一个基准：
             // 方块船 = 声纳台方块；物理船 = 船核心的世界坐标（方块在 VS2 船坞里，
             // 方块坐标不是世界坐标；玩家站的位置也不是核心，差了会让目标整体歪掉）。
-            boolean physical = com.opamb.barotrauma.ship.vs.VsState.active();
+            // 只有声纳/玩家确实在活动物理船上时才走物理状态；方块船不能因为
+            // "世界上有一艘物理船"就套用它的电压和核心位置。
+            boolean physical = com.opamb.barotrauma.ship.vs.VsState.active()
+                    && com.opamb.barotrauma.ship.vs.VsPilot.activeLevel() == level
+                    && (com.opamb.barotrauma.ship.vs.VsState.isPhysical(level, sonarPos)
+                    || com.opamb.barotrauma.ship.vs.VsState.isPhysical(level, player.blockPosition()));
             BlockState sonarState = level.getBlockState(sonarPos);
             BlockPos center;
             if (physical) {
@@ -76,7 +81,8 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             ShipState ship = null;
             if (core != null) {
                 ship = core.state() != null ? core.state() : core.rescan(level);
-            } else if (com.opamb.barotrauma.ship.vs.VsSupport.available()
+            } else if (physical
+                    && com.opamb.barotrauma.ship.vs.VsSupport.available()
                     && com.opamb.barotrauma.ship.vs.VsPilot.hasShip()) {
                 // 装了 VS2：船方块进了刚体，世界里找不到核心，用物理船那份状态
                 ship = com.opamb.barotrauma.ship.vs.VsPilot.state();

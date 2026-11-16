@@ -204,7 +204,16 @@ public final class ShipGeometry {
      */
     public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock,
                                   Probe probe, int padUp, @Nullable Predicate<BlockPos> isShell) {
-        Set<BlockPos> hull = collectHull(core, radius, isShipBlock);
+        return scanShip(core, radius, isShipBlock, probe, padUp, isShell, pos -> false);
+    }
+
+    /**
+     * @param isEquipment 纯设备格：单独成块时不参与"最近船体"选择（接线盒等）。
+     */
+    public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock,
+                                  Probe probe, int padUp, @Nullable Predicate<BlockPos> isShell,
+                                  Predicate<BlockPos> isEquipment) {
+        Set<BlockPos> hull = collectHull(core, radius, isShipBlock, isEquipment);
         if (hull.isEmpty()) {
             return new Result(List.of(), List.of(), 0, 0, new Bounds(core.getX(), core.getY(), core.getZ(),
                     core.getX(), core.getY(), core.getZ()), Set.of(), List.of());
@@ -386,6 +395,16 @@ public final class ShipGeometry {
      * 排除核心自身之后，选中的才是外面那层真正的船壳。</p>
      */
     public static Set<BlockPos> collectHull(BlockPos core, int radius, Predicate<BlockPos> isShipBlock) {
+        return collectHull(core, radius, isShipBlock, pos -> false);
+    }
+
+    /**
+     * @param isEquipment 纯设备格（接线盒等）：自己单独成块时不能抢走"最近船体"的身份；
+     *                    接在船体上时仍然算船体的一部分。
+     */
+    public static Set<BlockPos> collectHull(BlockPos core, int radius,
+                                            Predicate<BlockPos> isShipBlock,
+                                            Predicate<BlockPos> isEquipment) {
         Set<BlockPos> shipBlocks = new HashSet<>();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int x = core.getX() - radius; x <= core.getX() + radius; x++) {
@@ -407,6 +426,9 @@ public final class ShipGeometry {
         }
         Set<BlockPos> best = Set.of();
         double bestDistance = Double.MAX_VALUE;
+        // 全是设备的最小连通块：正常船体一个都没有时才退回它。
+        Set<BlockPos> equipmentOnly = Set.of();
+        double equipmentDistance = Double.MAX_VALUE;
         Set<BlockPos> seen = new HashSet<>();
         for (BlockPos start : shipBlocks) {
             if (!seen.add(start)) {
@@ -426,12 +448,26 @@ public final class ShipGeometry {
                     }
                 }
             }
+            boolean onlyEquipment = true;
+            for (BlockPos pos : component) {
+                if (!isEquipment.test(pos)) {
+                    onlyEquipment = false;
+                    break;
+                }
+            }
+            if (onlyEquipment) {
+                if (nearest < equipmentDistance) {
+                    equipmentDistance = nearest;
+                    equipmentOnly = component;
+                }
+                continue;
+            }
             if (nearest < bestDistance) {
                 bestDistance = nearest;
                 best = component;
             }
         }
-        return best;
+        return best.isEmpty() ? equipmentOnly : best;
     }
 
     private static Set<BlockPos> largestComponent(Set<BlockPos> blocks) {

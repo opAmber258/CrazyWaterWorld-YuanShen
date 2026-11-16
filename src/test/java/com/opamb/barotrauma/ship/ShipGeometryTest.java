@@ -59,6 +59,34 @@ class ShipGeometryTest {
     }
 
     @Test
+    @DisplayName("房间里的独立接线盒不会抢走最近船体")
+    void isolatedEquipmentDoesNotStealHull() {
+        // 7×7×7 外壳；核心在中心；接线盒孤零零放在舱内 (1,0,0)，
+        // 离核心比外壳近得多。它只能算设备，不能把整艘船挤掉。
+        Set<BlockPos> ship = new HashSet<>();
+        for (int x = -3; x <= 3; x++) {
+            for (int y = -3; y <= 3; y++) {
+                for (int z = -3; z <= 3; z++) {
+                    boolean shell = Math.abs(x) == 3 || Math.abs(y) == 3 || Math.abs(z) == 3;
+                    if (shell) {
+                        ship.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        ship.add(new BlockPos(1, 0, 0));
+
+        ShipGeometry.Result result = ShipGeometry.scanShip(
+                new BlockPos(0, 0, 0), 8, ship::contains, probe(ship), 0, null,
+                pos -> pos.equals(new BlockPos(1, 0, 0)));
+        assertEquals(218, result.hull().size(), "7³ 外壳 = 343 - 5³ = 218 格，不能被单格设备截断");
+        assertTrue(result.hull().contains(new BlockPos(3, 0, 0)));
+        assertTrue(result.hull().contains(new BlockPos(-3, 0, 0)));
+        assertEquals(1, result.compartments().size(), "舱室仍是一个整体");
+        assertEquals(124, result.compartments().get(0).volume(), "5³ 舱内被接线盒占掉 1 格");
+    }
+
+    @Test
     @DisplayName("空心立方体 + 内部核心 -> 1 个舱室、98 格船体、密闭")
     void hollowCube_oneSealedCompartment() {
         ShipGeometry.Result r = scan(hollowCube(), BlockPos.ZERO, 4);

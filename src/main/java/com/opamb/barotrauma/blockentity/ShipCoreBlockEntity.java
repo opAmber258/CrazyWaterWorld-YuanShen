@@ -417,7 +417,8 @@ public class ShipCoreBlockEntity extends BlockEntity {
                     }
                     BlockState shell = level.getBlockState(pos);
                     return ModShipBlocks.isRepairableHull(shell) || ModShipBlocks.isDoorway(shell);
-                });
+                },
+                pos -> ModShipBlocks.isEquipment(level.getBlockState(pos)));
 
         int sonar = 0;
         if (geometry.hullBlocks() > 0) {

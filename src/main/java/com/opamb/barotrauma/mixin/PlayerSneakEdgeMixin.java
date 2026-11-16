@@ -28,7 +28,7 @@ public abstract class PlayerSneakEdgeMixin {
         // 物理船舱室里也关掉：VS2 方块对 level.noCollision 不可见，原版防掉边
         // 会把整个舱室当成悬崖。干舱里按 Shift 移动会被挤开、甚至被挤穿船壳
         // （用户实测：小水泵上 Shift+移动，有概率挤出舱壁）。
-        if (OceanEnvironment.isInsideShipCompartment(self.level(), sample)) {
+        if (OceanEnvironment.isInsidePhysicalShipCompartment(self.level(), sample)) {
             cir.setReturnValue(false);
             return;
         }

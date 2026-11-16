@@ -240,6 +240,11 @@ public final class ModShipBlocks {
         return state.getBlock() == ModBlocks.DRAIN_OUTLET.get();
     }
 
+    /** 纯设备格：单独放在房间里时不能当作"船体连通块"的起点。 */
+    public static boolean isEquipment(BlockState state) {
+        return state.getBlock() == ModBlocks.JUNCTION_BOX.get();
+    }
+
     /** 判定一个方块是否属于"船体结构"（用于识别船的范围）。核心不算，站体也不算。 */
     public static boolean isShipBlock(BlockState state) {
         Block block = state.getBlock();

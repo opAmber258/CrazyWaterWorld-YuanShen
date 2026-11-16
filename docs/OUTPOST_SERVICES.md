@@ -64,8 +64,11 @@
 
 ### 2.4 网络
 
-`ModNetwork` 协议 13；`StoreStatePacket`（钱包、商人余额、全部有价商品、潜艇页聚合列表）、
-`StoreActionPacket`（BUY / SELL / SELL_SUB + 购物车行 + 交付选项）。
+`ModNetwork` 当前协议 **16**（协议 13 是 2026-11-15 的商店交付批次值）；
+`StoreStatePacket`（钱包、商人余额、`open` 首开/刷新标记、全部有价商品、潜艇页聚合列表）、
+`StoreActionPacket`（BUY / SELL / SELL_SUB + 购物车行 + 交付选项）；
+诊所 `ClinicActionPacket` 带玩家确认价 `maxPrice`。出售只接受主背包槽位 0–35，
+护甲槽（36–39）和副手槽（40）不会被商店读取。
 
 ## 3. 医疗诊所
 

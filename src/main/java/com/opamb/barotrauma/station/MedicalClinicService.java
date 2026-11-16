@@ -63,7 +63,7 @@ public final class MedicalClinicService {
             }
         }
         if (selected.isEmpty()) {
-            message(player, "没有找到要治疗的病症", ChatFormatting.GRAY);
+            message(player, "clinic.no_afflictions", ChatFormatting.GRAY);
             sendState(player, false);
             return;
         }
@@ -73,15 +73,14 @@ public final class MedicalClinicService {
         }
         // 玩家确认的是看到的价格；服务端重算后涨了就刷新报价，不能按新总价直接扣。
         if (total > Math.max(0, packet.maxPrice())) {
-            message(player, "治疗价格已变化，请重新确认", ChatFormatting.YELLOW);
+            message(player, "clinic.price_changed", ChatFormatting.YELLOW);
             sendState(player, false);
             return;
         }
         CampaignState wallet = CampaignState.wallet(player.serverLevel());
         // 免费病症（total=0）也要能治；spendCredits(0) 在空钱包上会误报余额不足。
         if (total > 0 && !wallet.spendCredits(total)) {
-            message(player, "治疗需要 " + total + " mk，余额不足（当前 "
-                    + wallet.credits() + "）", ChatFormatting.RED);
+            message(player, "clinic.not_enough", ChatFormatting.RED, total, wallet.credits());
             sendState(player, false);
             return;
         }
@@ -97,10 +96,9 @@ public final class MedicalClinicService {
         }
         if (healed == 0) {
             wallet.addCredits(total);
-            message(player, "治疗失败（已退款）", ChatFormatting.RED);
+            message(player, "clinic.failed_refund", ChatFormatting.RED);
         } else {
-            message(player, "治疗完成，共 " + healed + " 项（-" + total + " mk）",
-                    ChatFormatting.GREEN);
+            message(player, "clinic.healed", ChatFormatting.GREEN, healed, total);
         }
         MedicalSyncPacket.respondSnapshot(player, player);
         sendState(player, false);
@@ -167,7 +165,8 @@ public final class MedicalClinicService {
                 CampaignState.wallet(player.serverLevel()).credits(), entries, open));
     }
 
-    private static void message(ServerPlayer player, String text, ChatFormatting color) {
-        player.sendSystemMessage(Component.literal(text).withStyle(color));
+    private static void message(ServerPlayer player, String key, ChatFormatting color,
+                                Object... args) {
+        player.sendSystemMessage(Component.translatable(key, args).withStyle(color));
     }
 }
