@@ -2638,23 +2638,27 @@ public final class VsPilot {
         com.opamb.barotrauma.world.DockingBay.Site dockSite = null;
         if (!force) {
             BlockPos currentCore = oldCore == null ? null : oldCore.offset(dx, dy, dz);
-            if (currentCore == null) {
+            if (currentCore == null || oldCoreWorld == null) {
                 return "不知道船核心在哪，无法判断靠泊位置";
             }
-            dockSite = com.opamb.barotrauma.world.DockingBay.siteAt(currentCore.getX(), currentCore.getZ());
+            // 站点查找/距离检查必须用旋转后的真实核心位置：偏航 180° 时
+            // “未旋转核心 + 平移”与真实位置能差 2·cu，实际已经贴到对接口也会被判太远。
+            BlockPos checkCore = BlockPos.containing(oldCoreWorld);
+            dockSite = com.opamb.barotrauma.world.DockingBay.siteAt(checkCore.getX(), checkCore.getZ());
             if (dockSite == null) {
                 return "离哨站太远：把船开到哨站对接口附近再靠泊";
             }
             boolean newLayout = StarterSub.newLayout(level);
             BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(dockSite, newLayout);
-            double horizontal = Math.hypot(currentCore.getX() - dockCore.getX(),
-                    currentCore.getZ() - dockCore.getZ());
-            if (horizontal > 16.0D || Math.abs(currentCore.getY() - dockCore.getY()) > 6) {
+            double horizontal = Math.hypot(checkCore.getX() - dockCore.getX(),
+                    checkCore.getZ() - dockCore.getZ());
+            if (horizontal > 16.0D || Math.abs(checkCore.getY() - dockCore.getY()) > 6) {
                 return String.format(Locale.ROOT,
                         "离对接口太远（水平 %.1f 格 / 高度差 %d 格），开到对接口 16 格内再靠泊",
-                        horizontal, Math.abs(currentCore.getY() - dockCore.getY()));
+                        horizontal, Math.abs(checkCore.getY() - dockCore.getY()));
             }
-            // 吸附：把核心拉到该站的标准码头核心位
+            // 吸附位移仍按“未旋转的旧核心 + 位移 = 码头核心”算：铺回的方块是
+            // 装配快照、偏航不参与，这样拆完方块才正好落在 dockCore。
             snapX = dockCore.getX() - currentCore.getX();
             snapY = dockCore.getY() - currentCore.getY();
             snapZ = dockCore.getZ() - currentCore.getZ();

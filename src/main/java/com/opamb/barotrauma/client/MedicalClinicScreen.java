@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.client;
 
+import com.opamb.barotrauma.client.gui.ClinicFocus;
 import com.opamb.barotrauma.medical.affliction.AfflictionType;
 import com.opamb.barotrauma.medical.affliction.Limb;
 import com.opamb.barotrauma.network.ClinicActionPacket;
@@ -49,9 +50,7 @@ public final class MedicalClinicScreen extends Screen {
     public static void receive(ClinicStatePacket packet) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.screen instanceof MedicalClinicScreen screen) {
-            screen.state = packet;
-            screen.scroll = Math.max(0, Math.min(screen.scroll,
-                    Math.max(0, packet.entries().size() - VISIBLE_ROWS)));
+            screen.updateState(packet);
             return;
         }
         // 治疗后的刷新包：玩家已经按 Esc 或换了界面，不能把诊所重新弹出来。
@@ -59,6 +58,27 @@ public final class MedicalClinicScreen extends Screen {
             return;
         }
         minecraft.setScreen(new MedicalClinicScreen(packet));
+    }
+
+    /**
+     * 治疗后的列表刷新：焦点按 {@code (afflictionId, limb)} 身份重新定位。
+     *
+     * <p>直接保留旧行号的话，排在前面、刚被治好的病症消失后，Enter 会落到
+     * 下一行别的病症上并误扣费；焦点条目自己没了就清空焦点。</p>
+     */
+    private void updateState(ClinicStatePacket packet) {
+        focusRow = ClinicFocus.remap(state.entries(), focusRow, packet.entries());
+        state = packet;
+        scroll = Math.max(0, Math.min(scroll,
+                Math.max(0, packet.entries().size() - VISIBLE_ROWS)));
+        if (focusRow >= 0) {
+            // 焦点还在时跟着它滚，别让高亮/Enter 目标跑出可视区。
+            if (focusRow < scroll) {
+                scroll = focusRow;
+            } else if (focusRow >= scroll + VISIBLE_ROWS) {
+                scroll = focusRow - VISIBLE_ROWS + 1;
+            }
+        }
     }
 
     @Override

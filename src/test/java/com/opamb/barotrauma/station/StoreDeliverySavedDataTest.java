@@ -21,8 +21,9 @@ class StoreDeliverySavedDataTest {
     @DisplayName("takeAll 取出所有玩家的订单并清空")
     void takeAllReturnsEveryOwner() {
         StoreDeliverySavedData data = new StoreDeliverySavedData();
-        UUID online = UUID.randomUUID();
-        UUID offline = UUID.randomUUID();
+        // 固定 UUID：测试身份可重复，且两个玩家必须不同。
+        UUID online = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID offline = UUID.fromString("22222222-2222-2222-2222-222222222222");
         data.add(online, "barotrauma:oxygen_tank", 2);
         data.add(offline, "barotrauma:welding_tool", 1);
         data.add(offline, "barotrauma:oxygen_tank", 1);
