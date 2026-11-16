@@ -61,8 +61,9 @@ public final class StoreScreen extends Screen {
     private final Map<String, Integer> subCart = new LinkedHashMap<>();
     /** 已提交、等服务端快照返回：期间禁止再次提交，避免重复扣物品/扣钱。 */
     private boolean awaitingState;
-    /** 提交时刻；服务端没回包时 3 秒后自动解锁，别让界面永久卡死。 */
+    /** 提交时刻；服务端没回包时显示"结果未知"，并继续保持锁定避免重复扣款。 */
     private long awaitingSince;
+    private boolean submitUnknown;
     /** 照原作购买确认：先问"现在拿"还是"送到潜艇"。 */
     private boolean deliveryPrompt;
 
@@ -85,6 +86,7 @@ public final class StoreScreen extends Screen {
             screen.subCart.clear();
             screen.deliveryPrompt = false;
             screen.awaitingState = false;
+            screen.submitUnknown = false;
             screen.scroll = Math.max(0, Math.min(screen.scroll, screen.maxScroll()));
         } else if (packet.open()) {
             // 交易响应是刷新包：玩家按 Esc 关掉后不能把商店重新弹出来。
@@ -263,8 +265,9 @@ public final class StoreScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         if (awaitingState && System.currentTimeMillis() - awaitingSince > 3000L) {
-            // 服务端拒绝/断线时可能没有回包：超时解锁，避免界面永久卡死。
-            awaitingState = false;
+            // 没有订单 ID 回执，超时不能视为失败：继续锁定，提示"结果未知"，
+            // 让玩家关掉界面重开确认，避免重复提交再卖一次。
+            submitUnknown = true;
         }
         renderBackground(g);
         int x = leftPos();
@@ -321,6 +324,10 @@ public final class StoreScreen extends Screen {
                         tab == TAB_BUY ? "store.tab.buy" : "store.tab.sell"),
                 buttonX + 55, cartY + 5, can ? TEXT : DIM);
 
+        if (submitUnknown) {
+            g.drawCenteredString(font, Component.translatable("store.result_unknown"),
+                    x + PANEL_W / 2, y + PANEL_H - 27, RED);
+        }
         g.drawString(font, Component.translatable("store.hint"),
                 x + 10, y + PANEL_H - 14, DIM, false);
 
@@ -668,6 +675,7 @@ public final class StoreScreen extends Screen {
             return;
         }
         awaitingState = true;
+        submitUnknown = false;
         awaitingSince = System.currentTimeMillis();
         ModNetwork.sendToServer(new StoreActionPacket(action, lines, deliver));
     }

@@ -147,6 +147,25 @@ class MissionInstanceTest {
     }
 
     @Test
+    @DisplayName("旧存档槽位 5 的锚点仍能被站点查询找到")
+    void legacySlotFiveSiteLookup() {
+        int legacy = 1024;
+        int anchor5 = MissionInstance.BASE_X + 5 * legacy; // 25120
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                5, LevelType.BASIC, 21L, 5,
+                LevelType.BASIC.params().routeLength(), anchor5));
+        MissionInstance.setRouteOutposts(5, true, true);
+
+        DockingBay.Site site = new DockingBay.Site(anchor5, 0);
+        assertEquals(site, DockingBay.siteAt(anchor5, 0),
+                "旧槽位 5 不能因为当前间距反推成槽位 3 就丢掉");
+        assertEquals(site, DockingBay.siteAt(anchor5 + 20, 0));
+        assertTrue(DockingBay.sitesNear(new net.minecraft.world.level.ChunkPos(
+                        anchor5 >> 4, 0)).contains(site),
+                "区块站点枚举也要包含旧槽位 5");
+    }
+
+    @Test
     @DisplayName("没有活动关卡时出发站距离回退 192")
     void noRouteLevelFallback() {
         MissionInstance.setRouteLevel(null);

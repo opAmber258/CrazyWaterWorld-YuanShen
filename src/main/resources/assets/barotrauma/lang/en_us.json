@@ -446,6 +446,7 @@
   "store.empty_bag": "Nothing in your bag the store buys",
   "store.on_ship": "On ship ×%s",
   "store.empty_sub": "Nothing on the sub the store buys",
+  "store.result_unknown": "Trade result unknown: close and reopen the store to verify; do not submit again",
   "store.no_such_item": "The store doesn't sell this item",
   "store.out_of_stock": "%s is sold out; come back next trip",
   "store.not_enough_money": "This order costs %s mk; not enough credits (you have %s)",

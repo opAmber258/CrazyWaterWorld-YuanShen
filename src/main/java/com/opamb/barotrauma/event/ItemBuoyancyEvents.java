@@ -47,6 +47,8 @@ public final class ItemBuoyancyEvents {
     private static final double SINK_SPEED = -0.018D;
     /** 头顶多少格内有实体方块才允许上浮（进水的船舱/洞穴顶）。 */
     private static final int CEILING_SCAN = 8;
+    /** 本处理器把 noGravity 设成 true 的物品；离开扫描范围时要恢复重力。 */
+    private static final Set<UUID> CONTROLLED = new HashSet<>();
 
     private ItemBuoyancyEvents() {
     }
@@ -77,6 +79,25 @@ public final class ItemBuoyancyEvents {
                 applyBuoyancy(deep, item);
             }
         }
+        restoreUncontrolled(deep, seen);
+    }
+
+    /** 离开处理范围的物品恢复原版重力，避免 noGravity 永久挂在掉落物上。 */
+    private static void restoreUncontrolled(ServerLevel deep, Set<UUID> seen) {
+        if (CONTROLLED.isEmpty()) {
+            return;
+        }
+        CONTROLLED.removeIf(id -> {
+            if (seen.contains(id)) {
+                return false;
+            }
+            if (deep.getEntity(id) instanceof ItemEntity item
+                    && !item.isRemoved() && item.isNoGravity()) {
+                item.setNoGravity(false);
+            }
+            return true;
+        });
+        CONTROLLED.addAll(seen);
     }
 
     private static void applyBuoyancy(ServerLevel level, ItemEntity item) {

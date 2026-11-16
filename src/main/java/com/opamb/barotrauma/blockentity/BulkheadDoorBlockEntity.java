@@ -71,11 +71,15 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
             }
             want = near || be.motionHold > 0;
         } else if (be.automation == AutomationMode.WATERTIGHT) {
-            if (AutomationUtil.opensToSea(ship, cell)) {
+            // 门占上下两格：任一半通海就不能自动开，水量也取两格邻域最大值。
+            boolean toSea = AutomationUtil.opensToSea(ship, cell)
+                    || AutomationUtil.opensToSea(ship, cell.above());
+            if (toSea) {
                 // 外海侧的门：舱内再干也不能自动开，开门就是进水。
                 want = false;
             } else {
-                double water = AutomationUtil.maxWaterFraction(ship, cell);
+                double water = Math.max(AutomationUtil.maxWaterFraction(ship, cell),
+                        AutomationUtil.maxWaterFraction(ship, cell.above()));
                 if (water > 0.3D) {
                     want = false;
                 } else if (water < 0.1D) {

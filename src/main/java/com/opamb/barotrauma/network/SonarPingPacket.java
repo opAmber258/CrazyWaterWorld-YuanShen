@@ -63,7 +63,7 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             if (physical) {
                 // 代理方块的世界坐标不一定被 managingShip 认出来，补上舱室/船心距离判定；
                 // 玩家仍在方块船上（附近有方块船核心）时不能算物理船。
-                boolean onPhysical = com.opamb.barotrauma.ship.vs.VsState
+                boolean confirmed = com.opamb.barotrauma.ship.vs.VsState
                         .isPhysical(level, sonarPos)
                         || com.opamb.barotrauma.ship.vs.VsState
                         .isPhysical(level, player.blockPosition())
@@ -71,13 +71,13 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                         .isInsideCompartment(level, player.position());
                 net.minecraft.world.phys.Vec3 shipPos =
                         com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
-                if (!onPhysical && shipPos != null
-                        && shipPos.distanceToSqr(player.position()) <= 128.0D * 128.0D) {
-                    onPhysical = true;
-                }
+                boolean nearShip = shipPos != null
+                        && shipPos.distanceToSqr(player.position()) <= 128.0D * 128.0D;
                 boolean blockShipNearby = com.opamb.barotrauma.ship.ShipCores
                         .nearestCore(level, player.blockPosition(), 48.0D) != null;
-                physical = onPhysical && !blockShipNearby;
+                // 已确认属于物理船时，旁边另一艘船的核心不能把归属改掉；
+                // 只有靠距离兜底时才用方块船核心做消歧。
+                physical = confirmed || (nearShip && !blockShipNearby);
             }
             BlockState sonarState = level.getBlockState(sonarPos);
             BlockPos center;
@@ -104,7 +104,7 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                 // 装了 VS2：船方块进了刚体，世界里找不到核心，用物理船那份状态
                 ship = com.opamb.barotrauma.ship.vs.VsPilot.state();
             }
-            Set<BlockPos> hull = ship == null ? null : hullForSonar(ship);
+            Set<BlockPos> hull = ship == null ? null : hullForSonar(ship, physical);
 
             SonarScan.Mode scanMode = SonarScan.Mode.byOrdinal(mode);
             // 被动模式没有回波，射程由船有多吵决定：反应堆出力 + 引擎在不在推
@@ -144,8 +144,8 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             boolean hasTarget = target != null;
 
             // 对接面板：船核心当前世界坐标 → 最近哨站的靠泊标准位距离/状态
-            BlockPos coreWorld = coreWorld(core, center);
-            Dock dock = dockInfo(level, coreWorld);
+            BlockPos coreWorld = coreWorld(core, center, physical);
+            Dock dock = dockInfo(level, coreWorld, physical);
             // 客户端舰况图用「声纳点（相对 center）− 这个偏移」换算核心局部坐标，
             // 所以基准是 center，不是玩家位置（方块船时 center 是声纳台）。
             int cdx = coreWorld.getX() - center.getX();
@@ -153,7 +153,7 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             int cdz = coreWorld.getZ() - center.getZ();
             Waypoint waypoint = waypoint(level, base);
             // 舱室格是装配坐标：物理船减装配核心，减掉位移后的 coreWorld 会整体偏掉。
-            BlockPos geometryCore = com.opamb.barotrauma.ship.vs.VsState.active()
+            BlockPos geometryCore = physical
                     && com.opamb.barotrauma.ship.vs.VsState.corePos() != null
                     ? com.opamb.barotrauma.ship.vs.VsState.corePos() : coreWorld;
 
@@ -172,9 +172,9 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                     hasTarget ? target.getY() - base.getY() : 0,
                     hasTarget ? target.getZ() - base.getZ() : 0,
                     statusText(ship, center, scanMode, frame.range()),
-                    coreText(ship),
+                    coreText(ship, physical),
                     dock.state(), dock.distance(), dock.label(),
-                    com.opamb.barotrauma.ship.vs.VsState.active(),
+                    physical,
                     hullPercent(ship), waterPercent(ship),
                     cdx, cdy, cdz,
                     roomRects(ship, geometryCore),
@@ -190,8 +190,8 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
      * 装配时记下的 {@code VsState.corePos()} 加上整位移才是船真正的位置。</p>
      */
     private static BlockPos coreWorld(com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core,
-                                      BlockPos fallback) {
-        if (com.opamb.barotrauma.ship.vs.VsState.active()) {
+                                      BlockPos fallback, boolean physical) {
+        if (physical) {
             BlockPos assembled = com.opamb.barotrauma.ship.vs.VsState.corePos();
             if (assembled != null) {
                 return assembled.offset(com.opamb.barotrauma.ship.vs.VsState.offsetX(),
@@ -252,7 +252,7 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
      * 最近哨站的靠泊判定，和 {@code VsPilot.dock} 完全同一套坐标：
      * 站点中心 + 该布局的核心偏移（新布局「儒艮号」是 +6,0，旧小艇是 +1,−3）。
      */
-    private static Dock dockInfo(ServerLevel level, BlockPos coreWorld) {
+    private static Dock dockInfo(ServerLevel level, BlockPos coreWorld, boolean physical) {
         com.opamb.barotrauma.world.DockingBay.Site site =
                 com.opamb.barotrauma.world.DockingBay.siteAt(coreWorld.getX(), coreWorld.getZ());
         if (site == null) {
@@ -263,7 +263,6 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
         int distance = (int) Math.round(Math.hypot(
                 coreWorld.getX() - dockCore.getX(), coreWorld.getZ() - dockCore.getZ()));
         int dy = Math.abs(coreWorld.getY() - dockCore.getY());
-        boolean physical = com.opamb.barotrauma.ship.vs.VsState.active();
         String label = site.equals(com.opamb.barotrauma.world.DockingBay.Site.MAIN)
                 ? "起始哨站" : "任务前哨站";
         int state;
@@ -347,9 +346,9 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
      * 不把船体点按船的整数位移搬过去，画面上那团绿色船体就会留在装配时的老位置，
      * 看起来就是"声纳里的船不跟着船走"。</p>
      */
-    private static Set<BlockPos> hullForSonar(ShipState ship) {
+    private static Set<BlockPos> hullForSonar(ShipState ship, boolean physical) {
         Set<BlockPos> raw = ship.geometry().hull();
-        if (!com.opamb.barotrauma.ship.vs.VsState.active()) {
+        if (!physical) {
             return raw;
         }
         int dx = com.opamb.barotrauma.ship.vs.VsState.offsetX();
@@ -371,12 +370,12 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
      * <p>声纳台现在兼任船核心，所以"核心"这一页讲的就是这艘船本身：
      * 船体扫描结果（舱室、方块数、密闭）+ 机器清单 + 实时状态。</p>
      */
-    private static String coreText(ShipState ship) {
+    private static String coreText(ShipState ship, boolean physical) {
         if (ship == null) {
             return "未接入船核心\n\n声纳台就是船核心：把它装进船体内部，右键即可接管这艘船。";
         }
         // 明确告诉玩家现在哪一套移动系统在跑——两套同时跑过一次就够了
-        String drive = com.opamb.barotrauma.ship.vs.VsState.active()
+        String drive = physical
                 ? "驱动：VS2 物理刚体（方块推进已停用，姿态锁定水平）"
                 : "驱动：方块推进（离散落格，未物理化）";
         return ship.summary().getString() + "\n" + ship.liveReport().getString() + "\n" + drive;

@@ -95,6 +95,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第十次 full review（`5240cb0` 之后，11 条 + 1 条 outside-diff）**：商店出售列表按 `Inventory.INVENTORY_SIZE` 截断；服务器重置同时复位 `routeOutposts`；切割 `canBreak` 后补发 `ClientboundBlockUpdatePacket`（创造模式不再把矿脉显示成空气）；采矿 READY 后矿物不足退回 ACTIVE（新增 `MissionSavedData.markActive`）；`SonarPingPacket` 物理船判定补舱室/船心距离并排除附近方块船；`VsPilot.adopt` 的 `scanShip` 补 `isShell` 谓词；`shipContainers` 要求柜子落在 `bodyOf >= 0` 的舱室/连海空腔；`LevelParams` 槽位注释改 1024；客户端潜行保护用 `VsPilot.isInsideCompartment` 同步水面盒兜底；`SonarScan` 采样网格向上取整覆盖射程边缘。**跳过**：`fillFromNoise` 已提交任务在 `setRouteLevel` 切换后仍可能读新关卡 —— 需要把 RouteLevel/RoutePath 快照穿透 SeaTerrain 与生成器整条调用链，属结构改造，留待下一轮。
 
+  **第十一次 full review（`07f394f` 之后，11 条 + 1 条 outside-diff）**：舱壁门水密判定同时查上下两格通海与水量；`JunctionBoxScreen` 宽度按窗口收缩、设备坐标单独一行；商店提交超时保持锁定并显示“结果未知”（避免重复交易）；`ItemBuoyancyEvents` 记录接管物品，离开扫描范围恢复重力；切割器在船壳每次扣耐久前和设施完成时复查 `canBreak`，整套设施任一格被拒就不拆；`SonarPingPacket` 的 `physical` 解析结果贯穿 `hullForSonar`/`coreWorld`/`geometryCore`/数据包标志，附近核心只参与距离兜底消歧；商店货柜改用 `tracksHullBlock` 判定；`DockingBay.sitesNear/siteAt` 单独补查旧布局活动槽位（旧槽位 5 锚点 25120 可查），新增 `legacySlotFiveSiteLookup` 回归。**跳过**：矿脉批量预加载（需异步/分 tick 改造）、`fillFromNoise` 关卡快照穿透（结构改造）。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

@@ -576,10 +576,10 @@ public final class StoreService {
                     if (!bounds.contains(pos)) {
                         continue;
                     }
-                    // 包围盒内不等于船体：必须真的落在某个舱室/连海空腔里，
-                    // 否则码头旁边同包围盒的柜子会被当成潜艇货柜。
+                    // 包围盒内不等于船体：柜子必须已经收进这艘船的船体成员
+                    // （实心家具也算船体方块），码头旁边同包围盒的柜子不算。
                     BlockPos cell = physicalShip ? VsPilot.toAssembly(pos) : pos;
-                    if (cell == null || state.simulation().bodyOf(cell) < 0) {
+                    if (cell == null || !state.tracksHullBlock(cell)) {
                         continue;
                     }
                     if (chunk.getBlockEntity(pos) instanceof CabinetBlockEntity cabinet) {

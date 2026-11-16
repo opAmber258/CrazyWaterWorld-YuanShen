@@ -98,10 +98,7 @@ public final class DockingBay {
         sites.add(Site.MAIN);
         int centerX = pos.getMiddleBlockX();
         int centerZ = pos.getMiddleBlockZ();
-        int base = Math.max(0, Math.round((centerX - MissionInstance.BASE_X)
-                / (float) MissionInstance.SPACING));
-        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
-            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+        for (MissionInstance.Anchor anchor : anchorsNear(centerX)) {
             Site destination = new Site(anchor.x(), anchor.z());
             if (Math.abs(centerX - destination.x()) <= SITE_RADIUS
                     && Math.abs(centerZ - destination.z()) <= SITE_RADIUS) {
@@ -117,6 +114,29 @@ public final class DockingBay {
     }
 
     /**
+     * 当前 x 附近要检查的槽位：base±1 + 活动槽位（旧存档锚点不按当前 SPACING，
+     * 例如旧槽位 5 的锚点 25120 会落在 base=3 的 base±1 之外）。
+     */
+    private static java.util.List<MissionInstance.Anchor> anchorsNear(int x) {
+        int base = Math.max(0, Math.round((x - MissionInstance.BASE_X)
+                / (float) MissionInstance.SPACING));
+        int first = Math.max(0, base - 1);
+        int last = base + 1;
+        java.util.List<MissionInstance.Anchor> out = new java.util.ArrayList<>(4);
+        for (int slot = first; slot <= last; slot++) {
+            out.add(MissionInstance.anchorForRound(slot));
+        }
+        MissionInstance.RouteLevel level = MissionInstance.routeLevel();
+        if (level != null) {
+            int slot = Math.max(0, level.slot());
+            if (slot < first || slot > last) {
+                out.add(MissionInstance.anchorForRound(slot));
+            }
+        }
+        return out;
+    }
+
+    /**
      * 找出包含 (x,z) 的哨站；不在任何站范围就返回 null。
      * 副本关卡里同时有出发站和目的站，两个都要能认出来。
      */
@@ -124,10 +144,7 @@ public final class DockingBay {
         if (Math.abs(x) <= SITE_RADIUS && Math.abs(z) <= SITE_RADIUS) {
             return Site.MAIN;
         }
-        int base = Math.max(0, Math.round((x - MissionInstance.BASE_X)
-                / (float) MissionInstance.SPACING));
-        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
-            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+        for (MissionInstance.Anchor anchor : anchorsNear(x)) {
             Site destination = new Site(anchor.x(), anchor.z());
             if (Math.abs(x - destination.x()) <= SITE_RADIUS
                     && Math.abs(z - destination.z()) <= SITE_RADIUS) {

@@ -446,6 +446,7 @@
   "store.empty_bag": "背包里没有商店收购的物品",
   "store.on_ship": "船上 ×%s",
   "store.empty_sub": "潜艇里没有商店收购的物品",
+  "store.result_unknown": "交易结果未知：请关闭商店后重新打开确认，不要再重复提交",
   "store.no_such_item": "商店不出售这个物品",
   "store.out_of_stock": "%s 已经售罄，等下一趟再来",
   "store.not_enough_money": "整单需要 %s mk，余额不足（当前 %s）",

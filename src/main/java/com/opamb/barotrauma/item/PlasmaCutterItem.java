@@ -37,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.ForgeHooks;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -194,6 +195,10 @@ public class PlasmaCutterItem extends Item {
                     return CutResult.DENIED;
                 }
                 return progress(level, player, pos, VEIN_CUT_APPLICATIONS, () -> {
+                    // 完成时再查一次权限：切到一半被划进保护区就不能继续破坏。
+                    if (!canBreak(level, player, pos)) {
+                        return;
+                    }
                     level.destroyBlock(pos, false);
                     int count = vein.cutYield(level.random);
                     Block.popResource(level, pos,
@@ -220,12 +225,22 @@ public class PlasmaCutterItem extends Item {
                     return CutResult.DENIED;
                 }
                 return progress(level, player, pos, FIXTURE_CUT_APPLICATIONS, () -> {
-                    breakFixture(level, pos, state);
-                    level.playSound(null, pos, SoundEvents.NETHERITE_BLOCK_BREAK,
-                            SoundSource.PLAYERS, 0.8F, 0.8F);
+                    if (breakFixture(level, player, pos, state)) {
+                        level.playSound(null, pos, SoundEvents.NETHERITE_BLOCK_BREAK,
+                                SoundSource.PLAYERS, 0.8F, 0.8F);
+                    }
                 }) ? CutResult.CUT : CutResult.MISS;
             }
             if (ModShipBlocks.isRepairableHull(state)) {
+                // 船壳耐久是逐次扣的：开始切时查一次，之后每 4 tick 由 startingCut 复查。
+                if (startingCut(player, pos)) {
+                    if (!canBreak(level, player, pos)) {
+                        deny(level, player, pos);
+                        return CutResult.DENIED;
+                    }
+                    CUTS.put(player.getUUID(),
+                            new CutTarget(pos.immutable(), 0, true, player.tickCount));
+                }
                 ShipCoreBlockEntity core = ShipCores.nearestCore(level, pos, 64.0D);
                 if (core == null || core.state() == null) {
                     return CutResult.MISS;
@@ -328,7 +343,8 @@ public class PlasmaCutterItem extends Item {
      * 拆掉命中的设施。三格舱口要整套拆（左/中/右），只掉一个物品；
      * 只删命中格会让玩家切三格拿三个舱口。
      */
-    private static void breakFixture(ServerLevel level, BlockPos pos, BlockState state) {
+    private static boolean breakFixture(ServerLevel level, ServerPlayer player,
+                                        BlockPos pos, BlockState state) {
         if (state.getBlock() instanceof HatchBlock) {
             var longAxis = state.getValue(HatchBlock.FACING).getClockWise();
             int offset = state.getValue(HatchBlock.PART).ordinal() - 1;
@@ -336,36 +352,59 @@ public class PlasmaCutterItem extends Item {
             BlockState middleState = level.getBlockState(middle);
             if (middleState.getBlock() instanceof HatchBlock
                     && middleState.getValue(HatchBlock.PART) == HatchBlock.Part.MIDDLE) {
-                ItemStack drop = new ItemStack(middleState.getBlock().asItem());
+                List<BlockPos> parts = new ArrayList<>();
                 for (int i = -1; i <= 1; i++) {
                     BlockPos part = middle.relative(longAxis, i);
                     if (level.getBlockState(part).getBlock() instanceof HatchBlock) {
-                        level.destroyBlock(part, false);
+                        parts.add(part);
                     }
+                }
+                // 任一格没有位置权限就整套不拆，避免拆一半留下残件。
+                for (BlockPos part : parts) {
+                    if (!canBreak(level, player, part)) {
+                        return false;
+                    }
+                }
+                ItemStack drop = new ItemStack(middleState.getBlock().asItem());
+                for (BlockPos part : parts) {
+                    level.destroyBlock(part, false);
                 }
                 if (!drop.isEmpty()) {
                     Block.popResource(level, middle, drop);
                 }
-                return;
+                return true;
             }
         }
         if (state.getBlock() instanceof BulkheadDoorBlock) {
             // 舱壁门占两格：上下一起拆，只掉一个物品；只删命中格会留下半扇门。
             BlockPos lower = state.getValue(BulkheadDoorBlock.PART)
                     == BulkheadDoorBlock.Part.UPPER ? pos.below() : pos;
+            List<BlockPos> cells = new ArrayList<>();
             for (BlockPos cell : new BlockPos[]{lower, lower.above()}) {
                 if (level.getBlockState(cell).getBlock() instanceof BulkheadDoorBlock) {
-                    level.destroyBlock(cell, false);
+                    cells.add(cell);
                 }
             }
+            for (BlockPos cell : cells) {
+                if (!canBreak(level, player, cell)) {
+                    return false;
+                }
+            }
+            for (BlockPos cell : cells) {
+                level.destroyBlock(cell, false);
+            }
             Block.popResource(level, pos, new ItemStack(state.getBlock().asItem()));
-            return;
+            return true;
+        }
+        if (!canBreak(level, player, pos)) {
+            return false;
         }
         ItemStack drop = new ItemStack(state.getBlock().asItem());
         level.destroyBlock(pos, false);
         if (!drop.isEmpty()) {
             Block.popResource(level, pos, drop);
         }
+        return true;
     }
 
     /** 子格里的氧气瓶还有氧气吗（原作 plasmacutter 只接受 oxygensource）。 */

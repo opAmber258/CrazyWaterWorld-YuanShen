@@ -35,6 +35,11 @@ public class JunctionBoxScreen extends Screen {
         this.state = state;
     }
 
+    /** 面板宽度按窗口逻辑宽度收缩，窄窗口不能画到屏幕外。 */
+    private int panelWidth() {
+        return Math.max(280, Math.min(W, width - 16));
+    }
+
     /** 面板高度按窗口可用高度收缩；小窗口（逻辑高 240）不能画到屏幕外。 */
     private int panelHeight() {
         return Math.max(200, Math.min(H, height - 16));
@@ -70,7 +75,7 @@ public class JunctionBoxScreen extends Screen {
 
     @Override
     protected void init() {
-        int left = (width - W) / 2;
+        int left = (width - panelWidth()) / 2;
         int top = (height - panelHeight()) / 2;
         List<PowerStatePacket.Device> devices = state.devices();
         scroll = Mth.clamp(scroll, 0, maxScroll());
@@ -83,22 +88,22 @@ public class JunctionBoxScreen extends Screen {
             addRenderableWidget(Button.builder(label, b -> {
                 ModNetwork.sendToServer(new PowerBindPacket(state.boxPos(), device.pos(), !boundHere));
                 b.active = false;
-            }).bounds(left + W - 92, y, 72, 20).build());
+            }).bounds(left + panelWidth() - 92, y, 72, 20).build());
         }
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(left + W / 2 - 40, top + panelHeight() - 30, 80, 20).build());
+                .bounds(left + panelWidth() / 2 - 40, top + panelHeight() - 30, 80, 20).build());
     }
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g);
-        int left = (width - W) / 2;
+        int left = (width - panelWidth()) / 2;
         int top = (height - panelHeight()) / 2;
         int panelH = panelHeight();
-        g.fill(left, top, left + W, top + panelH, 0xE0101418);
-        g.fill(left, top, left + W, top + 2, 0xFF5A6672);
+        g.fill(left, top, left + panelWidth(), top + panelH, 0xE0101418);
+        g.fill(left, top, left + panelWidth(), top + 2, 0xFF5A6672);
         g.drawCenteredString(font, Component.translatable("block.barotrauma.junction_box"),
-                left + W / 2, top + 10, 0xFFFFFFFF);
+                left + panelWidth() / 2, top + 10, 0xFFFFFFFF);
 
         int x = left + 18;
         int y = top + 34;
@@ -114,7 +119,7 @@ public class JunctionBoxScreen extends Screen {
         g.drawString(font, line("power.condition", state.condition()), x + 220, y + 14, condColor);
         g.drawString(font, line("power.range", devices.size()), x + 220, y + 28, 0xFF9AA6B2);
 
-        g.fill(left + 16, top + 96, left + W - 16, top + 98, 0xFF3A444E);
+        g.fill(left + 16, top + 96, left + panelWidth() - 16, top + 98, 0xFF3A444E);
         g.drawString(font, Component.translatable("power.devices"), left + 18, top + 102, 0xFFB8C4D0);
 
         if (devices.isEmpty()) {
@@ -129,14 +134,15 @@ public class JunctionBoxScreen extends Screen {
             String name = Component.translatable(device.nameKey()).getString();
             String pos = Component.translatable("power.device_pos",
                     device.pos().getX(), device.pos().getY(), device.pos().getZ()).getString();
-            String text = name + " " + pos + "  " + fmt(device.demandKw())
+            String text = name + "  " + fmt(device.demandKw())
                     + " kW  ≥" + fmt(device.minVoltage() * 100.0D) + "%";
             int color = boundHere ? 0xFF77DD77 : 0xFFE8EDF2;
             g.drawString(font, text, left + 18, rowY, color);
-            if (device.box() != null && !boundHere) {
-                g.drawString(font, Component.translatable("power.other_box"),
-                        left + 18, rowY + 10, 0xFF8A96A2);
-            }
+            // 坐标单独一行：窄窗口/同型号设备也能区分，不会和绑定按钮抢宽度。
+            String sub = device.box() != null && !boundHere
+                    ? pos + "  " + Component.translatable("power.other_box").getString()
+                    : pos;
+            g.drawString(font, sub, left + 18, rowY + 10, 0xFF8A96A2);
         }
         if (maxScroll() > 0) {
             Component hint = Component.translatable("power.scroll_hint",
