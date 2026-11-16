@@ -244,11 +244,15 @@ public final class SonarScan {
                     if (section == null || section.hasOnlyAir()) {
                         continue;
                     }
+                    // 先按 Y 区间剪枝：调色板检查通过不代表这一层在声纳球内。
+                    int sectionY = chunk.getMinBuildHeight() + (si << 4);
+                    if (sectionY + 15 < cy - r || sectionY > cy + r) {
+                        continue;
+                    }
                     if (!section.getStates().maybeHas(state ->
                             state.getBlock() instanceof com.opamb.barotrauma.block.MineralVeinBlock)) {
                         continue;
                     }
-                    int sectionY = chunk.getMinBuildHeight() + (si << 4);
                     for (int ly = 0; ly < 16; ly++) {
                         for (int lx = 0; lx < 16; lx++) {
                             for (int lz = 0; lz < 16; lz++) {

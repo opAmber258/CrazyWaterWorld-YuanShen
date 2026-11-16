@@ -179,6 +179,21 @@ public final class PowerPanelState {
         if (!(raw instanceof PowerConsumer consumer)) {
             return false;
         }
+        // 设备必须属于面板选中的这艘船，否则会写进一个永远不会被这台盒子供电的绑定。
+        ShipState ship = stateOf(level, physical, panel.corePos());
+        if (ship == null) {
+            return false;
+        }
+        boolean known = false;
+        for (var info : ship.simulation().consumerInfos()) {
+            if (info.pos().equals(deviceCell)) {
+                known = true;
+                break;
+            }
+        }
+        if (!known) {
+            return false;
+        }
         // PowerBox 与 ShipSimulation 的 boxes/consumers 使用同一套坐标。
         consumer.setPowerBox(bind ? boxCell : null);
         raw.setChanged();

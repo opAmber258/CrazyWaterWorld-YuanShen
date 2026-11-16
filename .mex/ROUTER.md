@@ -87,6 +87,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第六次 full review（`8ae8635` 之后，10 条 + 10 条 minor）**：`resolveShip` 改按 `isPhysical` + 船体几何归属选核心（泵/门/舱口/反应堆共用）；泵欠压停转；舱口外海连线三段都查；接线盒面板 `PowerStatePacket.open` 区分打开/刷新（协议 15）；诊所 7 行不压按钮、零价治疗不再误报余额；商店出售行带物品 ID 并由服务端校验、提交后锁定到下一快照、减号 0 也消费；物理船切割补映射后世界坐标的 `BreakEvent`/`blockActionRestricted`（拒绝保留记录）；三格舱口/两格舱门整套拆除只掉一个；声纳矿脉去重只让本次可见邻居抑制并先查区块；矿脉进度 6 tick 超时；`OceanEnvironment` 用物理船实时逆变换判断舱内；`terrainSeed(level)` 从 `RandomState` 补算；采矿需求累加、预加载按航线长度采样；`RoutePath.distanceToNetworkExcluding` 修正测试；透明潜水服改自定义配方 `ModRecipes` 保留子格氧气瓶。跳过物理船靠泊 `PowerBox` 平移（用户明确先不动电力）和 `openAt` 同列分离区间（需改生成器单区间 API）。
 
+  **第七次 full review（`64c7c4e` 之后，16 条 inline + 2 条 outside-diff）**：接线盒按缓存的归属核心取当前 `ShipState`；`CampaignManager.startTravel` 用深海维度 + 出发站船核心调 `StoreService.deliverPending`；船壳血条先按距离截断，再与矿脉血条合并；`StoreStatePacket.open`（协议 16）区分首开/交易刷新；潜艇出售单行上限 64；诊所 `ClinicActionPacket.maxPrice`（协议 16）校验玩家确认价；切割器舱口逐格查类型、拒绝窗口按住续期、物理船权限缓存带玩家 UUID；`ShipMover` 保留舱口自动模式 NBT；`MissionInstance` 航道缓存用关卡快照锚点、相同关卡提前返回；矿脉候选深度 `ceiling-floor` 修正（旧公式恒负，中间候选从未生成）+ 簇数按需求量下限；`PowerPanelState.bind` 校验设备在 `consumerInfos()`；`DrainPump.assemblyPos`/反应堆上报坐标按 `isPhysical`；声呐 section 先按 Y 区间剪枝。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

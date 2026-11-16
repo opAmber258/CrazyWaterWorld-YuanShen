@@ -219,7 +219,8 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
 
     /** 物理船的方块实体在船坞坐标里；转成船状态用的装配坐标。 */
     private static BlockPos assemblyPos(ServerLevel level, BlockPos pos) {
-        if (!VsState.active()) {
+        // 只有这台泵真属于物理船时才换算；普通方块船保留世界坐标。
+        if (!VsState.isPhysical(level, pos)) {
             return pos;
         }
         return com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(pos);

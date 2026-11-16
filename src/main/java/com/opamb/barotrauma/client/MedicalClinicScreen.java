@@ -172,7 +172,8 @@ public final class MedicalClinicScreen extends Screen {
         int buttonY = y + PANEL_H - 42;
         if (!state.entries().isEmpty() && mouseX >= x + 10 && mouseX < x + 190
                 && mouseY >= buttonY && mouseY < buttonY + 18) {
-            ModNetwork.sendToServer(new ClinicActionPacket(ClinicActionPacket.HEAL_ALL, ""));
+            ModNetwork.sendToServer(new ClinicActionPacket(
+                    ClinicActionPacket.HEAL_ALL, "", totalPrice()));
             return true;
         }
         int top = listTop();
@@ -182,7 +183,8 @@ public final class MedicalClinicScreen extends Screen {
             List<ClinicStatePacket.Entry> entries = state.entries();
             if (index >= 0 && index < entries.size()) {
                 ClinicStatePacket.Entry entry = entries.get(index);
-                ModNetwork.sendToServer(new ClinicActionPacket(entry.afflictionId(), entry.limb()));
+                ModNetwork.sendToServer(new ClinicActionPacket(
+                        entry.afflictionId(), entry.limb(), entry.price()));
                 return true;
             }
         }

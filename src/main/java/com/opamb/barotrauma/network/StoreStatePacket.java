@@ -16,8 +16,8 @@ import java.util.function.Supplier;
  * 给"潜艇"页（从潜艇货柜里出售，按物品类型聚合）。库存/价格由服务端算，
  * 客户端只负责显示和发操作。</p>
  */
-public record StoreStatePacket(int wallet, int merchantBalance, List<Entry> entries,
-                               List<SubEntry> subEntries) {
+public record StoreStatePacket(int wallet, int merchantBalance, boolean open,
+                               List<Entry> entries, List<SubEntry> subEntries) {
 
     public record Entry(String itemId, boolean buyable, int stock, int buyPrice,
                         int sellPrice, String category) {
@@ -30,6 +30,7 @@ public record StoreStatePacket(int wallet, int merchantBalance, List<Entry> entr
     public void encode(FriendlyByteBuf buf) {
         buf.writeVarInt(Math.max(0, wallet));
         buf.writeVarInt(Math.max(0, merchantBalance));
+        buf.writeBoolean(open);
         buf.writeVarInt(entries.size());
         for (Entry entry : entries) {
             buf.writeUtf(entry.itemId(), 128);
@@ -50,6 +51,7 @@ public record StoreStatePacket(int wallet, int merchantBalance, List<Entry> entr
     public static StoreStatePacket decode(FriendlyByteBuf buf) {
         int wallet = buf.readVarInt();
         int balance = buf.readVarInt();
+        boolean open = buf.readBoolean();
         int count = buf.readVarInt();
         if (count < 0 || count > 512) {
             throw new IllegalArgumentException("store entry count");
@@ -72,7 +74,8 @@ public record StoreStatePacket(int wallet, int merchantBalance, List<Entry> entr
         for (int i = 0; i < subCount; i++) {
             subEntries.add(new SubEntry(buf.readUtf(128), buf.readVarInt(), buf.readVarInt()));
         }
-        return new StoreStatePacket(wallet, balance, List.copyOf(entries), List.copyOf(subEntries));
+        return new StoreStatePacket(wallet, balance, open,
+                List.copyOf(entries), List.copyOf(subEntries));
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

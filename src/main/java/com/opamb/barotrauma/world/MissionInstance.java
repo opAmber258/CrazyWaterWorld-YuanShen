@@ -109,6 +109,10 @@ public final class MissionInstance {
 
     /** 设置本轮关卡；{@code null} 清除（回到全局地形）。 */
     public static void setRouteLevel(RouteLevel level) {
+        // 相同关卡不抢写锁：启动/每 tick 恢复时避免无意义的锁竞争。
+        if (java.util.Objects.equals(routeLevel, level)) {
+            return;
+        }
         java.util.concurrent.locks.Lock lock = ROUTE_LOCK.writeLock();
         lock.lock();
         try {
@@ -150,7 +154,8 @@ public final class MissionInstance {
         if (cache != null && cache.level().equals(level)) {
             return cache.path();
         }
-        Anchor anchor = anchorForRound(level.slot());
+        // 用当前快照里的 slot/anchorX 构造锚点，不要再读静态 routeLevel（可能已被换掉）。
+        Anchor anchor = new Anchor(Math.max(0, level.slot()), level.anchorX(), ANCHOR_Y, 0);
         DockingBay.Site start = startSite(anchor, level.startDistance());
         RoutePath built = RoutePath.build(level.type().params(), level.seed(),
                 start.x(), start.z(), anchor.x(), anchor.z());

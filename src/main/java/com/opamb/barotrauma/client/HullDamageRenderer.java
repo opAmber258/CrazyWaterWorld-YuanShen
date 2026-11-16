@@ -183,6 +183,11 @@ public final class HullDamageRenderer {
             return;
         }
         List<Target> targets = targets(cameraPos, mapping.toWorld());
+        // 裂痕/漏水每帧都要处理，先单独按距离截断；血条再和矿脉进度条合并后二次截断。
+        if (targets.size() > MAX_BARS) {
+            targets.sort(Comparator.comparingDouble(Target::distance));
+            targets = targets.subList(0, MAX_BARS);
+        }
         if (targets.isEmpty() && veinBars.isEmpty()) {
             return;
         }

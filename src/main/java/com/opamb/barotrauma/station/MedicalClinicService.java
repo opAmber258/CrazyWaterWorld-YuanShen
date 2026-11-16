@@ -71,6 +71,12 @@ public final class MedicalClinicService {
         for (ClinicStatePacket.Entry entry : selected) {
             total += entry.price();
         }
+        // 玩家确认的是看到的价格；服务端重算后涨了就刷新报价，不能按新总价直接扣。
+        if (total > Math.max(0, packet.maxPrice())) {
+            message(player, "治疗价格已变化，请重新确认", ChatFormatting.YELLOW);
+            sendState(player, false);
+            return;
+        }
         CampaignState wallet = CampaignState.wallet(player.serverLevel());
         // 免费病症（total=0）也要能治；spendCredits(0) 在空钱包上会误报余额不足。
         if (total > 0 && !wallet.spendCredits(total)) {

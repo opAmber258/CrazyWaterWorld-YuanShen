@@ -66,6 +66,8 @@ public final class ShipMover {
         Map<BlockPos, BlockPos> powerBoxes = new HashMap<>();
         // 接线盒耐久只存在方块实体 NBT 里；不搬就会在新位置重置成 100%。
         Map<BlockPos, net.minecraft.nbt.CompoundTag> junctionTags = new HashMap<>();
+        // 舱口的自动模式（WATERTIGHT/MOTION）也只存在 BE NBT 里。
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> hatchTags = new HashMap<>();
         for (BlockPos pos : moving) {
             if (level.getBlockEntity(pos) instanceof PowerConsumer consumer
                     && consumer.powerBox() != null) {
@@ -73,6 +75,9 @@ public final class ShipMover {
             }
             if (level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity junction) {
                 junctionTags.put(pos.immutable(), junction.saveWithoutMetadata());
+            }
+            if (level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.HatchBlockEntity hatch) {
+                hatchTags.put(pos.immutable(), hatch.saveWithoutMetadata());
             }
         }
         List<BlockPos> interior = new ArrayList<>();
@@ -115,6 +120,15 @@ public final class ShipMover {
                     instanceof com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity junction) {
                 junction.load(entry.getValue());
                 junction.setChanged();
+            }
+        }
+        // 恢复舱口自动模式，否则搬一次就退回 MANUAL。
+        for (Map.Entry<BlockPos, net.minecraft.nbt.CompoundTag> entry : hatchTags.entrySet()) {
+            BlockPos target = entry.getKey().offset(dx, dy, dz);
+            if (level.getBlockEntity(target)
+                    instanceof com.opamb.barotrauma.blockentity.HatchBlockEntity hatch) {
+                hatch.load(entry.getValue());
+                hatch.setChanged();
             }
         }
 

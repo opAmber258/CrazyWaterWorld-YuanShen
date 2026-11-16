@@ -59,13 +59,17 @@ public final class CampaignManager {
             sync(player);
             return false;
         }
-        // 商店"送至潜艇"的订购货：离港装配前送进潜艇货柜（原作在起航时交付）。
-        for (ServerPlayer online : players) {
-            com.opamb.barotrauma.station.StoreService.deliverPending(online);
-        }
         // 1) 出发站 = 船现在停靠的站（第一次是主站，之后是本轮站立在副本顶部）。
         //    离站前把对接口舱口都关上，否则装成物理船后艇顶是个洞。
         com.opamb.barotrauma.world.DockingBay.Site originSite = currentSite(deep, state);
+        // 商店"送至潜艇"的订购货：离港装配前送进潜艇货柜（原作在起航时交付）。
+        // 显式传深海维度 + 这艘船的核心，不能靠乘员当前所在的位置猜。
+        BlockPos originCore = starterCorePos(deep, originSite);
+        BlockPos deliveryAnchor = originCore != null ? originCore
+                : new BlockPos(originSite.x(), MissionInstance.ANCHOR_Y, originSite.z());
+        for (ServerPlayer online : players) {
+            com.opamb.barotrauma.station.StoreService.deliverPending(online, deep, deliveryAnchor);
+        }
         com.opamb.barotrauma.world.DockingBay.close(deep);
 
         // 2) 船还是方块就先在出发站装配成 VS2 刚体；已经物理化就跳过。

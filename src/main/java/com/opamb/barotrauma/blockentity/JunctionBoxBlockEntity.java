@@ -41,6 +41,8 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
     private long graceTicks = -1L;
     private boolean submerged;
     private double lastVoltage;
+    /** 上次确认过的归属核心；正常 tick 直接用它，核心没了才重新搜。 */
+    private BlockPos cachedCorePos;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public JunctionBoxBlockEntity(BlockPos pos, BlockState state) {
@@ -55,7 +57,7 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
         // 先判断这个盒子是否真的属于活动物理船：物理船 A 活动时，
         // 方块船 B 的盒子不能减 A 的船坞偏移，否则 tracksHullBlock 会拒绝、设备断电。
         boolean physical = VsState.isPhysical(server, pos);
-        ShipState ship = physical ? VsState.activeState() : resolveBlockShip(server, pos);
+        ShipState ship = physical ? VsState.activeState() : be.resolveBlockShip(server, pos);
         if (ship == null) {
             return;
         }
@@ -127,16 +129,24 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
     }
 
     /** 不属于活动物理船：按附近核心找船体几何包含该坐标的方块船。 */
-    private static ShipState resolveBlockShip(ServerLevel level, BlockPos pos) {
-        // 两艘船靠近时，最近的核心可能属于另一艘船；必须按船体归属选，
-        // 否则 tracksHullBlock 会失败，这个盒子的设备就被判成断电。
-        for (ShipCoreBlockEntity core : ShipCores.coresNear(level, pos, 64.0D)) {
-            // 方块船 state 不存档，重载后要等 rescan。
+    private ShipState resolveBlockShip(ServerLevel level, BlockPos pos) {
+        // 正常 tick 只查上次确认的核心；重扫会换 ShipState 对象，所以缓存坐标不缓存状态。
+        if (cachedCorePos != null && level.hasChunkAt(cachedCorePos)
+                && level.getBlockEntity(cachedCorePos) instanceof ShipCoreBlockEntity core) {
             ShipState state = core.state() != null ? core.state() : core.rescan(level);
             if (state != null && state.tracksHullBlock(pos)) {
                 return state;
             }
         }
+        // 两艘船靠近时，最近的核心可能属于另一艘船；必须按船体归属选。
+        for (ShipCoreBlockEntity core : ShipCores.coresNear(level, pos, 64.0D)) {
+            ShipState state = core.state() != null ? core.state() : core.rescan(level);
+            if (state != null && state.tracksHullBlock(pos)) {
+                cachedCorePos = core.getBlockPos();
+                return state;
+            }
+        }
+        cachedCorePos = null;
         return null;
     }
 

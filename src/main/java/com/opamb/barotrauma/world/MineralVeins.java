@@ -92,8 +92,11 @@ public final class MineralVeins {
             if (vein == null) {
                 continue;
             }
+            // 每簇最多 3 格、单格 1–2 个，按"一簇至少顶一个需求"保守下限；
+            // 资源概率高于 0.3 时再按比例加密。
+            double density = Math.max(1.0D, chance / 0.3D);
             int clusters = Math.max(4, (int) Math.ceil(
-                    requiredCount(data, booked, mineral) / 1.5D * (chance / 0.2D)));
+                    requiredCount(data, booked, mineral) * density));
             placeClusters(level, candidates, vein, clusters, mineral.hashCode(), midDepth);
         }
     }
@@ -225,11 +228,12 @@ public final class MineralVeins {
                 addIfSurface(level, out, x, ceiling, z, t, distance);
                 long hash = hash(seed, x, z);
                 for (int i = 0; i < 4; i++) {
-                    int span = floor - ceiling - 12;
+                    // floor 在下面（更负），ceiling 在上面：跨度必须 ceiling - floor。
+                    int span = ceiling - floor - 12;
                     if (span <= 0) {
                         break;
                     }
-                    int y = ceiling + 6 + (int) Math.floorMod(hash >>> (8 + i * 7), span);
+                    int y = floor + 6 + (int) Math.floorMod(hash >>> (8 + i * 7), span);
                     addIfSurface(level, out, x, y, z, t, distance);
                 }
             }

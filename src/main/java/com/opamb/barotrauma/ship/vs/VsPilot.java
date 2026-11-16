@@ -140,6 +140,8 @@ public final class VsPilot {
     private static BlockPos protectCheckedPos;
     private static long protectCheckedTick = Long.MIN_VALUE;
     private static boolean protectDenied;
+    /** 上次权限检查的玩家；换人必须重查，不能复用别人的授权结果。 */
+    private static java.util.UUID protectPlayer;
 
     /**
      * 清空构件切割进度。
@@ -153,6 +155,7 @@ public final class VsPilot {
         protectCheckedPos = null;
         protectCheckedTick = Long.MIN_VALUE;
         protectDenied = false;
+        protectPlayer = null;
     }
 
     static {
@@ -1603,6 +1606,7 @@ public final class VsPilot {
         BlockPos worldPos = BlockPos.containing(hit);
         long now = level.getGameTime();
         if (!worldPos.equals(protectCheckedPos)
+                || !player.getUUID().equals(protectPlayer)
                 || (now - protectCheckedTick > 4L && !protectDenied)) {
             net.minecraft.world.level.GameType mode = player.gameMode.getGameModeForPlayer();
             protectDenied = net.minecraftforge.common.ForgeHooks
@@ -1610,6 +1614,7 @@ public final class VsPilot {
                     || player.blockActionRestricted(level, worldPos, mode);
             protectCheckedPos = worldPos.immutable();
             protectCheckedTick = now;
+            protectPlayer = player.getUUID();
         }
         if (protectDenied) {
             return false;

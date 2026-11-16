@@ -89,7 +89,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         BlockPos cell = null;
         double load = 0.0D;
         if (ship != null) {
-            BlockPos assembly = VsState.active() ? VsPilot.toAssembly(pos) : pos;
+            BlockPos assembly = VsState.isPhysical(server, pos) ? VsPilot.toAssembly(pos) : pos;
             if (ship.tracksHullBlock(assembly)) {
                 cell = assembly;
                 load = ship.simulation().report().powerDemand();

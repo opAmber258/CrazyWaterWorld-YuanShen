@@ -35,6 +35,8 @@ public final class StoreScreen extends Screen {
     private static final int PANEL_H = 252;
     private static final int ROW_H = 18;
     private static final int VISIBLE_ROWS = 9;
+    /** 单行数量上限，和服务端 StoreService.MAX_LINE_QUANTITY 保持一致。 */
+    private static final int MAX_SUB_QUANTITY = 64;
     private static final int TAB_BUY = 0;
     private static final int TAB_SELL = 1;
     private static final int TAB_SUB = 2;
@@ -82,7 +84,8 @@ public final class StoreScreen extends Screen {
             screen.deliveryPrompt = false;
             screen.awaitingState = false;
             screen.scroll = Math.max(0, Math.min(screen.scroll, screen.maxScroll()));
-        } else {
+        } else if (packet.open()) {
+            // 交易响应是刷新包：玩家按 Esc 关掉后不能把商店重新弹出来。
             minecraft.setScreen(new StoreScreen(packet));
         }
     }
@@ -570,11 +573,12 @@ public final class StoreScreen extends Screen {
                 }
                 return true;
             }
-            if (mouseX >= x + 346 && mouseX < x + 360 && current < entry.quantity()) {
+            if (mouseX >= x + 346 && mouseX < x + 360
+                    && current < Math.min(entry.quantity(), MAX_SUB_QUANTITY)) {
                 setSubQuantity(entry.itemId(), current + 1);
                 return true;
             }
-            if (current < entry.quantity()) {
+            if (current < Math.min(entry.quantity(), MAX_SUB_QUANTITY)) {
                 setSubQuantity(entry.itemId(), current + 1);
             }
             return true;

@@ -68,7 +68,7 @@ public final class StoreService {
         if (site == null) {
             return;
         }
-        sendState(player, site);
+        sendState(player, site, true);
     }
 
     public static void handle(ServerPlayer player, StoreActionPacket packet) {
@@ -92,7 +92,7 @@ public final class StoreService {
         } else if (packet.action() == StoreActionPacket.SELL_SUB) {
             sellSubCart(player, wallet, data, store, packet.lines());
         }
-        sendState(player, site);
+        sendState(player, site, false);
     }
 
     // ------------------------------------------------------------------
@@ -209,13 +209,19 @@ public final class StoreService {
      * 下次起航再试（原作在起航时生成到潜艇货舱）。
      */
     public static void deliverPending(ServerPlayer player) {
-        ServerLevel level = player.serverLevel();
+        deliverPending(player, player.serverLevel(), player.blockPosition());
+    }
+
+    /**
+     * 起航交付：显式指定存档维度与潜艇锚点（核心坐标），不依赖乘员传送前的位置。
+     */
+    public static void deliverPending(ServerPlayer player, ServerLevel level, BlockPos shipAnchor) {
         StoreDeliverySavedData data = StoreDeliverySavedData.get(level);
         Map<String, Integer> pending = data.take(player.getUUID());
         if (pending.isEmpty()) {
             return;
         }
-        List<ContainerSlot> containers = shipContainers(player);
+        List<ContainerSlot> containers = shipContainers(level, shipAnchor);
         Map<String, Integer> remaining = new LinkedHashMap<>();
         int delivered = 0;
         String firstName = null;
@@ -505,12 +511,19 @@ public final class StoreService {
 
     /** 玩家所在潜艇上的所有钢柜/货架槽位；找不到船核心时返回空表。 */
     private static List<ContainerSlot> shipContainers(ServerPlayer player) {
-        ServerLevel level = player.serverLevel();
+        return shipContainers(player.serverLevel(), player.blockPosition());
+    }
+
+    /**
+     * 以 {@code center} 为锚点找潜艇货柜：{@code center} 可以是船核心本身
+     * （起航交付时用），也可以是玩家位置。
+     */
+    private static List<ContainerSlot> shipContainers(ServerLevel level, BlockPos center) {
         ShipState state;
         ShipGeometry.Bounds bounds;
-        // 只有活动物理船就在玩家这个维度时才用它的船坞范围；否则可能是
-        // 另一个维度残留的物理船，应该去玩家附近找方块船。
-        if (VsState.active() && VsPilot.activeLevel() == level) {
+        // 只有活动物理船就在这个维度、且锚点确实属于它时才用船坞范围。
+        if (VsState.active() && VsPilot.activeLevel() == level
+                && VsState.isPhysical(level, center)) {
             // 物理船的方块实体在船坞里：几何是装配坐标，扫描范围要加上船坞偏移。
             state = VsState.activeState();
             if (state == null) {
@@ -527,8 +540,14 @@ public final class StoreService {
             bounds = new ShipGeometry.Bounds(minYard.getX(), minYard.getY(), minYard.getZ(),
                     maxYard.getX(), maxYard.getY(), maxYard.getZ());
         } else {
-            ShipCoreBlockEntity core = ShipCores.nearestCore(level, player.blockPosition(),
-                    SHIP_SEARCH_RANGE);
+            ShipCoreBlockEntity core = null;
+            if (level.hasChunkAt(center)
+                    && level.getBlockEntity(center) instanceof ShipCoreBlockEntity atCenter) {
+                core = atCenter;
+            }
+            if (core == null) {
+                core = ShipCores.nearestCore(level, center, SHIP_SEARCH_RANGE);
+            }
             if (core == null) {
                 return List.of();
             }
@@ -623,7 +642,7 @@ public final class StoreService {
         return found.isEmpty() ? null : found.get(0);
     }
 
-    private static void sendState(ServerPlayer player, DockingBay.Site site) {
+    private static void sendState(ServerPlayer player, DockingBay.Site site, boolean open) {
         ServerLevel level = player.serverLevel();
         CampaignState wallet = CampaignState.wallet(level);
         StationStoreSavedData.SiteStore store = StationStoreSavedData.get(level)
@@ -646,7 +665,7 @@ public final class StoreService {
                     StorePricing.sellPrice(catalog.basePrice(), store.modifier())));
         }
         ModNetwork.sendToPlayer(player,
-                new StoreStatePacket(wallet.credits(), store.balance(), entries, subEntries));
+                new StoreStatePacket(wallet.credits(), store.balance(), open, entries, subEntries));
     }
 
     private static void message(ServerPlayer player, String text, ChatFormatting color) {

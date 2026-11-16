@@ -244,11 +244,19 @@ public class PlasmaCutterItem extends Item {
                 || player.tickCount - current.tick() > 4;
     }
 
-    /** 这一段瞄准已经被拒绝过；按住不放时不要再重复发破坏事件。 */
+    /** 这一段瞄准已经被拒绝过；按住不放时刷新窗口，不要重复发破坏事件。 */
     private static boolean denied(ServerPlayer player, BlockPos pos) {
         CutTarget current = CUTS.get(player.getUUID());
-        return current != null && current.pos().equals(pos) && !current.allowed()
-                && player.tickCount - current.tick() <= 4;
+        if (current == null || !current.pos().equals(pos) || current.allowed()) {
+            return false;
+        }
+        if (player.tickCount - current.tick() > 4) {
+            return false;
+        }
+        // 刷新 tick：持续按住时拒绝状态一直有效，松手/换目标后才重新判定。
+        CUTS.put(player.getUUID(), new CutTarget(current.pos(), current.applications(),
+                false, player.tickCount));
+        return true;
     }
 
     /** 记下被拒绝的目标并清掉裂纹；换目标或中断 4 tick 后才会重新检查权限。 */
@@ -324,7 +332,10 @@ public class PlasmaCutterItem extends Item {
                     && middleState.getValue(HatchBlock.PART) == HatchBlock.Part.MIDDLE) {
                 ItemStack drop = new ItemStack(middleState.getBlock().asItem());
                 for (int i = -1; i <= 1; i++) {
-                    level.destroyBlock(middle.relative(longAxis, i), false);
+                    BlockPos part = middle.relative(longAxis, i);
+                    if (level.getBlockState(part).getBlock() instanceof HatchBlock) {
+                        level.destroyBlock(part, false);
+                    }
                 }
                 if (!drop.isEmpty()) {
                     Block.popResource(level, middle, drop);
