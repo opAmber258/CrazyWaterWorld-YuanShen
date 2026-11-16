@@ -839,15 +839,17 @@ public final class StoreScreen extends Screen {
     private Component rowNarration(int index) {
         if (tab == TAB_BUY) {
             StoreStatePacket.Entry entry = buyEntries().get(index);
-            return quantityNarration(displayName(entry.itemId()), 0, entry.buyPrice());
+            return quantityNarration(displayName(entry.itemId()),
+                    buyQuantity(entry.itemId()), entry.buyPrice());
         }
         if (tab == TAB_SELL) {
             SellRow row = sellRows().get(index);
-            return quantityNarration(row.stack().getHoverName().getString(), 0,
-                    row.entry().sellPrice());
+            return quantityNarration(row.stack().getHoverName().getString(),
+                    sellQuantity(row.slot()), row.entry().sellPrice());
         }
         StoreStatePacket.SubEntry entry = state.subEntries().get(index);
-        return quantityNarration(displayName(entry.itemId()), 0, entry.sellPrice());
+        return quantityNarration(displayName(entry.itemId()),
+                subQuantity(entry.itemId()), entry.sellPrice());
     }
 
     private static Component quantityNarration(String name, int quantity, int price) {

@@ -48,6 +48,14 @@ public final class SonarScan {
     public static final int DEFAULT_RANGE = 96;
     /** 一次扫描最多多少点（包大小上限）。 */
     public static final int MAX_POINTS = 4096;
+    /**
+     * 给矿脉点预留的缓冲额度。
+     *
+     * <p>地形表面点先写满 MAX_POINTS 的话，后面的矿脉点一个都进不去——
+     * 采矿任务的金色矿点会在洞窟壁面复杂（表面点 ≥4096）的区域整批消失。
+     * 地形最多用到 MAX_POINTS - 预留值，矿脉点始终有位置。</p>
+     */
+    private static final int VEIN_POINT_RESERVE = 512;
 
     /** 定向脉冲的锥角：wiki 写的是 30 度。 */
     public static final float CONE_DEGREES = 30.0F;
@@ -155,9 +163,10 @@ public final class SonarScan {
                 }
             }
 
-            for (int i = 0; i < n && count < MAX_POINTS; i++) {
-                for (int j = 0; j < n && count < MAX_POINTS; j++) {
-                    for (int k = 0; k < n && count < MAX_POINTS; k++) {
+            int terrainBudget = MAX_POINTS - VEIN_POINT_RESERVE;
+            for (int i = 0; i < n && count < terrainBudget; i++) {
+                for (int j = 0; j < n && count < terrainBudget; j++) {
+                    for (int k = 0; k < n && count < terrainBudget; k++) {
                         byte blockKind = kind[index(i, j, k, n)];
                         if (blockKind != SOLID) {
                             continue;

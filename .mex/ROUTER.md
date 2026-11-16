@@ -101,6 +101,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第十三次 full review（`d71d2fc` 之后，8 条）**：商店分类下发稳定 id（`medical/diving/tools/fuel/container`），客户端按 `store.category.*` 双语显示；物理船三格舱口删除前逐格查 `BreakEvent`+`blockActionRestricted`，任一格被拒整套保留并留进度；`VsPilot` 新增只增不减的 `knownInteriorCells`，切掉外壁舱口后靠泊吸附仍认得房里的人/任务货（几何重扫会把破洞舱的 interior 清空）；三种矿脉加入 `mineable/pickaxe`；`OceanEnvironment.isInsidePhysicalShipCompartment` 先查 `VsSupport.available()`，未装 VS2 不加载 `VsPilot`；物品浮力接管标记写入掉落物持久 NBT，`EntityJoinLevelEvent` 重建跟踪，且只还原自己打的标；`HullDamageEvents` 改为物理船按空间相交独立结算后再处理方块船（最近核心不再能否定物理船伤害）；`StoreScreen` 补键盘焦点（Tab/方向键/Enter/空格的标签、行、提交三层）与旁白，购买确认弹窗支持左右+Enter。**跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
 
+  **第十四次 full review（`fc6648` 之后，7 条）**：`SonarScan` 地形点预留 `VEIN_POINT_RESERVE=512`，地形表面点 ≥4096 时矿脉金点不再整批丢失；`MissionProgress.itemById` 改 `BuiltInRegistries.ITEM.getOptional`（DefaultedRegistry 的 `get` 对未知 ID 返回 AIR）；`ItemBuoyancyEvents` 跳过没有本处理器标记的无重力物品，`release` 只还原带标记的；`HullDamageEvents` 去掉只含平移的装配包围盒粗筛，恢复 `VsState.active()`（旋转后的船首爆炸不再漏结算，`damageExplosion` 内部按 `shipToWorld` 判命中），同时删除 `VsState.isPhysicalWorld`/`Probe.coversWorld`/`VsPilot.PROBE`；商店旁白焦点行读实际已选数量；`MedicalClinicScreen` 补键盘焦点（Tab/方向键/Enter）与旁白；`HatchBlock`/`BulkheadDoorBlock.setPlacedBy` 调 `ShipCores.refreshNearby`（重扫附近核心 + 物理船几何，新门格不再漏出舱室/水量）。**跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

@@ -37,6 +37,9 @@ public final class MedicalClinicScreen extends Screen {
 
     private ClinicStatePacket state;
     private int scroll;
+    /** 键盘焦点：0 病症行 / 1 全部治疗按钮。 */
+    private int focusArea;
+    private int focusRow = -1;
 
     private MedicalClinicScreen(ClinicStatePacket state) {
         super(Component.translatable("clinic.title"));
@@ -108,7 +111,12 @@ public final class MedicalClinicScreen extends Screen {
             int rowY = listTop() + i * ROW_H;
             boolean hover = mouseX >= x + 8 && mouseX < x + PANEL_W - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H, hover ? HOVER : BOX);
+            boolean focused = focusArea == 0 && focusRow == scroll + i;
+            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H,
+                    (hover || focused) ? HOVER : BOX);
+            if (focused) {
+                g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
+            }
             g.drawString(font, label(entry), x + 14, rowY + 5, TEXT, false);
             String price = entry.price() + " mk";
             g.drawString(font, price, x + PANEL_W - 16 - font.width(price), rowY + 5,
@@ -122,11 +130,18 @@ public final class MedicalClinicScreen extends Screen {
         int buttonY = y + PANEL_H - 42;
         int total = totalPrice();
         boolean canAll = !entries.isEmpty() && state.wallet() >= total;
+        boolean buttonFocused = focusArea == 1 && !entries.isEmpty();
         boolean hover = !entries.isEmpty() && mouseX >= x + 10 && mouseX < x + 190
                 && mouseY >= buttonY && mouseY < buttonY + 18;
         g.fill(x + 10, buttonY, x + 190, buttonY + 18,
-                entries.isEmpty() ? BOX : hover ? HOVER : 0xFF3A4A3C);
+                entries.isEmpty() ? BOX : (hover || buttonFocused) ? HOVER : 0xFF3A4A3C);
         g.fill(x + 10, buttonY, x + 190, buttonY + 1, EDGE);
+        if (buttonFocused) {
+            g.fill(x + 10, buttonY, x + 190, buttonY + 1, ACCENT);
+            g.fill(x + 10, buttonY + 17, x + 190, buttonY + 18, ACCENT);
+            g.fill(x + 10, buttonY, x + 11, buttonY + 18, ACCENT);
+            g.fill(x + 189, buttonY, x + 190, buttonY + 18, ACCENT);
+        }
         g.drawCenteredString(font, entries.isEmpty()
                         ? Component.translatable("clinic.heal_all")
                         : Component.translatable("clinic.heal_all_price", total),
@@ -172,8 +187,8 @@ public final class MedicalClinicScreen extends Screen {
         int buttonY = y + PANEL_H - 42;
         if (!state.entries().isEmpty() && mouseX >= x + 10 && mouseX < x + 190
                 && mouseY >= buttonY && mouseY < buttonY + 18) {
-            ModNetwork.sendToServer(new ClinicActionPacket(
-                    ClinicActionPacket.HEAL_ALL, "", totalPrice()));
+            focusArea = 1;
+            healAll();
             return true;
         }
         int top = listTop();
@@ -182,13 +197,78 @@ public final class MedicalClinicScreen extends Screen {
             int index = scroll + (int) ((mouseY - top) / ROW_H);
             List<ClinicStatePacket.Entry> entries = state.entries();
             if (index >= 0 && index < entries.size()) {
-                ClinicStatePacket.Entry entry = entries.get(index);
-                ModNetwork.sendToServer(new ClinicActionPacket(
-                        entry.afflictionId(), entry.limb(), entry.price()));
+                focusArea = 0;
+                focusRow = index;
+                healEntry(entries.get(index));
                 return true;
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == 258) { // Tab：列表 / 全部治疗
+            focusArea = 1 - focusArea;
+            narrate(Component.translatable(focusArea == 0
+                    ? "clinic.focus.list" : "clinic.focus.heal_all"));
+            return true;
+        }
+        if (keyCode == 265 || keyCode == 264) { // 上/下
+            if (focusArea == 0) {
+                moveFocus(keyCode == 265 ? -1 : 1);
+            } else {
+                focusArea = 0;
+            }
+            return true;
+        }
+        if (keyCode == 257 || keyCode == 335 || keyCode == 32) { // Enter / Space
+            if (focusArea == 1) {
+                healAll();
+            } else if (focusRow >= 0 && focusRow < state.entries().size()) {
+                healEntry(state.entries().get(focusRow));
+            }
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    /** 键盘上下移动病症行焦点，并保证焦点行在可视区内。 */
+    private void moveFocus(int delta) {
+        int rows = state.entries().size();
+        if (rows <= 0) {
+            focusRow = -1;
+            return;
+        }
+        int next = focusRow < 0 ? 0 : Math.max(0, Math.min(focusRow + delta, rows - 1));
+        focusRow = next;
+        if (next < scroll) {
+            scroll = next;
+        } else if (next >= scroll + VISIBLE_ROWS) {
+            scroll = next - VISIBLE_ROWS + 1;
+        }
+        ClinicStatePacket.Entry entry = state.entries().get(next);
+        narrate(Component.literal(label(entry) + " · " + entry.price() + " mk"));
+    }
+
+    private void healEntry(ClinicStatePacket.Entry entry) {
+        ModNetwork.sendToServer(new ClinicActionPacket(
+                entry.afflictionId(), entry.limb(), entry.price()));
+    }
+
+    private void healAll() {
+        if (state.entries().isEmpty()) {
+            return;
+        }
+        ModNetwork.sendToServer(new ClinicActionPacket(
+                ClinicActionPacket.HEAL_ALL, "", totalPrice()));
+    }
+
+    /** 屏幕阅读器旁白；没有旁白模块时静默。 */
+    private void narrate(Component text) {
+        if (minecraft != null) {
+            minecraft.getNarrator().sayNow(text);
+        }
     }
 
     @Override

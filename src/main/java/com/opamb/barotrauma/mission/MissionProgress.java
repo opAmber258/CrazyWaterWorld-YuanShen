@@ -193,7 +193,7 @@ public final class MissionProgress {
 
     private static Item itemById(String itemId) {
         ResourceLocation id = ResourceLocation.tryParse(itemId == null ? "" : itemId);
-        return id == null ? null : BuiltInRegistries.ITEM.get(id);
+        return id == null ? null : BuiltInRegistries.ITEM.getOptional(id).orElse(null);
     }
 
     /** 矿物显示名（服务端聊天消息用；服务端语言固定 en_us，所以这三种直接写中文）。 */

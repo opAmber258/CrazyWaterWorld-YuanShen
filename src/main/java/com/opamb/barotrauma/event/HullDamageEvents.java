@@ -55,9 +55,10 @@ public final class HullDamageEvents {
         BlockPos centerPos = BlockPos.containing(center);
         ShipCoreBlockEntity core = ShipCores.nearestCore(level, centerPos,
                 Math.max(32.0D, radius + 32.0D));
-        // 按空间相交独立结算物理船：最近核心不能证明爆炸只影响一艘船。
-        // 物理船快照和附近方块船的船壳可以同时吃伤害。
-        if (VsState.active() && VsState.isPhysicalWorld(level, center, radius + 0.75D)) {
+        // 物理船按快照独立结算：damageExplosion 自己会用完整 shipToWorld 变换
+        // 判断命中，没有船/没命中时返回 0。不要在外面用只含平移的包围盒粗筛——
+        // 船偏航 90° 后，船首附近的爆炸会被旧包围盒排除、整次伤害跳过。
+        if (VsState.active()) {
             VsState.damageExplosion(level, center, radius + 0.75D, base);
         }
         // 方块船分支照常跑：世界上有物理船时，旁边方块船的熔毁仍要走船壳耐久，

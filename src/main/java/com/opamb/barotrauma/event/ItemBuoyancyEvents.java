@@ -130,12 +130,18 @@ public final class ItemBuoyancyEvents {
 
     /** 还原原版重力（物品出水/落地/进干区），不再需要跟踪。 */
     private static void release(ItemEntity item) {
-        item.setNoGravity(false);
-        item.getPersistentData().remove(TAG_CONTROLLED);
+        if (item.getPersistentData().getBoolean(TAG_CONTROLLED)) {
+            item.setNoGravity(false);
+            item.getPersistentData().remove(TAG_CONTROLLED);
+        }
         CONTROLLED.remove(item.getUUID());
     }
 
     private static void applyBuoyancy(ServerLevel level, ItemEntity item) {
+        // 别接管其他逻辑设置的无重力物品：不然后面的干区/落地分支会替它恢复重力。
+        if (item.isNoGravity() && !item.getPersistentData().getBoolean(TAG_CONTROLLED)) {
+            return;
+        }
         double y = item.getY();
         boolean inWater = y <= ModDimensions.WATER_TOP_Y
                 && y >= ModDimensions.WATER_BOTTOM_Y;

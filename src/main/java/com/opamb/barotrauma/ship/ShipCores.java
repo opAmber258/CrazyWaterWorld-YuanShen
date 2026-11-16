@@ -35,6 +35,24 @@ public final class ShipCores {
     }
 
     /**
+     * 玩家放下门/舱口后刷新船体几何。
+     *
+     * <p>新方块不在旧 {@code hull} 里时，{@code DrainPumpBlockEntity.resolveCore} 的
+     * {@code tracksHullBlock(pos)} 会返回 false，之后开合门触发的重扫也不会执行，
+     * 舱室分隔/水量隔离就一直漏掉这格。放置是低频操作，这里重扫附近方块船核心，
+     * 并让物理船重新扫描船坞方块。</p>
+     */
+    public static void refreshNearby(Level level, BlockPos pos) {
+        if (!(level instanceof net.minecraft.server.level.ServerLevel server)) {
+            return;
+        }
+        for (ShipCoreBlockEntity core : coresNear(level, pos, 64.0D)) {
+            core.rescan(level);
+        }
+        com.opamb.barotrauma.ship.vs.VsState.refreshGeometry(server);
+    }
+
+    /**
      * 列出 {@code center} 附近（已加载区块内）的所有船核心。
      *
      * <p>不逐格查方块（那要几十万次），而是直接翻已加载区块的方块实体表——核心很少，

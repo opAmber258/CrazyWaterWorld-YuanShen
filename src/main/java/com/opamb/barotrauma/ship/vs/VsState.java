@@ -24,17 +24,6 @@ public final class VsState {
     /** 问"这个方块位置属于不在的那艘物理船吗"。由 {@link VsPilot} 提供。 */
     public interface Probe {
         boolean isPhysical(ServerLevel level, BlockPos pos);
-
-        /**
-         * 世界坐标是否落在物理船的装配范围内（爆炸归属判定用）。
-         *
-         * <p>{@link #isPhysical} 走 VS2 船坞归属查询，世界坐标上通常返回 false；
-         * 这个默认实现让没有 VS2 的实现直接返回 false，装船时由 {@link VsPilot} 覆盖。</p>
-         */
-        default boolean coversWorld(ServerLevel level, net.minecraft.world.phys.Vec3 pos,
-                                    double margin) {
-            return false;
-        }
     }
 
     /** 把船状态（油门 / 功率 / 压载 / 进水）推给物理推进器。由 {@link VsPilot} 提供。 */
@@ -172,27 +161,6 @@ public final class VsState {
         }
     }
 
-    /**
-     * 世界坐标是否落在活动物理船的装配范围内（含 {@code margin} 格外扩）。
-     *
-     * <p>爆炸事件的坐标是世界坐标，{@link #isPhysical} 的船坞归属查询在这里不可用；
-     * 用装配包围盒 + 当前位移换算，判断这次爆炸到底属于物理船还是旁边的方块船。</p>
-     */
-    public static boolean isPhysicalWorld(ServerLevel level, net.minecraft.world.phys.Vec3 pos,
-                                          double margin) {
-        if (!active || level == null || pos == null) {
-            return false;
-        }
-        Probe current = probe;
-        if (current == null) {
-            return false;
-        }
-        try {
-            return current.coversWorld(level, pos, margin);
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
 
     /** 把船状态同步给物理推进器（没装 VS2 / 没有物理船时是空操作）。 */
     public static void syncControl(@Nullable ShipState ship) {

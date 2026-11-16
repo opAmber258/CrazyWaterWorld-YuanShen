@@ -148,6 +148,10 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
             return;
         }
         level.setBlock(pos.above(), state.setValue(PART, Part.UPPER), Block.UPDATE_ALL);
+        if (!level.isClientSide) {
+            // 新门格不在旧 hull 里时，后续开合不会触发重扫；放置时主动刷新一次。
+            com.opamb.barotrauma.ship.ShipCores.refreshNearby(level, pos);
+        }
     }
 
     private static BlockPos lowerPos(Level level, BlockPos pos, BlockState state) {

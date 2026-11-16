@@ -472,41 +472,6 @@ public final class VsPilot {
         return managing != null && managing.getId() == ship.getId();
     }
 
-    /** 物理归属查询：方块坐标走船坞，世界坐标走装配包围盒（爆炸/外部伤害判定）。 */
-    private static final VsState.Probe PROBE = new VsState.Probe() {
-        @Override
-        public boolean isPhysical(ServerLevel level, BlockPos pos) {
-            return isPhysicalHere(level, pos);
-        }
-
-        @Override
-        public boolean coversWorld(ServerLevel level, Vec3 pos, double margin) {
-            return isInPhysicalBounds(level, pos, margin);
-        }
-    };
-
-    /**
-     * 世界坐标是否在物理船的装配包围盒内。
-     *
-     * <p>{@link #isPhysicalHere} 的世界坐标版本：VS2 的 {@code managingShip} 只认船坞
-     * 坐标，而爆炸事件拿到的是世界坐标。装配包围盒（快照坐标）+ 当前位移就是船在
-     * 世界里的范围，用来区分"这艘物理船上的爆炸"和"旁边方块船的爆炸"。</p>
-     */
-    private static boolean isInPhysicalBounds(ServerLevel level, Vec3 pos, double margin) {
-        if (ship == null || state == null || level == null || pos == null) {
-            return false;
-        }
-        if (lastLevel != null && lastLevel != level) {
-            return false;
-        }
-        ShipGeometry.Bounds b = state.geometry().bounds();
-        double lx = pos.x - VsState.offsetX();
-        double ly = pos.y - VsState.offsetY();
-        double lz = pos.z - VsState.offsetZ();
-        return lx >= b.minX() - margin && lx <= b.maxX() + 1.0D + margin
-                && ly >= b.minY() - margin && ly <= b.maxY() + 1.0D + margin
-                && lz >= b.minZ() - margin && lz <= b.maxZ() + 1.0D + margin;
-    }
 
     /** 这个位置是不是在某个物理船舱的盒子里（不管进没进水）。 */
     public static boolean isInsideCompartment(Level level, Vec3 pos) {
@@ -2175,7 +2140,7 @@ public final class VsPilot {
             return;
         }
         lastLevel = level;
-        VsState.activate(corePos, state, PROBE, VsPilot::applyControl);
+        VsState.activate(corePos, state, VsPilot::isPhysicalHere, VsPilot::applyControl);
     }
 
     // ------------------------------------------------------------------ 装配
@@ -2412,7 +2377,7 @@ public final class VsPilot {
             state = shipState;
             // 原作中性浮力：压载舱注到全船 7% 水量的相对水位（下一 tick 生效）
             shipState.simulation().requestBallastPrime();
-            VsState.activate(core, shipState, PROBE, VsPilot::applyControl);
+            VsState.activate(core, shipState, VsPilot::isPhysicalHere, VsPilot::applyControl);
             applyControl(shipState);
             sendWaterState(shipState);
             recordAssembled(level, captured, shipState, core, assembled);
@@ -2427,7 +2392,7 @@ public final class VsPilot {
         state = shipState;
         // 原作中性浮力：压载舱注到全船 7% 水量的相对水位（下一 tick 生效）
         shipState.simulation().requestBallastPrime();
-        VsState.activate(core, shipState, PROBE, VsPilot::applyControl);
+        VsState.activate(core, shipState, VsPilot::isPhysicalHere, VsPilot::applyControl);
         applyControl(shipState);
         sendWaterState(shipState);
         recordAssembled(level, captured, shipState, core, assembled);
@@ -3167,7 +3132,7 @@ public final class VsPilot {
         } else {
             thruster = attached;
         }
-        VsState.activate(core, rebuilt, PROBE, VsPilot::applyControl);
+        VsState.activate(core, rebuilt, VsPilot::isPhysicalHere, VsPilot::applyControl);
         applyControl(rebuilt);
         sendWaterState(rebuilt);
         LOGGER.info("[vs] 已认领世界里的物理船：shipId={}，快照 {} 格，破口 {} 处，推进器 {}",

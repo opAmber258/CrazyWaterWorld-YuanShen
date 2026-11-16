@@ -144,6 +144,10 @@ public class HatchBlock extends BaseEntityBlock {
                 state.setValue(PART, Part.LEFT), Block.UPDATE_ALL);
         level.setBlock(pos.relative(longAxis),
                 state.setValue(PART, Part.RIGHT), Block.UPDATE_ALL);
+        if (!level.isClientSide) {
+            // 新舱口格不在旧 hull 里时，后续开合不会触发重扫；放置时主动刷新一次。
+            com.opamb.barotrauma.ship.ShipCores.refreshNearby(level, pos);
+        }
     }
 
     private static BlockPos middlePos(Level level, BlockPos pos, BlockState state) {
