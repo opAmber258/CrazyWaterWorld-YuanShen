@@ -447,7 +447,7 @@ public final class StoreScreen extends Screen {
                 g.renderItem(stack, x + 12, rowY + 1);
             }
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
-            g.drawString(font, clipName(name, quantityMinusX(x) - 6 - (x + 34)),
+            g.drawString(font, clipName(name, nameWidth(x)),
                     x + 34, rowY + 5, TEXT, false);
             if (showsSecondaryColumns()) {
                 g.drawString(font, "[" + categoryLabel(entry.category()) + "]",
@@ -497,7 +497,7 @@ public final class StoreScreen extends Screen {
             }
             g.renderItem(row.stack(), x + 12, rowY + 1);
             g.drawString(font, clipName(row.stack().getHoverName().getString(),
-                            quantityMinusX(x) - 6 - (x + 34)),
+                            nameWidth(x)),
                     x + 34, rowY + 5, TEXT, false);
             if (showsSecondaryColumns()) {
                 g.drawString(font, Component.translatable("store.slot", row.slot()),
@@ -536,7 +536,7 @@ public final class StoreScreen extends Screen {
                 g.renderItem(stack, x + 12, rowY + 1);
             }
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
-            g.drawString(font, clipName(name, quantityMinusX(x) - 6 - (x + 34)),
+            g.drawString(font, clipName(name, nameWidth(x)),
                     x + 34, rowY + 5, TEXT, false);
             if (showsSecondaryColumns()) {
                 g.drawString(font, Component.translatable("store.on_ship", entry.quantity()),
@@ -553,6 +553,12 @@ public final class StoreScreen extends Screen {
     }
 
     /** 行内数量控件的 −/+ 左边界：按面板右边对齐，窄面板时不会跑到面板外。 */
+    /** 物品名最多画多宽：有后续列时到第一列（x+196）前为止，否则到数量控件前。 */
+    private int nameWidth(int x) {
+        int right = showsSecondaryColumns() ? x + 196 - 6 : quantityMinusX(x) - 6;
+        return Math.max(24, right - (x + 34));
+    }
+
     private int quantityMinusX(int x) {
         return x + panelW() - 140;
     }

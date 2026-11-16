@@ -47,7 +47,8 @@ public final class ShipSimulation {
     private final double[] oxygen;
     private final MachineCount machines;
     /** 船体几何（破口空腔、舱室体积都从这里读）。 */
-    private final ShipGeometry.Result geometry;
+    /** 整船平移时会被替换成新坐标的几何（水量/温度数组保留）。 */
+    private ShipGeometry.Result geometry;
     /** 连海空腔（破口舱室）里的水量，按 openPockets 的顺序。 */
     private final double[] pocketWater;
     /**
@@ -709,6 +710,21 @@ public final class ShipSimulation {
     }
 
     /**
+     * 整船平移：几何换成新坐标，水量/温度数组保留（舱室数量/体积不变）。
+     *
+     * <p>不换几何的话 {@code bodyOf()}/{@code waterLevelAt()} 还按旧坐标查，
+     * 平移后接线盒会被判成不在任何舱室、泡水判定也拿不到列水位。</p>
+     */
+    public void shiftGeometry(int dx, int dy, int dz) {
+        if (dx == 0 && dy == 0 && dz == 0) {
+            return;
+        }
+        this.geometry = geometry.shifted(dx, dy, dz);
+        this.bodyIndexOfCell = null;
+        this.pocketLevelCache.clear();
+    }
+
+    /**
      * 整船平移后迁移上报表：键和绑定的接线盒都加上偏移，上报 tick 保持不变。
      *
      * <p>模拟实例在 {@code ShipState.shifted()} 里原样复用；不迁移的话旧坐标的
@@ -757,6 +773,15 @@ public final class ShipSimulation {
         }
         reactors.clear();
         reactors.putAll(movedReactors);
+        // 泵上报表也要平移：旧位置的泵记录会继续按旧舱室抽水，和新位置记录叠加。
+        java.util.Map<net.minecraft.core.BlockPos, PumpReport> movedPumps =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, PumpReport> entry
+                : pumps.entrySet()) {
+            movedPumps.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        pumps.clear();
+        pumps.putAll(movedPumps);
     }
 
     /**

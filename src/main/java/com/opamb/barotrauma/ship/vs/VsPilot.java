@@ -2036,16 +2036,6 @@ public final class VsPilot {
         if (sonarSame && pumpSame && reactorSame && engineSame) {
             return;
         }
-        // 代理的 small 标记要跟着泵型号走：移动前从旧代理上抄下来。
-        java.util.Map<BlockPos, Boolean> pumpSmall = new java.util.HashMap<>();
-        for (BlockPos anchor : pumpAnchors) {
-            BlockPos current = pumpProxyByAnchor.get(anchor);
-            BlockState old = current == null ? null : level.getBlockState(current);
-            if (old != null && old.is(ModShipBlocks.PUMP_PROXY.get())) {
-                pumpSmall.put(anchor,
-                        old.getValue(com.opamb.barotrauma.block.PumpProxyBlock.SMALL));
-            }
-        }
         // 两阶段：先撤所有要移动的旧代理，再放新代理。声纳和泵可能相邻，
         // 若先放后撤，会把对方刚放好的代理当成障碍物而跳过。
         if (!sonarSame) {
@@ -2066,10 +2056,15 @@ public final class VsPilot {
         if (!pumpSame) {
             nextPumpProxies = new java.util.HashMap<>();
             for (BlockPos anchor : pumpAnchors) {
+                // 泵型从装配快照读：读档/adopt() 后 pumpProxyByAnchor 可能还没建立，
+                // 不能依赖旧代理上抄下来的标记。
+                BlockState pumpState = snapshot.get(anchor);
+                boolean smallPump = pumpState != null
+                        && pumpState.is(ModBlocks.SMALL_PUMP.get());
                 BlockPos placed = placeProxy(level, anchor.offset(dx, dy, dz),
                         ModShipBlocks.PUMP_PROXY.get().defaultBlockState()
                                 .setValue(com.opamb.barotrauma.block.PumpProxyBlock.SMALL,
-                                        pumpSmall.getOrDefault(anchor, Boolean.FALSE)));
+                                        smallPump));
                 if (placed != null) {
                     nextPumpProxies.put(anchor, placed);
                 }

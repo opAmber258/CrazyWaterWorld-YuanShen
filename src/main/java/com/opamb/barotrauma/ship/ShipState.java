@@ -800,8 +800,10 @@ public final class ShipState {
         ShipState next = new ShipState(geometry.shifted(dx, dy, dz), machines);
         next.simulation = this.simulation;
         if (next.simulation != null) {
-            // 模拟实例原样带过去，但上报表的键还是平移前的坐标；设备按新坐标
-            // 上报后旧记录会在超时前重复计入需求（同一台泵算两份）。
+            // 模拟实例原样带过去，但几何/上报表的键还是平移前的坐标：
+            // 几何不换的话 bodyOf()/waterLevelAt() 查不到新位置；
+            // 上报表不换的话设备按新坐标上报后旧记录还会重复计入需求。
+            next.simulation.shiftGeometry(dx, dy, dz);
             next.simulation.shiftReports(dx, dy, dz);
         }
         // 船壳耐久是逐格记录的，整船平移时必须跟着坐标一起挪。

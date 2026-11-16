@@ -182,14 +182,9 @@ public final class PowerPanelState {
         if (ship == null) {
             return false;
         }
-        boolean known = false;
-        for (var info : ship.simulation().consumerInfos()) {
-            if (info.pos().equals(deviceCell)) {
-                known = true;
-                break;
-            }
-        }
-        if (!known) {
+        // 用船体几何判断归属，而不是 consumerInfos：世界重开后设备还没重新上报时
+        // consumerInfos 是空的，但那台设备仍然属于这艘船，不能因此拒绝绑定。
+        if (!ship.geometry().owns(deviceCell)) {
             return false;
         }
         // PowerBox 与 ShipSimulation 的 boxes/consumers 使用同一套坐标。
