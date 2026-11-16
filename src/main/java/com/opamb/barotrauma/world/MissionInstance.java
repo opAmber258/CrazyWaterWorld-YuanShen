@@ -193,6 +193,15 @@ public final class MissionInstance {
 
     /** 从站点坐标反推轮次（出发站偏移 192 格，仍然落在同一个 slot 里）。 */
     public static int siteSlot(DockingBay.Site site) {
+        RouteLevel level = routeLevel;
+        if (level != null) {
+            // 旧存档的槽位间距可能不是当前 SPACING，活动关卡的站只能按保存的锚点认。
+            Anchor anchor = anchorForRound(level.slot());
+            if (site.equals(DockingBay.Site.forSlot(level.slot()))
+                    || site.equals(startSite(anchor))) {
+                return level.slot();
+            }
+        }
         return Math.max(0, Math.round((site.x() - BASE_X) / (float) SPACING));
     }
 
@@ -239,7 +248,16 @@ public final class MissionInstance {
      */
     public static boolean inRouteZone(int x, int z) {
         int base = Math.max(0, Math.round((x - BASE_X) / (float) SPACING));
-        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
+        int min = Math.max(0, base - 1);
+        int max = base + 1;
+        RouteLevel active = routeLevel;
+        if (active != null) {
+            // 旧存档的锚点不按当前 SPACING 排列：活动槽位始终参与判定，
+            // 否则 x 落在两个新槽位之间时整条活动航道都不会清空。
+            min = Math.min(min, Math.max(0, active.slot() - 1));
+            max = Math.max(max, active.slot() + 1);
+        }
+        for (int slot = min; slot <= max; slot++) {
             Anchor anchor = anchorForRound(slot);
             DockingBay.Site start = startSite(anchor);
             if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 64.0D) {
@@ -294,7 +312,15 @@ public final class MissionInstance {
      */
     public static boolean inMiningZone(int x, int z) {
         int base = Math.max(0, Math.round((x - BASE_X) / (float) SPACING));
-        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
+        int min = Math.max(0, base - 1);
+        int max = base + 1;
+        RouteLevel active = routeLevel;
+        if (active != null) {
+            // 和 inRouteZone 一样：旧存档的活动槽位坐标不按当前 SPACING 排列。
+            min = Math.min(min, Math.max(0, active.slot() - 1));
+            max = Math.max(max, active.slot() + 1);
+        }
+        for (int slot = min; slot <= max; slot++) {
             Anchor anchor = anchorForRound(slot);
             DockingBay.Site start = startSite(anchor);
             if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 24.0D
@@ -355,6 +381,20 @@ public final class MissionInstance {
     public static Integer siteXAt(int x, int z) {
         if (Math.abs(z) > SITE_RADIUS) {
             return null;
+        }
+        RouteLevel level = routeLevel;
+        if (level != null) {
+            // 活动关卡按保存的 anchorX 认站：旧存档槽位 3 用当前间距会算出别的 x。
+            Anchor anchor = anchorForRound(level.slot());
+            if (Math.abs(x - anchor.x()) <= SITE_RADIUS
+                    && Math.abs(z - anchor.z()) <= SITE_RADIUS) {
+                return anchor.x();
+            }
+            DockingBay.Site start = startSite(anchor);
+            if (Math.abs(x - start.x()) <= SITE_RADIUS
+                    && Math.abs(z - start.z()) <= SITE_RADIUS) {
+                return start.x();
+            }
         }
         int slot = Math.round((x - BASE_X) / (float) SPACING);
         if (slot < 0) {

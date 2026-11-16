@@ -107,6 +107,42 @@ class MissionInstanceTest {
     }
 
     @Test
+    @DisplayName("旧存档 1024 间距：活动槽位按保存的 anchorX 判定")
+    void legacySpacingAnchors() {
+        int legacy = 1024;
+        LevelParams basic = LevelType.BASIC.params();
+
+        // 槽位 2：锚点 22048 在当前 2048 间距下会被反推成槽位 1。
+        int anchor2 = MissionInstance.BASE_X + 2 * legacy;
+        MissionInstance.Anchor a2 = new MissionInstance.Anchor(
+                2, anchor2, MissionInstance.ANCHOR_Y, 0);
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                2, LevelType.BASIC, 11L, 4, basic.routeLength(), anchor2));
+        MissionInstance.setRouteOutposts(2, true, false);
+
+        assertEquals(anchor2, MissionInstance.anchorForRound(2).x());
+        assertEquals(2, MissionInstance.siteSlot(DockingBay.Site.forSlot(2)));
+        assertEquals(2, MissionInstance.siteSlot(MissionInstance.startSite(a2)),
+                "出发站也要认回同一槽位");
+        assertEquals(Integer.valueOf(anchor2), MissionInstance.siteXAt(anchor2, 0));
+        assertFalse(MissionInstance.outpostExpected(DockingBay.Site.forSlot(2)),
+                "routeEndOutpost=false 的航路点不能生成哨站");
+
+        // 槽位 3：锚点 23072 用当前间距反推会漏掉整个活动槽位。
+        int anchor3 = MissionInstance.BASE_X + 3 * legacy;
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                3, LevelType.BASIC, 12L, 4, basic.routeLength(), anchor3));
+        MissionInstance.setRouteOutposts(3, true, true);
+
+        assertEquals(3, MissionInstance.siteSlot(DockingBay.Site.forSlot(3)));
+        assertEquals(Integer.valueOf(anchor3), MissionInstance.siteXAt(anchor3, 0));
+        assertTrue(MissionInstance.inRouteZone(anchor3 - 1, 0),
+                "锚点净空必须算在航道内（当前间距反推的 base 落在槽位 1）");
+        assertTrue(MissionInstance.inMiningZone(anchor3 - 100, 0),
+                "锚点 24..150 格内是矿区");
+    }
+
+    @Test
     @DisplayName("没有活动关卡时出发站距离回退 192")
     void noRouteLevelFallback() {
         MissionInstance.setRouteLevel(null);

@@ -77,8 +77,34 @@ class LevelParamsTest {
         assertTrue(LevelType.TUTORIAL.params().wallVeinModulus()
                 < LevelType.BASIC.params().wallVeinModulus(),
                 "0.6 比 0.35 更密 → 模数更小");
-        assertEquals(LevelType.BASIC.params().wallVeinModulus(),
-                LevelType.BASIC.params().wallVeinModulus(), "同类型模数必须稳定");
+    }
+
+    @Test
+    @DisplayName("模数边界：零概率取 baseline×4，极大概率封顶 128")
+    void veinModulusBounds() {
+        assertEquals(4096, withChances(0.0D, 0.35D).seafloorVeinModulus(),
+                "海底零概率 = 1024×4");
+        assertEquals(1024, withChances(0.2D, 0.0D).wallVeinModulus(),
+                "岩壁零概率 = 256×4");
+        assertEquals(128, withChances(100.0D, 100.0D).seafloorVeinModulus(),
+                "极大概率封顶 128");
+        assertEquals(128, withChances(100.0D, 100.0D).wallVeinModulus(),
+                "极大概率封顶 128");
+    }
+
+    /** 复制 basic 的参数，只替换海底/岩壁资源概率。 */
+    private static LevelParams withChances(double seafloor, double wall) {
+        LevelParams base = LevelType.BASIC.params();
+        LevelParams.Content c = base.content();
+        return new LevelParams(base.type(), base.commonness(), base.minDifficulty(),
+                base.maxDifficulty(), base.dims(), base.shape(),
+                new LevelParams.Content(c.itemCount(), c.levelObjectAmount(),
+                        c.backgroundCreatureAmount(), c.resourceIntervalMin(),
+                        c.resourceIntervalMax(), c.caveResourceIntervalMin(),
+                        c.caveResourceIntervalMax(), c.resourceClusterMin(),
+                        c.resourceClusterMax(), seafloor, wall, c.wreckMin(),
+                        c.wreckMax(), c.ruinCount(), c.thalamusProbability()),
+                base.route());
     }
 
     @Test

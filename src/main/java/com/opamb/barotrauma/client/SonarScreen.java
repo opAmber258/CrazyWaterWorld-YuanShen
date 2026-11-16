@@ -1524,6 +1524,13 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                 if (pointType != SonarScan.TYPE_TERRAIN && pointType != SonarScan.TYPE_ORE) {
                     continue;
                 }
+                // 与 drawCloud 的 terrainLike 判定一致：相机背后的点不会画出来，
+                // 也就不能当作可点击目标，否则点击可见矿脉会提交到被遮住的另一侧矿脉。
+                double depth = SonarScan.x(point) * fx + SonarScan.y(point) * fy
+                        + SonarScan.z(point) * fz + camDistance;
+                if (depth < camDistance) {
+                    continue;
+                }
                 double px = SonarScan.x(point) - camX;
                 double py = SonarScan.y(point) - camY;
                 double pz = SonarScan.z(point) - camZ;

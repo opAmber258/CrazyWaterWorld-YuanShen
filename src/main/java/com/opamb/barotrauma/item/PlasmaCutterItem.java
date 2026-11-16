@@ -25,12 +25,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.ForgeHooks;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -170,6 +172,10 @@ public class PlasmaCutterItem extends Item {
             BlockPos pos = blockHit.getBlockPos();
             BlockState state = level.getBlockState(pos);
             if (state.getBlock() instanceof MineralVeinBlock vein) {
+                if (startingCut(player, pos) && !canBreak(level, player, pos)) {
+                    clearProgress(player, level);
+                    return false;
+                }
                 return progress(level, player, pos, VEIN_CUT_APPLICATIONS, () -> {
                     level.destroyBlock(pos, false);
                     int count = vein.cutYield(level.random);
@@ -187,6 +193,10 @@ public class PlasmaCutterItem extends Item {
                 return VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION);
             }
             if (isFixture(state)) {
+                if (startingCut(player, pos) && !canBreak(level, player, pos)) {
+                    clearProgress(player, level);
+                    return false;
+                }
                 return progress(level, player, pos, FIXTURE_CUT_APPLICATIONS, () -> {
                     ItemStack drop = new ItemStack(state.getBlock().asItem());
                     level.destroyBlock(pos, false);
@@ -208,6 +218,24 @@ public class PlasmaCutterItem extends Item {
         }
         // 物理船的方块在世界里是空气，只能按装配快照做视线检测。
         return VsState.active() && VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION);
+    }
+
+    /** 是否刚开始切这一格：只有第一次应用才发破坏事件，别每 2 tick 重复触发。 */
+    private static boolean startingCut(ServerPlayer player, BlockPos pos) {
+        CutTarget current = CUTS.get(player.getUUID());
+        return current == null || !current.pos().equals(pos);
+    }
+
+    /**
+     * 与原版方块破坏路径一致：先发出 {@code BlockEvent.BreakEvent}，再检查位置级
+     * 破坏限制（冒险模式/领地/出生点保护）；{@code mayBuild()} 只是玩家级权限。
+     */
+    private static boolean canBreak(ServerLevel level, ServerPlayer player, BlockPos pos) {
+        GameType mode = player.gameMode.getGameModeForPlayer();
+        if (ForgeHooks.onBlockBreakEvent(level, mode, player, pos) == -1) {
+            return false;
+        }
+        return !player.blockActionRestricted(level, pos, mode);
     }
 
     /** 累计切割进度；达到 {@code applications} 次就执行 {@code finish}。 */

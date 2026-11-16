@@ -77,6 +77,8 @@ L1 203 项通过，等实机验收和用户的「提交」授权。本文件以�
 
   **第二次 full review（`a802289` 之后，11 条 + outside-diff + nitpick）**：旧存档关卡锚点/间距持久化（`RouteLevel.anchorX`、`RoundState.levelSpacing`，旧档回退 192/1024）；`CampaignManager.restoreRoute` 统一读档/启动/tick 三处恢复；接线盒 tick 用 `VsState.isPhysical` 判归属、方块船用原始坐标；矿脉密度改 `floorMod` 模数（不再用不连续位掩码），邻列矿脉用邻列 `floorY`；旧焊接购买价对齐商店 150 防套利；切割射线穿过打开的舱门/舱口、并加 `player.mayBuild` 权限检查；`ShipMover` 保留接线盒耐久 NBT；反应堆警报用 `effectCenter` 世界坐标；声纳矿脉点可作自动驾驶目标。
 
+  **第三次 full review（`b08b508` 之后，3 条 + nitpick）**：声纳目标选择套用 `drawCloud` 的 `depth >= camDistance`，相机背后的矿脉不再能被点成自动驾驶目标；切割器在矿脉/舱门分支前调用 `ForgeHooks.onBlockBreakEvent` + `blockActionRestricted`（只在换目标后的第一次应用触发，拒绝时清进度）；旧存档活动槽位改按保存的 `anchorX` 认站（`siteSlot`/`siteXAt` 精确匹配活动锚点与出发站，`inRouteZone`/`inMiningZone` 强制包含活动槽位），补 1024 间距槽位 2/3 单测；`LevelParamsTest` 删恒真断言并补 `veinModulus` 边界（零概率 baseline×4、极大概率 128）。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

@@ -3,7 +3,7 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-15（哨站服务 + 关卡洞窟网络 + 电力/采矿/装备批次，PR 待审；
+> 上次更新：2026-11-16（PR #61 第三轮 CodeRabbit 修复，274 项测试通过；
 > 本地 `main` 仍在 `77009a7`，`origin/main` 已多 3 个美术提交，**还没 pull**）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
@@ -50,7 +50,7 @@
 - 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
 
 ### 4. 验证 / 未做
-- `./gradlew compileJava test --offline`：**272 项测试 0 失败（47 个测试类）**。
+- `./gradlew compileJava test --offline`：**274 项测试 0 失败（47 个测试类）**。
 - 客户端本轮未起（用户要求等通知）；实机验收待用户。
 - 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
   任务/沉船/怪物等 P0 缺口。
@@ -82,6 +82,12 @@
   判归属；矿脉密度改 `floorMod` 模数、邻列用邻列 `floorY`；旧焊接购买价对齐 150；
   切割穿过打开的门/舱口并加 `player.mayBuild`；`ShipMover` 保留接线盒耐久 NBT；
   反应堆警报用 `effectCenter`；声纳矿脉点可作自动驾驶目标。
+- 第三次 full review 批次（3 条 + nitpick）：声纳目标选择补 `depth >= camDistance`
+  （与 `drawCloud` 一致，不再把相机背后的矿脉当目标）；切割器在矿脉/舱门分支前
+  走 `ForgeHooks.onBlockBreakEvent` + `blockActionRestricted`（只在开始切时触发一次）；
+  旧存档活动槽位改按保存的 `anchorX` 认站（`siteSlot`/`siteXAt`/`inRouteZone`/
+  `inMiningZone`，含 1024 间距槽位 2/3 回归测试）；`LevelParamsTest` 删恒真断言、
+  补模数边界用例（零概率 baseline×4、极大概率 128）。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的
