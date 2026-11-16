@@ -66,6 +66,11 @@ public final class StoreScreen extends Screen {
     private boolean submitUnknown;
     /** 照原作购买确认：先问"现在拿"还是"送到潜艇"。 */
     private boolean deliveryPrompt;
+    /** 键盘焦点：0 标签 / 1 商品行 / 2 提交按钮；纯键盘玩家靠 Tab 切换。 */
+    private int focusArea;
+    private int focusRow = -1;
+    /** 购买确认弹窗的键盘选择：0 立即获得 / 1 送至潜艇。 */
+    private int promptChoice;
 
     private record SellRow(int slot, ItemStack stack, StoreStatePacket.Entry entry) {
     }
@@ -291,6 +296,14 @@ public final class StoreScreen extends Screen {
                 tab == TAB_SELL, mouseX, mouseY);
         drawTab(g, x + 130, y + 22, Component.translatable("store.tab.sub").getString(),
                 tab == TAB_SUB, mouseX, mouseY);
+        if (focusArea == 0) {
+            // 键盘焦点在标签栏：给当前标签描一圈，旁白已经读过名字。
+            int tabX = x + 10 + tab * 60;
+            g.fill(tabX - 1, y + 21, tabX + 57, y + 22, ACCENT);
+            g.fill(tabX - 1, y + 36, tabX + 57, y + 37, ACCENT);
+            g.fill(tabX - 1, y + 21, tabX, y + 37, ACCENT);
+            g.fill(tabX + 56, y + 21, tabX + 57, y + 37, ACCENT);
+        }
         g.fill(x + 8, listTop() - 3, x + PANEL_W - 8, listTop() - 2, EDGE);
 
         if (tab == TAB_BUY) {
@@ -315,11 +328,18 @@ public final class StoreScreen extends Screen {
                 && tab == TAB_BUY ? RED : TEXT, false);
         int buttonX = x + PANEL_W - 120;
         boolean can = cartCount() > 0;
+        boolean buttonFocused = focusArea == 2 && can;
         boolean hover = can && mouseX >= buttonX && mouseX < buttonX + 110
                 && mouseY >= cartY && mouseY < cartY + 18;
         g.fill(buttonX, cartY, buttonX + 110, cartY + 18,
-                can ? hover ? HOVER : 0xFF3A4A3C : BOX);
+                can ? (hover || buttonFocused) ? HOVER : 0xFF3A4A3C : BOX);
         g.fill(buttonX, cartY, buttonX + 110, cartY + 1, EDGE);
+        if (buttonFocused) {
+            g.fill(buttonX, cartY, buttonX + 110, cartY + 1, ACCENT);
+            g.fill(buttonX, cartY + 17, buttonX + 110, cartY + 18, ACCENT);
+            g.fill(buttonX, cartY, buttonX + 1, cartY + 18, ACCENT);
+            g.fill(buttonX + 109, cartY, buttonX + 110, cartY + 18, ACCENT);
+        }
         g.drawCenteredString(font, Component.translatable(
                         tab == TAB_BUY ? "store.tab.buy" : "store.tab.sell"),
                 buttonX + 55, cartY + 5, can ? TEXT : DIM);
@@ -356,16 +376,21 @@ public final class StoreScreen extends Screen {
                 px + 10, py + 36, DIM, false);
         int by = py + h - 26;
         drawPromptButton(g, Component.translatable("store.delivery.immediate").getString(),
-                px + 12, by, 110, mouseX, mouseY);
+                px + 12, by, 110, mouseX, mouseY, promptChoice == 0);
         drawPromptButton(g, Component.translatable("store.delivery.sub").getString(),
-                px + 138, by, 110, mouseX, mouseY);
+                px + 138, by, 110, mouseX, mouseY, promptChoice == 1);
     }
 
     private void drawPromptButton(GuiGraphics g, String label, int x, int y, int w,
-                                  int mouseX, int mouseY) {
+                                  int mouseX, int mouseY, boolean selected) {
         boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + 18;
-        g.fill(x, y, x + w, y + 18, hover ? HOVER : 0xFF3A4A3C);
-        g.fill(x, y, x + w, y + 1, EDGE);
+        g.fill(x, y, x + w, y + 18, hover || selected ? HOVER : 0xFF3A4A3C);
+        g.fill(x, y, x + w, y + 1, selected ? ACCENT : EDGE);
+        if (selected) {
+            g.fill(x, y + 17, x + w, y + 18, ACCENT);
+            g.fill(x, y, x + 1, y + 18, ACCENT);
+            g.fill(x + w - 1, y, x + w, y + 18, ACCENT);
+        }
         g.drawCenteredString(font, label, x + w / 2, y + 5, TEXT);
     }
 
@@ -385,16 +410,21 @@ public final class StoreScreen extends Screen {
         for (int i = 0; i < shown; i++) {
             StoreStatePacket.Entry entry = entries.get(scroll + i);
             int rowY = top + i * ROW_H;
+            boolean focused = focusArea == 1 && focusRow == scroll + i;
             boolean hover = mouseX >= x + 8 && mouseX < x + PANEL_W - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H, hover ? HOVER : BOX);
+            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H,
+                    (hover || focused) ? HOVER : BOX);
+            if (focused) {
+                g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
+            }
             ItemStack stack = stackFor(entry.itemId());
             if (!stack.isEmpty()) {
                 g.renderItem(stack, x + 12, rowY + 1);
             }
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
             g.drawString(font, name, x + 34, rowY + 5, TEXT, false);
-            g.drawString(font, "[" + entry.category() + "]", x + 196, rowY + 5, DIM, false);
+            g.drawString(font, "[" + categoryLabel(entry.category()) + "]", x + 196, rowY + 5, DIM, false);
             String stock = entry.stock() > 0
                     ? Component.translatable("store.stock", entry.stock()).getString()
                     : Component.translatable("store.sold_out").getString();
@@ -411,6 +441,16 @@ public final class StoreScreen extends Screen {
         }
     }
 
+    /** 分类以稳定 id 下发，客户端按语言键显示；缺键时退回原 id。 */
+    private static String categoryLabel(String category) {
+        if (category == null || category.isEmpty()) {
+            return "";
+        }
+        String key = "store.category." + category;
+        String text = Component.translatable(key).getString();
+        return key.equals(text) ? category : text;
+    }
+
     private void renderSell(GuiGraphics g, int mouseX, int mouseY) {
         List<SellRow> rows = sellRows();
         int x = leftPos();
@@ -419,9 +459,14 @@ public final class StoreScreen extends Screen {
         for (int i = 0; i < shown; i++) {
             SellRow row = rows.get(scroll + i);
             int rowY = top + i * ROW_H;
+            boolean focused = focusArea == 1 && focusRow == scroll + i;
             boolean hover = mouseX >= x + 8 && mouseX < x + PANEL_W - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H, hover ? HOVER : BOX);
+            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H,
+                    (hover || focused) ? HOVER : BOX);
+            if (focused) {
+                g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
+            }
             g.renderItem(row.stack(), x + 12, rowY + 1);
             g.drawString(font, row.stack().getHoverName().getString(), x + 34, rowY + 5, TEXT, false);
             g.drawString(font, Component.translatable("store.slot", row.slot()),
@@ -446,9 +491,14 @@ public final class StoreScreen extends Screen {
         for (int i = 0; i < shown; i++) {
             StoreStatePacket.SubEntry entry = entries.get(scroll + i);
             int rowY = top + i * ROW_H;
+            boolean focused = focusArea == 1 && focusRow == scroll + i;
             boolean hover = mouseX >= x + 8 && mouseX < x + PANEL_W - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H, hover ? HOVER : BOX);
+            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H,
+                    (hover || focused) ? HOVER : BOX);
+            if (focused) {
+                g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
+            }
             ItemStack stack = stackFor(entry.itemId());
             if (!stack.isEmpty()) {
                 g.renderItem(stack, x + 12, rowY + 1);
@@ -511,18 +561,15 @@ public final class StoreScreen extends Screen {
         int x = leftPos();
         int y = topPos();
         if (mouseX >= x + 10 && mouseX < x + 66 && mouseY >= y + 22 && mouseY < y + 36) {
-            tab = TAB_BUY;
-            scroll = 0;
+            selectTab(TAB_BUY);
             return true;
         }
         if (mouseX >= x + 70 && mouseX < x + 126 && mouseY >= y + 22 && mouseY < y + 36) {
-            tab = TAB_SELL;
-            scroll = 0;
+            selectTab(TAB_SELL);
             return true;
         }
         if (mouseX >= x + 130 && mouseX < x + 186 && mouseY >= y + 22 && mouseY < y + 36) {
-            tab = TAB_SUB;
-            scroll = 0;
+            selectTab(TAB_SUB);
             return true;
         }
         int top = listTop();
@@ -534,6 +581,8 @@ public final class StoreScreen extends Screen {
                 if (index < 0 || index >= entries.size()) {
                     return super.mouseClicked(mouseX, mouseY, button);
                 }
+                focusArea = 1;
+                focusRow = index;
                 StoreStatePacket.Entry entry = entries.get(index);
                 int current = buyQuantity(entry.itemId());
                 if (mouseX >= x + 300 && mouseX < x + 314) {
@@ -557,6 +606,8 @@ public final class StoreScreen extends Screen {
                 if (index < 0 || index >= rows.size()) {
                     return super.mouseClicked(mouseX, mouseY, button);
                 }
+                focusArea = 1;
+                focusRow = index;
                 SellRow row = rows.get(index);
                 int current = sellQuantity(row.slot());
                 if (mouseX >= x + 300 && mouseX < x + 314) {
@@ -578,6 +629,8 @@ public final class StoreScreen extends Screen {
             if (index < 0 || index >= entries.size()) {
                 return super.mouseClicked(mouseX, mouseY, button);
             }
+            focusArea = 1;
+            focusRow = index;
             StoreStatePacket.SubEntry entry = entries.get(index);
             int current = subQuantity(entry.itemId());
             if (mouseX >= x + 300 && mouseX < x + 314) {
@@ -600,28 +653,7 @@ public final class StoreScreen extends Screen {
         int buttonX = x + PANEL_W - 120;
         if (cartCount() > 0 && mouseX >= buttonX && mouseX < buttonX + 110
                 && mouseY >= cartY && mouseY < cartY + 18) {
-            if (tab == TAB_BUY) {
-                // 原作购买确认：先选"现在拿"还是"送到潜艇"。
-                deliveryPrompt = true;
-            } else if (tab == TAB_SELL) {
-                List<StoreActionPacket.Line> lines = new ArrayList<>();
-                for (Map.Entry<Integer, Integer> line : sellCart.entrySet()) {
-                    if (line.getValue() > 0) {
-                        lines.add(new StoreActionPacket.Line(
-                                sellItemIds.getOrDefault(line.getKey(), ""),
-                                line.getKey(), line.getValue()));
-                    }
-                }
-                sendLines(StoreActionPacket.SELL, lines, false);
-            } else {
-                List<StoreActionPacket.Line> lines = new ArrayList<>();
-                for (Map.Entry<String, Integer> line : subCart.entrySet()) {
-                    if (line.getValue() > 0) {
-                        lines.add(new StoreActionPacket.Line(line.getKey(), -1, line.getValue()));
-                    }
-                }
-                sendLines(StoreActionPacket.SELL_SUB, lines, false);
-            }
+            submitCart();
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
@@ -682,11 +714,188 @@ public final class StoreScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (deliveryPrompt && keyCode == 256) {
-            deliveryPrompt = false;
+        if (deliveryPrompt) {
+            if (keyCode == 256) {
+                deliveryPrompt = false;
+                return true;
+            }
+            if (keyCode == 263 || keyCode == 262) {
+                promptChoice = 1 - promptChoice;
+                narrate(Component.translatable(promptChoice == 0
+                        ? "store.delivery.immediate" : "store.delivery.sub"));
+                return true;
+            }
+            if (keyCode == 257 || keyCode == 335 || keyCode == 32) {
+                deliveryPrompt = false;
+                sendBuy(promptChoice == 0);
+                return true;
+            }
+            return true;
+        }
+        boolean shift = (modifiers & 1) != 0;
+        if (keyCode == 258) { // Tab / Shift+Tab
+            focusArea = Math.floorMod(focusArea + (shift ? 2 : 1), 3);
+            narrate(Component.translatable(switch (focusArea) {
+                case 0 -> "store.focus.tabs";
+                case 1 -> "store.focus.list";
+                default -> "store.focus.submit";
+            }));
+            return true;
+        }
+        if (keyCode == 265 || keyCode == 264) { // 上/下
+            if (focusArea == 0) {
+                selectTab(tab + (keyCode == 265 ? -1 : 1));
+                return true;
+            }
+            if (focusArea == 1) {
+                moveFocus(keyCode == 265 ? -1 : 1);
+                return true;
+            }
+            return true;
+        }
+        if (keyCode == 263 || keyCode == 262) { // 左/右
+            if (focusArea == 0) {
+                selectTab(tab + (keyCode == 263 ? -1 : 1));
+                return true;
+            }
+            if (focusArea == 1) {
+                adjustFocusedQuantity(keyCode == 263 ? -1 : 1);
+                return true;
+            }
+            return true;
+        }
+        if (keyCode == 257 || keyCode == 335 || keyCode == 32) { // Enter / Space
+            if (focusArea == 1) {
+                adjustFocusedQuantity(1);
+            } else if (focusArea == 2) {
+                submitCart();
+            } else {
+                selectTab(tab + 1);
+            }
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    /** 切换标签：清掉键盘行焦点，滚回顶部。 */
+    private void selectTab(int next) {
+        tab = Math.floorMod(next, 3);
+        scroll = 0;
+        focusRow = -1;
+        narrate(Component.translatable(switch (tab) {
+            case TAB_BUY -> "store.tab.buy";
+            case TAB_SELL -> "store.tab.sell";
+            default -> "store.tab.sub";
+        }));
+    }
+
+    /** 键盘上下移动行焦点，并保证焦点行在可视区内。 */
+    private void moveFocus(int delta) {
+        int rows = rowCount();
+        if (rows <= 0) {
+            focusRow = -1;
+            return;
+        }
+        int next = focusRow < 0 ? 0 : Math.max(0, Math.min(focusRow + delta, rows - 1));
+        focusRow = next;
+        if (next < scroll) {
+            scroll = next;
+        } else if (next >= scroll + VISIBLE_ROWS) {
+            scroll = next - VISIBLE_ROWS + 1;
+        }
+        narrate(rowNarration(next));
+    }
+
+    /** 左/右或回车调整焦点行数量；旁白读名字、数量和单价。 */
+    private void adjustFocusedQuantity(int delta) {
+        int rows = rowCount();
+        if (rows <= 0) {
+            return;
+        }
+        int index = Math.max(0, Math.min(focusRow < 0 ? 0 : focusRow, rows - 1));
+        focusRow = index;
+        if (tab == TAB_BUY) {
+            StoreStatePacket.Entry entry = buyEntries().get(index);
+            int next = Math.max(0, Math.min(buyQuantity(entry.itemId()) + delta, entry.stock()));
+            setBuyQuantity(entry.itemId(), next);
+            narrate(quantityNarration(displayName(entry.itemId()), next, entry.buyPrice()));
+        } else if (tab == TAB_SELL) {
+            SellRow row = sellRows().get(index);
+            int next = Math.max(0, Math.min(sellQuantity(row.slot()) + delta,
+                    row.stack().getCount()));
+            setSellQuantity(row.slot(), next, itemIdOf(row.stack()));
+            narrate(quantityNarration(row.stack().getHoverName().getString(), next,
+                    row.entry().sellPrice()));
+        } else {
+            StoreStatePacket.SubEntry entry = state.subEntries().get(index);
+            int max = Math.min(entry.quantity(), MAX_SUB_QUANTITY);
+            int next = Math.max(0, Math.min(subQuantity(entry.itemId()) + delta, max));
+            setSubQuantity(entry.itemId(), next);
+            narrate(quantityNarration(displayName(entry.itemId()), next, entry.sellPrice()));
+        }
+    }
+
+    /** 朗读焦点行的名字/单价；数量由 adjustFocusedQuantity 单独读。 */
+    private Component rowNarration(int index) {
+        if (tab == TAB_BUY) {
+            StoreStatePacket.Entry entry = buyEntries().get(index);
+            return quantityNarration(displayName(entry.itemId()), 0, entry.buyPrice());
+        }
+        if (tab == TAB_SELL) {
+            SellRow row = sellRows().get(index);
+            return quantityNarration(row.stack().getHoverName().getString(), 0,
+                    row.entry().sellPrice());
+        }
+        StoreStatePacket.SubEntry entry = state.subEntries().get(index);
+        return quantityNarration(displayName(entry.itemId()), 0, entry.sellPrice());
+    }
+
+    private static Component quantityNarration(String name, int quantity, int price) {
+        return Component.literal(name + " × " + quantity + " · " + price + " mk");
+    }
+
+    private static String displayName(String itemId) {
+        ItemStack stack = stackFor(itemId);
+        return stack.isEmpty() ? itemId : stack.getHoverName().getString();
+    }
+
+    /** 鼠标点击提交按钮和键盘 Enter 共用：购买弹确认，出售直接发。 */
+    private void submitCart() {
+        if (cartCount() <= 0) {
+            narrate(Component.translatable("store.cart_empty"));
+            return;
+        }
+        if (tab == TAB_BUY) {
+            // 原作购买确认：先选"现在拿"还是"送到潜艇"。
+            deliveryPrompt = true;
+            promptChoice = 0;
+            narrate(Component.translatable("store.delivery.title"));
+        } else if (tab == TAB_SELL) {
+            List<StoreActionPacket.Line> lines = new ArrayList<>();
+            for (Map.Entry<Integer, Integer> line : sellCart.entrySet()) {
+                if (line.getValue() > 0) {
+                    lines.add(new StoreActionPacket.Line(
+                            sellItemIds.getOrDefault(line.getKey(), ""),
+                            line.getKey(), line.getValue()));
+                }
+            }
+            sendLines(StoreActionPacket.SELL, lines, false);
+        } else {
+            List<StoreActionPacket.Line> lines = new ArrayList<>();
+            for (Map.Entry<String, Integer> line : subCart.entrySet()) {
+                if (line.getValue() > 0) {
+                    lines.add(new StoreActionPacket.Line(line.getKey(), -1, line.getValue()));
+                }
+            }
+            sendLines(StoreActionPacket.SELL_SUB, lines, false);
+        }
+    }
+
+    /** 屏幕阅读器旁白；没有旁白模块时静默。 */
+    private void narrate(Component text) {
+        if (minecraft != null) {
+            minecraft.getNarrator().sayNow(text);
+        }
     }
 
     private void setBuyQuantity(String itemId, int quantity) {

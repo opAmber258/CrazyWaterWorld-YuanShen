@@ -12,6 +12,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
@@ -49,8 +50,24 @@ public final class ItemBuoyancyEvents {
     private static final int CEILING_SCAN = 8;
     /** 本处理器把 noGravity 设成 true 的物品；离开扫描范围时要恢复重力。 */
     private static final Set<UUID> CONTROLLED = new HashSet<>();
+    /** 持久化标记：NoGravity 会写进掉落物存档，重启后靠它重建 CONTROLLED。 */
+    private static final String TAG_CONTROLLED = "barotrauma:buoyancy_controlled";
 
     private ItemBuoyancyEvents() {
+    }
+
+    /**
+     * 重启后掉落物的 NoGravity 还在，但 {@link #CONTROLLED} 是内存态。
+     * 加载时按持久化标记重建跟踪，否则扫描盒外的物品永远不会恢复重力。
+     */
+    @SubscribeEvent
+    public static void onEntityJoin(EntityJoinLevelEvent event) {
+        if (event.getLevel().isClientSide() || !(event.getEntity() instanceof ItemEntity item)) {
+            return;
+        }
+        if (item.getPersistentData().getBoolean(TAG_CONTROLLED)) {
+            CONTROLLED.add(item.getUUID());
+        }
     }
 
     @SubscribeEvent
@@ -94,8 +111,11 @@ public final class ItemBuoyancyEvents {
                 continue;
             }
             if (deep.getEntity(id) instanceof ItemEntity item
-                    && !item.isRemoved() && item.isNoGravity()) {
+                    && !item.isRemoved() && item.isNoGravity()
+                    && item.getPersistentData().getBoolean(TAG_CONTROLLED)) {
+                // 只还原本处理器打标的物品，别清掉其他来源设置的 NoGravity。
                 item.setNoGravity(false);
+                item.getPersistentData().remove(TAG_CONTROLLED);
             }
             iterator.remove();
         }
@@ -104,12 +124,14 @@ public final class ItemBuoyancyEvents {
     /** 本处理器接管一个物品的重力：记下来，离开扫描范围时好还原。 */
     private static void hold(ItemEntity item) {
         item.setNoGravity(true);
+        item.getPersistentData().putBoolean(TAG_CONTROLLED, true);
         CONTROLLED.add(item.getUUID());
     }
 
     /** 还原原版重力（物品出水/落地/进干区），不再需要跟踪。 */
     private static void release(ItemEntity item) {
         item.setNoGravity(false);
+        item.getPersistentData().remove(TAG_CONTROLLED);
         CONTROLLED.remove(item.getUUID());
     }
 

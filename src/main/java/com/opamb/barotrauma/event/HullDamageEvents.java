@@ -55,17 +55,14 @@ public final class HullDamageEvents {
         BlockPos centerPos = BlockPos.containing(center);
         ShipCoreBlockEntity core = ShipCores.nearestCore(level, centerPos,
                 Math.max(32.0D, radius + 32.0D));
-        // 按爆炸"属于哪艘船"分流：不能因为世界上有一艘物理船就整体提前返回，
-        // 否则旁边方块船的反应堆熔毁会绕过船壳耐久，被原版爆炸直接删掉。
-        boolean physicalBlast = VsState.active()
-                && (core == null || core.state() == VsState.activeState())
-                && VsState.isPhysicalWorld(level, center, radius + 0.75D);
-        if (physicalBlast) {
-            // 物理船：世界方块照常炸，船壳单独按快照结算。
+        // 按空间相交独立结算物理船：最近核心不能证明爆炸只影响一艘船。
+        // 物理船快照和附近方块船的船壳可以同时吃伤害。
+        if (VsState.active() && VsState.isPhysicalWorld(level, center, radius + 0.75D)) {
             VsState.damageExplosion(level, center, radius + 0.75D, base);
-            return;
         }
-        if (core == null || core.state() == null) {
+        // 方块船分支照常跑：世界上有物理船时，旁边方块船的熔毁仍要走船壳耐久，
+        // 不能因为全局 active() 提前返回、被原版爆炸直接删掉。
+        if (core == null || core.state() == null || core.state() == VsState.activeState()) {
             return;
         }
         List<BlockPos> hullHits = new ArrayList<>();

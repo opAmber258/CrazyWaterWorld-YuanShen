@@ -215,6 +215,10 @@ public final class OceanEnvironment {
                 .queryPlayerInDryCompartment(level, pos) != null) {
             return true;
         }
+        // 没装 VS2 时不存在物理船：直接返回 false，避免类加载碰到 VsPilot 的 VS2 依赖。
+        if (!com.opamb.barotrauma.ship.vs.VsSupport.available()) {
+            return false;
+        }
         // 客户端没有服务端 compartmentQuery 桥时，用同步过来的水面盒判断舱内。
         return com.opamb.barotrauma.ship.vs.VsPilot.isInsideCompartment(level, pos);
     }

@@ -73,36 +73,36 @@ public final class StoreCatalog {
             }
             List<Entry> list = new ArrayList<>();
             // 医疗
-            add(list, ModMedicalItems.BANDAGE, 30, 10, "医疗", true);
-            add(list, ModMedicalItems.ANTIBIOTIC_GLUE, 220, 5, "医疗", true);
-            add(list, ModMedicalItems.MORPHINE, 100, 8, "医疗", true);
-            add(list, ModMedicalItems.BLOOD_PACK, 240, 4, "医疗", true);
-            add(list, ModMedicalItems.SALINE, 50, 10, "医疗", true);
-            add(list, ModMedicalItems.NALOXONE, 100, 6, "医疗", true);
-            add(list, ModMedicalItems.FENTANYL, 190, 4, "医疗", true);
-            add(list, ModMedicalItems.ANTIBIOTICS, 60, 6, "医疗", true);
+            add(list, ModMedicalItems.BANDAGE, 30, 10, "medical", true);
+            add(list, ModMedicalItems.ANTIBIOTIC_GLUE, 220, 5, "medical", true);
+            add(list, ModMedicalItems.MORPHINE, 100, 8, "medical", true);
+            add(list, ModMedicalItems.BLOOD_PACK, 240, 4, "medical", true);
+            add(list, ModMedicalItems.SALINE, 50, 10, "medical", true);
+            add(list, ModMedicalItems.NALOXONE, 100, 6, "medical", true);
+            add(list, ModMedicalItems.FENTANYL, 190, 4, "medical", true);
+            add(list, ModMedicalItems.ANTIBIOTICS, 60, 6, "medical", true);
             // 潜水
-            add(list, ModItems.OXYGEN_TANK, 75, 12, "潜水", true);
-            add(list, ModItems.WELDING_FUEL_TANK, 120, 8, "潜水", true);
-            add(list, ModItems.DIVING_SUIT, 250, 3, "潜水", true);
-            add(list, ModItems.GLASS_DIVING_SUIT, 350, 2, "潜水", true);
+            add(list, ModItems.OXYGEN_TANK, 75, 12, "diving", true);
+            add(list, ModItems.WELDING_FUEL_TANK, 120, 8, "diving", true);
+            add(list, ModItems.DIVING_SUIT, 250, 3, "diving", true);
+            add(list, ModItems.GLASS_DIVING_SUIT, 350, 2, "diving", true);
             // 工具
-            add(list, ModItems.WELDING_TOOL, 150, 4, "工具", true);
-            add(list, ModItems.PLASMA_CUTTER, 150, 4, "工具", true);
-            add(list, ModItems.DIVING_KNIFE, 40, 6, "工具", true);
+            add(list, ModItems.WELDING_TOOL, 150, 4, "tools", true);
+            add(list, ModItems.PLASMA_CUTTER, 150, 4, "tools", true);
+            add(list, ModItems.DIVING_KNIFE, 40, 6, "tools", true);
             // 燃料
-            add(list, ModItems.URANIUM_FUEL_ROD, 150, 4, "燃料", true);
-            add(list, ModItems.THORIUM_FUEL_ROD, 200, 3, "燃料", true);
-            add(list, ModItems.FULGURIUM_FUEL_ROD, 250, 2, "燃料", true);
+            add(list, ModItems.URANIUM_FUEL_ROD, 150, 4, "fuel", true);
+            add(list, ModItems.THORIUM_FUEL_ROD, 200, 3, "fuel", true);
+            add(list, ModItems.FULGURIUM_FUEL_ROD, 250, 2, "fuel", true);
             // 容器
-            add(list, ModItems.METAL_CRATE, 100, 2, "容器", true);
-            add(list, ModItems.MEDIC_CRATE, 150, 2, "容器", true);
-            add(list, ModItems.SEALED_SUPPLY_CRATE, 200, 1, "容器", true);
-            add(list, ModItems.SECURE_METAL_CRATE, 200, 1, "容器", false);
-            add(list, ModItems.EXPLOSIVE_CRATE, 150, 1, "容器", false);
-            add(list, ModItems.CHEMICAL_CRATE, 150, 1, "容器", false);
-            add(list, ModItems.MAGNETIC_SUSPENSION_CRATE, 250, 1, "容器", false);
-            add(list, ModItems.SUPPLY_CRATE, 80, 1, "容器", false);
+            add(list, ModItems.METAL_CRATE, 100, 2, "container", true);
+            add(list, ModItems.MEDIC_CRATE, 150, 2, "container", true);
+            add(list, ModItems.SEALED_SUPPLY_CRATE, 200, 1, "container", true);
+            add(list, ModItems.SECURE_METAL_CRATE, 200, 1, "container", false);
+            add(list, ModItems.EXPLOSIVE_CRATE, 150, 1, "container", false);
+            add(list, ModItems.CHEMICAL_CRATE, 150, 1, "container", false);
+            add(list, ModItems.MAGNETIC_SUSPENSION_CRATE, 250, 1, "container", false);
+            add(list, ModItems.SUPPLY_CRATE, 80, 1, "container", false);
             // 矿物/材料：有价格的都能收购；一部分上架
             for (RegistryObject<Item> item : ModItems.MINERAL_ITEMS) {
                 Item value = item.get();

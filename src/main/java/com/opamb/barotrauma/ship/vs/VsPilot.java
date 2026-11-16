@@ -75,6 +75,15 @@ public final class VsPilot {
     /** 装配时的舱室格子（世界坐标）——船移动/拆船时把舱内积水清成空气。 */
     private static java.util.List<BlockPos> interiorCells = java.util.List.of();
     /**
+     * 船壳以内、曾经确认过的舱内格（只增不减）。
+     *
+     * <p>切掉外壁舱口后重扫几何，洞口不再是 {@code isShell}，{@code exteriorCells}
+     * 会从洞口灌进整个房间，连海空腔的 {@code interiorCells} 变成空集。靠泊吸附
+     * 若只认最新几何，仍站在房间里的玩家/任务货会被排除、留在大海里。这里保留
+     * 破洞前确认的舱内格，专门用于乘客归属判断（不包含包围盒四角的外海空气）。</p>
+     */
+    private static java.util.Set<BlockPos> knownInteriorCells = java.util.Set.of();
+    /**
      * 流体拦截格 = 舱室格向外扩 1 圈（船壳层）。
      *
      * <p>船是连续坐标渲染的，拦截只能按整数格。只护舱室时，船 y 不是整数，
@@ -370,6 +379,7 @@ public final class VsPilot {
         snapshot = Map.of();
         initialShipBlocks = 0;
         interiorCells = java.util.List.of();
+        knownInteriorCells = java.util.Set.of();
         guardCells = java.util.List.of();
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
@@ -408,6 +418,7 @@ public final class VsPilot {
         snapshot = Map.of();
         initialShipBlocks = 0;
         interiorCells = java.util.List.of();
+        knownInteriorCells = java.util.Set.of();
         guardCells = java.util.List.of();
         waterSyncTimer = 0;
         interiorOffsetX = Integer.MIN_VALUE;
@@ -562,7 +573,24 @@ public final class VsPilot {
                 return true;
             }
         }
-        return false;
+        // 破洞后重扫可能把整间房的 interior 清空：用过切破洞前确认过的舱内格兜底，
+        // 否则靠泊吸附会把仍站在房间里的玩家/任务货留在大海里。
+        return knownInteriorCells.contains(cell);
+    }
+
+    /** 把当前几何里确认的舱内格并入"已知舱内"集合（只增不减）。 */
+    private static void rememberInterior(ShipGeometry.Result geometry) {
+        if (geometry == null) {
+            return;
+        }
+        java.util.Set<BlockPos> merged = new java.util.HashSet<>(knownInteriorCells);
+        for (ShipGeometry.Compartment compartment : geometry.compartments()) {
+            merged.addAll(compartment.interiorCells());
+        }
+        for (ShipGeometry.Compartment pocket : geometry.openPockets()) {
+            merged.addAll(pocket.interiorCells());
+        }
+        knownInteriorCells = java.util.Set.copyOf(merged);
     }
 
     /**
@@ -1342,6 +1370,7 @@ public final class VsPilot {
                 },
                 pos -> ModShipBlocks.isEquipment(level.getBlockState(pos.offset(ox, oy, oz))));
         current.replaceGeometry(geometry);
+        rememberInterior(geometry);
         // breached 方块仍是 ship block，重新装配/重扫后耐久表可能是空的：按 blockstate 补 0%。
         List<BlockPos> breached = new ArrayList<>();
         for (Map.Entry<BlockPos, BlockState> entry : snapshot.entrySet()) {
@@ -1688,9 +1717,8 @@ public final class VsPilot {
                     net.minecraft.sounds.SoundEvents.FIRE_AMBIENT,
                     net.minecraft.sounds.SoundSource.PLAYERS, 0.3F, 1.6F);
         }
-        if (progress >= FIXTURE_CUT_HEALTH) {
+        if (progress >= FIXTURE_CUT_HEALTH && removeFixture(level, player, best, block)) {
             fixtureCut.remove(best);
-            removeFixture(level, best, block);
         }
         return true;
     }
@@ -1704,7 +1732,8 @@ public final class VsPilot {
     }
 
     /** 切穿舱门/舱口：清船坞方块、移出快照、重扫几何，并在切口掉回物品。 */
-    private static void removeFixture(ServerLevel level, BlockPos original, BlockState block) {
+    private static boolean removeFixture(ServerLevel level, ServerPlayer player,
+                                         BlockPos original, BlockState block) {
         // 舱口是三格构件（LEFT/MIDDLE/RIGHT）；只拆命中格会留下两半，
         // 两边再各切一次又能刷出完整物品。这里按整套删除、只掉一次。
         List<BlockPos> cells = new ArrayList<>();
@@ -1733,6 +1762,28 @@ public final class VsPilot {
             cells.add(original);
         }
         Vec3 world = toWorld(original);
+        if (world == null) {
+            return false;
+        }
+        // 三格舱口会一次删三格：每格都要过位置级破坏权限。Forge 的
+        // setBlock 不触发 BreakEvent，不能只查命中格，否则跨保护区边界时
+        // 能借放行的一格删掉受保护的两格。
+        for (BlockPos cell : cells) {
+            if (!snapshot.containsKey(cell)) {
+                continue;
+            }
+            Vec3 cellHit = toWorld(cell);
+            if (cellHit == null) {
+                return false;
+            }
+            BlockPos cellWorld = BlockPos.containing(cellHit);
+            net.minecraft.world.level.GameType mode = player.gameMode.getGameModeForPlayer();
+            if (net.minecraftforge.common.ForgeHooks
+                    .onBlockBreakEvent(level, mode, player, cellWorld) == -1
+                    || player.blockActionRestricted(level, cellWorld, mode)) {
+                return false;
+            }
+        }
         for (BlockPos cell : cells) {
             if (!snapshot.containsKey(cell)) {
                 continue;
@@ -1752,6 +1803,7 @@ public final class VsPilot {
         level.playSound(null, BlockPos.containing(world),
                 net.minecraft.sounds.SoundEvents.NETHERITE_BLOCK_BREAK,
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 0.8F);
+        return true;
     }
 
     /** 服务端预检全部登船位置：真实船坞碰撞 + 舱室 + 当前完整刚体变换（含旋转）。 */
@@ -2273,6 +2325,10 @@ public final class VsPilot {
                 interiorCells.addAll(pocket.cells());
             }
         }
+        knownInteriorCells = java.util.Set.of();
+        if (shipState != null) {
+            rememberInterior(shipState.geometry());
+        }
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
         interiorOffsetZ = Integer.MIN_VALUE;
@@ -2671,6 +2727,7 @@ public final class VsPilot {
         snapshot = Map.of();
         initialShipBlocks = 0;
         interiorCells = java.util.List.of();
+        knownInteriorCells = java.util.Set.of();
         guardCells = java.util.List.of();
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
@@ -3086,6 +3143,8 @@ public final class VsPilot {
             interiorCells.addAll(pocket.cells());
         }
         guardCells = buildGuardCells(interiorCells);
+        knownInteriorCells = java.util.Set.of();
+        rememberInterior(rebuilt.geometry());
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
         interiorOffsetZ = Integer.MIN_VALUE;

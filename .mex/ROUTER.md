@@ -99,6 +99,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第十二次 full review（`ee432c1` 之后，7 条）**：`MissionInstance.paramsForColumn` 先按保存锚点 + `SeaTerrain.levelInfluence` 认领活动关卡，生成器矿脉密度不再因旧间距反推错槽位（新增 `legacyAnchorColumnParams`）；`VsPilot.launch` 的 `clearFixtureCut`/`PowerPanelState.clearAll` 移到“已有物理船”拒绝之后；`ModShipBlocks.isEquipment` 纳入 `SMALL_PUMP`（接线盒+小型泵设备块不再抢船壳，新增回归用例）；`SonarPingPacket` 物理船只用 `VsPilot.state()`，不再接受附近方块船核心；切割器船壳分支在 `startingCut` 前补 `denied()`，拒绝窗口内不扣耐久；`ItemBuoyancyEvents` 用 `hold/release` 精确跟踪接管物品，修复 `CONTROLLED` 永为空；`HullDamageEvents` 按爆炸所属船分流（`VsState.isPhysicalWorld` 装配包围盒 + 核心身份），旁边方块船熔毁仍走船壳耐久。**跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
 
+  **第十三次 full review（`d71d2fc` 之后，8 条）**：商店分类下发稳定 id（`medical/diving/tools/fuel/container`），客户端按 `store.category.*` 双语显示；物理船三格舱口删除前逐格查 `BreakEvent`+`blockActionRestricted`，任一格被拒整套保留并留进度；`VsPilot` 新增只增不减的 `knownInteriorCells`，切掉外壁舱口后靠泊吸附仍认得房里的人/任务货（几何重扫会把破洞舱的 interior 清空）；三种矿脉加入 `mineable/pickaxe`；`OceanEnvironment.isInsidePhysicalShipCompartment` 先查 `VsSupport.available()`，未装 VS2 不加载 `VsPilot`；物品浮力接管标记写入掉落物持久 NBT，`EntityJoinLevelEvent` 重建跟踪，且只还原自己打的标；`HullDamageEvents` 改为物理船按空间相交独立结算后再处理方块船（最近核心不再能否定物理船伤害）；`StoreScreen` 补键盘焦点（Tab/方向键/Enter/空格的标签、行、提交三层）与旁白，购买确认弹窗支持左右+Enter。**跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

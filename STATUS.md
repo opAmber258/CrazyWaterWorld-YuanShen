@@ -3,7 +3,7 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-16（PR #61 第十二轮 CodeRabbit 修复，279 项测试通过，协议 16；
+> 上次更新：2026-11-16（PR #61 第十三轮 CodeRabbit 修复，279 项测试通过，协议 16；
 > 本地 `main` 仍在 `77009a7`，`origin/main` 已多 3 个美术提交，**还没 pull**）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
@@ -51,7 +51,7 @@
 - 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
 
 ### 4. 验证 / 未做
-- `./gradlew compileJava test --offline`：**279 项测试 0 失败（48 个测试类）**（2026-11-16 第十二轮后）。
+- `./gradlew compileJava test --offline`：**279 项测试 0 失败（48 个测试类）**（2026-11-16 第十三轮后）。
 - 客户端本轮未起（用户要求等通知）；实机验收待用户。
 - 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
   任务/沉船/怪物等 P0 缺口。
@@ -156,6 +156,16 @@
   的掉落物（修复 `CONTROLLED` 永为空）；`HullDamageEvents` 按爆炸所属船分流，
   物理船判定改用装配包围盒世界坐标（`VsState.isPhysicalWorld`），旁边方块船熔毁
   仍走船壳耐久。**仍跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+- 第十三次 full review 批次（8 条）：商店分类下发稳定 id（`medical/diving/...`），
+  客户端按 `store.category.*` 双语显示；物理船切三格舱口前逐格查
+  `BreakEvent`+`blockActionRestricted`，任一格被拒整套保留；新增
+  `knownInteriorCells`（只增不减）兜底破洞后重扫清空的舱内格，靠泊吸附不再漏掉
+  房里的人/任务货；三种矿脉加进 `mineable/pickaxe`（镐子硬挖正常掉落）；
+  `isInsidePhysicalShipCompartment` 先查 `VsSupport.available()`，未装 VS2 不加载
+  `VsPilot`；物品浮力的接管标记写进掉落物持久 NBT，加载时重建跟踪；爆炸监听改为
+  物理船按空间相交独立结算，再处理方块船；商店补键盘焦点（Tab/方向键/Enter）与
+  旁白，购买确认弹窗可用左右+Enter。**仍跳过**：矿脉批量预加载、
+  `fillFromNoise` 关卡快照穿透。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的
