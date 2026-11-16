@@ -69,8 +69,8 @@ public class PlasmaCutterItem extends Item {
     /** 服务端每名玩家当前的切割目标；换目标/松手就清零。 */
     private static final Map<UUID, CutTarget> CUTS = new HashMap<>();
 
-    /** 正在切的格子和已经切了几次。 */
-    private record CutTarget(BlockPos pos, int applications) {
+    /** 正在切的格子和已经切了几次；{@code allowed=false} 表示这一段瞄准已被权限拒绝。 */
+    private record CutTarget(BlockPos pos, int applications, boolean allowed) {
     }
 
     public PlasmaCutterItem(Properties properties) {
@@ -172,8 +172,11 @@ public class PlasmaCutterItem extends Item {
             BlockPos pos = blockHit.getBlockPos();
             BlockState state = level.getBlockState(pos);
             if (state.getBlock() instanceof MineralVeinBlock vein) {
+                if (denied(player, pos)) {
+                    return false;
+                }
                 if (startingCut(player, pos) && !canBreak(level, player, pos)) {
-                    clearProgress(player, level);
+                    deny(level, player, pos);
                     return false;
                 }
                 return progress(level, player, pos, VEIN_CUT_APPLICATIONS, () -> {
@@ -193,8 +196,11 @@ public class PlasmaCutterItem extends Item {
                 return VsState.tryCut(level, player, HULL_DAMAGE_PER_APPLICATION);
             }
             if (isFixture(state)) {
+                if (denied(player, pos)) {
+                    return false;
+                }
                 if (startingCut(player, pos) && !canBreak(level, player, pos)) {
-                    clearProgress(player, level);
+                    deny(level, player, pos);
                     return false;
                 }
                 return progress(level, player, pos, FIXTURE_CUT_APPLICATIONS, () -> {
@@ -226,6 +232,18 @@ public class PlasmaCutterItem extends Item {
         return current == null || !current.pos().equals(pos);
     }
 
+    /** 这一段瞄准已经被拒绝过；按住不放时不要再重复发破坏事件。 */
+    private static boolean denied(ServerPlayer player, BlockPos pos) {
+        CutTarget current = CUTS.get(player.getUUID());
+        return current != null && current.pos().equals(pos) && !current.allowed();
+    }
+
+    /** 记下被拒绝的目标并清掉裂纹；换目标后才会重新检查权限。 */
+    private static void deny(ServerLevel level, ServerPlayer player, BlockPos pos) {
+        CUTS.put(player.getUUID(), new CutTarget(pos.immutable(), 0, false));
+        level.destroyBlockProgress(player.getId(), pos, -1);
+    }
+
     /**
      * 与原版方块破坏路径一致：先发出 {@code BlockEvent.BreakEvent}，再检查位置级
      * 破坏限制（冒险模式/领地/出生点保护）；{@code mayBuild()} 只是玩家级权限。
@@ -245,7 +263,7 @@ public class PlasmaCutterItem extends Item {
         CutTarget current = CUTS.get(id);
         int done = current != null && current.pos().equals(pos)
                 ? current.applications() + 1 : 1;
-        CUTS.put(id, new CutTarget(pos.immutable(), done));
+        CUTS.put(id, new CutTarget(pos.immutable(), done, true));
         // 原版裂纹动画：stage 0..9，切完要显式清掉。
         int stage = Math.min(9, done * 10 / applications);
         level.destroyBlockProgress(player.getId(), pos, stage);
