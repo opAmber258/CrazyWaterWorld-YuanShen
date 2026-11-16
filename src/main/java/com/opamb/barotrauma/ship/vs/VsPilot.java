@@ -2461,7 +2461,11 @@ public final class VsPilot {
                 net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(target);
                 if (tag != null && be != null) {
                     try {
-                        be.load(tag.copy());
+                        // 方块整体平移了 (dx,dy,dz)：接线盒绑定坐标也要跟着迁移，
+                        // 否则靠泊后设备还去旧位置找接线盒，consumerVoltage() 一直是 0。
+                        net.minecraft.nbt.CompoundTag copy = tag.copy();
+                        migratePowerBox(copy, dx, dy, dz);
+                        be.load(copy);
                         be.setChanged();
                     } catch (Throwable ignored) {
                         // 单个 BE 读不回来不能让整艘船的还原失败
@@ -2471,6 +2475,22 @@ public final class VsPilot {
             placed++;
         }
         return placed;
+    }
+
+    /**
+     * 靠泊平移后迁移设备 NBT 里的接线盒绑定坐标。
+     *
+     * <p>泵/引擎存的是接线盒的绝对坐标；方块铺回时整体位移 (dx,dy,dz)，
+     * 绑定也要加同一个位移。零位移（装配失败回滚）保持原值。</p>
+     */
+    private static void migratePowerBox(net.minecraft.nbt.CompoundTag tag,
+                                        int dx, int dy, int dz) {
+        if (tag == null || !tag.contains("PowerBox")
+                || (dx == 0 && dy == 0 && dz == 0)) {
+            return;
+        }
+        tag.putLong("PowerBox",
+                BlockPos.of(tag.getLong("PowerBox")).offset(dx, dy, dz).asLong());
     }
 
     /** 捕获一组方块位置上的方块实体 NBT（装配前/靠泊前调用）。 */

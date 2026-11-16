@@ -90,7 +90,9 @@ public final class HullDamageEvents {
                 if (state == null || state == VsState.activeState()) {
                     continue;
                 }
-                if (state.tracksHullBlock(pos)) {
+                // 核心自己也是“船脑”：几何收集会跳过核心自身、owns() 不包含它，
+                // 所以声纳/导航台正好放在核心位置上时要单独认。
+                if (candidate.getBlockPos().equals(pos) || state.tracksHullBlock(pos)) {
                     owner = candidate;
                     break;
                 }

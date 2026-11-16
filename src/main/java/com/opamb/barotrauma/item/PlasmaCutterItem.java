@@ -7,6 +7,7 @@ import com.opamb.barotrauma.equipment.ItemSubSlot;
 import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.ShipCores;
+import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import net.minecraft.ChatFormatting;
@@ -262,8 +263,18 @@ public class PlasmaCutterItem extends Item {
                     CUTS.put(player.getUUID(),
                             new CutTarget(pos.immutable(), 0, true, player.tickCount));
                 }
-                ShipCoreBlockEntity core = ShipCores.nearestCore(level, pos, 64.0D);
-                if (core == null || core.state() == null) {
+                // 两艘船靠近时最近的核心可能属于另一艘船；要选几何真正包含
+                // 这段船壳的核心，否则 damageBlock 会因归属不符直接拒绝。
+                ShipCoreBlockEntity core = null;
+                for (ShipCoreBlockEntity candidate : ShipCores.coresNear(level, pos, 64.0D)) {
+                    ShipState candidateState = candidate.state() != null
+                            ? candidate.state() : candidate.rescan(level);
+                    if (candidateState != null && candidateState.tracksHullBlock(pos)) {
+                        core = candidate;
+                        break;
+                    }
+                }
+                if (core == null) {
                     return CutResult.MISS;
                 }
                 return core.damageBlock(level, pos, HULL_DAMAGE_PER_APPLICATION, player)

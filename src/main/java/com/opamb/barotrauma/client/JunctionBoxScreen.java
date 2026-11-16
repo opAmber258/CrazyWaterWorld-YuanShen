@@ -29,6 +29,10 @@ public class JunctionBoxScreen extends Screen {
     private PowerStatePacket state;
     /** 设备列表滚动偏移（第 scroll 项显示在列表第一行）。 */
     private int scroll;
+    /** 绑定按钮点击后的临时禁用截止时间；服务端没回包（例如盒子被拆）时自动恢复。 */
+    private long bindReEnableAt;
+    /** 等绑定回包的最长时间（毫秒）。 */
+    private static final long BIND_TIMEOUT_MS = 1500L;
 
     public JunctionBoxScreen(PowerStatePacket state) {
         super(Component.translatable("block.barotrauma.junction_box"));
@@ -66,6 +70,7 @@ public class JunctionBoxScreen extends Screen {
     private void update(PowerStatePacket next) {
         this.state = next;
         this.scroll = Mth.clamp(scroll, 0, maxScroll());
+        this.bindReEnableAt = 0L;
         rebuildWidgets();
     }
 
@@ -88,6 +93,7 @@ public class JunctionBoxScreen extends Screen {
             addRenderableWidget(Button.builder(label, b -> {
                 ModNetwork.sendToServer(new PowerBindPacket(state.boxPos(), device.pos(), !boundHere));
                 b.active = false;
+                bindReEnableAt = System.currentTimeMillis() + BIND_TIMEOUT_MS;
             }).bounds(left + panelWidth() - 92, y, 72, 20).build());
         }
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
@@ -96,6 +102,11 @@ public class JunctionBoxScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        if (bindReEnableAt != 0L && System.currentTimeMillis() >= bindReEnableAt) {
+            // 服务端没回包（比如接线盒在这期间被拆了）：按钮不能永远禁用。
+            bindReEnableAt = 0L;
+            rebuildWidgets();
+        }
         renderBackground(g);
         int left = (width - panelWidth()) / 2;
         int top = (height - panelHeight()) / 2;

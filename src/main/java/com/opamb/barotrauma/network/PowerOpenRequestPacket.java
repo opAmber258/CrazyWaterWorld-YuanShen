@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.network;
 
+import com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
@@ -58,6 +59,13 @@ public record PowerOpenRequestPacket() {
                         if (world == null) {
                             continue;
                         }
+                        // 拆掉的接线盒在 ShipSimulation 清理前还会留在 junctionBoxes() 里；
+                        // 旧位置最近的话会让面板静默打开失败，先按方块实体过滤。
+                        BlockPos yard = VsPilot.toYard(cell);
+                        if (yard == null || !level.hasChunkAt(yard)
+                                || !(level.getBlockEntity(yard) instanceof JunctionBoxBlockEntity)) {
+                            continue;
+                        }
                         double distance = world.distanceToSqr(player.position());
                         if (distance < bestDistance) {
                             bestDistance = distance;
@@ -88,6 +96,10 @@ public record PowerOpenRequestPacket() {
                 hadShip = true;
                 for (BlockPos cell : blockShip.simulation().junctionBoxes()) {
                     if (!level.hasChunkAt(cell)) {
+                        continue;
+                    }
+                    // 已拆除但还没被模拟清理的盒子不能参与最近盒选择。
+                    if (!(level.getBlockEntity(cell) instanceof JunctionBoxBlockEntity)) {
                         continue;
                     }
                     double distance = Vec3.atCenterOf(cell).distanceToSqr(player.position());

@@ -216,8 +216,8 @@ class MissionInstanceTest {
 
         assertEquals(new DockingBay.Site(anchor4, 0), DockingBay.siteAt(anchor4, 0),
                 "活动锚点仍要能认出来");
-        int startX = MissionInstance.startSite(MissionInstance.anchorForRound(4)).x();
-        assertEquals(new DockingBay.Site(startX, 0), DockingBay.siteAt(startX, 0),
+        DockingBay.Site start = MissionInstance.startSite(MissionInstance.anchorForRound(4));
+        assertEquals(start, DockingBay.siteAt(start.x(), start.z()),
                 "真实出发站要能认出来");
         // 新布局槽位 2 的出发站（east，24288）是虚构的：该槽位和活动锚点重合，
         // 必须整个跳过，否则 siteAt 会认出它、outpostExpected 还会给它建站。

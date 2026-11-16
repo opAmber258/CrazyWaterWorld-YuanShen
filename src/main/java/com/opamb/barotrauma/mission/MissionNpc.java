@@ -167,7 +167,8 @@ public final class MissionNpc {
         ServerLevel level = player.serverLevel();
         // 防作弊：必须真的站在站务员旁边才能要活儿。
         if (level.getEntitiesOfClass(NpcEntity.class,
-                player.getBoundingBox().inflate(8.0D)).isEmpty()) {
+                player.getBoundingBox().inflate(8.0D),
+                npc -> NpcEntity.ROLE_MISSION.equals(npc.role())).isEmpty()) {
             return;
         }
         int node = com.opamb.barotrauma.campaign.CampaignState.wallet(level).currentNode();

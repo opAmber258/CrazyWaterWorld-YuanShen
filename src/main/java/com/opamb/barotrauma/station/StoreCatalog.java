@@ -114,7 +114,7 @@ public final class StoreCatalog {
                 int price = MINERAL_PRICES.getOrDefault(path, 50);
                 boolean stocked = STOCKED_MINERALS.contains(path);
                 list.add(new Entry(key.toString(), price, stocked ? 3 : 0,
-                        "矿物/材料", stocked));
+                        "mineral", stocked));
             }
             cached = List.copyOf(list);
             return cached;

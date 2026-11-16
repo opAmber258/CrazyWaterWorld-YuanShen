@@ -34,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class PowerPanelState {
 
     public static final int RANGE = 16;
-    public static final int MAX_DEVICES = 24;
     /** 玩家必须站在接线盒 8 格内才能打开/改绑定。 */
     private static final double MAX_PLAYER_DISTANCE_SQ = 8.0D * 8.0D;
 
@@ -87,9 +86,8 @@ public final class PowerPanelState {
                     info.minVoltage(), bound));
         }
         devices.sort(Comparator.comparingDouble(d -> d.pos().distSqr(boxCell)));
-        if (devices.size() > MAX_DEVICES) {
-            devices = new ArrayList<>(devices.subList(0, MAX_DEVICES));
-        }
+        // 不能截断：客户端只能滚动收到的列表，没有分页请求；截掉的那部分设备
+        // 玩家永远绑不上。面板本来就有滚动条。
         double voltage = ship.simulation().voltage();
         return new PowerStatePacket(boxCell, ship.simulation().supplyKw(),
                 ship.simulation().report().powerDemand(), voltage,
