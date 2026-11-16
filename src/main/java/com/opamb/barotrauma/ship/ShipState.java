@@ -799,6 +799,11 @@ public final class ShipState {
     public ShipState shifted(int dx, int dy, int dz) {
         ShipState next = new ShipState(geometry.shifted(dx, dy, dz), machines);
         next.simulation = this.simulation;
+        if (next.simulation != null) {
+            // 模拟实例原样带过去，但上报表的键还是平移前的坐标；设备按新坐标
+            // 上报后旧记录会在超时前重复计入需求（同一台泵算两份）。
+            next.simulation.shiftReports(dx, dy, dz);
+        }
         // 船壳耐久是逐格记录的，整船平移时必须跟着坐标一起挪。
         next.hullDamage.copyFrom(this.hullDamage);
         next.hullDamage.shift(dx, dy, dz);
@@ -828,9 +833,9 @@ public final class ShipState {
         }
         double dt = 0.1D;
         // 硬核供电：每台引擎按自己实际拿到的电压贡献推力；没有引擎/没电时为 0。
-        // 引擎数量上限仍然按 8 台算。
-        double engineSupply = Math.min(8.0D,
-                Math.max(0.0D, simulation().engineSupplyFactor()));
+        // 台数上限已经在 engineSupplyFactor() 里按 MAX_ENGINES 算；这里限制的是
+        // 效率总和（8 台过压引擎约 12.7），再截 8 会白丢超压加成。
+        double engineSupply = Math.max(0.0D, simulation().engineSupplyFactor());
         if (autopilotHold && autopilotTarget != null) {
             // P 控制：离目标越远目标速度越大；靠近时目标速度自己收敛到 0，不用额外刹车
             double gain = 0.7D * power / 100.0D * engineSupply;

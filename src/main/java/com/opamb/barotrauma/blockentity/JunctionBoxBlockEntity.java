@@ -69,9 +69,15 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
         be.lastVoltage = voltage;
         boolean powered = voltage > 0.1D;
         // 按接线盒所在高度判泡水：舱底有积水不代表墙上的盒子被淹。
+        // 连海空腔的 bodyLevel 是整块统一水位；两个低洼区只靠高处孔洞连通时，
+        // 破口侧进水、另一侧仍干燥，必须按盒子所在列的实际水位判断。
         int body = ship.simulation().bodyOf(cell);
+        java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
+        for (ShipState.Breach breach : ship.breaches()) {
+            breachSources.add(breach.pos());
+        }
         be.submerged = ship.simulation().bodyIsWet(body)
-                && cell.getY() < ship.simulation().bodyLevel(body);
+                && cell.getY() < ship.simulation().waterLevelAt(cell, breachSources);
 
         if (be.graceTicks < 0L) {
             be.graceTicks = 2400L + level.random.nextInt(12000);

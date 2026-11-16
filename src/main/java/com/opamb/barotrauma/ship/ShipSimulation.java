@@ -660,6 +660,69 @@ public final class ShipSimulation {
     }
 
     /**
+     * 某一格的实际水位（格）：密闭舱室用整块水位；连海空腔按列水位
+     * （和渲染同一套 {@link ShipPocketWater}），避免把空腔统一水位当成该列水位。
+     *
+     * <p>两个低洼区只靠高处孔洞连通时，破口侧进水、另一侧仍干燥；
+     * 接线盒泡水判定必须按自己所在列，否则干燥侧的盒子也会持续掉耐久。</p>
+     *
+     * @param breachSources 连海空腔的破口位置（水的入口），和渲染用同一份
+     */
+    public double waterLevelAt(net.minecraft.core.BlockPos cell,
+                               java.util.Collection<net.minecraft.core.BlockPos> breachSources) {
+        int body = bodyOf(cell);
+        if (body < 0) {
+            return 0.0D;
+        }
+        List<ShipGeometry.Compartment> sealed = geometry.compartments();
+        if (body < sealed.size()) {
+            return bodyLevel(body);
+        }
+        int pocket = body - sealed.size();
+        List<ShipGeometry.Compartment> pockets = geometry.openPockets();
+        if (pocket < 0 || pocket >= pockets.size() || pocketWater[pocket] <= 0.0D) {
+            return 0.0D;
+        }
+        ShipPocketWater.Shape shape = ShipPocketWater.compute(pockets.get(pocket).cells(),
+                breachSources, pocketWater[pocket]);
+        float level = shape.levelAt(cell.getX(), cell.getZ());
+        return Float.isNaN(level) ? bodyLevel(body) : level;
+    }
+
+    /**
+     * 整船平移后迁移上报表：键和绑定的接线盒都加上偏移，上报 tick 保持不变。
+     *
+     * <p>模拟实例在 {@code ShipState.shifted()} 里原样复用；不迁移的话旧坐标的
+     * 记录会和设备按新坐标上报的记录同时存在，同一台泵在 40 tick 内被计两份需求。</p>
+     */
+    public void shiftReports(int dx, int dy, int dz) {
+        if (dx == 0 && dy == 0 && dz == 0) {
+            return;
+        }
+        java.util.Map<net.minecraft.core.BlockPos, ConsumerReport> movedConsumers =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, ConsumerReport> entry
+                : consumers.entrySet()) {
+            ConsumerReport report = entry.getValue();
+            net.minecraft.core.BlockPos box = report.box() == null ? null
+                    : report.box().offset(dx, dy, dz);
+            movedConsumers.put(entry.getKey().offset(dx, dy, dz),
+                    new ConsumerReport(report.demandKw(), report.minVoltage(), box,
+                            report.lastSeen()));
+        }
+        consumers.clear();
+        consumers.putAll(movedConsumers);
+        java.util.Map<net.minecraft.core.BlockPos, BoxReport> movedBoxes =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, BoxReport> entry
+                : boxes.entrySet()) {
+            movedBoxes.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        boxes.clear();
+        boxes.putAll(movedBoxes);
+    }
+
+    /**
      * 这个水体里最低的舱门/舱口格的下沿 Y（水面不能高过它）。
      *
      * <p>压载舱注水上限：水面到"舱门下方那一格"的顶面为止，也就是舱门所在格

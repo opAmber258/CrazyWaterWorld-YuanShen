@@ -67,8 +67,10 @@ public final class HullDamageEvents {
         // 必须按“这一格归哪艘船”逐格匹配，不能只取离爆心最近的核心：更近的 C 船
         // 会把 B 船的船壳从归属判定里挤掉，B 的船壳就被原版爆炸直接删了（0% 应该
         // 变成 BREACHED，不是删除方块）。
+        // 船体扫描是每个坐标轴 ±24 格的立方体：爆炸命中船角时，核心离爆心
+        // 最远约 41.6 格，+32 的欧氏半径会漏掉这艘船，船壳就被原版爆炸删了。
         List<ShipCoreBlockEntity> cores = ShipCores.coresNear(level, centerPos,
-                Math.max(32.0D, radius + 32.0D));
+                Math.max(48.0D, radius + 48.0D));
         if (cores.isEmpty()) {
             return;
         }
@@ -87,12 +89,15 @@ public final class HullDamageEvents {
             for (ShipCoreBlockEntity candidate : cores) {
                 ShipState state = candidate.state();
                 // 物理船的世界方块是空气，不会出现在爆炸列表里；跳过它的状态。
-                if (state == null || state == VsState.activeState()) {
+                // 注意 state 为 null 时不能连带跳过核心位置匹配：区块刚重载、
+                // 还没 rescan 时声纳/导航台正好在核心位置上，也要算本船船脑。
+                if (state != null && state == VsState.activeState()) {
                     continue;
                 }
                 // 核心自己也是“船脑”：几何收集会跳过核心自身、owns() 不包含它，
                 // 所以声纳/导航台正好放在核心位置上时要单独认。
-                if (candidate.getBlockPos().equals(pos) || state.tracksHullBlock(pos)) {
+                if (candidate.getBlockPos().equals(pos)
+                        || (state != null && state.tracksHullBlock(pos))) {
                     owner = candidate;
                     break;
                 }

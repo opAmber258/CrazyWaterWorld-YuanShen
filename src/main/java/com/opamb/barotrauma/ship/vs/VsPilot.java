@@ -2036,6 +2036,16 @@ public final class VsPilot {
         if (sonarSame && pumpSame && reactorSame && engineSame) {
             return;
         }
+        // 代理的 small 标记要跟着泵型号走：移动前从旧代理上抄下来。
+        java.util.Map<BlockPos, Boolean> pumpSmall = new java.util.HashMap<>();
+        for (BlockPos anchor : pumpAnchors) {
+            BlockPos current = pumpProxyByAnchor.get(anchor);
+            BlockState old = current == null ? null : level.getBlockState(current);
+            if (old != null && old.is(ModShipBlocks.PUMP_PROXY.get())) {
+                pumpSmall.put(anchor,
+                        old.getValue(com.opamb.barotrauma.block.PumpProxyBlock.SMALL));
+            }
+        }
         // 两阶段：先撤所有要移动的旧代理，再放新代理。声纳和泵可能相邻，
         // 若先放后撤，会把对方刚放好的代理当成障碍物而跳过。
         if (!sonarSame) {
@@ -2057,7 +2067,9 @@ public final class VsPilot {
             nextPumpProxies = new java.util.HashMap<>();
             for (BlockPos anchor : pumpAnchors) {
                 BlockPos placed = placeProxy(level, anchor.offset(dx, dy, dz),
-                        ModShipBlocks.PUMP_PROXY.get());
+                        ModShipBlocks.PUMP_PROXY.get().defaultBlockState()
+                                .setValue(com.opamb.barotrauma.block.PumpProxyBlock.SMALL,
+                                        pumpSmall.getOrDefault(anchor, Boolean.FALSE)));
                 if (placed != null) {
                     nextPumpProxies.put(anchor, placed);
                 }
@@ -2078,15 +2090,20 @@ public final class VsPilot {
 
     /** 放置代理；目标被别的方块占着时返回 null，不把该格记成当前位置。 */
     private static BlockPos placeProxy(ServerLevel level, BlockPos target, Block proxy) {
+        return placeProxy(level, target, proxy.defaultBlockState());
+    }
+
+    /** 带状态放置代理（泵代理要区分小泵/大泵的拾取形状）。 */
+    private static BlockPos placeProxy(ServerLevel level, BlockPos target, BlockState state) {
         if (target == null) {
             return null;
         }
         BlockState existing = level.getBlockState(target);
-        if (existing.is(proxy)) {
+        if (existing.is(state.getBlock())) {
             return target;
         }
         if (existing.isAir() || existing.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) {
-            level.setBlock(target, proxy.defaultBlockState(), 2);
+            level.setBlock(target, state, 2);
             return target;
         }
         return null;
@@ -2364,7 +2381,13 @@ public final class VsPilot {
         pumpAnchors = findPumpAnchors(captured);
         java.util.Map<BlockPos, BlockPos> pumpProxies = new java.util.HashMap<>();
         for (BlockPos pumpAnchor : pumpAnchors) {
-            level.setBlock(pumpAnchor, ModShipBlocks.PUMP_PROXY.get().defaultBlockState(), 3);
+            // 代理的拾取形状要跟泵型号一致：小泵模型只有 6/16 高，
+            // 排水泵/压载泵更高，必须用整格范围才点得到。
+            BlockState pumpState = captured.get(pumpAnchor);
+            boolean smallPump = pumpState != null
+                    && pumpState.is(ModBlocks.SMALL_PUMP.get());
+            level.setBlock(pumpAnchor, ModShipBlocks.PUMP_PROXY.get().defaultBlockState()
+                    .setValue(com.opamb.barotrauma.block.PumpProxyBlock.SMALL, smallPump), 3);
             pumpProxies.put(pumpAnchor, pumpAnchor);
         }
         pumpProxyByAnchor = pumpProxies;
