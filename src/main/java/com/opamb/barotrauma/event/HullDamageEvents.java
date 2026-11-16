@@ -52,15 +52,19 @@ public final class HullDamageEvents {
         }
         float base = (float) Math.min(MAX_DAMAGE, BASE_DAMAGE + DAMAGE_PER_RADIUS * radius);
 
-        if (VsState.active()) {
+        BlockPos centerPos = BlockPos.containing(center);
+        ShipCoreBlockEntity core = ShipCores.nearestCore(level, centerPos,
+                Math.max(32.0D, radius + 32.0D));
+        // 按爆炸"属于哪艘船"分流：不能因为世界上有一艘物理船就整体提前返回，
+        // 否则旁边方块船的反应堆熔毁会绕过船壳耐久，被原版爆炸直接删掉。
+        boolean physicalBlast = VsState.active()
+                && (core == null || core.state() == VsState.activeState())
+                && VsState.isPhysicalWorld(level, center, radius + 0.75D);
+        if (physicalBlast) {
             // 物理船：世界方块照常炸，船壳单独按快照结算。
             VsState.damageExplosion(level, center, radius + 0.75D, base);
             return;
         }
-
-        BlockPos centerPos = BlockPos.containing(center);
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, centerPos,
-                Math.max(32.0D, radius + 32.0D));
         if (core == null || core.state() == null) {
             return;
         }

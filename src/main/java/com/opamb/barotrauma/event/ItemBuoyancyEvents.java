@@ -87,17 +87,30 @@ public final class ItemBuoyancyEvents {
         if (CONTROLLED.isEmpty()) {
             return;
         }
-        CONTROLLED.removeIf(id -> {
+        java.util.Iterator<UUID> iterator = CONTROLLED.iterator();
+        while (iterator.hasNext()) {
+            UUID id = iterator.next();
             if (seen.contains(id)) {
-                return false;
+                continue;
             }
             if (deep.getEntity(id) instanceof ItemEntity item
                     && !item.isRemoved() && item.isNoGravity()) {
                 item.setNoGravity(false);
             }
-            return true;
-        });
-        CONTROLLED.addAll(seen);
+            iterator.remove();
+        }
+    }
+
+    /** 本处理器接管一个物品的重力：记下来，离开扫描范围时好还原。 */
+    private static void hold(ItemEntity item) {
+        item.setNoGravity(true);
+        CONTROLLED.add(item.getUUID());
+    }
+
+    /** 还原原版重力（物品出水/落地/进干区），不再需要跟踪。 */
+    private static void release(ItemEntity item) {
+        item.setNoGravity(false);
+        CONTROLLED.remove(item.getUUID());
     }
 
     private static void applyBuoyancy(ServerLevel level, ItemEntity item) {
@@ -106,7 +119,7 @@ public final class ItemBuoyancyEvents {
                 && y >= ModDimensions.WATER_BOTTOM_Y;
         if (!inWater) {
             if (item.isNoGravity()) {
-                item.setNoGravity(false);
+                release(item);
             }
             return;
         }
@@ -114,14 +127,14 @@ public final class ItemBuoyancyEvents {
         // 不能只查物理船舱：没有物理船时这里会返回 null，哨站里的物品就会浮上天花板。
         if (!com.opamb.barotrauma.world.OceanEnvironment.isOceanWaterAt(level, item.position())) {
             if (item.isNoGravity()) {
-                item.setNoGravity(false);
+                release(item);
             }
             return;
         }
         // 脚下有实体方块（站内地面/海底/船甲板）：按原版重力落下，不浮。
         if (level.getBlockState(item.blockPosition().below()).isSolid()) {
             if (item.isNoGravity()) {
-                item.setNoGravity(false);
+                release(item);
             }
             return;
         }
@@ -133,20 +146,20 @@ public final class ItemBuoyancyEvents {
             if (level.getBlockState(item.blockPosition().above()).isSolid()
                     || y >= ModDimensions.WATER_TOP_Y - 3) {
                 // 已经贴住天花板/水面：停住，不再往上顶。
-                item.setNoGravity(true);
+                hold(item);
                 item.setDeltaMovement(velocity.x * DRAG, 0.0D, velocity.z * DRAG);
                 item.hasImpulse = true;
                 return;
             }
             double vy = velocity.y * DRAG + FLOAT_SPEED;
-            item.setNoGravity(true);
+            hold(item);
             item.setDeltaMovement(velocity.x * DRAG, vy, velocity.z * DRAG);
             item.hasImpulse = true;
             return;
         }
         // 下沉（绝大多数物品：原作密度 15–30）。
         double vy = velocity.y * DRAG + SINK_SPEED;
-        item.setNoGravity(true);
+        hold(item);
         item.setDeltaMovement(velocity.x * DRAG, vy, velocity.z * DRAG);
         item.hasImpulse = true;
     }

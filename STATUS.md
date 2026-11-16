@@ -3,7 +3,7 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-16（PR #61 第十一轮 CodeRabbit 修复，277 项测试通过，协议 16；
+> 上次更新：2026-11-16（PR #61 第十二轮 CodeRabbit 修复，279 项测试通过，协议 16；
 > 本地 `main` 仍在 `77009a7`，`origin/main` 已多 3 个美术提交，**还没 pull**）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
@@ -51,7 +51,7 @@
 - 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
 
 ### 4. 验证 / 未做
-- `./gradlew compileJava test --offline`：**277 项测试 0 失败（48 个测试类）**（2026-11-16 第十一轮后）。
+- `./gradlew compileJava test --offline`：**279 项测试 0 失败（48 个测试类）**（2026-11-16 第十二轮后）。
 - 客户端本轮未起（用户要求等通知）；实机验收待用户。
 - 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
   任务/沉船/怪物等 P0 缺口。
@@ -147,6 +147,15 @@
   `tracksHullBlock`；`DockingBay.sitesNear/siteAt` 补查旧布局活动槽位 5；新增
   `legacySlotFiveSiteLookup` 回归。**仍跳过**：矿脉批量预加载（需异步/分 tick
   方案）、`fillFromNoise` 关卡快照穿透（结构改造）。
+- 第十二次 full review 批次（7 条）：`MissionInstance.paramsForColumn` 先按保存的
+  锚点 + 影响半径认领活动关卡，生成器矿脉密度不再因旧间距反推错槽位（新增
+  `legacyAnchorColumnParams` 回归）；`VsPilot.launch` 的切割进度/面板会话清理移到
+  “已有物理船”拒绝之后；`isEquipment` 纳入 `SMALL_PUMP`，设备连通块不再抢走船壳
+  （新增回归用例）；物理船声纳只用 `VsPilot.state()`，不再采用附近方块船核心；
+  切割器船壳分支补 `denied()` 门禁，拒绝窗口内不再扣耐久；物品浮力精确跟踪被接管
+  的掉落物（修复 `CONTROLLED` 永为空）；`HullDamageEvents` 按爆炸所属船分流，
+  物理船判定改用装配包围盒世界坐标（`VsState.isPhysicalWorld`），旁边方块船熔毁
+  仍走船壳耐久。**仍跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的

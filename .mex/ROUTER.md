@@ -97,6 +97,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第十一次 full review（`07f394f` 之后，11 条 + 1 条 outside-diff）**：舱壁门水密判定同时查上下两格通海与水量；`JunctionBoxScreen` 宽度按窗口收缩、设备坐标单独一行；商店提交超时保持锁定并显示“结果未知”（避免重复交易）；`ItemBuoyancyEvents` 记录接管物品，离开扫描范围恢复重力；切割器在船壳每次扣耐久前和设施完成时复查 `canBreak`，整套设施任一格被拒就不拆；`SonarPingPacket` 的 `physical` 解析结果贯穿 `hullForSonar`/`coreWorld`/`geometryCore`/数据包标志，附近核心只参与距离兜底消歧；商店货柜改用 `tracksHullBlock` 判定；`DockingBay.sitesNear/siteAt` 单独补查旧布局活动槽位（旧槽位 5 锚点 25120 可查），新增 `legacySlotFiveSiteLookup` 回归。**跳过**：矿脉批量预加载（需异步/分 tick 改造）、`fillFromNoise` 关卡快照穿透（结构改造）。
 
+  **第十二次 full review（`ee432c1` 之后，7 条）**：`MissionInstance.paramsForColumn` 先按保存锚点 + `SeaTerrain.levelInfluence` 认领活动关卡，生成器矿脉密度不再因旧间距反推错槽位（新增 `legacyAnchorColumnParams`）；`VsPilot.launch` 的 `clearFixtureCut`/`PowerPanelState.clearAll` 移到“已有物理船”拒绝之后；`ModShipBlocks.isEquipment` 纳入 `SMALL_PUMP`（接线盒+小型泵设备块不再抢船壳，新增回归用例）；`SonarPingPacket` 物理船只用 `VsPilot.state()`，不再接受附近方块船核心；切割器船壳分支在 `startingCut` 前补 `denied()`，拒绝窗口内不扣耐久；`ItemBuoyancyEvents` 用 `hold/release` 精确跟踪接管物品，修复 `CONTROLLED` 永为空；`HullDamageEvents` 按爆炸所属船分流（`VsState.isPhysicalWorld` 装配包围盒 + 核心身份），旁边方块船熔毁仍走船壳耐久。**跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

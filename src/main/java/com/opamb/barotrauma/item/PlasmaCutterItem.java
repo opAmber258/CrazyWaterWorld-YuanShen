@@ -233,6 +233,11 @@ public class PlasmaCutterItem extends Item {
             }
             if (ModShipBlocks.isRepairableHull(state)) {
                 // 船壳耐久是逐次扣的：开始切时查一次，之后每 4 tick 由 startingCut 复查。
+                // 被拒绝的窗口内必须直接返回，否则 startingCut 为 false，会跳过权限检查
+                // 直接走 damageBlock，受保护船壳被持续扣耐久。
+                if (denied(player, pos)) {
+                    return CutResult.DENIED;
+                }
                 if (startingCut(player, pos)) {
                     if (!canBreak(level, player, pos)) {
                         deny(level, player, pos);

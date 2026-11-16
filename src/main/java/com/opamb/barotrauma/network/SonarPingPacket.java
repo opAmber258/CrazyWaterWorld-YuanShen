@@ -94,15 +94,21 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                         ? sonarPos : player.blockPosition();
             }
 
-            ShipCoreBlockEntity core = ShipCores.resolve(level, null, center);
+            ShipCoreBlockEntity core = null;
             ShipState ship = null;
-            if (core != null) {
-                ship = core.state() != null ? core.state() : core.rescan(level);
-            } else if (physical
-                    && com.opamb.barotrauma.ship.vs.VsSupport.available()
-                    && com.opamb.barotrauma.ship.vs.VsPilot.hasShip()) {
-                // 装了 VS2：船方块进了刚体，世界里找不到核心，用物理船那份状态
-                ship = com.opamb.barotrauma.ship.vs.VsPilot.state();
+            if (physical) {
+                // 物理船：方块在 VS2 船坞里，世界里没有它的核心。附近若恰好有别的
+                // 方块船核心，绝不能拿来顶替——那会把方块船的电压/船体混到物理船上，
+                // 让声纳显示错误的船或误判断电。只认物理船自己的那份状态。
+                if (com.opamb.barotrauma.ship.vs.VsSupport.available()
+                        && com.opamb.barotrauma.ship.vs.VsPilot.hasShip()) {
+                    ship = com.opamb.barotrauma.ship.vs.VsPilot.state();
+                }
+            } else {
+                core = ShipCores.resolve(level, null, center);
+                if (core != null) {
+                    ship = core.state() != null ? core.state() : core.rescan(level);
+                }
             }
             Set<BlockPos> hull = ship == null ? null : hullForSonar(ship, physical);
 

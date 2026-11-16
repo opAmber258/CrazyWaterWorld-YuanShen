@@ -166,6 +166,24 @@ class MissionInstanceTest {
     }
 
     @Test
+    @DisplayName("旧锚点附近的新区块按保存的锚点选关卡参数")
+    void legacyAnchorColumnParams() {
+        int legacy = 1024;
+        int anchor5 = MissionInstance.BASE_X + 5 * legacy; // 25120，按当前间距会反推成槽位 3
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                5, LevelType.ADVANCED, 31L, 9,
+                LevelType.ADVANCED.params().routeLength(), anchor5));
+        MissionInstance.setRouteOutposts(5, true, true);
+
+        assertEquals(LevelType.ADVANCED.params(), MissionInstance.paramsForColumn(anchor5),
+                "活动锚点所在列必须拿到关卡参数，不能因为反推成槽位 3 就退回默认密度");
+        assertEquals(LevelType.ADVANCED.params(), MissionInstance.paramsForColumn(anchor5 + 40),
+                "锚点附近仍在关卡影响半径内");
+        assertNull(MissionInstance.paramsForColumn(anchor5 + 3 * MissionInstance.SPACING),
+                "远离活动关卡的列仍按间距回退，非活动槽位没有关卡参数");
+    }
+
+    @Test
     @DisplayName("没有活动关卡时出发站距离回退 192")
     void noRouteLevelFallback() {
         MissionInstance.setRouteLevel(null);

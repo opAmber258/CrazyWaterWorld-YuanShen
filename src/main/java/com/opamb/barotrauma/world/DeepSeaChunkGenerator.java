@@ -310,9 +310,8 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             return;
         }
         // 关卡参数：海底/岩壁密度和盐只对本槽位的关卡生效，旧槽位保持原密度。
-        int slot = Math.max(0, Math.round((originX - MissionInstance.BASE_X)
-                / (float) MissionInstance.SPACING));
-        LevelParams params = MissionInstance.paramsForSlot(slot);
+        // 按列认领活动关卡（旧存档锚点不一定落在当前间距反推的槽位上）。
+        LevelParams params = MissionInstance.paramsForColumn(originX);
         int floorModulus = params == null ? 1024 : params.seafloorVeinModulus();
         int wallModulus = params == null ? 256 : params.wallVeinModulus();
         long veinSeed = params == null ? seed

@@ -242,7 +242,10 @@ public final class ModShipBlocks {
 
     /** 纯设备格：单独放在房间里时不能当作"船体连通块"的起点。 */
     public static boolean isEquipment(BlockState state) {
-        return state.getBlock() == ModBlocks.JUNCTION_BOX.get();
+        // 小型泵和接线盒一样是舱内设备：两者连成的小块离核心更近时，
+        // 不能抢走真正的船壳连通块。
+        return state.getBlock() == ModBlocks.JUNCTION_BOX.get()
+                || state.getBlock() == ModBlocks.SMALL_PUMP.get();
     }
 
     /** 判定一个方块是否属于"船体结构"（用于识别船的范围）。核心不算，站体也不算。 */

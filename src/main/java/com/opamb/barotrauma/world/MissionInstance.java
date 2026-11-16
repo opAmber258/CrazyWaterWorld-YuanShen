@@ -140,6 +140,30 @@ public final class MissionInstance {
     }
 
     /**
+     * 世界生成用：按 x 找这一列所属关卡的参数（活动关卡优先）。
+     *
+     * <p>旧存档的槽位间距可能不是当前 {@link #SPACING}：活动关卡槽位 5 保存的锚点是
+     * 25120，按当前间距反推会得到槽位 3，{@link #paramsForSlot(int)} 于是返回 null，
+     * 新区块会退回默认矿脉密度并漏掉关卡种子。所以先用保存的锚点和实际覆盖范围
+     * （主航道 + 侧洞环 + 边缘混合带）认领，认不到才按间距回退。</p>
+     */
+    public static LevelParams paramsForColumn(int x) {
+        RouteLevel level = routeLevel;
+        if (level != null) {
+            Anchor anchor = new Anchor(Math.max(0, level.slot()), level.anchorX(), ANCHOR_Y, 0);
+            DockingBay.Site start = startSite(anchor, level.startDistance());
+            // 和 SeaTerrain 用同一个影响半径：超出它的列是全局开阔海。
+            double influence = SeaTerrain.levelInfluence(level.type().params());
+            int minX = Math.min(anchor.x(), start.x());
+            int maxX = Math.max(anchor.x(), start.x());
+            if (x >= minX - influence && x <= maxX + influence) {
+                return level.type().params();
+            }
+        }
+        return paramsForSlot(Math.max(0, Math.round((x - BASE_X) / (float) SPACING)));
+    }
+
+    /**
      * 当前活动关卡的主航道（左右蜿蜒、上下起伏的 3D 折线）。
      *
      * <p>生成器在 worker 线程逐列调用，必须缓存：关卡配置（record）不变就复用同一条
