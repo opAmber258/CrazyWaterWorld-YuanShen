@@ -1,0 +1,152 @@
+{
+  "asset_id": "navigation_terminal",
+  "display_name_zh": "导航终端",
+  "display_name_en": "NavigationTerminal",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex / Blockbench 5.2.2 / Python / Pillow",
+        "role": "第二版几何、圆角与屏幕放大、键盘三分、线束与耳机、像素材质细化；本轮由 Agent 重出导出、预览与验证"
+      }
+    ],
+    "division": "TakaraMiyuki 定方向并在 2026-11-16 11:32 手改工程：抬高顶壳、左右键区与中央模块整体后移并对齐中缝、黑护端重挂到独立骨骼、信号线组前移 6.2 BB、声呐主屏像素微调；AI 完成第二版主体建模，并在手改稿上重出原生导出、四向预览与验证记录。"
+  },
+  "sources": {
+    "zh": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml 的 entityname.navterminal = 导航终端",
+    "en": "Content/Texts/English/EnglishVanilla.xml 的 entityname.navterminal = Navigation Terminal"
+  },
+  "schema_version": 2,
+  "creation_source": "人工 + AI（TakaraMiyuki + GPT-6）",
+  "acceptance": {
+    "editor_reopen": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + CDP 原生会话",
+      "note": "用 Blockbench 5.2.2 重新打开交付目录内的 navigation_terminal.bbmodel：读到 130 cubes / 13 groups / 0 动画 / 1 张 512×512 内嵌贴图（逻辑 UV 256×256），无载入报错；工程 save_path 指向交付目录，贴图为内嵌 PNG 而非外链。",
+      "at": "2026-11-16T04:09:09.580400+00:00",
+      "inputs": {
+        "geometry": "0e7641f4c8c5d1dd74371241e52896dc391587100dd6c99828f220efe7666958",
+        "textures": "48f6dece6582c52deb028086ceb9aab0e8fdbd26c4c52e312ea49fbf0e8b167a"
+      }
+    },
+    "native_reexport": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + CDP 原生会话",
+      "note": "在同一 Blockbench 5.2.2 会话里用原生 Codecs.bedrock.compile 重出几何，与交付的 navigation_terminal.geo.json 逐字节相同（69007 B）；geo 声明 13 bones / 130 cubes / 780 面，identifier geometry.navigation_terminal。包围盒由 Blockbench 原生世界矩阵实测：X ±20、Y 0–32.475、Z ±7.71563。用原生工程导出重出的内嵌 PNG 与交付 navigation_terminal_tex.png 字节相同。",
+      "at": "2026-11-16T04:09:15.017984+00:00",
+      "inputs": {
+        "geometry": "0e7641f4c8c5d1dd74371241e52896dc391587100dd6c99828f220efe7666958"
+      },
+      "details": {
+        "comparison": "equal",
+        "bounds": {
+          "min": [
+            -20,
+            -5.551115123125783e-16,
+            -7.71563
+          ],
+          "max": [
+            20,
+            32.474998474121094,
+            7.71562915130417
+          ],
+          "unit": "bb_unit"
+        },
+        "blockbench_version": "5.2.2",
+        "reopened_cubes": 130,
+        "reopened_groups": 13,
+        "reexported_geo_bytes": 69007,
+        "reexported_geo_byte_identical": true,
+        "embedded_png_matches_delivered": true,
+        "clips": []
+      }
+    },
+    "visual_preview": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + CDP 原生会话",
+      "note": "四向预览由 Blockbench 自身 Three.js 场景与原生材质渲染（Canvas.withoutGizmos 排除辅助线与网格，1200×900 RGBA 透明底），与当前几何同批产出。逐张核对：正视为抬高的顶端圆角外壳+主声呐屏+右侧辅屏与双仪表+耳机+三段键盘；背视为双检修板、竖直走线与两组后侧交叉线缆；侧视为斜置键盘台与背板支架；斜视为整体透视。前三张正交、斜视透视。与上一版差异对应用户手改：顶壳上沿抬高 0.6 BB、键盘中段与左右键区后移并对齐、黑护端下移 0.5 BB、后侧新增 5 根交叉线缆。",
+      "at": "2026-11-16T04:09:21.524251+00:00",
+      "inputs": {
+        "geometry": "0e7641f4c8c5d1dd74371241e52896dc391587100dd6c99828f220efe7666958",
+        "textures": "48f6dece6582c52deb028086ceb9aab0e8fdbd26c4c52e312ea49fbf0e8b167a",
+        "previews": "b968d480d73c32101aeb5d3fe140029c2b8a40b8cd5091688f7fcd8b098a0e82"
+      }
+    }
+  },
+  "inputs": {
+    "geometry": "0e7641f4c8c5d1dd74371241e52896dc391587100dd6c99828f220efe7666958",
+    "textures": "48f6dece6582c52deb028086ceb9aab0e8fdbd26c4c52e312ea49fbf0e8b167a",
+    "previews": "b968d480d73c32101aeb5d3fe140029c2b8a40b8cd5091688f7fcd8b098a0e82"
+  },
+  "measurements": {
+    "projects": [
+      {
+        "path": "navigation_terminal.bbmodel",
+        "format": "bedrock",
+        "cubes": 130,
+        "meshes": 0,
+        "groups": 13
+      }
+    ],
+    "exports": [
+      {
+        "path": "navigation_terminal.geo.json",
+        "identifier": "geometry.navigation_terminal",
+        "bones": 13,
+        "cubes": 130
+      }
+    ],
+    "java_exports": [],
+    "textures": [
+      {
+        "path": "navigation_terminal_tex.png",
+        "width": 512,
+        "height": 512,
+        "mode": "RGBA"
+      }
+    ],
+    "previews": [
+      {
+        "path": "preview_back.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_front.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_oblique.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_side.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      }
+    ]
+  },
+  "checks": {
+    "editor_reopen": "passed",
+    "native_reexport": "passed",
+    "visual_preview": "passed"
+  },
+  "status": "complete",
+  "unresolved": [],
+  "validator": {
+    "version": 2,
+    "sha256": "030083f30e86fbde97f34f8f7892ba535c1af436d39fe93a1454dee4ff8b7206"
+  }
+}

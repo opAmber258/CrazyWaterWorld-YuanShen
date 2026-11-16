@@ -1,0 +1,30 @@
+{
+  "uuid": "be84d9cc-eb48-6ea4-87c9-eb10c764d82e",
+  "name": "navigation_terminal",
+  "path": "F:\\BarotraumaMinecraft\\art-vault\\production\\navigation_terminal_r2_20261116\\navigation_terminal.bbmodel",
+  "saved": true,
+  "cubes": 125,
+  "groups": 8,
+  "textures": [
+    {
+      "name": "navigation_terminal_tex.png",
+      "width": 512,
+      "height": 512
+    }
+  ],
+  "bounds": {
+    "min": [
+      -20,
+      -5.551115123125783e-16,
+      -7.71563
+    ],
+    "max": [
+      20,
+      31.875,
+      7.71562915130417
+    ]
+  },
+  "precision_changed_after_reopen": false,
+  "native_reexport_equal": true,
+  "export_from_reopened_project": true
+}
