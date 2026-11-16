@@ -76,9 +76,57 @@ public final class ShipState {
     /** 自动驾驶目标（世界坐标）；null = 还没标记。 */
     private net.minecraft.core.BlockPos autopilotTarget;
 
+    /** 历史确认过的舱内格（只增不减）：切掉外壁舱口后重扫会把空腔 interior 清空。 */
+    private java.util.Set<BlockPos> knownInterior = java.util.Set.of();
+
     public ShipState(ShipGeometry.Result geometry, MachineCount machines) {
         this.geometry = geometry;
         this.machines = machines;
+        this.knownInterior = collectInterior(geometry);
+    }
+
+    private static java.util.Set<BlockPos> collectInterior(ShipGeometry.Result geometry) {
+        if (geometry == null) {
+            return java.util.Set.of();
+        }
+        java.util.Set<BlockPos> out = new java.util.HashSet<>();
+        for (ShipGeometry.Compartment compartment : geometry.compartments()) {
+            out.addAll(compartment.interiorCells());
+        }
+        for (ShipGeometry.Compartment pocket : geometry.openPockets()) {
+            out.addAll(pocket.interiorCells());
+        }
+        return java.util.Set.copyOf(out);
+    }
+
+    /**
+     * 空腔的壳内格：几何给空时用历史确认过的舱内格兜底。
+     *
+     * <p>切掉外壁舱口后 {@code exteriorCells()} 会穿过洞口，房间的 interiorCells
+     * 可能变空；不兜底的话进水体积/水面都会变成 0，船灌满也不沉。</p>
+     */
+    public java.util.Set<BlockPos> interiorCellsOf(ShipGeometry.Compartment pocket) {
+        if (!pocket.interiorCells().isEmpty()) {
+            return pocket.interiorCells();
+        }
+        java.util.Set<BlockPos> out = new java.util.HashSet<>();
+        for (BlockPos cell : pocket.cells()) {
+            if (knownInterior.contains(cell)) {
+                out.add(cell);
+            }
+        }
+        // 没有历史舱内格 = 纯船外空气（圆角包围盒四角），不能把整块空腔算成舱内。
+        return out;
+    }
+
+    /** 重扫换新对象时合并历史舱内格（只增不减）。 */
+    public void inheritInteriorFrom(ShipState previous) {
+        if (previous == null) {
+            return;
+        }
+        java.util.Set<BlockPos> merged = new java.util.HashSet<>(knownInterior);
+        merged.addAll(previous.knownInterior);
+        knownInterior = java.util.Set.copyOf(merged);
     }
 
     public ShipGeometry.Result geometry() {
@@ -661,7 +709,7 @@ public final class ShipState {
             volume += compartment.volume();
         }
         for (ShipGeometry.Compartment pocket : geometry.openPockets()) {
-            volume += pocket.interiorVolume();
+            volume += interiorCellsOf(pocket).size();
         }
         if (volume <= 0.0D) {
             return 0.0D;
@@ -673,11 +721,11 @@ public final class ShipState {
         for (int i = 0; i < pockets.size(); i++) {
             ShipGeometry.Compartment pocket = pockets.get(i);
             int cells = pocket.volume();
-            if (cells <= 0 || pocket.interiorVolume() <= 0) {
+            int interior = interiorCellsOf(pocket).size();
+            if (cells <= 0 || interior <= 0) {
                 continue;
             }
-            pocketWater += simulation().pocketWater(i)
-                    * (pocket.interiorVolume() / (double) cells);
+            pocketWater += simulation().pocketWater(i) * (interior / (double) cells);
         }
         double units = simulation().waterUnits() + pocketWater;
         double capacity = volume * ShipSimulation.UNITS_PER_BLOCK;
@@ -823,6 +871,12 @@ public final class ShipState {
             next.simulation.shiftGeometry(dx, dy, dz);
             next.simulation.shiftReports(dx, dy, dz);
         }
+        // 历史舱内格也要平移，否则破洞兜底会指向旧坐标。
+        java.util.Set<BlockPos> movedInterior = new java.util.HashSet<>();
+        for (BlockPos cell : knownInterior) {
+            movedInterior.add(cell.offset(dx, dy, dz));
+        }
+        next.knownInterior = java.util.Set.copyOf(movedInterior);
         // 破口入口也要平移：waterLevelAt 用破口位置算列水位，breaches 为空时
         // 会退回整块统一水位，平移后干燥侧又会被误判成泡水。
         next.breaches.clear();

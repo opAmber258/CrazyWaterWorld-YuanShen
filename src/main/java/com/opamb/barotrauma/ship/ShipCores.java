@@ -46,6 +46,8 @@ public final class ShipCores {
         if (!(level instanceof net.minecraft.server.level.ServerLevel server)) {
             return;
         }
+        // 物理船上新放的方块要进靠港还原快照，否则会留在船坞里回不来。
+        com.opamb.barotrauma.ship.vs.VsState.recordPlacedBlock(server, pos);
         for (ShipCoreBlockEntity core : coresNear(level, pos, 64.0D)) {
             core.rescan(level);
         }

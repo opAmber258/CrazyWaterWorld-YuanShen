@@ -172,7 +172,19 @@ public final class VsPilot {
                 VsPilot::tryRepair, VsPilot::tryCut, VsPilot::damageExplosion);
         VsState.installBoardingResolver(VsPilot::boardingPositions);
         VsState.installGeometryRefresh(VsPilot::refreshPhysicalGeometry);
-        VsState.installCompartmentQuery(VsPilot::isPlayerInDryCompartment);
+        VsState.installCompartmentQuery(new VsState.CompartmentQuery() {
+            @Override
+            public Boolean isPlayerInDryCompartment(Level level, Vec3 pos) {
+                return VsPilot.isPlayerInDryCompartment(level, pos);
+            }
+
+            @Override
+            public Boolean isInsideCompartmentGeometry(Level level, Vec3 pos) {
+                // 用实时逆变换 + interiorCells（含破洞后的历史兜底），不看水位。
+                return isInsideInterior(level, pos);
+            }
+        });
+        VsState.installBlockRecorder(VsPilot::recordPlacedBlock);
         // 只注册服务端干燥区：单人存档里客户端和集成服务端同进程，
         // 客户端渲染用的 ShipWaterRenderer 不能被这里覆盖（否则方块船舱内会漏滤镜）。
         OceanEnvironment.setServerDryZone(new OceanEnvironment.DryZone() {
@@ -496,7 +508,28 @@ public final class VsPilot {
     }
 
     /**
-     * 这个世界坐标是否真的在这艘船的舱内（装配坐标落进舱室/连海空腔格）。
+     * 物理船上新放的方块写进还原快照（装配坐标）。
+     *
+     * <p>靠港时 {@code restoreBlocks} 只遍历快照：不记录的话，航行中放的接线盒/
+     * 舱门会留在船坞区块里，不会回到站侧船上，绑定数据也会丢。</p>
+     */
+    public static void recordPlacedBlock(ServerLevel level, BlockPos pos) {
+        if (ship == null || state == null || lastLevel != level || pos == null
+                || yardOffsetX == Integer.MIN_VALUE || !isYardBlock(pos)) {
+            return;
+        }
+        BlockPos cell = toAssembly(pos);
+        if (cell == null) {
+            return;
+        }
+        if (!(snapshot instanceof java.util.HashMap)) {
+            // 快照可能还是 Map.of() 或不可变副本：换成可变表再写。
+            snapshot = new java.util.HashMap<>(snapshot);
+        }
+        snapshot.put(cell.immutable(), level.getBlockState(pos));
+    }
+
+    /** 这个世界坐标是否真的在这艘船的舱内（装配坐标落进舱室/连海空腔格）。
      *
      * <p>靠泊吸附会整体平移船，只有真在舱里的玩家/货物才跟着搬：站在哨站平台上、
      * 或者船外漂浮的箱子不能一起瞬移。</p>

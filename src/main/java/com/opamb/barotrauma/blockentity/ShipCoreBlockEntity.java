@@ -446,6 +446,9 @@ public class ShipCoreBlockEntity extends BlockEntity {
             state.hullDamage().retain(pos -> ModShipBlocks.isRepairableHull(level.getBlockState(pos)));
             // 开合门也会重扫：水量必须按格子搬过来，否则一关门水就全跑到漏水侧。
             state.inheritWaterFrom(previous);
+            // 切掉外壁舱口后空腔 interior 会变空：把历史确认过的舱内格带过来，
+            // 进水体积/水面才有分母。
+            state.inheritInteriorFrom(previous);
         } else if (pendingDamage != null) {
             // 世界重开后的第一次重扫：把区块 NBT 里存下来的耐久接回来，
             // 否则 10%~90% 的部分损伤会全部凭空满血。

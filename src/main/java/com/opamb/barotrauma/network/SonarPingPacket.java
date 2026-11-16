@@ -71,12 +71,12 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             if (physical) {
                 // 代理方块的世界坐标不一定被 managingShip 认出来，补上舱室/船心距离判定；
                 // 玩家仍在方块船上（附近有方块船核心）时不能算物理船。
-                // 舱室判定必须用实时船体变换（偏航后旧包围盒会把旁边方块船的玩家
-                // 误判成物理船）；null = 不在物理船舱内。
+                // 归属要用“舱室几何边界”，不能看干湿：湿盒分支允许位置高于盒顶，
+                // 只要低于水面就返回 false（非 null），会把旁边方块船的玩家误认成物理船。
                 boolean confirmed = com.opamb.barotrauma.ship.vs.VsState
                         .isPhysical(level, sonarPos)
-                        || com.opamb.barotrauma.ship.vs.VsState
-                        .queryPlayerInDryCompartment(level, player.position()) != null;
+                        || Boolean.TRUE.equals(com.opamb.barotrauma.ship.vs.VsState
+                        .queryInsideCompartment(level, player.position()));
                 net.minecraft.world.phys.Vec3 shipPos =
                         com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
                 boolean nearShip = shipPos != null

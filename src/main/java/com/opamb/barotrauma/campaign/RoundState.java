@@ -198,17 +198,18 @@ public final class RoundState {
         levelSeed = tag.contains("levelSeed") ? tag.getLong("levelSeed") : 0L;
         levelDifficulty = tag.contains("levelDifficulty")
                 ? Math.max(0, tag.getInt("levelDifficulty")) : 0;
-        levelDistance = tag.contains("levelDistance")
-                ? Math.max(0, tag.getInt("levelDistance")) : 0;
-        levelSpacing = tag.contains("levelSpacing")
-                ? Math.max(0, tag.getInt("levelSpacing")) : 0;
+        boolean hadDistance = tag.contains("levelDistance");
+        boolean hadSpacing = tag.contains("levelSpacing");
+        levelDistance = hadDistance ? Math.max(0, tag.getInt("levelDistance")) : 0;
+        levelSpacing = hadSpacing ? Math.max(0, tag.getInt("levelSpacing")) : 0;
         if (hasInstance()) {
-            // 旧存档：当时固定出发距离 192、槽位间距 1024。留 0 会让恢复逻辑
-            // 用新关卡的默认值，把已经生成的出发站/航道端点挪走。
-            if (levelDistance <= 0) {
+            // 旧存档没有字段：当时固定出发距离 192、槽位间距 1024。
+            // 只迁移“字段缺失”；显式写入的 0 表示“按关卡默认值恢复”，
+            // 不能在这里被改成旧布局，否则保存/加载往返会改变槽位和出发站。
+            if (!hadDistance) {
                 levelDistance = 192;
             }
-            if (levelSpacing <= 0) {
+            if (!hadSpacing) {
                 levelSpacing = 1024;
             }
         }

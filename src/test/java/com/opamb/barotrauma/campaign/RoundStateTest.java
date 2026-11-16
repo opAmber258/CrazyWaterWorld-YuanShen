@@ -38,6 +38,19 @@ class RoundStateTest {
     }
 
     @Test
+    @DisplayName("短重载的默认值保存后不被旧布局迁移覆盖")
+    void shortLevelOverloadRoundTripKeepsFallback() {
+        RoundState source = new RoundState();
+        source.setInstance(24096, -80, 0);
+        // 3 参数重载：距离/间距显式留 0，表示按关卡默认值恢复。
+        source.setLevel("coldcavernsbasic", 7L, 3);
+        RoundState restored = new RoundState();
+        restored.load(source.save());
+        assertEquals(0, restored.levelDistance());
+        assertEquals(0, restored.levelSpacing());
+    }
+
+    @Test
     @DisplayName("失败阶段")
     void fail() {
         RoundState round = new RoundState();

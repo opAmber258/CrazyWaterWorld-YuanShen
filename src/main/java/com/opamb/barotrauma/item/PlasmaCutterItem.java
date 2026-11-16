@@ -393,11 +393,19 @@ public class PlasmaCutterItem extends Item {
             BlockPos middle = pos.relative(longAxis, -offset);
             BlockState middleState = level.getBlockState(middle);
             if (middleState.getBlock() instanceof HatchBlock
-                    && middleState.getValue(HatchBlock.PART) == HatchBlock.Part.MIDDLE) {
+                    && middleState.getValue(HatchBlock.PART) == HatchBlock.Part.MIDDLE
+                    && middleState.getValue(HatchBlock.FACING)
+                            == state.getValue(HatchBlock.FACING)) {
                 List<BlockPos> parts = new ArrayList<>();
                 for (int i = -1; i <= 1; i++) {
                     BlockPos part = middle.relative(longAxis, i);
-                    if (level.getBlockState(part).getBlock() instanceof HatchBlock) {
+                    BlockState partState = level.getBlockState(part);
+                    // 同一格可能属于另一台垂直摆放的舱口：必须同时核对朝向和 PART，
+                    // 否则会把那台舱口的中间段一起拆掉。
+                    if (partState.getBlock() instanceof HatchBlock
+                            && partState.getValue(HatchBlock.FACING)
+                                    == state.getValue(HatchBlock.FACING)
+                            && partState.getValue(HatchBlock.PART).ordinal() == i + 1) {
                         parts.add(part);
                     }
                 }

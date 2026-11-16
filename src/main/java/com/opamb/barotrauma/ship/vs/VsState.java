@@ -52,6 +52,21 @@ public final class VsState {
     public interface CompartmentQuery {
         Boolean isPlayerInDryCompartment(net.minecraft.world.level.Level level,
                                           net.minecraft.world.phys.Vec3 pos);
+
+        /**
+         * 位置是否真的在舱室几何内（不看水位）。
+         *
+         * @return null = 没有物理船/无法判定
+         */
+        default Boolean isInsideCompartmentGeometry(net.minecraft.world.level.Level level,
+                                                    net.minecraft.world.phys.Vec3 pos) {
+            return null;
+        }
+    }
+
+    /** 物理船上新放方块：写进靠港还原快照。由 {@link VsPilot} 提供。 */
+    public interface BlockRecorder {
+        void record(ServerLevel level, BlockPos pos);
     }
 
     /** 物理船上砸方块：把玩家看到的世界坐标映射成船坞方块并扣耐久。由 {@link VsPilot} 提供。 */
@@ -91,6 +106,19 @@ public final class VsState {
 
     public static void installBoardingResolver(BoardingResolver resolver) { boardingResolver = resolver; }
 
+    private static volatile BlockRecorder blockRecorder;
+
+    public static void installBlockRecorder(BlockRecorder recorder) { blockRecorder = recorder; }
+
+    /** 物理船上新放方块时调用；没有物理船/未装 VS2 时静默忽略。 */
+    public static void recordPlacedBlock(ServerLevel level, BlockPos pos) {
+        BlockRecorder recorder = blockRecorder;
+        if (!active || recorder == null) {
+            return;
+        }
+        recorder.record(level, pos);
+    }
+
     public static java.util.List<net.minecraft.world.phys.Vec3> boardingPositions(ServerLevel level, int count) {
         BoardingResolver resolver = boardingResolver;
         if (!active || resolver == null) return java.util.List.of();
@@ -125,6 +153,17 @@ public final class VsState {
                                                       net.minecraft.world.phys.Vec3 pos) {
         CompartmentQuery query = compartmentQuery;
         return query == null ? null : query.isPlayerInDryCompartment(level, pos);
+    }
+
+    /**
+     * 位置是否真的在物理船舱室几何内（不看水位）。
+     *
+     * @return null = 没有物理船/无法判定
+     */
+    public static Boolean queryInsideCompartment(net.minecraft.world.level.Level level,
+                                                 net.minecraft.world.phys.Vec3 pos) {
+        CompartmentQuery query = compartmentQuery;
+        return query == null ? null : query.isInsideCompartmentGeometry(level, pos);
     }
 
     private static volatile int offsetX;
