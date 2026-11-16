@@ -119,6 +119,27 @@ public final class DamageConversions {
     }
 
     /**
+     * 无可用氧时：缺氧强度每秒**上升**的量。
+     *
+     * <p>原作 {@code CharacterHealth.UpdateOxygen}（源码缓存 :1036-1048）：
+     * 无氧时 {@code decreaseSpeed = -5}/s，即 {@code OxygenAmount} 每秒 -5、
+     * 对应病症强度每秒 +5（强度 = 100 − OxygenAmount）。见底表 §2.5。</p>
+     */
+    public static double hypoxiaPerSecond() {
+        return 5.0;
+    }
+
+    /**
+     * 有可用氧时：缺氧每秒**降低**的强度。
+     *
+     * <p>原作同处 {@code increaseSpeed = 10}/s——即**缺氧回升 10 强度/秒**，
+     * 比恶化快一倍（"回氧比溺水快"是原作的救援手感）。见底表 §2.5。</p>
+     */
+    public static double breathRecoveryPerSecond() {
+        return 10.0;
+    }
+
+    /**
      * 投射物（箭/三叉戟/雪球等）：**按命中高度鉴定部位**（用户指令，参考硬核生存模组做法）。
      * heightRatio 由调用方换算成 **0=头顶、1=脚底**：
      * ≤0.55 → 胸（**头部不做外伤**——用户指令）、≤0.70 手臂、其余腿。

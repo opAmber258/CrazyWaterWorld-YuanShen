@@ -3,6 +3,7 @@ package com.opamb.barotrauma.medical;
 import com.opamb.barotrauma.medical.affliction.AfflictionContainer;
 import com.opamb.barotrauma.medical.affliction.AfflictionType;
 import com.opamb.barotrauma.medical.affliction.Limb;
+import com.opamb.barotrauma.medical.affliction.TreatmentSpec;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -87,5 +88,51 @@ class TreatmentTest {
         // 清空后 tick 不再有任何效果
         container.tickSecond();
         assertEquals(0, container.strength(AfflictionType.BLEEDING, Limb.TORSO), 1.0E-6);
+    }
+
+    @Test
+    void antiradClearsRadiationInOneShot() {
+        // 原作 antirad：radiationsickness −100/s×1s（OnSuccess 路径）
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.RADIATION, null, 75); // 反应堆熔毁注入量
+        for (TreatmentSpec.Effect effect : TreatmentSpec.ANTIRAD.effects()) {
+            container.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
+        }
+        container.tickSecond();
+        assertEquals(0.0, container.strength(AfflictionType.RADIATION, null), 1.0E-6,
+                "消辐灵一剂必须清空 75 强度的辐射病");
+    }
+
+    @Test
+    void liquidOxygeniteSlowReleasesAndDamagesOrgans() {
+        // 原作 liquidoxygenite：缺氧 −2.5/s×60s（缓释），副作用器官损伤 +1.5/s×5s
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.OXYGEN_LOW, null, 200);
+        for (TreatmentSpec.Effect effect : TreatmentSpec.LIQUID_OXYGENITE.effects()) {
+            container.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
+        }
+        container.tickSecond();
+        // 缺氧 200 → 197.5（每秒只减 2.5，这就是"缓释"）
+        assertEquals(197.5, container.strength(AfflictionType.OXYGEN_LOW, null), 1.0E-6);
+        // 器官损伤 0 → 1.5（注入必然带一点毒性，原作注释 "comes with some organ damage"）
+        assertEquals(1.5, container.strength(AfflictionType.ORGAN_DAMAGE, null), 1.0E-6);
+        // 副作用只有 5 秒，之后不再叠加
+        for (int i = 0; i < 10; i++) {
+            container.tickSecond();
+        }
+        assertEquals(1.5 * 5, container.strength(AfflictionType.ORGAN_DAMAGE, null), 1.0E-3);
+        // 缺氧持续削减：11 秒共 −27.5
+        assertEquals(172.5, container.strength(AfflictionType.OXYGEN_LOW, null), 1.0E-6);
+    }
+
+    @Test
+    void everyAfflictionHasChineseDisplayName() {
+        // 回归：辐射病曾经没有显示名，UI 里直接露出 "radiationsickness" 这种 id。
+        for (AfflictionType type : AfflictionType.ALL) {
+            assertTrue(com.opamb.barotrauma.client.TreatmentRenderer.DISPLAY_NAMES.containsKey(type.id()),
+                    "病症 " + type.id() + " 缺少中文显示名");
+            assertTrue(com.opamb.barotrauma.client.MedicalBodyRenderer.DISPLAY_NAMES.containsKey(type.id()),
+                    "病症 " + type.id() + " 缺少中文显示名（BodyRenderer）");
+        }
     }
 }

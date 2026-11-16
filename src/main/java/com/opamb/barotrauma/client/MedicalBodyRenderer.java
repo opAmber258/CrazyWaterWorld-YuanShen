@@ -20,17 +20,18 @@ public final class MedicalBodyRenderer {
     public record DisplayLine(String text, int color) {
     }
 
-    public static final Map<String, String> DISPLAY_NAMES = Map.of(
-            "blunttrauma", "钝器伤",
-            "bleeding", "出血",
-            "burn", "烧伤",
-            "bloodloss", "失血",
-            "oxygenlow", "缺氧",
-            "stun", "眩晕",
-            "opiateoverdose", "阿片类药物中毒",
-            "opiateaddiction", "阿片类药物成瘾",
-            "opiatewithdrawal", "阿片类药物戒断反应",
-            "organdamage", "器官损伤");
+    public static final Map<String, String> DISPLAY_NAMES = Map.ofEntries(
+            Map.entry("blunttrauma", "钝器伤"),
+            Map.entry("bleeding", "出血"),
+            Map.entry("burn", "烧伤"),
+            Map.entry("bloodloss", "失血"),
+            Map.entry("oxygenlow", "缺氧"),
+            Map.entry("stun", "眩晕"),
+            Map.entry("opiateoverdose", "阿片类药物中毒"),
+            Map.entry("opiateaddiction", "阿片类药物成瘾"),
+            Map.entry("opiatewithdrawal", "阿片类药物戒断反应"),
+            Map.entry("organdamage", "器官损伤"),
+            Map.entry("radiationsickness", "辐射病"));
 
     /** 原作式严重度显示：强度占上限的百分比，整数无小数（用户指令 #5）。 */
     public static String label(AfflictionType type, double strength) {
@@ -63,18 +64,9 @@ public final class MedicalBodyRenderer {
     public static void draw(GuiGraphics g, List<Zone> zones, List<String> rows,
                             double mouseX, double mouseY) {
         for (Zone zone : zones) {
+            // worstRatio 已包含"指示在本部位的全身病症"（原作 indicatorlimb），
+            // 所以缺氧/辐射病会自动让胸口变色，无需在这里单独补头部特判。
             double worst = worstRatio(rows, zone.limb());
-            if (zone.limb() == Limb.HEAD) {
-                // 头部指示型全身病症（眩晕/阿片中毒等）也参与头部着色
-                for (AfflictionType type : AfflictionType.ALL) {
-                    if (type.headIndicator() && !type.limbSpecific()) {
-                        double strength = strengthOf(rows, type, null);
-                        if (strength >= type.showThreshold()) {
-                            worst = Math.max(worst, severityRatio(type, strength));
-                        }
-                    }
-                }
-            }
             int fill = worst > 0 ? severityColor(worst) : HEALTHY;
             g.fill(zone.x(), zone.y(), zone.x() + zone.w(), zone.y() + zone.h(), fill);
             boolean hover = mouseX >= zone.x() && mouseX < zone.x() + zone.w()
@@ -100,56 +92,78 @@ public final class MedicalBodyRenderer {
         for (Zone zone : zones) {
             if (mouseX >= zone.x() && mouseX < zone.x() + zone.w()
                     && mouseY >= zone.y() && mouseY < zone.y() + zone.h()) {
-                List<DisplayLine> lines = new ArrayList<>();
-                for (AfflictionType type : AfflictionType.ALL) {
-                    if (!type.limbSpecific()) {
-                        continue;
-                    }
-                    double strength = strengthOf(rows, type, zone.limb());
-                    if (strength > 0) {
-                        double ratio = severityRatio(type, strength);
-                        lines.add(new DisplayLine(label(type, strength), severityColor(ratio)));
-                    }
-                }
-                // 头部指示的全身病症（眩晕/阿片中毒等）显示在头部悬停里
-                if (zone.limb() == Limb.HEAD) {
-                    for (AfflictionType type : AfflictionType.ALL) {
-                        if (!type.headIndicator() || type.limbSpecific()) {
-                            continue;
-                        }
-                        double strength = strengthOf(rows, type, null);
-                        if (strength >= type.showThreshold()) {
-                            lines.add(new DisplayLine(label(type, strength),
-                                    severityColor(severityRatio(type, strength))));
-                        }
-                    }
-                }
-                if (lines.isEmpty()) {
-                    lines.add(new DisplayLine(limbName(zone.limb()) + "：无伤", 0xFF9BE870));
-                }
-                return lines;
+                return linesForLimb(rows, zone.limb());
             }
         }
         return List.of();
     }
 
-    public static double worstRatio(List<String> rows, Limb limb) {
-        double worst = 0;
+    /**
+     * 某个部位上要显示的全部病症行：分部位病症 + **指示在本部位的全身病症**
+     * （原作 indicatorlimb：缺氧/失血/辐射病/器官损伤 → 胸口；眩晕/阿片系 → 头部）。
+     */
+    public static List<DisplayLine> linesForLimb(List<String> rows, Limb limb) {
+        List<DisplayLine> lines = new ArrayList<>();
         for (AfflictionType type : AfflictionType.ALL) {
             if (!type.limbSpecific()) {
                 continue;
             }
-            worst = Math.max(worst, severityRatio(type, strengthOf(rows, type, limb)));
+            double strength = strengthOf(rows, type, limb);
+            if (strength > 0) {
+                lines.add(new DisplayLine(label(type, strength),
+                        severityColor(severityRatio(type, strength))));
+            }
+        }
+        for (AfflictionType type : AfflictionType.ALL) {
+            if (type.limbSpecific() || type.indicatorLimb() != limb) {
+                continue;
+            }
+            double strength = strengthOf(rows, type, null);
+            if (strength > 0 && strength >= type.showThreshold()) {
+                lines.add(new DisplayLine(label(type, strength),
+                        severityColor(severityRatio(type, strength))));
+            }
+        }
+        if (lines.isEmpty()) {
+            lines.add(new DisplayLine(limbName(limb) + "：无伤", 0xFF9BE870));
+        }
+        return lines;
+    }
+
+    /**
+     * 该部位的最高严重度（身体图着色）：分部位病症 + 指示在本部位的全身病症。
+     * 这样缺氧/辐射病挂到胸口时，胸口会跟着变色，玩家一眼看出中招。
+     */
+    public static double worstRatio(List<String> rows, Limb limb) {
+        double worst = 0;
+        for (AfflictionType type : AfflictionType.ALL) {
+            if (type.limbSpecific()) {
+                worst = Math.max(worst, severityRatio(type, strengthOf(rows, type, limb)));
+            } else if (type.indicatorLimb() == limb) {
+                double strength = strengthOf(rows, type, null);
+                if (strength >= type.showThreshold()) {
+                    worst = Math.max(worst, severityRatio(type, strength));
+                }
+            }
         }
         return worst;
     }
 
-    /** 全身病症行（失血/缺氧——头部指示型如眩晕/阿片中毒只在头部悬停显示）。 */
+    /**
+     * 全身病症常驻行：**全部全身病症**（失血/缺氧/器官损伤/辐射病/眩晕/阿片系…）。
+     *
+     * <p>用户指令：全身性的失血/缺氧要常驻显示，不能只藏在悬停里。
+     * 同时它们也会出现在各自 `indicatorLimb` 的部位悬停里（原作语义），
+     * 两处并存是刻意的——常驻行保证"一直看得见"，部位行保证"符合直觉地能查"。</p>
+     */
     public static List<DisplayLine> globalLines(List<String> rows) {
         List<DisplayLine> lines = new ArrayList<>();
-        for (AfflictionType type : new AfflictionType[]{AfflictionType.BLOODLOSS, AfflictionType.OXYGEN_LOW}) {
+        for (AfflictionType type : AfflictionType.ALL) {
+            if (type.limbSpecific()) {
+                continue;
+            }
             double strength = strengthOf(rows, type, null);
-            if (strength > 0) {
+            if (strength > 0 && strength >= type.showThreshold()) {
                 double ratio = severityRatio(type, strength);
                 String warn = type == AfflictionType.OXYGEN_LOW && strength < type.maxStrength() * 0.25 ? "（预警）" : "";
                 lines.add(new DisplayLine(label(type, strength) + warn, severityColor(ratio)));

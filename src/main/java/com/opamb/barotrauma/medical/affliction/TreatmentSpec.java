@@ -62,4 +62,20 @@ public record TreatmentSpec(String displayName, List<Effect> effects, boolean mu
     public static final TreatmentSpec NALOXONE = new TreatmentSpec("纳洛酮", List.of(
             new Effect(AfflictionType.OPIATE_OVERDOSE, 2, 30),
             new Effect(AfflictionType.OPIATE_ADDICTION, 2, 30)), false);
+
+    /**
+     * 消辐灵：辐射病 100/s×1s（原作 antirad，一次性把 0–100 段清空；
+     * 原作 OnFailure 只减 25，v1 无技能系统恒走 Success）。无副作用。一次性注射器。
+     */
+    public static final TreatmentSpec ANTIRAD = new TreatmentSpec("消辐灵", List.of(
+            new Effect(AfflictionType.RADIATION, 100, 1)), false);
+
+    /**
+     * 液态氧矿：**缓释**——原作是持续 60s、每秒 −2.5 的缺氧削减
+     * （medical.xml:616-618；注释说明"一剂即可压住正常溺水下的缺氧恶化"）。
+     * 副作用：器官损伤 +1.5/s×5s（原作 :640-642，注射必然带一点毒性）。一次性注射器。
+     */
+    public static final TreatmentSpec LIQUID_OXYGENITE = new TreatmentSpec("液态氧矿", List.of(
+            new Effect(AfflictionType.OXYGEN_LOW, 2.5, 60),
+            new Effect(AfflictionType.ORGAN_DAMAGE, -1.5, 5)), false);
 }

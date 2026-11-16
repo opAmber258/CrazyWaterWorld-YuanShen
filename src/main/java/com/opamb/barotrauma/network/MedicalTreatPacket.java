@@ -53,7 +53,8 @@ public record MedicalTreatPacket(UUID target, String limb, String itemId, boolea
                 return;
             }
             if (targetPlayer != user && (targetPlayer.level() != user.level()
-                    || user.distanceToSqr(targetPlayer) > 36.0)) {
+                    || user.distanceToSqr(targetPlayer)
+                            > com.opamb.barotrauma.medical.MedicalTuning.TREAT_RANGE_SQR)) {
                 user.displayClientMessage(Component.literal("距离太远"), true);
                 return;
             }

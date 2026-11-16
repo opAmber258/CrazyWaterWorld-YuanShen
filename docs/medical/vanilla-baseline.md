@@ -106,6 +106,34 @@ v1 参考但排除：`pressure`（恶性水压创伤，10%/s 掉血，归潜艇�
 
 **关键事实：缺氧 50 以下是"预警区"不扣血；来源是环境（溺水/无氧），原作伤害源注入量为 12/次左右。治疗靠恢复供氧（氧气模块的职责），药品基本无效甚至有害（吗啡 -20 suitability）。**
 
+#### 2.5.1 恶化与恢复的速率（源码核对 2026-11-09）
+
+原作没有给 `oxygenlow` 写 `strengthchange`（XML 里那段 Effect 只有 facetint），
+它的推进全在 `CharacterHealth.UpdateOxygen`（源码缓存 `CharacterHealth.cs:1017-1053`），
+且用**氧气余量** `OxygenAmount` 表达，二者换算在 `:216-226`：`强度 = 100 − OxygenAmount`。
+
+```csharp
+float decreaseSpeed = -5.0f;    // :1036  无氧时氧气余量每秒 -5
+float increaseSpeed = 10.0f;    // :1037  有氧时氧气余量每秒 +10
+OxygenAmount = Clamp(OxygenAmount + dt * (OxygenAvailable < InsufficientOxygenThreshold
+                                          ? decreaseSpeed : increaseSpeed), -100, 100);
+```
+
+| 状态 | 强度变化 | MC 侧落地 |
+|---|---|---|
+| 无氧（头部浸没且憋气耗尽） | **+5/s** 余量→ **+5 强度/s** | `DamageConversions.hypoxiaPerSecond()` = 5 |
+| 有氧（头部在可呼吸空气里） | **−10/s** 余量→ **−10 强度/s** | `DamageConversions.breathRecoveryPerSecond()` = 10 |
+
+- 阈值 `InsufficientOxygenThreshold = 30`（`:95`）：头部所在环境氧气低于 30% 才算"无氧"。
+  本模组空气海域没有可计量的舱室 O2，v1 用**可用氧判定**近似，分两支：
+  - 穿潜水服：只看内部氧气瓶有没有可用氧（原作 `OxygenAvailable="-100"` + 瓶 `+1000`）；
+  - 没穿服：头部泡在原版水里或深海海域水里即为无氧；哨站干区、干舱、陆地、水下呼吸药水都有氧。
+- 两个速率单点定义在 `DamageConversions`，`MedicalEvents.onPlayerTick` 每秒按可用氧
+  `+5`（无氧）或 `−10`（有氧）写入，与上式一一对应。
+- **2026-11-09 修复的缺陷**：此前只有注入、**没有任何恢复路径**，
+  溺水过的玩家会永久带着 `oxygenlow` 持续掉血（缺氧自身 `strengthchange` 为 0，
+  任何药品也清不掉它）。现在有可用氧即按 10 强度/秒回退。
+
 ### 2.6 眩晕 stun
 
 | 参数 | 值 |
@@ -140,6 +168,13 @@ v1 参考但排除：`pressure`（恶性水压创伤，10%/s 掉血，归潜艇�
 | 血袋 | 失血 **-8/s × 15s**（合计 -120） | 失血 **120** | 无 |
 | 生理盐水 | 失血 **-2.5/s × 10s**（合计 -25）；感染 -0.5/s × 10s | 失血 30 | 无 |
 | 吗啡 | **损伤类 -2/s × 20s**；烧伤 -0.1/s × 20s；戒断 -3.75/s × 20s | 损伤 40 / 戒断 5 / **过量 -20 / 成瘾 -20 / 缺氧 -20** | **缺氧 +1/s × 20s、成瘾 +1/s、过量 +1/s**（失败时更多） |
+| **消辐灵** | **辐射病 -100/s × 1s**（一剂清空 0–100 段） | 辐射病 **100** | 无（失败时只 -25） |
+| **液态氧矿** | **缺氧 -2.5/s × 60s**（缓释；原作注释：一剂即可压住正常溺水下的缺氧恶化） | 缺氧 30 / **器官损伤 -30** | **器官损伤 +1.5/s × 5s**（"注射必然带一点毒性"） |
+
+**消辐灵 / 液态氧矿（2026-11-09 新增，A 档）**：原作 `medical.xml` 25 种药品里，只有这两种的靶病症
+在我们已有的病症集内（`radiationsickness` / `oxygenlow`），因此可以零新机制直接落地。
+其余 18 种依赖我们尚未实现的病症（4 种中毒、infection、huskinfection、psychosis、paralysis、
+chemaddiction…），属于后续阶段。液态氧矿的 `organdamage` 副作用走我们已有的 `ORGAN_DAMAGE`。
 
 失败（OnFailure）路径为技能不足时的打折效果（约 Success 的 62–75%）——**v1 无技能系统，【默认】恒走 OnSuccess 数值**，失败分支与 RequiredSkill 字段不入实现。
 

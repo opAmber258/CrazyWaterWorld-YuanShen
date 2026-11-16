@@ -31,7 +31,8 @@ public record MedicalRequestPacket(UUID target) {
             ServerPlayer targetPlayer = requester.server.getPlayerList().getPlayer(target);
             if (targetPlayer != null
                     && targetPlayer.level() == requester.level()
-                    && requester.distanceToSqr(targetPlayer) <= 36.0) {
+                    && requester.distanceToSqr(targetPlayer)
+                            <= com.opamb.barotrauma.medical.MedicalTuning.TREAT_RANGE_SQR) {
                 MedicalSyncPacket.respondSnapshot(requester, targetPlayer);
             }
         });

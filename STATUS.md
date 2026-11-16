@@ -3,12 +3,45 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-11（装备/背包/潜水服氧气重做 + 缺氧改医疗系统，见下方最新一节；
-> 已提交 `8679e0c`，未推送）。
+> 上次更新：2026-11-16（已同步远端 main 到 83e9613；HUD 病症图标改原作位图；本地未提交的
+> 医疗 WIP 见下方 2026-11-09~10 一节——消辐灵/液态氧矿、H 键面板、倒地禁背包、2 格治疗距离）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
 > ⚠️ 2026-11-04 那条"按 Shift 不沉 = 人站在舱底，非代码问题"的定性**是错的**，
 > 已在 §10.57.1 纠正：是原版潜行边缘保护在 VS2 船上把水平位移清零。
+
+## 2026-11-16 HUD 病症状态图标改为原作位图（未提交）
+
+用户："右下角的伤病状态栏请全部改为符合原版潜渊症的图标。比如缺氧改为 O2。
+直接搬上中文太丑了"。
+
+原来 `BaroHud.drawStatusIcon` 画的是**两字中文标签**（"缺氧"/"失血"…）配彩色方框。
+原作是圆形徽章位图，数据就在游戏自带的 `Content/Afflictions.xml`——每个病症元素末尾有
+`<icon texture="Content/UI/MainIconsAtlas.png" sourcerect="x,y,128,128" color="r,g,b,a"/>`。
+
+| 病症 | sourcerect | 原作 color | 图形 |
+|---|---|---|---|
+| oxygenlow | 512,640 | 68,157,198 | 蓝色 **O₂↓** |
+| bloodloss | 0,768 | 139,60,42 | 血滴 + 血泊 |
+| bleeding | 896,640 | 139,60,42 | 注射器 + 血滴 |
+| blunttrauma | 768,896 | 195,136,60 | 断骨 |
+| burn | 768,640 | 195,104,60 | 火焰 |
+| stun | 128,640 | 195,177,60 | 环绕星 |
+| organdamage | 128,384 | 195,136,60 | 受损器官 |
+| radiationsickness | 896,768 | 195,136,60 | 辐射三叶 |
+| opiateoverdose | 640,768 | 103,103,103 | 注射器 + 骷髅 |
+| opiateaddiction | 384,768 | 195,180,60 | 注射器 + 警告 |
+| opiatewithdrawal | 512,768 | 209,121,84 | 注射器 + 禁用 |
+
+**实现**：`drafts/gen/GenAfflictionAtlas.java`（JDK ImageIO，本机无 PIL）按上表把切片
+从原作图集裁出、把 XML 的 `color` 乘算烘进像素，拼成 4×3×128 = **512×384** 的
+`assets/barotrauma/textures/gui/afflictions.png`；`BaroHud` 用 `graphics.blit` 整格贴图，
+不再画方框底和文字。只有未知 id / 溢出计数（`+N`）才走文字兜底。
+
+**注意**：图集里这些切片是**灰阶蒙版**（亮部 218-236、描边纯黑、外圈全透明），
+必须乘 `color` 才是游戏里的样子——直接贴原图会是灰白圆圈。
+
+**验证**：`compileJava` 通过；L1 **248 项 0 失败**；图标预览逐张核对过（`drafts/gen/icon_preview/_sheet.png`）。
 
 ## 2026-11-11 装备/背包/潜水服氧气重做（已提交 8679e0c）
 
@@ -184,6 +217,99 @@
   不是漏填。
 - 两个任务界面并存（导航终端里的 `SonarScreen` 任务页 + 旧 `MissionScreen`），改文案别只改一边。
 - 交付全额判定在 8 格内，调半径改 `MissionActionPacket.DELIVERY_ENDPOINT_RADIUS_SQR`。
+## 2026-11-09~10 医疗：回氧修复 + A 档两种原版药品 + H 键面板 + 倒地禁背包（L1 全绿，待实机验收）
+
+**分支 `fix/medical-breath-recovery`（未提交/未推送）。**
+
+### A 档：补齐 2 种零新机制的原版药品
+
+原作 `Content/Items/Medical/medical.xml` 共 **25 种**药品。逐条核对靶病症后发现，
+只有消辐灵与液态氧矿的靶病症（`radiationsickness` / `oxygenlow`）已在我们病症集内，
+可以不加任何新机制直接落地；其余 18 种的靶病症（4 种中毒、infection、huskinfection、
+psychosis、paralysis、chemaddiction 等）尚未实现，属于后续阶段。
+
+1. **消辐灵（`antirad`）**：辐射病 −100/s×1s（一剂清空 0–100 段），无副作用。
+   **这是真窟窿**：反应堆熔毁会注入 75 强度 `RADIATION`（`ReactorBlockEntity:353`），
+   但在此之前既无药可解、UI 里连显示名都没有。
+2. **液态氧矿（`liquid_oxygenite`）**：缺氧 −2.5/s×60s **缓释**（原作注释：一剂即可压住
+   正常溺水下的缺氧恶化），副作用器官损伤 +1.5/s×5s（"注射必然带一点毒性"）。
+3. **资源**：两张从原作 `Content/Items/Medical/Medicines.png` **按 sourcerect 切出的贴图**
+   （消辐灵 `149,142,37,67`、液态氧矿 `187,138,38,71`；切图脚本 `D:\圆神\drafts\gen\CropMedicines.java`，
+   惯例=裁出后居中贴到 max(宽,高) 的正方形画布，已用绷带/吗啡/血袋反推验证过尺寸一致）、
+   两个 item model、两条 zh_cn/en_us 文案、两条占位配方（工作台无序合成，非原作配方）。
+
+### H 键健康面板 + 倒地禁开背包（2026-11-10）
+
+用户指定：单击 H 开自己；**长按 0.67 秒**开最近队友（长按期间该队友高光）。
+
+1. **新增按键** `key.barotrauma.health`（默认 H，`ClientSetup` 注册）。状态机：
+   - 按住 < 0.67s → 什么都不做（短按路过不会闪高光）；
+   - 按住 ≥ 0.67s → 锁定那一刻的最近队友并**持续高光**（只选一次，避免走动时高光在队友间跳）；
+   - 松开时：已锁定 → 开队友面板；未锁定 → 视为单击，开自己的面板。
+   - 用 `System.nanoTime()` 而非 tick 计数（20 tick 的量化误差可达 50ms）。
+   - 有界面开着时**不计时**：否则在背包里按住 H 再关背包，计时从按在背包里那刻算起，一松开就误开面板。
+2. **高光**给目标挂 `MobEffects.GLOWING`（原版成熟描边渲染，不自写 shader pass），
+   仅客户端本地、20 tick 续期一次、松开时主动 `removeEffect` 清理（不清理会永久留在实体上）。
+3. **倒地禁止开背包**：`ScreenEvent.Opening` 拦截原版 `InventoryScreen` → `setCanceled(true)`
+   + 提示"你已重伤倒地，无法打开背包"。原来只是把它换成医疗背包界面，而医疗背包里的健康栏
+   可以拖药使用——等于倒地还能自救，与用户指令"自己倒地禁用药"冲突。
+4. 顺手删掉 `onClientTick` 里重复了两遍的倒地姿态代码块。
+
+### 同轮修的 UI 断线
+
+| 缺陷 | 修法 |
+|---|---|
+| 辐射病/器官损伤**在 UI 完全不可见** | `globalLines` 从写死 `{BLOODLOSS, OXYGEN_LOW}` 改成"全部 `limbSpecific=false` 且非 `headIndicator` 的病症"——新增全身病症自动出现，不再漏 |
+| 辐射病无中文显示名 | `TreatmentRenderer` / `MedicalBodyRenderer` / `MedicalCommand` 三处补 "辐射病" |
+| 对症表缺 4 类 | `MedicalScreen.SUITABLE` 补成瘾→纳洛酮、戒断→纳洛酮、辐射病→消辐灵、缺氧→液态氧矿 |
+| 芬太尼不在药品侧栏 | `allMedicalItems()` 与创造页签改走统一的 `ModMedicalItems.all()` |
+
+### 缺氧回氧路径（本轮前半，独立缺陷）
+
+`oxygenlow` 原本**只有注入、没有任何恢复路径**（缺氧自身 `strengthchange` 为 0，
+五药里也没有治缺氧的），溺水一次就永久带伤持续掉血。现按原作
+`CharacterHealth.UpdateOxygen:1036-1048`（有氧 `increaseSpeed=10`/s、无氧 `decreaseSpeed=-5`/s，
+强度 = 100 − OxygenAmount）补上两条速率：
+`DamageConversions.hypoxiaPerSecond() = 5`、`breathRecoveryPerSecond() = 10`。
+
+> **2026-11-16 同步说明**：本机 WIP 原本写的是"按 MC 憋气值三态、无氧注入 12/s"，
+> 而远端 main 同期已独立落地了 `MedicalEvents.oxygenAvailable()` 判据（潜水服看瓶、
+> 没穿服看是否泡在水里）。合并时保留**上游判据**（它能区分水肺/干舱与原版真水，
+> 憋气值做不到），速率改成照原作曲线的 5/10，两条速率改为单点定义在 `DamageConversions`
+> 供回归测试断言。
+
+### 队友治疗距离改为 2 格（2026-11-10，用户实测反馈）
+
+用户："队友面板交互太远了！改成两格就好。"
+
+原来距离在**三个地方各自硬编码 `36.0`（=6²）**，改一处漏两处就会出现"客户端能选中、
+服务端回距离太远"的割裂。现在抽成 `MedicalTuning.TREAT_RANGE_BLOCKS = 2.0` 单点来源：
+
+| 位置 | 用途 |
+|---|---|
+| `MedicalClientHooks.NEARBY_RADIUS` | H 键长按选最近队友 |
+| `MedicalRequestPacket` | 面板请求对方快照 |
+| `MedicalTreatPacket` | 实际用药的服务端校验 |
+
+新增 `MedicalTuningTest` 3 项回归护栏（数值=2、平方值与距离一致、"必须短于原版 4.5 格交互距离"）。
+
+### 测试
+
+医疗 **49 项全绿**（46 + 3 项距离护栏）；`clean build` L1 **208 项 0 失败**；
+**L2 GameTest 3/3 通过**（`All 3 required tests passed`）。
+
+> **2026-11-16 合并后复跑**（同步远端 main 到 83e9613 之后）：`compileJava` 通过，
+> L1 **248 项 0 失败**（43 个测试类，含 main 新增的 `ArmorModifierTableTest` 等）。
+> 上面那行 208 是本轮 WIP 单独跑出来的旧数，保留以记录当时的基线。
+
+**L2 基建补齐**：`run/gameteststructures/empty_16x8x16.snbt` 与 `empty_24x12x24.snbt` 一直缺失
+（STATUS 里挂了几轮的"未决"），导致 `runGameTestServer` 报 `Could not find structure file`。
+本机 Python 是 WindowsApps 占位符、跑不了 `tools/gen_gametest_structure.py`，直接按脚本逻辑
+写出两个模板。**注意**：这两个文件在 `run/` 下（运行目录），不在 `src/` 里，**不入仓**；
+换机器/删 `run/` 后需要重新生成。
+
+**未决**：两个新药的配方是占位的 MC 原版物品组合，等制造模块接入后按原作改。
+**以下均待实机验收**：两个新药、H 键单击/长按、倒地禁背包、2 格距离。
 
 ## 2026-11-08 出血来源方案 A 落地 + 倒地流失按原版语义移除（L1 全绿，待实机验收）
 

@@ -45,6 +45,12 @@ public final class MedicalScreen extends Screen {
         map.put(AfflictionType.BLOODLOSS, List.of(ModMedicalItems.BLOOD_PACK, ModMedicalItems.SALINE));
         map.put(AfflictionType.BLUNT_TRAUMA, List.of(ModMedicalItems.MORPHINE, ModMedicalItems.FENTANYL));
         map.put(AfflictionType.OPIATE_OVERDOSE, List.of(ModMedicalItems.NALOXONE));
+        // 原作 SuitableTreatment 对照（medical.xml）：纳洛酮 suitability 覆盖成瘾/戒断；
+        // 消辐灵 100 → 辐射病；液态氧矿 30 → 缺氧（负 suitability 是器官损伤，不作为对症推荐）。
+        map.put(AfflictionType.OPIATE_ADDICTION, List.of(ModMedicalItems.NALOXONE));
+        map.put(AfflictionType.OPIATE_WITHDRAWAL, List.of(ModMedicalItems.NALOXONE));
+        map.put(AfflictionType.RADIATION, List.of(ModMedicalItems.ANTIRAD));
+        map.put(AfflictionType.OXYGEN_LOW, List.of(ModMedicalItems.LIQUID_OXYGENITE));
         return map;
     }
 
@@ -106,7 +112,7 @@ public final class MedicalScreen extends Screen {
         }
 
         if (snapshot == null) {
-            g.drawString(this.font, Component.literal("正在同步队友数据…"), x + 6, y + 24, 0xFFAAAAAA);
+            // 数据还没到：面板留空即可（用户要求去掉操作提示类灰字）
             return;
         }
 
@@ -130,12 +136,23 @@ public final class MedicalScreen extends Screen {
                     Component.literal(TreatmentRenderer.limbName(selectedLimb) + "："), x + 8, cy, 0xFF7FB8E8);
             cy += LINE;
             statusLines = limbStatusLines(snapshot, selectedLimb);
+            // 该部位的病症 = 分部位病症 + 指示在该部位的全身病症（原作 indicatorlimb）。
+            // 缺氧/失血/辐射病/器官损伤挂在胸口，眩晕/阿片系挂在头部——玩家的直觉就是
+            // 去胸口看缺氧，所以这里必须按指示部位列，不能只看 limbSpecific。
             for (AfflictionType type : AfflictionType.ALL) {
-                if (!type.limbSpecific()) {
-                    continue;
+                boolean shown;
+                double strength;
+                if (type.limbSpecific()) {
+                    strength = TreatmentRenderer.strengthOf(snapshot.rows(), type, selectedLimb);
+                    shown = strength > 0;
+                } else {
+                    if (type.indicatorLimb() != selectedLimb) {
+                        continue;
+                    }
+                    strength = TreatmentRenderer.strengthOf(snapshot.rows(), type, null);
+                    shown = strength > 0 && strength >= type.showThreshold();
                 }
-                double strength = TreatmentRenderer.strengthOf(snapshot.rows(), type, selectedLimb);
-                if (strength <= 0) {
+                if (!shown) {
                     continue;
                 }
                 double ratio = TreatmentRenderer.severityRatio(type, strength);
@@ -150,34 +167,12 @@ public final class MedicalScreen extends Screen {
                     cy += LINE;
                 }
             }
-            // 头部指示型全身病症（眩晕/阿片中毒/成瘾）显示在头部选中时
-            if (selectedLimb == Limb.HEAD) {
-                for (AfflictionType type : AfflictionType.ALL) {
-                    if (type.limbSpecific() || !type.headIndicator()) {
-                        continue;
-                    }
-                    double strength = TreatmentRenderer.strengthOf(snapshot.rows(), type, null);
-                    if (strength < type.showThreshold()) {
-                        continue;
-                    }
-                    double ratio = TreatmentRenderer.severityRatio(type, strength);
-                    g.drawString(this.font, Component.literal("· "
-                            + TreatmentRenderer.label(type, strength)), x + 10, cy,
-                            TreatmentRenderer.severityColor(ratio));
-                    cy += LINE;
-                    String desc = type.descriptionAt(strength);
-                    for (String part : TreatmentRenderer.wrap(this.font, desc, PANEL_W - 24)) {
-                        g.drawString(this.font, Component.literal(part), x + 16, cy, 0xFF8A8A8A);
-                        cy += LINE;
-                    }
-                }
-            }
             // 对症药品栏：并排小方框，悬停高亮，单击对该部位用药（只显示背包里真实拥有的药品）
             iconRects.clear();
             var minecraft = net.minecraft.client.Minecraft.getInstance();
             List<Item> drugs = new ArrayList<>();
             for (var entry : SUITABLE.entrySet()) {
-                if (TreatmentRenderer.strengthOf(snapshot.rows(), entry.getKey(), selectedLimb) > 0) {
+                if (strengthAtLimb(snapshot.rows(), entry.getKey(), selectedLimb) > 0) {
                     for (Supplier<? extends Item> supplier : entry.getValue()) {
                         Item item = supplier.get();
                         if (!drugs.contains(item) && hasAnywhere(minecraft.player, item)) {
@@ -187,7 +182,7 @@ public final class MedicalScreen extends Screen {
                 }
             }
             if (drugs.isEmpty()) {
-                g.drawString(this.font, Component.literal("该部位无对症药品（或背包里没有）"), x + 10, cy + 2, 0xFF909098);
+                // 没有对症药品：不画提示语（用户要求去掉操作提示类灰字），只推进一行保持布局
                 cy += LINE;
             } else {
                 int slotX = x + 10;
@@ -218,10 +213,9 @@ public final class MedicalScreen extends Screen {
                 g.drawString(this.font, Component.literal("· " + line.text()), x + 10, cy, line.color());
                 cy += LINE;
             }
-            g.drawString(this.font, Component.literal("左键点击身体选择部位"), x + 10, cy + 2, 0xFF909098);
         }
 
-        // ---- 底部：活力 + 操作提示 ----
+        // ---- 底部：活力（操作提示按用户要求移除）----
         int bottom = y + PANEL_H - 22;
         int vitalityColor = snapshot.downed() ? 0xFFFF5A5A
                 : snapshot.vitality() > 60 ? 0xFF55E05A
@@ -229,8 +223,6 @@ public final class MedicalScreen extends Screen {
         g.drawString(this.font, Component.literal(String.format("活力 %.0f/100%s",
                         snapshot.vitality(), snapshot.downed() ? "（倒地）" : "")),
                 x + 6, bottom, vitalityColor);
-        g.drawString(this.font, Component.literal("左键点身体选中部位 · 点药品图标用药 · Esc 关闭"),
-                x + 6, bottom + 10, 0xFF909098);
     }
 
     /** 该部位对症药品的图标点击（缺省部位=null → 全身/最强优先）。 */
@@ -283,41 +275,28 @@ public final class MedicalScreen extends Screen {
         return null;
     }
 
-    /** 悬停部位的病症行（含头部指示型，如眩晕/阿片中毒）；严重度按实际掉血占比。 */
+    /**
+     * 某病症在这个部位上"生效"的强度：分部位病症取该部位实例；
+     * 全身病症只有在其 `indicatorLimb` 等于该部位时才算（原作 indicatorlimb）。
+     * 用于对症药品栏——点胸口要能对缺氧/辐射病用药，而不是因为它是全身类型就返回 0。
+     */
+    private static double strengthAtLimb(List<String> rows, AfflictionType type, Limb limb) {
+        if (type.limbSpecific()) {
+            return TreatmentRenderer.strengthOf(rows, type, limb);
+        }
+        if (type.indicatorLimb() != limb) {
+            return 0.0;
+        }
+        double strength = TreatmentRenderer.strengthOf(rows, type, null);
+        return strength >= type.showThreshold() ? strength : 0.0;
+    }
+
+    /**
+     * 该部位上生效的病症行（分部位 + 指示在本部位的全身病症）。
+     * 复用 {@link TreatmentRenderer#linesForLimb}，与侧栏/悬停保持同一套规则。
+     */
     private static List<DisplayLine> limbStatusLines(ClientMedicalCache.Snapshot snapshot, Limb limb) {
-        List<DisplayLine> lines = new ArrayList<>();
-        for (AfflictionType type : AfflictionType.ALL) {
-            if (!type.limbSpecific()) {
-                continue;
-            }
-            double strength = TreatmentRenderer.strengthOf(snapshot.rows(), type, limb);
-            if (strength > 0) {
-                double ratio = TreatmentRenderer.severityRatio(type, strength);
-                lines.add(new DisplayLine(
-                        TreatmentRenderer.DISPLAY_NAMES.getOrDefault(type.id(), type.id())
-                                + " " + TreatmentRenderer.fmt(strength),
-                        TreatmentRenderer.severityColor(ratio)));
-            }
-        }
-        if (limb == Limb.HEAD) {
-            for (AfflictionType type : AfflictionType.ALL) {
-                if (type.limbSpecific() || !type.headIndicator()) {
-                    continue;
-                }
-                double strength = TreatmentRenderer.strengthOf(snapshot.rows(), type, null);
-                if (strength >= type.showThreshold()) {
-                    lines.add(new DisplayLine(
-                            TreatmentRenderer.DISPLAY_NAMES.getOrDefault(type.id(), type.id())
-                                    + " " + TreatmentRenderer.fmt(strength),
-                            TreatmentRenderer.severityColor(
-                                    TreatmentRenderer.severityRatio(type, strength))));
-                }
-            }
-        }
-        if (lines.isEmpty()) {
-            lines.add(new DisplayLine("无伤", 0xFF55E05A));
-        }
-        return lines;
+        return TreatmentRenderer.linesForLimb(snapshot.rows(), limb);
     }
 
     /** 从显示行里猜病症类型（用于对症药品提示；无伤行返回 null）。 */
