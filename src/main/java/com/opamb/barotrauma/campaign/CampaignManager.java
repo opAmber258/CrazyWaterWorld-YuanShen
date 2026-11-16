@@ -67,6 +67,17 @@ public final class CampaignManager {
         BlockPos originCore = starterCorePos(deep, originSite);
         BlockPos deliveryAnchor = originCore != null ? originCore
                 : new BlockPos(originSite.x(), MissionInstance.ANCHOR_Y, originSite.z());
+        // 从无人航路点直接续航时船还是物理船，世界里没有方块核心：用船坞里的
+        // 核心坐标，shipContainers 才会按物理船几何扫货柜；否则货柜扫不到，
+        // "送至潜艇"的货会一直留在待交付列表（背包满时尤其明显）。
+        if (VsState.active() && com.opamb.barotrauma.ship.vs.VsPilot.activeLevel() == deep) {
+            BlockPos assemblyCore = com.opamb.barotrauma.ship.vs.VsPilot.corePos();
+            BlockPos yardCore = assemblyCore == null ? null
+                    : com.opamb.barotrauma.ship.vs.VsPilot.toYard(assemblyCore);
+            if (yardCore != null) {
+                deliveryAnchor = yardCore;
+            }
+        }
         for (ServerPlayer online : players) {
             com.opamb.barotrauma.station.StoreService.deliverPending(online, deep, deliveryAnchor);
         }

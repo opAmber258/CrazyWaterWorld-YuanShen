@@ -145,7 +145,7 @@ public final class StoreService {
         int bought = 0;
         int charged = 0;
         int failed = 0;
-        String firstName = null;
+        Component firstName = null;
         for (StoreActionPacket.Line line : valid) {
             StoreCatalog.Entry catalog = StoreCatalog.byItemId(line.itemId());
             if (catalog == null) {
@@ -164,7 +164,7 @@ public final class StoreService {
                     ItemSubSlot.set(unit, new ItemStack(ModItems.WELDING_FUEL_TANK.get()));
                 }
                 // 先取名字再 add：Inventory.add 会把传入 stack 吃掉。
-                String name = unit.getHoverName().getString();
+                Component name = unit.getHoverName();
                 boolean placed;
                 if (deliverImmediately) {
                     placed = player.getInventory().add(unit);
@@ -197,10 +197,10 @@ public final class StoreService {
             message(player, "store.purchase_failed_refund", ChatFormatting.RED);
             return;
         }
-        String where = deliverImmediately ? ""
-                : Component.translatable("store.purchased.deliver").getString();
-        String suffix = failed > 0
-                ? Component.translatable("store.purchased.failed_suffix", failed).getString() : "";
+        Component where = deliverImmediately ? Component.empty()
+                : Component.translatable("store.purchased.deliver");
+        Component suffix = failed > 0
+                ? Component.translatable("store.purchased.failed_suffix", failed) : Component.empty();
         message(player, "store.purchased", ChatFormatting.GREEN,
                 firstName, bought, where, suffix, charged);
     }
@@ -225,7 +225,7 @@ public final class StoreService {
         List<ContainerSlot> containers = shipContainers(level, shipAnchor);
         Map<String, Integer> remaining = new LinkedHashMap<>();
         int delivered = 0;
-        String firstName = null;
+        Component firstName = null;
         for (Map.Entry<String, Integer> entry : pending.entrySet()) {
             Item item = resolveItem(entry.getKey());
             if (item == null) {
@@ -237,7 +237,7 @@ public final class StoreService {
                 if (item == ModItems.WELDING_TOOL.get()) {
                     ItemSubSlot.set(unit, new ItemStack(ModItems.WELDING_FUEL_TANK.get()));
                 }
-                String name = unit.getHoverName().getString();
+                Component name = unit.getHoverName();
                 boolean placed = !containers.isEmpty() && deliverToShip(containers, unit);
                 if (!placed) {
                     placed = player.getInventory().add(unit);
@@ -382,7 +382,7 @@ public final class StoreService {
 
         int sold = 0;
         int earned = 0;
-        String firstName = null;
+        Component firstName = null;
         for (SellUnit unit : valid) {
             ItemStack stack = player.getInventory().getItem(unit.slot());
             if (stack.isEmpty()) {
@@ -393,7 +393,7 @@ public final class StoreService {
                 continue;
             }
             if (firstName == null) {
-                firstName = stack.getHoverName().getString();
+                firstName = stack.getHoverName();
             }
             stack.shrink(quantity);
             if (stack.isEmpty()) {
@@ -464,7 +464,7 @@ public final class StoreService {
 
         int sold = 0;
         int earned = 0;
-        String firstName = null;
+        Component firstName = null;
         for (SubSale sale : valid) {
             int remaining = sale.quantity();
             for (ContainerSlot slot : containers) {
@@ -484,7 +484,7 @@ public final class StoreService {
                 }
                 int take = Math.min(remaining, stack.getCount());
                 if (firstName == null) {
-                    firstName = stack.getHoverName().getString();
+                    firstName = stack.getHoverName();
                 }
                 slot.container().removeItem(slot.slot(), take);
                 slot.container().setChanged();

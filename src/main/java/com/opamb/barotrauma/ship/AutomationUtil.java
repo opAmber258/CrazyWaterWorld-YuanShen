@@ -53,16 +53,28 @@ public final class AutomationUtil {
      * 任意一侧进水超过阈值就关门。</p>
      */
     /**
-     * 这扇门/舱口是否直接连到外海（门格在船壳外表面，几何里有 SEA_BODY 连线）。
+     * 这扇门/舱口是否直接连到外海。
      *
      * <p>水密模式要单独看这一项：舱内干燥时 {@link #maxWaterFraction} 是 0，
-     * 但门一开海水就会沿 SEA_BODY 连线灌进来。</p>
+     * 但门一开海水就会灌进来。</p>
+     *
+     * <p>两种“通海”：门格直接开在船壳外表面（{@code SEA_BODY} 连线），或者门外
+     * 空气在包围盒内部、形成一个连到包围盒边界的空腔（船壳有突出部分时外门会
+     * 落在包围盒里面）。后者在几何里是 {@code openPockets}，编号从
+     * {@code compartments().size()} 起算——只认 {@code SEA_BODY} 会让这扇门在
+     * 空腔水量为 0 时被水密模式自动打开。</p>
      */
     public static boolean opensToSea(ShipState ship, BlockPos cell) {
+        int sealedBodies = ship.geometry().compartments().size();
         for (ShipGeometry.DoorLink link : ship.geometry().doorLinks()) {
-            if (link.cell().equals(cell)
-                    && (link.body() == ShipGeometry.SEA_BODY
-                    || link.other() == ShipGeometry.SEA_BODY)) {
+            if (!link.cell().equals(cell)) {
+                continue;
+            }
+            if (link.body() == ShipGeometry.SEA_BODY || link.other() == ShipGeometry.SEA_BODY) {
+                return true;
+            }
+            // 连海空腔（openPocket）也算外海一侧。
+            if (link.body() >= sealedBodies || link.other() >= sealedBodies) {
                 return true;
             }
         }

@@ -192,6 +192,31 @@ class MissionInstanceTest {
     }
 
     @Test
+    @DisplayName("旧槽位 4 的锚点与新布局槽位 2 重合：不认虚构的出发站")
+    void legacySlotFourOverlapsNewLayout() {
+        int legacy = 1024;
+        int anchor4 = MissionInstance.BASE_X + 4 * legacy; // 24096 = 新布局槽位 2 的锚点
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                4, LevelType.BASIC, 41L, 4,
+                LevelType.BASIC.params().routeLength(), anchor4));
+        MissionInstance.setRouteOutposts(4, false, false);
+
+        assertEquals(new DockingBay.Site(anchor4, 0), DockingBay.siteAt(anchor4, 0),
+                "活动锚点仍要能认出来");
+        int startX = MissionInstance.startSite(MissionInstance.anchorForRound(4)).x();
+        assertEquals(new DockingBay.Site(startX, 0), DockingBay.siteAt(startX, 0),
+                "真实出发站要能认出来");
+        // 新布局槽位 2 的出发站（east，24288）是虚构的：该槽位和活动锚点重合，
+        // 必须整个跳过，否则 siteAt 会认出它、outpostExpected 还会给它建站。
+        int bogus = MissionInstance.BASE_X + 2 * MissionInstance.SPACING
+                + MissionInstance.START_DISTANCE;
+        assertNull(DockingBay.siteAt(bogus, 0), "重合槽位的虚构出发站不能被识别");
+        assertFalse(DockingBay.sitesNear(new net.minecraft.world.level.ChunkPos(
+                        bogus >> 4, 0)).contains(new DockingBay.Site(bogus, 0)),
+                "区块站点枚举也不能加入虚构站");
+    }
+
+    @Test
     @DisplayName("长路线（advanced 600 / maze 520）走南北，x 留在同一槽位")
     void longRouteUsesNorthSouth() {
         LevelParams advanced = LevelType.ADVANCED.params();

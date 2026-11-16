@@ -204,6 +204,11 @@ public final class PowerPanelState {
     public static void refresh(ServerPlayer player, BlockPos boxCell) {
         Panel panel = PANELS.get(player.getUUID());
         if (panel != null && panel.boxCell().equals(boxCell)) {
+            if (!panel.dimension().equals(player.serverLevel().dimension())) {
+                // 玩家换了维度：同坐标可能是另一艘船的接线盒，旧会话直接作废。
+                PANELS.remove(player.getUUID());
+                return;
+            }
             // 绑定后的刷新：只更新已经打开的面板，不再触发 setScreen。
             send(player, boxCell, panel.physical(), panel.corePos(), false);
         }

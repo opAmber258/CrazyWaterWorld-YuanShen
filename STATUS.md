@@ -3,7 +3,7 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-16（PR #61 第十五轮 CodeRabbit 修复，282 项测试通过，协议 16；
+> 上次更新：2026-11-17（PR #61 第十六轮 CodeRabbit 修复，285 项测试通过，协议 16；
 > 本地 `main` 仍在 `77009a7`，`origin/main` 已多 3 个美术提交，**还没 pull**）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
@@ -51,7 +51,7 @@
 - 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
 
 ### 4. 验证 / 未做
-- `./gradlew compileJava test --offline`：**282 项测试 0 失败（48 个测试类）**（2026-11-16 第十五轮后）。
+- `./gradlew compileJava test --offline`：**285 项测试 0 失败（49 个测试类）**（2026-11-17 第十六轮后）。
 - 客户端本轮未起（用户要求等通知）；实机验收待用户。
 - 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
   任务/沉船/怪物等 P0 缺口。
@@ -188,6 +188,23 @@
   `DockingBay.activeSites` 用保存的槽位间距/出发距离；`RoundStateTest` 补实例
   锚点迁移与往返。**仍跳过**：`restoreBlocks` 的 PowerBox 坐标平移（用户明确
   先不动电力）、矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+- 第十六次 full review 批次（13 条）：接线盒放置后主动 `ShipCores.refreshNearby`
+  （新盒子不在旧几何里，`tracksHullBlock` 会一直拒绝、设备拿不到供电）；从无人
+  航路点续航时"送至潜艇"的交付锚点改取活动物理船的船坞核心（否则扫不到货柜）；
+  VS2 船查询/逆变换移到 `ship/vs/VsClientCompartments`（`client` 包不再直接引用
+  `ClientShip`/`ShipTransform`）；`StoreScreen` 窄面板隐藏分类/库存/槽位次要列并
+  截断商品名，`submitCart`/`sendLines` 统一挡 `awaitingState`（键盘连按 Enter 不会
+  重复下单）；爆炸按"命中格归属哪艘船"逐格匹配附近所有核心（A 船熔毁打到 B 船时，
+  更近的 C 船不再把 B 的船壳挤进原版删除列表）；`MissionScreen` 焊枪报价改 150
+  与服务端扣款一致；`PowerPanelState.refresh` 先核对会话维度（换维度后旧会话作废）；
+  `AutomationUtil.opensToSea` 把包围盒内的连海空腔也算外海（凹进式外门不再被水密
+  模式自动打开，新增 2 条纯逻辑测试）；物理船切割舱壁门按上下两格整套删除、只掉
+  一次；`StoreService` 消息参数改传 `Component`（专用服务器不再把物品名固定成
+  英文）；`DockingBay.anchorsNear` 按 x 去重并优先活动槽位（旧槽位 4 的 24096 与
+  新布局槽位 2 重合时不再认虚构出发站，新增回归）；`OceanEnvironment` 删掉实时
+  查询未命中后的纯平移回退（偏航后不会把舱外误判成舱内）。
+  **仍跳过**：`restoreBlocks` 的 PowerBox 坐标平移（用户明确先不动电力）、
+  矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。第十五轮 CodeRabbit
   又按 `restoreBlocks` 提了一次，仍按用户"先不管电力那块"跳过。

@@ -66,6 +66,17 @@ public class JunctionBoxBlock extends BaseEntityBlock {
     }
 
     @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
+                            net.minecraft.world.entity.LivingEntity placer,
+                            net.minecraft.world.item.ItemStack stack) {
+        if (!level.isClientSide) {
+            // 新接线盒不在旧船体几何里时，开合门/破口重扫之前 tracksHullBlock 会拒绝它，
+            // 设备永远拿不到供电；放置时主动重扫一次附近核心 + 物理船几何。
+            com.opamb.barotrauma.ship.ShipCores.refreshNearby(level, pos);
+        }
+    }
+
+    @Override
     public BlockState rotate(BlockState state, Rotation rotation) {
         return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
     }

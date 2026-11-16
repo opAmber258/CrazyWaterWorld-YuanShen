@@ -114,8 +114,13 @@ public final class DockingBay {
     }
 
     /**
-     * 当前 x 附近要检查的槽位：base±1 + 活动槽位（旧存档锚点不按当前 SPACING，
-     * 例如旧槽位 5 的锚点 25120 会落在 base=3 的 base±1 之外）。
+     * 当前 x 附近要检查的槽位：活动槽位 + base±1。
+     *
+     * <p>旧存档锚点不按当前 {@link MissionInstance#SPACING}（例如旧槽位 5 的锚点
+     * 25120 会落在 base=3 的 base±1 之外），所以活动槽位要单独加。反过来，
+     * 旧锚点也可能正好等于某个默认槽位的锚点（旧槽位 4 的 24096 = 新布局槽位 2），
+     * 那个默认槽位的出发站是虚构的（24288）——按 x 去重，只保留活动槽位，
+     * 否则 {@code siteAt} 会认出不存在的站并给它建哨站。</p>
      */
     private static java.util.List<MissionInstance.Anchor> anchorsNear(int x) {
         int base = Math.max(0, Math.round((x - MissionInstance.BASE_X)
@@ -123,14 +128,19 @@ public final class DockingBay {
         int first = Math.max(0, base - 1);
         int last = base + 1;
         java.util.List<MissionInstance.Anchor> out = new java.util.ArrayList<>(4);
-        for (int slot = first; slot <= last; slot++) {
-            out.add(MissionInstance.anchorForRound(slot));
-        }
+        java.util.Set<Integer> seenX = new java.util.HashSet<>();
         MissionInstance.RouteLevel level = MissionInstance.routeLevel();
         if (level != null) {
-            int slot = Math.max(0, level.slot());
-            if (slot < first || slot > last) {
-                out.add(MissionInstance.anchorForRound(slot));
+            // 活动槽位优先：它的锚点才是真实存在的那个。
+            MissionInstance.Anchor active = MissionInstance.anchorForRound(
+                    Math.max(0, level.slot()));
+            out.add(active);
+            seenX.add(active.x());
+        }
+        for (int slot = first; slot <= last; slot++) {
+            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+            if (seenX.add(anchor.x())) {
+                out.add(anchor);
             }
         }
         return out;

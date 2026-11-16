@@ -1723,6 +1723,23 @@ public final class VsPilot {
             } else {
                 cells.add(original);
             }
+        } else if (block.getBlock() instanceof com.opamb.barotrauma.block.BulkheadDoorBlock
+                && block.hasProperty(com.opamb.barotrauma.block.BulkheadDoorBlock.PART)) {
+            // 舱壁门占上下两格：只拆命中格会留下半扇，再切一次又掉一个完整门。
+            // 和方块船路径（PlasmaCutterItem.breakFixture）保持一致，整套只掉一次。
+            BlockPos lower = block.getValue(com.opamb.barotrauma.block.BulkheadDoorBlock.PART)
+                    == com.opamb.barotrauma.block.BulkheadDoorBlock.Part.UPPER
+                    ? original.below() : original;
+            for (BlockPos cell : new BlockPos[]{lower, lower.above()}) {
+                BlockState part = snapshot.get(cell);
+                if (part != null && part.getBlock()
+                        instanceof com.opamb.barotrauma.block.BulkheadDoorBlock) {
+                    cells.add(cell);
+                }
+            }
+            if (cells.isEmpty()) {
+                cells.add(original);
+            }
         } else {
             cells.add(original);
         }

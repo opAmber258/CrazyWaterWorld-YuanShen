@@ -219,16 +219,11 @@ public final class OceanEnvironment {
                     () -> () -> com.opamb.barotrauma.client.ShipWaterRenderer
                             .isInsidePhysicalCompartment(level, pos)));
         }
-        if (com.opamb.barotrauma.ship.vs.VsState
-                .queryPlayerInDryCompartment(level, pos) != null) {
-            return true;
-        }
-        // 没装 VS2 时不存在物理船：直接返回 false，避免类加载碰到 VsPilot 的 VS2 依赖。
-        if (!com.opamb.barotrauma.ship.vs.VsSupport.available()) {
-            return false;
-        }
-        // 服务端没有 compartmentQuery 桥时（理论上不会）退回装配坐标水面盒。
-        return com.opamb.barotrauma.ship.vs.VsPilot.isInsideCompartment(level, pos);
+        // 查询桥装好时一定返回 true/false（true = 干燥舱，false = 进水舱，两者都算在舱内），
+        // 只有没有物理船/没装 VS2 才是 null。不能再退回只减平移量的旧查询：
+        // 船偏航后舱外位置会落进未旋转的水盒里，被误判成舱内。
+        return com.opamb.barotrauma.ship.vs.VsState
+                .queryPlayerInDryCompartment(level, pos) != null;
     }
 
     /**

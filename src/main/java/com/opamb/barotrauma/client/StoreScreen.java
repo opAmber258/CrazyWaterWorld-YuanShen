@@ -447,13 +447,17 @@ public final class StoreScreen extends Screen {
                 g.renderItem(stack, x + 12, rowY + 1);
             }
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
-            g.drawString(font, name, x + 34, rowY + 5, TEXT, false);
-            g.drawString(font, "[" + categoryLabel(entry.category()) + "]", x + 196, rowY + 5, DIM, false);
-            String stock = entry.stock() > 0
-                    ? Component.translatable("store.stock", entry.stock()).getString()
-                    : Component.translatable("store.sold_out").getString();
-            g.drawString(font, stock, x + 262, rowY + 5,
-                    entry.stock() > 0 ? DIM : RED, false);
+            g.drawString(font, clipName(name, quantityMinusX(x) - 6 - (x + 34)),
+                    x + 34, rowY + 5, TEXT, false);
+            if (showsSecondaryColumns()) {
+                g.drawString(font, "[" + categoryLabel(entry.category()) + "]",
+                        x + 196, rowY + 5, DIM, false);
+                String stock = entry.stock() > 0
+                        ? Component.translatable("store.stock", entry.stock()).getString()
+                        : Component.translatable("store.sold_out").getString();
+                g.drawString(font, stock, x + 262, rowY + 5,
+                        entry.stock() > 0 ? DIM : RED, false);
+            }
             drawQuantity(g, x, rowY, buyQuantity(entry.itemId()), entry.stock(), mouseX, mouseY);
             String price = entry.buyPrice() + " mk";
             g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5,
@@ -492,10 +496,14 @@ public final class StoreScreen extends Screen {
                 g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
             }
             g.renderItem(row.stack(), x + 12, rowY + 1);
-            g.drawString(font, row.stack().getHoverName().getString(), x + 34, rowY + 5, TEXT, false);
-            g.drawString(font, Component.translatable("store.slot", row.slot()),
-                    x + 196, rowY + 5, DIM, false);
-            g.drawString(font, "×" + row.stack().getCount(), x + 262, rowY + 5, DIM, false);
+            g.drawString(font, clipName(row.stack().getHoverName().getString(),
+                            quantityMinusX(x) - 6 - (x + 34)),
+                    x + 34, rowY + 5, TEXT, false);
+            if (showsSecondaryColumns()) {
+                g.drawString(font, Component.translatable("store.slot", row.slot()),
+                        x + 196, rowY + 5, DIM, false);
+                g.drawString(font, "×" + row.stack().getCount(), x + 262, rowY + 5, DIM, false);
+            }
             drawQuantity(g, x, rowY, sellQuantity(row.slot()), row.stack().getCount(), mouseX, mouseY);
             String price = row.entry().sellPrice() + " mk";
             g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5, GREEN, false);
@@ -528,9 +536,12 @@ public final class StoreScreen extends Screen {
                 g.renderItem(stack, x + 12, rowY + 1);
             }
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
-            g.drawString(font, name, x + 34, rowY + 5, TEXT, false);
-            g.drawString(font, Component.translatable("store.on_ship", entry.quantity()),
-                    x + 196, rowY + 5, DIM, false);
+            g.drawString(font, clipName(name, quantityMinusX(x) - 6 - (x + 34)),
+                    x + 34, rowY + 5, TEXT, false);
+            if (showsSecondaryColumns()) {
+                g.drawString(font, Component.translatable("store.on_ship", entry.quantity()),
+                        x + 196, rowY + 5, DIM, false);
+            }
             drawQuantity(g, x, rowY, subQuantity(entry.itemId()), entry.quantity(), mouseX, mouseY);
             String price = entry.sellPrice() + " mk";
             g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5, GREEN, false);
@@ -548,6 +559,23 @@ public final class StoreScreen extends Screen {
 
     private int quantityPlusX(int x) {
         return x + panelW() - 94;
+    }
+
+    /**
+     * 分类/库存/槽位这些次要列只够放在原始宽度里；面板一收窄就会和数量控件、
+     * 右对齐价格叠在一起，直接隐藏（数量控件本身仍显示已选数量）。
+     */
+    private boolean showsSecondaryColumns() {
+        return panelW() >= PANEL_W;
+    }
+
+    /** 商品名按可用宽度截断，避免压到数量控件。 */
+    private String clipName(String name, int maxWidth) {
+        if (name == null || font.width(name) <= maxWidth) {
+            return name;
+        }
+        int ellipsis = font.width("…");
+        return font.plainSubstrByWidth(name, Math.max(0, maxWidth - ellipsis)) + "…";
     }
 
     /** 行内 − 数量 + 控件；命中区与 mouseClicked 保持一致。 */
@@ -732,6 +760,10 @@ public final class StoreScreen extends Screen {
      * 超上限时服务端会直接丢包，所以这里先在客户端拦下并提示。
      */
     private void sendLines(int action, List<StoreActionPacket.Line> lines, boolean deliver) {
+        if (awaitingState) {
+            // 上一单还在等服务端快照：键盘连按 Enter 也不能再发一份相同订单。
+            return;
+        }
         if (lines.size() > StoreActionPacket.MAX_LINES) {
             if (minecraft != null && minecraft.player != null) {
                 minecraft.player.displayClientMessage(Component.translatable(
@@ -896,6 +928,10 @@ public final class StoreScreen extends Screen {
 
     /** 鼠标点击提交按钮和键盘 Enter 共用：购买弹确认，出售直接发。 */
     private void submitCart() {
+        if (awaitingState) {
+            // 和鼠标入口一致：等待服务端快照期间不许再提交（键盘 Enter 也走这里）。
+            return;
+        }
         if (cartCount() <= 0) {
             narrate(Component.translatable("store.cart_empty"));
             return;
