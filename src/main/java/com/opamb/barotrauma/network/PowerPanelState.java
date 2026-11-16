@@ -222,6 +222,15 @@ public final class PowerPanelState {
         PANELS.clear();
     }
 
+    /**
+     * 物理船生命周期变化（装配/靠泊/换船）：只清物理船面板。
+     *
+     * <p>方块船 B 的面板会话不受影响，玩家不用重新打开面板。</p>
+     */
+    public static void clearPhysical() {
+        PANELS.values().removeIf(Panel::physical);
+    }
+
     /** 没有快捷打开请求时自己找船：方块船的核心可能离盒子很远，按 64 格找。 */
     @Nullable
     private static BlockPos corePosFor(ServerLevel level, BlockPos pos, boolean physical) {

@@ -72,7 +72,7 @@ public class PlasmaCutterItem extends Item {
      * <p>不能用 {@code player.tickCount % 20}：生存玩家可以在扣氧的 tick 之前把准星
      * 移开让 MISS 提前返回，反复蹭出船壳伤害却不耗氧。</p>
      */
-    private static final int OXYGEN_CUTS_PER_UNIT = 10;
+    private static final int OXYGEN_CUTS_PER_UNIT = PlasmaCutterCredit.CUTS_PER_UNIT;
     private static final double REACH = 4.5D;
 
     /** 服务端每名玩家当前的切割目标；换目标/松手就清零。 */
@@ -82,9 +82,11 @@ public class PlasmaCutterItem extends Item {
      * 已成功切割、还没结算成氧气的应用次数。
      *
      * <p>松手/换目标都不清零（否则反复瞄一下就能白嫖），只有扣氧时减去结算部分；
-     * 玩家退出时随 {@link #clearPlayer(UUID)} 一起清掉。</p>
+     * 退出时只清内存缓存；次数已写进玩家持久数据，重登后继续累计。</p>
      */
     private static final Map<UUID, Integer> OXYGEN_CREDIT = new HashMap<>();
+    /** 未结算次数写进玩家持久数据，退出/重登不丢。 */
+    private static final String TAG_OXYGEN_CREDIT = "BarotraumaCutterOxygenCredit";
 
     /** 正在切的格子、已切次数、是否被拒绝、最后一次应用的玩家 tick。 */
     private record CutTarget(BlockPos pos, int applications, boolean allowed, int tick) {
@@ -169,9 +171,13 @@ public class PlasmaCutterItem extends Item {
             return;
         }
         // 只有真正切到东西的应用才计数；累计到 10 次扣 1 点氧气。
-        int applied = OXYGEN_CREDIT.merge(player.getUUID(), 1, Integer::sum);
-        if (applied >= OXYGEN_CUTS_PER_UNIT) {
-            OXYGEN_CREDIT.put(player.getUUID(), applied - OXYGEN_CUTS_PER_UNIT);
+        // 计数同时写进玩家持久数据：退出/重登后还没结算的次数不能白丢。
+        int carried = OXYGEN_CREDIT.computeIfAbsent(player.getUUID(),
+                id -> player.getPersistentData().getInt(TAG_OXYGEN_CREDIT));
+        int[] credit = PlasmaCutterCredit.applyCredit(carried);
+        OXYGEN_CREDIT.put(player.getUUID(), credit[0]);
+        player.getPersistentData().putInt(TAG_OXYGEN_CREDIT, credit[0]);
+        if (credit[1] != 0) {
             consumeOxygen(stack, player);
             if (!hasOxygen(stack)) {
                 player.stopUsingItem();
@@ -361,7 +367,7 @@ public class PlasmaCutterItem extends Item {
         }
     }
 
-    /** 玩家退出时清掉服务端残留的切割/拒绝记录与未结算的扣氧计数。 */
+    /** 玩家退出时清掉服务端残留的切割/拒绝记录；未结算的扣氧计数留在持久数据里。 */
     public static void clearPlayer(UUID player) {
         CUTS.remove(player);
         OXYGEN_CREDIT.remove(player);

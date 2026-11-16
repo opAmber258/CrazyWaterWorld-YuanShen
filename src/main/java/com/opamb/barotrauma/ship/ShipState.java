@@ -806,6 +806,14 @@ public final class ShipState {
             next.simulation.shiftGeometry(dx, dy, dz);
             next.simulation.shiftReports(dx, dy, dz);
         }
+        // 破口入口也要平移：waterLevelAt 用破口位置算列水位，breaches 为空时
+        // 会退回整块统一水位，平移后干燥侧又会被误判成泡水。
+        next.breaches.clear();
+        for (java.util.Map.Entry<BlockPos, Breach> entry : this.breaches.entrySet()) {
+            Breach breach = entry.getValue();
+            BlockPos moved = breach.pos().offset(dx, dy, dz);
+            next.breaches.put(moved, new Breach(moved, breach.dirX(), breach.dirZ()));
+        }
         // 船壳耐久是逐格记录的，整船平移时必须跟着坐标一起挪。
         next.hullDamage.copyFrom(this.hullDamage);
         next.hullDamage.shift(dx, dy, dz);

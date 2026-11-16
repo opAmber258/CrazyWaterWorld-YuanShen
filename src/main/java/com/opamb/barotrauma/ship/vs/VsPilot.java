@@ -395,7 +395,7 @@ public final class VsPilot {
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
         clearFixtureCut();
-        com.opamb.barotrauma.network.PowerPanelState.clearAll();
+        com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         VsState.deactivate();
     }
 
@@ -448,7 +448,7 @@ public final class VsPilot {
         lastRecordFlushGameTime = Long.MIN_VALUE;
         lastWaterPacket = ShipWaterStatePacket.empty();
         clearFixtureCut();
-        com.opamb.barotrauma.network.PowerPanelState.clearAll();
+        com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         VsState.deactivate();
         if (hadShip) {
             LOGGER.info("[vs] 服务器生命周期切换：已清理上一世界的物理船静态状态");
@@ -2214,7 +2214,7 @@ public final class VsPilot {
         // 新一次装配：丢掉上一艘船残留的构件切割进度和电力面板会话。
         // 必须放在"已有物理船"的拒绝之后：这次装配没有发生，别把别人开着的面板会话清掉。
         clearFixtureCut();
-        com.opamb.barotrauma.network.PowerPanelState.clearAll();
+        com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         if (blocks.isEmpty()) {
             return "没有船体方块可收";
         }
@@ -2813,7 +2813,7 @@ public final class VsPilot {
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
         clearFixtureCut();
-        com.opamb.barotrauma.network.PowerPanelState.clearAll();
+        com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         VsState.deactivate();
         // 5) 靠泊成功：船已经回到方块形态，再打开该站舱口并结算本轮出勤。
         if (dockSite != null) {

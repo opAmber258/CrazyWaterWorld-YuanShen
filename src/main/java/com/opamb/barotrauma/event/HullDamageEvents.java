@@ -87,7 +87,10 @@ public final class HullDamageEvents {
             }
             ShipCoreBlockEntity owner = null;
             for (ShipCoreBlockEntity candidate : cores) {
-                ShipState state = candidate.state();
+                // 区块重载后核心状态可能是 null；不补扫的话普通船壳认不出归属，
+                // 会被原版爆炸直接删掉（0% 应该变 BREACHED，不是删除方块）。
+                ShipState state = candidate.state() != null
+                        ? candidate.state() : candidate.rescan(level);
                 // 物理船的世界方块是空气，不会出现在爆炸列表里；跳过它的状态。
                 // 注意 state 为 null 时不能连带跳过核心位置匹配：区块刚重载、
                 // 还没 rescan 时声纳/导航台正好在核心位置上，也要算本船船脑。
