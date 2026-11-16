@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.network;
 
 import com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity;
+import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.ship.PowerConsumer;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
@@ -37,9 +38,9 @@ public final class PowerPanelState {
     /** 玩家必须站在接线盒 8 格内才能打开/改绑定。 */
     private static final double MAX_PLAYER_DISTANCE_SQ = 8.0D * 8.0D;
 
-    /** 一次面板会话的目标身份。 */
+    /** 一次面板会话的目标身份；方块船记核心坐标，刷新时按它取当前船状态。 */
     private record Panel(ResourceKey<Level> dimension, BlockPos boxCell, boolean physical,
-                         ShipState ship) {
+                         @Nullable BlockPos corePos) {
     }
 
     private static final Map<UUID, Panel> PANELS = new ConcurrentHashMap<>();
@@ -99,7 +100,7 @@ public final class PowerPanelState {
      */
     public static void send(ServerPlayer player, BlockPos boxCell, boolean physical) {
         send(player, boxCell, physical,
-                resolveShip(player.serverLevel(), boxCell, physical));
+                corePosFor(player.serverLevel(), boxCell, physical));
     }
 
     /**
@@ -107,16 +108,18 @@ public final class PowerPanelState {
      *
      * @param boxCell  接线盒坐标：物理船是装配坐标，普通世界是世界坐标
      * @param physical 是否物理船坐标系
-     * @param ship     这面盒子所属的船
+     * @param corePos  这面盒子所属方块船的船核心；物理船传 null
      */
-    public static void send(ServerPlayer player, BlockPos boxCell, boolean physical, ShipState ship) {
+    public static void send(ServerPlayer player, BlockPos boxCell, boolean physical,
+                            @Nullable BlockPos corePos) {
+        ShipState ship = stateOf(player.serverLevel(), physical, corePos);
         PowerStatePacket state = build(player, boxCell, physical, ship);
         if (state == null) {
             PANELS.remove(player.getUUID());
             return;
         }
-        PANELS.put(player.getUUID(),
-                new Panel(player.serverLevel().dimension(), boxCell.immutable(), physical, ship));
+        PANELS.put(player.getUUID(), new Panel(player.serverLevel().dimension(),
+                boxCell.immutable(), physical, corePos == null ? null : corePos.immutable()));
         ModNetwork.sendToPlayer(player, state);
     }
 
@@ -169,11 +172,11 @@ public final class PowerPanelState {
         return true;
     }
 
-    /** 绑定成功后刷新面板：沿用打开时记录的坐标系和船，不重新搜索。 */
+    /** 绑定成功后刷新面板：沿用会话里的船身份重新取当前状态，不重新搜索。 */
     public static void refresh(ServerPlayer player, BlockPos boxCell) {
         Panel panel = PANELS.get(player.getUUID());
         if (panel != null && panel.boxCell().equals(boxCell)) {
-            send(player, boxCell, panel.physical(), panel.ship());
+            send(player, boxCell, panel.physical(), panel.corePos());
         }
     }
 
@@ -184,12 +187,27 @@ public final class PowerPanelState {
 
     /** 没有快捷打开请求时自己找船：方块船的核心可能离盒子很远，按 64 格找。 */
     @Nullable
-    private static ShipState resolveShip(ServerLevel level, BlockPos pos, boolean physical) {
+    private static BlockPos corePosFor(ServerLevel level, BlockPos pos, boolean physical) {
+        if (physical) {
+            return null; // 物理船用 VsState.activeState()，不需要核心坐标
+        }
+        var core = ShipCores.nearestCore(level, pos, 64.0D);
+        return core == null ? null : core.getBlockPos();
+    }
+
+    /**
+     * 按会话里的船身份取“当前”状态：开关门等操作会让核心 rescan 出新对象，
+     * 不能一直用打开面板时那个旧引用。
+     */
+    @Nullable
+    private static ShipState stateOf(ServerLevel level, boolean physical, @Nullable BlockPos corePos) {
         if (physical) {
             return VsState.activeState();
         }
-        var core = ShipCores.nearestCore(level, pos, 64.0D);
-        if (core == null) {
+        if (corePos == null || !level.hasChunkAt(corePos)) {
+            return null;
+        }
+        if (!(level.getBlockEntity(corePos) instanceof ShipCoreBlockEntity core)) {
             return null;
         }
         // 方块船 state 不存档，重载后要等 rescan 才有。

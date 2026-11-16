@@ -55,7 +55,7 @@
 - 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
   任务/沉船/怪物等 P0 缺口。
 
-### 5. 第四/五轮 CodeRabbit 修复（`6a07c48` 之后，待复审）
+### 5. 第四/五/六轮 CodeRabbit 修复（`6a07c48` 之后，待复审）
 - 电力面板会话：`PowerPanelState` 打开时记录（维度 + 盒子坐标 + 坐标系），`bind`/`refresh`
   只认这份记录，不再按方块实体存在性重判坐标系；`build`/`bind` 查询前先 `hasChunkAt`，
   客户端坐标不会触发同步区块加载；玩家退出时清会话。
@@ -66,6 +66,10 @@
 - outside-diff 补修：`VsPilot.toWorld` 改读已加载船句柄；`PowerPanelState` 接收打开请求
   已选中的船并记进会话（`refresh` 复用），找船半径统一 64 格；矿脉进度条不再被船壳
   映射失败吞掉。
+- 第六轮：面板会话改存船核心坐标，`refresh` 按核心取当前 `ShipState`（rescan 出新对象
+  后不再显示旧设备表）；`fixtureCut` 按装配生命周期清空（launch/dock/dropStale/reset）；
+  靠泊吸附只搬真正在舱内的玩家和 `TAG_PINNED` 任务货（世界坐标逆变换回装配坐标查
+  `interiorCells`）。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的

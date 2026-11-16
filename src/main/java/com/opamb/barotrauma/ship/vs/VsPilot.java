@@ -137,6 +137,17 @@ public final class VsPilot {
     /** 舱门/舱口要切多少点才烂（每次 2 tick 调 1.5 点，约 6 秒）。 */
     private static final float FIXTURE_CUT_HEALTH = 90.0F;
 
+    /**
+     * 清空构件切割进度。
+     *
+     * <p>{@code assembledPos} 相同不代表同一次装配：原地拆了再装、或换世界时
+     * 位置可能一样，必须按装配生命周期显式清掉，否则新船第一次切就可能直接切烂。</p>
+     */
+    private static void clearFixtureCut() {
+        fixtureCut.clear();
+        fixtureCutAnchor = null;
+    }
+
     static {
         VsState.install(VsPilot::observeCore, VsPilot::tryDamage,
                 VsPilot::tryRepair, VsPilot::tryCut, VsPilot::damageExplosion);
@@ -363,6 +374,7 @@ public final class VsPilot {
         yardOffsetZ = Integer.MIN_VALUE;
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
+        clearFixtureCut();
         VsState.deactivate();
     }
 
@@ -413,6 +425,7 @@ public final class VsPilot {
         waterStateLogCounter = 0;
         lastRecordFlushGameTime = Long.MIN_VALUE;
         lastWaterPacket = ShipWaterStatePacket.empty();
+        clearFixtureCut();
         VsState.deactivate();
         if (hadShip) {
             LOGGER.info("[vs] 服务器生命周期切换：已清理上一世界的物理船静态状态");
@@ -456,6 +469,40 @@ public final class VsPilot {
             }
         }
         return false;
+    }
+
+    /**
+     * 这个世界坐标是否真的在这艘船的舱内（装配坐标落进舱室/连海空腔格）。
+     *
+     * <p>靠泊吸附会整体平移船，只有真在舱里的玩家/货物才跟着搬：站在哨站平台上、
+     * 或者船外漂浮的箱子不能一起瞬移。</p>
+     */
+    private static boolean isInsideInterior(Level level, Vec3 pos) {
+        if (ship == null || state == null || pos == null
+                || !(level instanceof ServerLevel server) || interiorCells.isEmpty()) {
+            return false;
+        }
+        org.valkyrienskies.core.api.ships.ServerShip live = view(server);
+        org.valkyrienskies.core.api.ships.ServerShip target = live != null ? live : ship;
+        if (target == null) {
+            return false;
+        }
+        var transform = target.getTransform();
+        var origin = new org.joml.Vector3d(
+                transform.getPositionInShip().x() - assembledPos.x,
+                transform.getPositionInShip().y() - assembledPos.y,
+                transform.getPositionInShip().z() - assembledPos.z);
+        org.joml.Vector3d shipSpace;
+        try {
+            shipSpace = transform.getShipToWorld().invert(new org.joml.Matrix4d())
+                    .transformPosition(new org.joml.Vector3d(pos.x, pos.y, pos.z),
+                            new org.joml.Vector3d());
+        } catch (Throwable error) {
+            return false;
+        }
+        BlockPos cell = BlockPos.containing(shipSpace.x - origin.x,
+                shipSpace.y - origin.y, shipSpace.z - origin.z);
+        return interiorCells.contains(cell);
     }
 
     /**
@@ -1947,6 +1994,8 @@ public final class VsPilot {
     public static String launch(ServerLevel level, Collection<BlockPos> blocks,
                                 @Nullable ShipState shipState, @Nullable BlockPos core) {
         lastLevel = level;
+        // 新一次装配：丢掉上一艘船残留的构件切割进度。
+        clearFixtureCut();
         // 离站：先把对接口舱口都关上，免得装成物理船后艇顶还开着洞。
         com.opamb.barotrauma.world.DockingBay.close(level);
         if (ship != null && !stillExists(level)) {
@@ -2328,7 +2377,8 @@ public final class VsPilot {
             double riderRadius = 32.0D;
             for (ServerPlayer candidate : level.players()) {
                 if (candidate.level() == level
-                        && candidate.position().distanceToSqr(oldCoreWorld) <= riderRadius * riderRadius) {
+                        && candidate.position().distanceToSqr(oldCoreWorld) <= riderRadius * riderRadius
+                        && isInsideInterior(level, candidate.position())) {
                     riders.add(candidate);
                 }
             }
@@ -2338,7 +2388,8 @@ public final class VsPilot {
             for (net.minecraft.world.entity.item.ItemEntity item
                     : level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area)) {
                 if (item.getPersistentData().getBoolean(
-                        com.opamb.barotrauma.mission.MissionCargo.TAG_PINNED)) {
+                        com.opamb.barotrauma.mission.MissionCargo.TAG_PINNED)
+                        && isInsideInterior(level, item.position())) {
                     pinnedCargo.add(item);
                 }
             }
@@ -2470,6 +2521,7 @@ public final class VsPilot {
         yardOffsetZ = Integer.MIN_VALUE;
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
+        clearFixtureCut();
         VsState.deactivate();
         // 5) 靠泊成功：船已经回到方块形态，再打开该站舱口并结算本轮出勤。
         if (dockSite != null) {
