@@ -11,7 +11,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public final class ModNetwork {
 
     // 14：诊所状态包区分“首次打开 / 治疗后刷新”；13：购买确认两个交付选项 + 商店三标签。
-    private static final String PROTOCOL = "14";
+    private static final String PROTOCOL = "15";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);

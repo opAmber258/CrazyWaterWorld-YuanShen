@@ -52,7 +52,10 @@ public class JunctionBoxScreen extends Screen {
             screen.update(state);
             return;
         }
-        mc.setScreen(new JunctionBoxScreen(state));
+        // 绑定后的刷新包不能把玩家按 Esc 关掉的面板重新弹出来。
+        if (state.open()) {
+            mc.setScreen(new JunctionBoxScreen(state));
+        }
     }
 
     private void update(PowerStatePacket next) {

@@ -22,12 +22,15 @@ public final class MineralVeinClient {
 
     private static BlockPos current;
     private static float progress;
+    /** 最近一次更新的客户端 gameTime；停手后进度条不能一直挂着。 */
+    private static long lastUpdate = Long.MIN_VALUE;
 
     private MineralVeinClient() {
     }
 
     /** 客户端每 2 tick 调一次：瞄准矿脉就累计，移开就清空。 */
     public static void tick(@Nullable BlockPos vein) {
+        lastUpdate = gameTime();
         if (vein == null) {
             current = null;
             progress = 0.0F;
@@ -60,12 +63,26 @@ public final class MineralVeinClient {
     public static void reset() {
         current = null;
         progress = 0.0F;
+        lastUpdate = Long.MIN_VALUE;
     }
 
-    /** 给血条渲染器用的条目；方块没了/太远就自动清空。 */
+    private static long gameTime() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return minecraft.level == null ? Long.MIN_VALUE : minecraft.level.getGameTime();
+    }
+
+    /** 给血条渲染器用的条目；方块没了/太远/停手超过 6 tick 就自动清空。 */
     public static List<HullDamageRenderer.Target> bars(Vec3 cameraPos) {
         BlockPos pos = current;
         if (pos == null) {
+            return List.of();
+        }
+        long now = gameTime();
+        if (now != Long.MIN_VALUE && lastUpdate != Long.MIN_VALUE
+                && now - lastUpdate > 6L) {
+            current = null;
+            progress = 0.0F;
+            lastUpdate = Long.MIN_VALUE;
             return List.of();
         }
         Minecraft minecraft = Minecraft.getInstance();

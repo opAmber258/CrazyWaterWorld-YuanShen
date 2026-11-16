@@ -73,6 +73,19 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
         return cachedWorldSeed;
     }
 
+    /**
+     * 从服务器现取 {@code RandomState} 初始化派生种子。
+     *
+     * <p>读档后航线区块可能全都已存在，{@code fillFromNoise} 不会再跑，缓存会一直是
+     * {@link Long#MIN_VALUE}；矿脉生成必须在这里补上，否则会退回 {@code level.getSeed()}。</p>
+     */
+    public long terrainSeed(net.minecraft.server.level.ServerLevel level) {
+        if (cachedWorldSeed == Long.MIN_VALUE && level != null) {
+            cachedWorldSeed = worldSeed(level.getChunkSource().randomState());
+        }
+        return cachedWorldSeed;
+    }
+
     public DeepSeaChunkGenerator(BiomeSource biomeSource) {
         super(biomeSource);
     }

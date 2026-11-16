@@ -88,6 +88,7 @@ public final class DeepSeaEvents {
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             com.opamb.barotrauma.network.PowerPanelState.clear(player);
+            com.opamb.barotrauma.item.PlasmaCutterItem.clearPlayer(player.getUUID());
             com.opamb.barotrauma.ship.vs.VsPilot.flushShipRecord(player.serverLevel());
         }
     }

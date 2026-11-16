@@ -66,10 +66,13 @@ public final class MineralVeins {
         preloadCorridor(level, anchor, startSite);
         // 必须用生成器实际使用的派生种子：SeaTerrain 的洞顶/海底噪声按它计算，
         // 用 level.getSeed() 会把候选放到错误的岩壁高度，最后被表面检查全部排除。
+        // terrainSeed(level) 会在区块已全部存在、生成器缓存没初始化时从 RandomState 补算。
         long seed = level.getSeed();
-        if (level.getChunkSource().getGenerator() instanceof DeepSeaChunkGenerator generator
-                && generator.terrainSeed() != Long.MIN_VALUE) {
-            seed = generator.terrainSeed();
+        if (level.getChunkSource().getGenerator() instanceof DeepSeaChunkGenerator generator) {
+            long derived = generator.terrainSeed(level);
+            if (derived != Long.MIN_VALUE) {
+                seed = derived;
+            }
         }
         // 关卡参数：资源概率/隧道半径/开阔带中点；没有活动关卡时保持原来的 0.2/16/-240。
         com.opamb.barotrauma.world.level.LevelParams params = MissionInstance.activeParams();
@@ -96,13 +99,15 @@ public final class MineralVeins {
     }
 
     private static int requiredCount(MissionSavedData data, List<Integer> booked, String mineral) {
+        // 同一矿物可能被多条任务同时接取（不同站点/模板），需求必须累加。
+        int total = 0;
         for (int id : booked) {
             Mission mission = data.missions().get(id);
             if (mission != null && mineral.equals(mission.mineralItem())) {
-                return Math.max(1, mission.mineralCount());
+                total += Math.max(0, mission.mineralCount());
             }
         }
-        return 8;
+        return total > 0 ? total : 8;
     }
 
     private static Block veinFor(String mineral) {
@@ -118,8 +123,22 @@ public final class MineralVeins {
     private static void preloadCorridor(ServerLevel level, MissionInstance.Anchor anchor,
                                         DockingBay.Site startSite) {
         RoutePath path = MissionInstance.activePath();
-        for (int i = 0; i <= 12; i++) {
-            double t = i / 12.0D;
+        // 采样数按航线长度算：每个采样点带 1 区块半径（3×3 区块），
+        // 步长 24 格保证相邻采样范围相接，不会在长航线上留下未加载的空洞。
+        double length = 0.0D;
+        if (path != null) {
+            RoutePath.Point[] points = path.points();
+            for (int i = 1; i < points.length; i++) {
+                RoutePath.Point a = points[i - 1];
+                RoutePath.Point b = points[i];
+                length += Math.hypot(b.x() - a.x(), b.z() - a.z());
+            }
+        } else {
+            length = Math.hypot(anchor.x() - startSite.x(), anchor.z() - startSite.z());
+        }
+        int samples = Math.max(12, (int) Math.ceil(length / 24.0D));
+        for (int i = 0; i <= samples; i++) {
+            double t = i / (double) samples;
             int x;
             int z;
             if (path != null) {

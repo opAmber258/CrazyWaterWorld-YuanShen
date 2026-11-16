@@ -72,7 +72,8 @@ public final class MedicalClinicService {
             total += entry.price();
         }
         CampaignState wallet = CampaignState.wallet(player.serverLevel());
-        if (!wallet.spendCredits(total)) {
+        // 免费病症（total=0）也要能治；spendCredits(0) 在空钱包上会误报余额不足。
+        if (total > 0 && !wallet.spendCredits(total)) {
             message(player, "治疗需要 " + total + " mk，余额不足（当前 "
                     + wallet.credits() + "）", ChatFormatting.RED);
             sendState(player, false);

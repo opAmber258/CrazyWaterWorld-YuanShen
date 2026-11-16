@@ -23,7 +23,7 @@ public final class MedicalClinicScreen extends Screen {
     private static final int PANEL_W = 320;
     private static final int PANEL_H = 218;
     private static final int ROW_H = 18;
-    private static final int VISIBLE_ROWS = 9;
+    private static final int VISIBLE_ROWS = 7;
 
     private static final int BG = 0xF01B2320;
     private static final int EDGE = 0xFF3B463C;

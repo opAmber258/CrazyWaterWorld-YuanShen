@@ -270,9 +270,14 @@ public final class SonarScan {
                                 int wx = (chunkX << 4) + lx;
                                 int wy = sectionY + ly;
                                 int wz = (chunkZ << 4) + lz;
-                                if (isVein(level, wx - 1, wy, wz)
-                                        || isVein(level, wx, wy - 1, wz)
-                                        || isVein(level, wx, wy, wz - 1)) {
+                                // 只有相邻矿格本身也会被本次扫描输出时才让它抑制当前点；
+                                // 射程外/锥外的邻居不能把可见矿脉挤掉。
+                                if (veinSuppresses(level, wx, wy, wz, ox, oy, oz,
+                                        -1, 0, 0, r, directional, ux, uy, uz)
+                                        || veinSuppresses(level, wx, wy, wz, ox, oy, oz,
+                                        0, -1, 0, r, directional, ux, uy, uz)
+                                        || veinSuppresses(level, wx, wy, wz, ox, oy, oz,
+                                        0, 0, -1, r, directional, ux, uy, uz)) {
                                     continue;
                                 }
                                 if (count >= MAX_POINTS) {
@@ -288,8 +293,28 @@ public final class SonarScan {
         return count;
     }
 
-    /** 这一格是不是矿脉（用于合并同簇金点）。 */
+    /** 相邻矿格是否会出现在本次扫描里；是则当前格不单独标点。 */
+    private static boolean veinSuppresses(Level level, int wx, int wy, int wz,
+                                          int ox, int oy, int oz, int dx, int dy, int dz,
+                                          int r, boolean directional,
+                                          float ux, float uy, float uz) {
+        int nx = ox + dx;
+        int ny = oy + dy;
+        int nz = oz + dz;
+        if (nx * nx + ny * ny + nz * nz > r * r) {
+            return false;
+        }
+        if (directional && !inCone(nx, ny, nz, ux, uy, uz)) {
+            return false;
+        }
+        return isVein(level, wx + dx, wy + dy, wz + dz);
+    }
+
+    /** 这一格是不是矿脉（用于合并同簇金点）；区块没加载时直接当不是。 */
     private static boolean isVein(Level level, int x, int y, int z) {
+        if (!level.hasChunk(x >> 4, z >> 4)) {
+            return false;
+        }
         return level.getBlockState(new BlockPos(x, y, z)).getBlock()
                 instanceof com.opamb.barotrauma.block.MineralVeinBlock;
     }

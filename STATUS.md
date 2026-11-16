@@ -97,6 +97,17 @@
   `zh_cn`/`en_us` 语言键；服务器启动前清空 `MissionInstance.routeLevel`；切割器只对
   命中格真属于物理船时走 `tryCut`，舱口整套拆除只掉一个；门水量只算直接相邻水体
   （新增 `AutomationWaterTest`）；`sellCart` 拒绝任务货箱；`ROUTER.md` 交接入口更新。
+- 第六次 full review 批次（10 条 + 10 条 minor）：泵/门/舱口/反应堆统一按
+  `isPhysical` + 船体归属解析船；泵欠压停转；舱口水密三格都查外海；接线盒面板
+  区分打开/刷新（协议 15）；诊所可见行数与零价治疗；商店出售行带物品 ID 校验、
+  提交后锁定到下一快照、减号在 0 时也消费；物理船切割补世界坐标 `BreakEvent`
+  并在拒绝时保留记录；三格舱口/两格舱门整套拆除只掉一个；`resolveShip` 改
+  `coresNear`；声纳矿脉去重只认本次可见邻居且先查区块；矿脉进度 6 tick 超时；
+  物理船实时逆变换用于潜行保护；矿脉派生种子可在旧区块全存在时补算；采矿需求
+  累加、预加载按航线长度采样；`RoutePath` 增加排除自身的父网络距离并修正测试；
+  透明潜水服改自定义配方保留氧气瓶。**跳过**：物理船靠泊的 `PowerBox` 坐标平移
+  （用户要求先不动电力）、`RoutePath.openAt` 同列分离区间（要改 SeaTerrain/
+  生成器的单区间 API，留待结构改造）。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
   靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的

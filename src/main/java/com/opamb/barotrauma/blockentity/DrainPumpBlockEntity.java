@@ -186,7 +186,9 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
         double requested = be.signedRate(state);
         ship.simulation().reportConsumer(cell, be.powerDemandKw(), be.minVoltage(), be.boundBox);
         double voltage = ship.simulation().consumerVoltage(cell);
-        double factor = PowerGrid.effectiveFactor(voltage);
+        // 欠压直接停转：effectiveFactor 会把 0.5 也当成可运行，泵会在门槛附近振荡。
+        double factor = PowerGrid.canRun(voltage, be.minVoltage())
+                ? PowerGrid.effectiveFactor(voltage) : 0.0D;
         ship.simulation().reportPump(cell, requested * factor, be.ballast(), requested,
                 be.keepBelowDoor(), be.ballastTarget());
     }
@@ -225,11 +227,18 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
 
     @Nullable
     public static ShipState resolveShip(ServerLevel level, BlockPos pos) {
-        if (VsState.active()) {
+        // 物理船 A 活动时，方块船 B 的泵/门/舱口/反应堆不能套 A 的船坞坐标。
+        if (VsState.isPhysical(level, pos)) {
             return VsState.activeState();
         }
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, pos, 32.0D);
-        return core == null ? null : core.state();
+        // 方块船按船体几何归属选核心：附近另一艘船的核心更近也不能顶替。
+        for (ShipCoreBlockEntity core : ShipCores.coresNear(level, pos, 32.0D)) {
+            ShipState state = core.state() != null ? core.state() : core.rescan(level);
+            if (state != null && state.tracksHullBlock(pos)) {
+                return state;
+            }
+        }
+        return null;
     }
 
     @Override

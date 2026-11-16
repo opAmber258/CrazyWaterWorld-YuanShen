@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.item;
 
+import com.opamb.barotrauma.block.BulkheadDoorBlock;
 import com.opamb.barotrauma.block.HatchBlock;
 import com.opamb.barotrauma.block.MineralVeinBlock;
 import com.opamb.barotrauma.equipment.ItemSubSlot;
@@ -70,8 +71,8 @@ public class PlasmaCutterItem extends Item {
     /** 服务端每名玩家当前的切割目标；换目标/松手就清零。 */
     private static final Map<UUID, CutTarget> CUTS = new HashMap<>();
 
-    /** 正在切的格子和已经切了几次；{@code allowed=false} 表示这一段瞄准已被权限拒绝。 */
-    private record CutTarget(BlockPos pos, int applications, boolean allowed) {
+    /** 正在切的格子、已切次数、是否被拒绝、最后一次应用的玩家 tick。 */
+    private record CutTarget(BlockPos pos, int applications, boolean allowed, int tick) {
     }
 
     /** 一次切割应用的结果：切到了 / 没命中 / 目标被权限拒绝。 */
@@ -160,11 +161,13 @@ public class PlasmaCutterItem extends Item {
         }
     }
 
-    /** 松开右键：客户端把矿脉进度条清掉。 */
+    /** 松开右键：客户端清进度条，服务端清掉半截切割状态。 */
     @Override
     public void releaseUsing(ItemStack stack, Level level, LivingEntity living, int timeLeft) {
         if (level.isClientSide) {
             com.opamb.barotrauma.client.MineralVeinClient.reset();
+        } else if (living instanceof ServerPlayer player && level instanceof ServerLevel server) {
+            clearProgress(player, server);
         }
     }
 
@@ -234,21 +237,23 @@ public class PlasmaCutterItem extends Item {
                 ? CutResult.CUT : CutResult.MISS;
     }
 
-    /** 是否刚开始切这一格：只有第一次应用才发破坏事件，别每 2 tick 重复触发。 */
+    /** 是否刚开始切这一格：换目标或中断超过 4 tick 才重新发破坏事件。 */
     private static boolean startingCut(ServerPlayer player, BlockPos pos) {
         CutTarget current = CUTS.get(player.getUUID());
-        return current == null || !current.pos().equals(pos);
+        return current == null || !current.pos().equals(pos)
+                || player.tickCount - current.tick() > 4;
     }
 
     /** 这一段瞄准已经被拒绝过；按住不放时不要再重复发破坏事件。 */
     private static boolean denied(ServerPlayer player, BlockPos pos) {
         CutTarget current = CUTS.get(player.getUUID());
-        return current != null && current.pos().equals(pos) && !current.allowed();
+        return current != null && current.pos().equals(pos) && !current.allowed()
+                && player.tickCount - current.tick() <= 4;
     }
 
-    /** 记下被拒绝的目标并清掉裂纹；换目标后才会重新检查权限。 */
+    /** 记下被拒绝的目标并清掉裂纹；换目标或中断 4 tick 后才会重新检查权限。 */
     private static void deny(ServerLevel level, ServerPlayer player, BlockPos pos) {
-        CUTS.put(player.getUUID(), new CutTarget(pos.immutable(), 0, false));
+        CUTS.put(player.getUUID(), new CutTarget(pos.immutable(), 0, false, player.tickCount));
         level.destroyBlockProgress(player.getId(), pos, -1);
     }
 
@@ -269,9 +274,11 @@ public class PlasmaCutterItem extends Item {
                                     int applications, Runnable finish) {
         UUID id = player.getUUID();
         CutTarget current = CUTS.get(id);
-        int done = current != null && current.pos().equals(pos)
-                ? current.applications() + 1 : 1;
-        CUTS.put(id, new CutTarget(pos.immutable(), done, true));
+        // 中断超过 4 tick 视为重新开始，不继承之前的裂纹进度。
+        boolean same = current != null && current.pos().equals(pos)
+                && player.tickCount - current.tick() <= 4;
+        int done = same ? current.applications() + 1 : 1;
+        CUTS.put(id, new CutTarget(pos.immutable(), done, true, player.tickCount));
         // 原版裂纹动画：stage 0..9，切完要显式清掉。
         int stage = Math.min(9, done * 10 / applications);
         level.destroyBlockProgress(player.getId(), pos, stage);
@@ -288,6 +295,11 @@ public class PlasmaCutterItem extends Item {
         if (current != null) {
             level.destroyBlockProgress(player.getId(), current.pos(), -1);
         }
+    }
+
+    /** 玩家退出时清掉服务端残留的切割/拒绝记录。 */
+    public static void clearPlayer(UUID player) {
+        CUTS.remove(player);
     }
 
     /** 方块船上的舱门/舱口（物理船上的由 {@link VsState#tryCut} 处理）。 */
@@ -319,6 +331,18 @@ public class PlasmaCutterItem extends Item {
                 }
                 return;
             }
+        }
+        if (state.getBlock() instanceof BulkheadDoorBlock) {
+            // 舱壁门占两格：上下一起拆，只掉一个物品；只删命中格会留下半扇门。
+            BlockPos lower = state.getValue(BulkheadDoorBlock.PART)
+                    == BulkheadDoorBlock.Part.UPPER ? pos.below() : pos;
+            for (BlockPos cell : new BlockPos[]{lower, lower.above()}) {
+                if (level.getBlockState(cell).getBlock() instanceof BulkheadDoorBlock) {
+                    level.destroyBlock(cell, false);
+                }
+            }
+            Block.popResource(level, pos, new ItemStack(state.getBlock().asItem()));
+            return;
         }
         ItemStack drop = new ItemStack(state.getBlock().asItem());
         level.destroyBlock(pos, false);

@@ -85,6 +85,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第五次 full review（`fc8e028` 之后，10 条 + outside-diff）**：舱口水密判定取左/中/右三段最大水量（三格下可能是两个舱）；接线盒按船体几何归属选核心（不再只认最近核心）；反应堆 `effectCenter` 先判 `VsState.isPhysical` 再换算警报/烟雾坐标；诊所与商店界面文字全部改 `Component.translatable` 并补 `zh_cn`/`en_us` 键；`resetShipRuntime` 先清 `MissionInstance.routeLevel`（单人换世界不重启 JVM）；切割器只在命中格真属于物理船时走 `VsState.tryCut`，三格舱口整套拆除且只掉一个；`maxWaterFraction` 只看直接相邻水体（不再经 `pumpBody` 穿墙，新增 `AutomationWaterTest`）；`StoreService.sellCart` 拒绝任务货箱；`ROUTER.md` 交接入口指到 STATUS 顶部的 2026-11-15 节。
 
+  **第六次 full review（`8ae8635` 之后，10 条 + 10 条 minor）**：`resolveShip` 改按 `isPhysical` + 船体几何归属选核心（泵/门/舱口/反应堆共用）；泵欠压停转；舱口外海连线三段都查；接线盒面板 `PowerStatePacket.open` 区分打开/刷新（协议 15）；诊所 7 行不压按钮、零价治疗不再误报余额；商店出售行带物品 ID 并由服务端校验、提交后锁定到下一快照、减号 0 也消费；物理船切割补映射后世界坐标的 `BreakEvent`/`blockActionRestricted`（拒绝保留记录）；三格舱口/两格舱门整套拆除只掉一个；声纳矿脉去重只让本次可见邻居抑制并先查区块；矿脉进度 6 tick 超时；`OceanEnvironment` 用物理船实时逆变换判断舱内；`terrainSeed(level)` 从 `RandomState` 补算；采矿需求累加、预加载按航线长度采样；`RoutePath.distanceToNetworkExcluding` 修正测试；透明潜水服改自定义配方 `ModRecipes` 保留子格氧气瓶。跳过物理船靠泊 `PowerBox` 平移（用户明确先不动电力）和 `openAt` 同列分离区间（需改生成器单区间 API）。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

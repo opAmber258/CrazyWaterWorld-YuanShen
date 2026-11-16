@@ -2,6 +2,7 @@ package com.opamb.barotrauma.world;
 
 import com.opamb.barotrauma.world.level.LevelParams;
 import com.opamb.barotrauma.world.level.LevelSelector;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -269,8 +270,21 @@ public final class RoutePath {
 
     /** 到整个隧道网络（主航道 + 所有侧隧道）的最近水平距离。 */
     public double distanceToNetwork(double x, double z) {
+        return distanceToNetworkExcluding(x, z, null);
+    }
+
+    /**
+     * 到隧道网络里除 {@code exclude} 之外最近的水平距离。
+     *
+     * <p>测试"侧隧道端点是否接在父网络上"时必须排除自己：把 branch 本身算进去，
+     * 端点到自己永远是 0，断言恒真；侧隧道也可能挂在另一条侧隧道上，不能只测主航道。</p>
+     */
+    public double distanceToNetworkExcluding(double x, double z, @Nullable Tunnel exclude) {
         double best = Double.MAX_VALUE;
         for (Tunnel tunnel : tunnels) {
+            if (tunnel == exclude) {
+                continue;
+            }
             Point[] points = tunnel.points();
             for (int i = 0; i < points.length - 1; i++) {
                 double distance = distanceToSegment(x, z,

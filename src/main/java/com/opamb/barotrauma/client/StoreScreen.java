@@ -9,6 +9,7 @@ import com.opamb.barotrauma.network.StoreStatePacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -53,7 +54,11 @@ public final class StoreScreen extends Screen {
     private int scroll;
     private final Map<String, Integer> buyCart = new LinkedHashMap<>();
     private final Map<Integer, Integer> sellCart = new LinkedHashMap<>();
+    /** 出售行选中的物品 ID：服务端用它校验槽位内容没被换过。 */
+    private final Map<Integer, String> sellItemIds = new LinkedHashMap<>();
     private final Map<String, Integer> subCart = new LinkedHashMap<>();
+    /** 已提交、等服务端快照返回：期间禁止再次提交，避免重复扣物品/扣钱。 */
+    private boolean awaitingState;
     /** 照原作购买确认：先问"现在拿"还是"送到潜艇"。 */
     private boolean deliveryPrompt;
 
@@ -72,8 +77,10 @@ public final class StoreScreen extends Screen {
             screen.state = packet;
             screen.buyCart.clear();
             screen.sellCart.clear();
+            screen.sellItemIds.clear();
             screen.subCart.clear();
             screen.deliveryPrompt = false;
+            screen.awaitingState = false;
             screen.scroll = Math.max(0, Math.min(screen.scroll, screen.maxScroll()));
         } else {
             minecraft.setScreen(new StoreScreen(packet));
@@ -475,6 +482,10 @@ public final class StoreScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (awaitingState) {
+            // 上一次交易还在等服务端快照：先消费点击，避免连点重复提交。
+            return true;
+        }
         if (deliveryPrompt) {
             return handleDeliveryPromptClick(mouseX, mouseY, button);
         }
@@ -509,8 +520,11 @@ public final class StoreScreen extends Screen {
                 }
                 StoreStatePacket.Entry entry = entries.get(index);
                 int current = buyQuantity(entry.itemId());
-                if (mouseX >= x + 300 && mouseX < x + 314 && current > 0) {
-                    setBuyQuantity(entry.itemId(), current - 1);
+                if (mouseX >= x + 300 && mouseX < x + 314) {
+                    // 数量为 0 时也消费减号点击，别继续落到"整行 +1"。
+                    if (current > 0) {
+                        setBuyQuantity(entry.itemId(), current - 1);
+                    }
                     return true;
                 }
                 if (mouseX >= x + 346 && mouseX < x + 360 && current < entry.stock()) {
@@ -529,16 +543,18 @@ public final class StoreScreen extends Screen {
                 }
                 SellRow row = rows.get(index);
                 int current = sellQuantity(row.slot());
-                if (mouseX >= x + 300 && mouseX < x + 314 && current > 0) {
-                    setSellQuantity(row.slot(), current - 1);
+                if (mouseX >= x + 300 && mouseX < x + 314) {
+                    if (current > 0) {
+                        setSellQuantity(row.slot(), current - 1, itemIdOf(row.stack()));
+                    }
                     return true;
                 }
                 if (mouseX >= x + 346 && mouseX < x + 360 && current < row.stack().getCount()) {
-                    setSellQuantity(row.slot(), current + 1);
+                    setSellQuantity(row.slot(), current + 1, itemIdOf(row.stack()));
                     return true;
                 }
                 if (current < row.stack().getCount()) {
-                    setSellQuantity(row.slot(), current + 1);
+                    setSellQuantity(row.slot(), current + 1, itemIdOf(row.stack()));
                 }
                 return true;
             }
@@ -548,8 +564,10 @@ public final class StoreScreen extends Screen {
             }
             StoreStatePacket.SubEntry entry = entries.get(index);
             int current = subQuantity(entry.itemId());
-            if (mouseX >= x + 300 && mouseX < x + 314 && current > 0) {
-                setSubQuantity(entry.itemId(), current - 1);
+            if (mouseX >= x + 300 && mouseX < x + 314) {
+                if (current > 0) {
+                    setSubQuantity(entry.itemId(), current - 1);
+                }
                 return true;
             }
             if (mouseX >= x + 346 && mouseX < x + 360 && current < entry.quantity()) {
@@ -572,7 +590,9 @@ public final class StoreScreen extends Screen {
                 List<StoreActionPacket.Line> lines = new ArrayList<>();
                 for (Map.Entry<Integer, Integer> line : sellCart.entrySet()) {
                     if (line.getValue() > 0) {
-                        lines.add(new StoreActionPacket.Line("", line.getKey(), line.getValue()));
+                        lines.add(new StoreActionPacket.Line(
+                                sellItemIds.getOrDefault(line.getKey(), ""),
+                                line.getKey(), line.getValue()));
                     }
                 }
                 sendLines(StoreActionPacket.SELL, lines, false);
@@ -637,6 +657,7 @@ public final class StoreScreen extends Screen {
             }
             return;
         }
+        awaitingState = true;
         ModNetwork.sendToServer(new StoreActionPacket(action, lines, deliver));
     }
 
@@ -657,12 +678,19 @@ public final class StoreScreen extends Screen {
         }
     }
 
-    private void setSellQuantity(int slot, int quantity) {
+    private void setSellQuantity(int slot, int quantity, String itemId) {
         if (quantity <= 0) {
             sellCart.remove(slot);
+            sellItemIds.remove(slot);
         } else {
             sellCart.put(slot, quantity);
+            sellItemIds.put(slot, itemId);
         }
+    }
+
+    /** 物品注册名；服务端用它确认出售时槽位里的东西没被换过。 */
+    private static String itemIdOf(ItemStack stack) {
+        return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
     }
 
     private void setSubQuantity(String itemId, int quantity) {

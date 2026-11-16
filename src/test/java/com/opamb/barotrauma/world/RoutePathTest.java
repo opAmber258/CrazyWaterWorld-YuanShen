@@ -76,12 +76,20 @@ class RoutePathTest {
         for (RoutePath.Tunnel branch : path.branches()) {
             RoutePath.Point[] points = branch.points();
             assertTrue(points.length >= 3, "侧隧道至少 3 个航点");
-            // 首尾必须落在父隧道上（网络距离 0），否则就是死胡同。
-            assertTrue(path.distanceToNetwork(points[0].x(), points[0].z()) < 1.0E-6D,
-                    "侧隧道起点必须接在父隧道上");
-            assertTrue(path.distanceToNetwork(points[points.length - 1].x(),
-                    points[points.length - 1].z()) < 1.0E-6D,
-                    "侧隧道终点必须接在父隧道上");
+            // 首尾必须落在父隧道上：排除 branch 自己再测，否则端点到自身恒为 0。
+            // 侧隧道可以挂主航道，也可以挂另一条侧隧道，所以测整个父网络。
+            assertTrue(path.distanceToNetworkExcluding(points[0].x(), points[0].z(), branch)
+                            < 1.0E-6D,
+                    "侧隧道起点必须接在父网络上");
+            assertTrue(path.distanceToNetworkExcluding(points[points.length - 1].x(),
+                            points[points.length - 1].z(), branch) < 1.0E-6D,
+                    "侧隧道终点必须接在父网络上");
+            // 反例：branch 中段离父网络有距离，但仍属于隧道网络；
+            // 若某个 branch 与父网络脱离，排除自己后的距离会一直 >0。
+            RoutePath.Point branchMid = points[points.length / 2];
+            assertEquals(0.0D,
+                    path.distanceToNetwork(branchMid.x(), branchMid.z()), 1.0E-6D,
+                    "branch 中段属于隧道网络");
             // 整条中心线都必须有洞，不能被岩壁截断。
             for (int i = 0; i < points.length - 1; i++) {
                 RoutePath.Point a = points[i];

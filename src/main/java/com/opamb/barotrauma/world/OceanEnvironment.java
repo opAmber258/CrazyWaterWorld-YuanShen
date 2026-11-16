@@ -196,6 +196,12 @@ public final class OceanEnvironment {
         if (!isInOcean(level, pos)) {
             return false;
         }
+        // 物理船用实时逆变换查询：返回值非 null 就说明在舱内（干舱/进水舱都算），
+        // 不能拿干湿布尔值判断，否则进水舱里的潜行保护会失效。
+        if (com.opamb.barotrauma.ship.vs.VsState
+                .queryPlayerInDryCompartment(level, pos) != null) {
+            return true;
+        }
         DryZone zone = level.isClientSide() ? clientDryZone : serverDryZone;
         return zone != null && zone.isInsideCompartment(level, pos);
     }

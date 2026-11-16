@@ -73,13 +73,17 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity {
             }
             want = near || be.motionHold > 0;
         } else if (be.automation == AutomationMode.WATERTIGHT) {
-            if (AutomationUtil.opensToSea(ship, cell)) {
-                // 开在海里的舱口：水密模式不能自动打开。
+            Direction longAxis = state.getValue(HatchBlock.FACING).getClockWise();
+            boolean toSea = false;
+            for (int offset = -1; offset <= 1; offset++) {
+                toSea |= AutomationUtil.opensToSea(ship, cell.relative(longAxis, offset));
+            }
+            if (toSea) {
+                // 任意一段开在海里：水密模式不能自动打开。
                 want = false;
             } else {
                 // 三格宽的舱口下面可能是两个舱：取左/中/右三段的最大水量，
                 // 只查中间格会漏掉左右段下方的湿舱。
-                Direction longAxis = state.getValue(HatchBlock.FACING).getClockWise();
                 double water = 0.0D;
                 for (int offset = -1; offset <= 1; offset++) {
                     water = Math.max(water, AutomationUtil.maxWaterFraction(

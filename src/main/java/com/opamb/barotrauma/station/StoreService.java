@@ -21,6 +21,7 @@ import com.opamb.barotrauma.world.DockingBay;
 import com.opamb.barotrauma.world.StationStoreSavedData;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -303,10 +304,21 @@ public final class StoreService {
                                  StationStoreSavedData.SiteStore store,
                                  List<StoreActionPacket.Line> lines) {
         Map<Integer, Integer> cart = new LinkedHashMap<>();
+        Map<Integer, String> expectedIds = new LinkedHashMap<>();
         for (StoreActionPacket.Line line : lines) {
             int quantity = line.quantity();
             if (quantity <= 0 || quantity > MAX_LINE_QUANTITY) {
                 continue;
+            }
+            String expected = line.itemId();
+            if (expected == null || expected.isEmpty()) {
+                message(player, "购物车里的物品已经变了，请重新选择", ChatFormatting.RED);
+                return;
+            }
+            String previous = expectedIds.putIfAbsent(line.slot(), expected);
+            if (previous != null && !previous.equals(expected)) {
+                message(player, "购物车里的物品已经变了，请重新选择", ChatFormatting.RED);
+                return;
             }
             cart.merge(line.slot(), quantity, Integer::sum);
         }
@@ -324,6 +336,12 @@ public final class StoreService {
             ItemStack stack = player.getInventory().getItem(slot);
             if (stack.isEmpty()) {
                 continue;
+            }
+            String expected = expectedIds.get(slot);
+            String actual = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            if (expected == null || !expected.equals(actual)) {
+                message(player, "购物车里的物品已经变了，请重新选择", ChatFormatting.RED);
+                return;
             }
             StoreCatalog.Entry catalog = catalogFor(stack);
             if (catalog == null) {
@@ -490,7 +508,9 @@ public final class StoreService {
         ServerLevel level = player.serverLevel();
         ShipState state;
         ShipGeometry.Bounds bounds;
-        if (VsState.active()) {
+        // 只有活动物理船就在玩家这个维度时才用它的船坞范围；否则可能是
+        // 另一个维度残留的物理船，应该去玩家附近找方块船。
+        if (VsState.active() && VsPilot.activeLevel() == level) {
             // 物理船的方块实体在船坞里：几何是装配坐标，扫描范围要加上船坞偏移。
             state = VsState.activeState();
             if (state == null) {

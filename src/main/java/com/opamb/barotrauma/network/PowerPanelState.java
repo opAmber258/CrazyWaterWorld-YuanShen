@@ -54,7 +54,7 @@ public final class PowerPanelState {
      * @param ship     这面盒子所属的船（打开请求已经选好，不要在这里重新搜）
      */
     public static PowerStatePacket build(ServerPlayer player, BlockPos boxCell, boolean physical,
-                                         ShipState ship) {
+                                         ShipState ship, boolean open) {
         ServerLevel level = player.serverLevel();
         BlockPos boxYard = physical ? VsPilot.toYard(boxCell) : boxCell;
         if (boxYard == null || !level.hasChunkAt(boxYard)) {
@@ -93,7 +93,7 @@ public final class PowerPanelState {
         double voltage = ship.simulation().voltage();
         return new PowerStatePacket(boxCell, ship.simulation().supplyKw(),
                 ship.simulation().report().powerDemand(), voltage,
-                box.condition(), ship.simulation().boxLoad(boxCell), devices);
+                box.condition(), ship.simulation().boxLoad(boxCell), open, devices);
     }
 
     /**
@@ -104,7 +104,7 @@ public final class PowerPanelState {
      */
     public static void send(ServerPlayer player, BlockPos boxCell, boolean physical) {
         send(player, boxCell, physical,
-                corePosFor(player.serverLevel(), boxCell, physical));
+                corePosFor(player.serverLevel(), boxCell, physical), true);
     }
 
     /**
@@ -116,8 +116,17 @@ public final class PowerPanelState {
      */
     public static void send(ServerPlayer player, BlockPos boxCell, boolean physical,
                             @Nullable BlockPos corePos) {
+        send(player, boxCell, physical, corePos, true);
+    }
+
+    /**
+     * @param open true = 响应打开请求（客户端可以显示面板）；false = 绑定后的刷新，
+     *             客户端只能更新已经打开的面板，不能把按 Esc 关掉的界面重新弹出来。
+     */
+    public static void send(ServerPlayer player, BlockPos boxCell, boolean physical,
+                            @Nullable BlockPos corePos, boolean open) {
         ShipState ship = stateOf(player.serverLevel(), physical, corePos);
-        PowerStatePacket state = build(player, boxCell, physical, ship);
+        PowerStatePacket state = build(player, boxCell, physical, ship, open);
         if (state == null) {
             PANELS.remove(player.getUUID());
             return;
@@ -180,7 +189,8 @@ public final class PowerPanelState {
     public static void refresh(ServerPlayer player, BlockPos boxCell) {
         Panel panel = PANELS.get(player.getUUID());
         if (panel != null && panel.boxCell().equals(boxCell)) {
-            send(player, boxCell, panel.physical(), panel.corePos());
+            // 绑定后的刷新：只更新已经打开的面板，不再触发 setScreen。
+            send(player, boxCell, panel.physical(), panel.corePos(), false);
         }
     }
 

@@ -136,6 +136,10 @@ public final class VsPilot {
     private static Vec3 fixtureCutAnchor;
     /** 舱门/舱口要切多少点才烂（每次 2 tick 调 1.5 点，约 6 秒）。 */
     private static final float FIXTURE_CUT_HEALTH = 90.0F;
+    /** 物理船切割的位置级权限检查：同一目标 4 tick 内不重复发 BreakEvent。 */
+    private static BlockPos protectCheckedPos;
+    private static long protectCheckedTick = Long.MIN_VALUE;
+    private static boolean protectDenied;
 
     /**
      * 清空构件切割进度。
@@ -146,6 +150,9 @@ public final class VsPilot {
     private static void clearFixtureCut() {
         fixtureCut.clear();
         fixtureCutAnchor = null;
+        protectCheckedPos = null;
+        protectCheckedTick = Long.MIN_VALUE;
+        protectDenied = false;
     }
 
     static {
@@ -1587,13 +1594,32 @@ public final class VsPilot {
         if (block == null || isConsolePart(block)) {
             return false;
         }
+        // 位置级破坏权限：物理船的方块在世界里是空气，保护监听器要的是映射后的
+        // 世界坐标；同一目标 4 tick 内只发一次事件，避免按住时刷屏。
+        Vec3 hit = toWorld(best);
+        if (hit == null) {
+            return false;
+        }
+        BlockPos worldPos = BlockPos.containing(hit);
+        long now = level.getGameTime();
+        if (!worldPos.equals(protectCheckedPos)
+                || (now - protectCheckedTick > 4L && !protectDenied)) {
+            net.minecraft.world.level.GameType mode = player.gameMode.getGameModeForPlayer();
+            protectDenied = net.minecraftforge.common.ForgeHooks
+                    .onBlockBreakEvent(level, mode, player, worldPos) == -1
+                    || player.blockActionRestricted(level, worldPos, mode);
+            protectCheckedPos = worldPos.immutable();
+            protectCheckedTick = now;
+        }
+        if (protectDenied) {
+            return false;
+        }
         float max = state.hullMaxHealth(block);
         if (max > 0.0F) {
             float health = state.hullDamage().applyDamage(best, amount, max);
             if (health <= 0.0F) {
                 breachSnapshotBlock(level, player, best, block);
             } else {
-                Vec3 hit = toWorld(best);
                 level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
                         hit.x, hit.y, hit.z, 4, 0.2D, 0.2D, 0.2D, 0.01D);
                 if (level.getGameTime() % 10L == 0L) {
@@ -1613,7 +1639,6 @@ public final class VsPilot {
             fixtureCutAnchor = assembledPos;
         }
         float progress = fixtureCut.merge(best.immutable(), amount, Float::sum);
-        Vec3 hit = toWorld(best);
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
                 hit.x, hit.y, hit.z, 4, 0.25D, 0.25D, 0.25D, 0.02D);
         if (level.getGameTime() % 10L == 0L) {
