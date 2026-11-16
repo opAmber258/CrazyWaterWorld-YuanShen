@@ -47,6 +47,27 @@ public final class StoreDeliverySavedData extends SavedData {
         return new LinkedHashMap<>(taken);
     }
 
+    /**
+     * 取出并清空所有玩家的待交付货物（起航交付用）。
+     *
+     * <p>下单后退出游戏的玩家没有 {@code ServerPlayer}，但"送进船柜"不需要玩家
+     * 对象，所以起航时要按 UUID 遍历全部订单，不能只处理在线玩家。</p>
+     *
+     * @return UUID → 物品 ID → 数量；送不成的用 {@link #restore} 放回
+     */
+    public Map<UUID, Map<String, Integer>> takeAll() {
+        if (pending.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Map<String, Integer>> taken = new LinkedHashMap<>();
+        for (Map.Entry<UUID, Map<String, Integer>> entry : pending.entrySet()) {
+            taken.put(entry.getKey(), new LinkedHashMap<>(entry.getValue()));
+        }
+        pending.clear();
+        setDirty();
+        return taken;
+    }
+
     public void restore(UUID player, Map<String, Integer> items) {
         if (items.isEmpty()) {
             return;

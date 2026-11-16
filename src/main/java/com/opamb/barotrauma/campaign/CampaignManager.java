@@ -78,9 +78,10 @@ public final class CampaignManager {
                 deliveryAnchor = yardCore;
             }
         }
-        for (ServerPlayer online : players) {
-            com.opamb.barotrauma.station.StoreService.deliverPending(online, deep, deliveryAnchor);
-        }
+        // 按待交付订单的 UUID 遍历（含已下线的玩家）：下单后退出的人也要把货送进船柜，
+        // 只有背包回退需要在线玩家对象。
+        com.opamb.barotrauma.station.StoreService.deliverPendingOnDeparture(
+                deep, deliveryAnchor, players);
         com.opamb.barotrauma.world.DockingBay.close(deep);
 
         // 2) 船还是方块就先在出发站装配成 VS2 刚体；已经物理化就跳过。

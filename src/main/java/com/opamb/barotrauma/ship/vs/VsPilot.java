@@ -2803,8 +2803,20 @@ public final class VsPilot {
                                         ShipState shipState, BlockPos core, ServerShip assembled) {
         try {
             Vec3 pos = VsBridge.position(assembled);
-            ShipSavedData.get(level).setAssembled(ShipSavedData.AssembledShip.of(
-                    assembled.getId(), core, proxyPos, pos, captured, shipState));
+            ShipSavedData.AssembledShip record = ShipSavedData.AssembledShip.of(
+                    assembled.getId(), core, proxyPos, pos, captured, shipState);
+            // 历史舱内格必须随认领记录落盘：切掉外壁舱口后几何的 interior 会被裁空，
+            // 存档/重启后靠泊吸附还要靠它认出房里的人/任务货。
+            record.knownInterior.addAll(knownInteriorCells);
+            if (shipState != null) {
+                for (ShipGeometry.Compartment compartment : shipState.compartments()) {
+                    record.knownInterior.addAll(compartment.interiorCells());
+                }
+                for (ShipGeometry.Compartment pocket : shipState.geometry().openPockets()) {
+                    record.knownInterior.addAll(pocket.interiorCells());
+                }
+            }
+            ShipSavedData.get(level).setAssembled(record);
             // 立刻落盘：只在正常存世界时写的话，退出世界时若被 VS2 的区块卸载 bug
             // 打断（实测 NoSuchElementException），认领记录会丢，物理船变永久孤儿。
             level.getDataStorage().save();
@@ -2850,6 +2862,9 @@ public final class VsPilot {
             record.hullDamage.copyFrom(state.hullDamage());
             record.hullMultiplier = state.hullHealthMultiplier();
             record.engineMultiplier = state.engineMultiplier();
+            // 只增不减的舱内格历史：切破洞后新几何裁空的部分也要落盘。
+            record.knownInterior.clear();
+            record.knownInterior.addAll(knownInteriorCells);
             if (proxyPos != null) {
                 record.proxyPos = proxyPos;
             }
@@ -3164,7 +3179,9 @@ public final class VsPilot {
             interiorCells.addAll(pocket.cells());
         }
         guardCells = buildGuardCells(interiorCells);
-        knownInteriorCells = java.util.Set.of();
+        // 历史舱内格从认领记录恢复（旧存档没有这份集合 → 空集，退回按几何重建）。
+        // 不能只按 rebuilt 几何重建：切掉外壁舱口后那间房的 interior 已经被裁空。
+        knownInteriorCells = java.util.Set.copyOf(record.knownInterior);
         rememberInterior(rebuilt.geometry());
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;

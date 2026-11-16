@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.station;
 
+import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.blockentity.CabinetBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.campaign.CampaignState;
@@ -32,11 +33,13 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 商人商店服务端逻辑：打开、整单购买、整单出售、从潜艇出售。
@@ -223,10 +226,58 @@ public final class StoreService {
             return;
         }
         List<ContainerSlot> containers = shipContainers(level, shipAnchor);
+        Map<String, Integer> remaining = deliverPendingFor(player.getUUID(), pending, player,
+                containers);
+        if (!remaining.isEmpty()) {
+            data.restore(player.getUUID(), remaining);
+        }
+    }
+
+    /**
+     * 起航交付（全体）：按待交付订单的 UUID 遍历，包括已经离线的玩家。
+     *
+     * <p>离线玩家没有 {@code ServerPlayer}，但“送进货柜”不需要玩家对象；
+     * 只有货柜放不下、回退到个人背包时才需要在线玩家。离线玩家送不出去的
+     * 货物继续留在待交付列表，下次起航再试。</p>
+     *
+     * @param online 当前在线玩家：用来匹配订单主人（背包回退 + 聊天提示）
+     */
+    public static void deliverPendingOnDeparture(ServerLevel level, BlockPos shipAnchor,
+                                                 List<ServerPlayer> online) {
+        StoreDeliverySavedData data = StoreDeliverySavedData.get(level);
+        Map<UUID, Map<String, Integer>> pending = data.takeAll();
+        if (pending.isEmpty()) {
+            return;
+        }
+        List<ContainerSlot> containers = shipContainers(level, shipAnchor);
+        Map<UUID, ServerPlayer> onlineById = new LinkedHashMap<>();
+        for (ServerPlayer player : online) {
+            onlineById.put(player.getUUID(), player);
+        }
+        for (Map.Entry<UUID, Map<String, Integer>> entry : pending.entrySet()) {
+            UUID owner = entry.getKey();
+            ServerPlayer player = onlineById.get(owner);
+            Map<String, Integer> remaining = deliverPendingFor(owner, entry.getValue(), player,
+                    containers);
+            if (!remaining.isEmpty()) {
+                data.restore(owner, remaining);
+            }
+        }
+    }
+
+    /**
+     * 把一名玩家的待交付货物送进货柜；放不下时回退到在线玩家背包。
+     *
+     * @param player 订单主人在线时的玩家对象；离线传 {@code null}（不碰背包）
+     * @return 送不出去的剩余（调用方负责 {@link StoreDeliverySavedData#restore}）
+     */
+    private static Map<String, Integer> deliverPendingFor(UUID owner, Map<String, Integer> items,
+                                                          @Nullable ServerPlayer player,
+                                                          List<ContainerSlot> containers) {
         Map<String, Integer> remaining = new LinkedHashMap<>();
         int delivered = 0;
         Component firstName = null;
-        for (Map.Entry<String, Integer> entry : pending.entrySet()) {
+        for (Map.Entry<String, Integer> entry : items.entrySet()) {
             Item item = resolveItem(entry.getKey());
             if (item == null) {
                 remaining.merge(entry.getKey(), entry.getValue(), Integer::sum);
@@ -239,7 +290,7 @@ public final class StoreService {
                 }
                 Component name = unit.getHoverName();
                 boolean placed = !containers.isEmpty() && deliverToShip(containers, unit);
-                if (!placed) {
+                if (!placed && player != null) {
                     placed = player.getInventory().add(unit);
                 }
                 if (!placed) {
@@ -252,15 +303,21 @@ public final class StoreService {
                 }
             }
         }
-        if (delivered > 0) {
-            player.getInventory().setChanged();
-            message(player, "store.delivered", ChatFormatting.GREEN, firstName, delivered);
+        if (player != null) {
+            if (delivered > 0) {
+                player.getInventory().setChanged();
+                message(player, "store.delivered", ChatFormatting.GREEN, firstName, delivered);
+            }
+            if (!remaining.isEmpty()) {
+                int count = remaining.values().stream().mapToInt(Integer::intValue).sum();
+                message(player, "store.delivery_remaining", ChatFormatting.GRAY, count);
+            }
+        } else {
+            BarotraumaMod.LOGGER.info("[store] 离线玩家 {} 的待交付货物：送进船柜 {} 件，剩余 {} 件",
+                    owner, delivered,
+                    remaining.values().stream().mapToInt(Integer::intValue).sum());
         }
-        if (!remaining.isEmpty()) {
-            data.restore(player.getUUID(), remaining);
-            int count = remaining.values().stream().mapToInt(Integer::intValue).sum();
-            message(player, "store.delivery_remaining", ChatFormatting.GRAY, count);
-        }
+        return remaining;
     }
 
     /**
