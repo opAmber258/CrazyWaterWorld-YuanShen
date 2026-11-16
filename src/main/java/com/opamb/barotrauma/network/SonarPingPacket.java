@@ -59,9 +59,26 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             // 只有声纳/玩家确实在活动物理船上时才走物理状态；方块船不能因为
             // "世界上有一艘物理船"就套用它的电压和核心位置。
             boolean physical = com.opamb.barotrauma.ship.vs.VsState.active()
-                    && com.opamb.barotrauma.ship.vs.VsPilot.activeLevel() == level
-                    && (com.opamb.barotrauma.ship.vs.VsState.isPhysical(level, sonarPos)
-                    || com.opamb.barotrauma.ship.vs.VsState.isPhysical(level, player.blockPosition()));
+                    && com.opamb.barotrauma.ship.vs.VsPilot.activeLevel() == level;
+            if (physical) {
+                // 代理方块的世界坐标不一定被 managingShip 认出来，补上舱室/船心距离判定；
+                // 玩家仍在方块船上（附近有方块船核心）时不能算物理船。
+                boolean onPhysical = com.opamb.barotrauma.ship.vs.VsState
+                        .isPhysical(level, sonarPos)
+                        || com.opamb.barotrauma.ship.vs.VsState
+                        .isPhysical(level, player.blockPosition())
+                        || com.opamb.barotrauma.ship.vs.VsPilot
+                        .isInsideCompartment(level, player.position());
+                net.minecraft.world.phys.Vec3 shipPos =
+                        com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
+                if (!onPhysical && shipPos != null
+                        && shipPos.distanceToSqr(player.position()) <= 128.0D * 128.0D) {
+                    onPhysical = true;
+                }
+                boolean blockShipNearby = com.opamb.barotrauma.ship.ShipCores
+                        .nearestCore(level, player.blockPosition(), 48.0D) != null;
+                physical = onPhysical && !blockShipNearby;
+            }
             BlockState sonarState = level.getBlockState(sonarPos);
             BlockPos center;
             if (physical) {

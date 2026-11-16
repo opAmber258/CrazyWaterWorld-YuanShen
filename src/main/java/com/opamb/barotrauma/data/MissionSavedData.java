@@ -315,6 +315,12 @@ public final class MissionSavedData extends SavedData {
         setDirty();
     }
 
+    /** 条件回落（例如采矿任务交矿后数量又不足）：READY 退回 ACTIVE。 */
+    public void markActive(Mission mission) {
+        mission.setState(Mission.State.ACTIVE);
+        setDirty();
+    }
+
     /** 交付成功：任务关闭并从进行中列表摘除（奖励由调用方打进共享钱包）。 */
     public void finish(UUID player, Mission mission) {
         mission.complete();

@@ -520,9 +520,11 @@ public final class StoreService {
     private static List<ContainerSlot> shipContainers(ServerLevel level, BlockPos center) {
         ShipState state;
         ShipGeometry.Bounds bounds;
+        boolean physicalShip;
         // 只有活动物理船就在这个维度、且锚点确实属于它时才用船坞范围。
         if (VsState.active() && VsPilot.activeLevel() == level
                 && VsState.isPhysical(level, center)) {
+            physicalShip = true;
             // 物理船的方块实体在船坞里：几何是装配坐标，扫描范围要加上船坞偏移。
             state = VsState.activeState();
             if (state == null) {
@@ -539,6 +541,7 @@ public final class StoreService {
             bounds = new ShipGeometry.Bounds(minYard.getX(), minYard.getY(), minYard.getZ(),
                     maxYard.getX(), maxYard.getY(), maxYard.getZ());
         } else {
+            physicalShip = false;
             ShipCoreBlockEntity core = null;
             if (level.hasChunkAt(center)
                     && level.getBlockEntity(center) instanceof ShipCoreBlockEntity atCenter) {
@@ -571,6 +574,12 @@ public final class StoreService {
                 }
                 for (BlockPos pos : chunk.getBlockEntitiesPos()) {
                     if (!bounds.contains(pos)) {
+                        continue;
+                    }
+                    // 包围盒内不等于船体：必须真的落在某个舱室/连海空腔里，
+                    // 否则码头旁边同包围盒的柜子会被当成潜艇货柜。
+                    BlockPos cell = physicalShip ? VsPilot.toAssembly(pos) : pos;
+                    if (cell == null || state.simulation().bodyOf(cell) < 0) {
                         continue;
                     }
                     if (chunk.getBlockEntity(pos) instanceof CabinetBlockEntity cabinet) {

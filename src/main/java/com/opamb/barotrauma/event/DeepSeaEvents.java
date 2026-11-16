@@ -974,6 +974,8 @@ public final class DeepSeaEvents {
         // 单人退出世界后 JVM 不重启：上一世界的航道配置会残留到新世界。
         // onServerStarted 随后会按当前存档 restoreRoute 重新写入。
         MissionInstance.setRouteLevel(null);
+        // 站点类型标记也要一起复位，否则新世界会沿用上一轮的"是否有哨站"。
+        MissionInstance.setRouteOutposts(Integer.MIN_VALUE, true, true);
         if (VsSupport.available()) {
             VsPilot.resetForServerLifecycle();
         }

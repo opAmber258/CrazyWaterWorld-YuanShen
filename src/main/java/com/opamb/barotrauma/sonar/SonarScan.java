@@ -117,7 +117,9 @@ public final class SonarScan {
         // ---- 地形：被动模式完全不做（不发脉冲就没有回波） ----
         if (mode != Mode.PASSIVE) {
             int stride = strideFor(r);
-            int base = (r / stride) * stride;
+            // 向上取整：r 不是 stride 整数倍时，射程边缘也要有采样点；
+            // 球外点仍由 x²+y²+z² > r² 跳过，不会生成虚假球壳。
+            int base = ((r + stride - 1) / stride) * stride;
             int n = 2 * (base / stride) + 1;
 
             // 三态：0 = 不知道（球外 / 区块没加载），1 = 实心，2 = 空。

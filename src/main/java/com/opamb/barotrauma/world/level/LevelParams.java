@@ -42,7 +42,7 @@ public record LevelParams(
      * z 方向不限，所以 1500 也能留在同一个 x 槽位里。
      */
     public static final int MAX_ROUTE = 1600;
-    /** 东西向出发站能留在 1024 槽位内的最大距离：512 - 站点半径 64 - 16 余量。 */
+    /** 东西向出发站的保守上限（按旧的 1024 半槽位算：512 - 站点半径 64 - 16 余量）。 */
     public static final int LONG_ROUTE_THRESHOLD = 432;
     /** 哨站关卡影响半径（原作宽 40000 → 200 格）。 */
     public static final int OUTPOST_INFLUENCE = 200;
@@ -132,7 +132,8 @@ public record LevelParams(
     /**
      * 关卡岩体最外缘：主洞 + 侧洞环 + 中间 16 格岩壁。地形影响半径用它再加 32。
      * 侧洞房间比通道再鼓 1.2 倍，这里按最大鼓包算；加上航道横向摆动后必须
-     * 小于 512（半个槽位），否则相邻两个槽位的侧洞会连起来。
+     * 小于 {@link com.opamb.barotrauma.world.MissionInstance#SPACING} 的一半（1024），
+     * 否则相邻两个槽位的侧洞会连起来。
      */
     public int cavernOuterRadius() {
         int hw = cavernHalfWidth();

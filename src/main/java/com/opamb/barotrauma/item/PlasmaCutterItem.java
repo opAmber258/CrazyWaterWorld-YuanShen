@@ -274,10 +274,13 @@ public class PlasmaCutterItem extends Item {
      */
     private static boolean canBreak(ServerLevel level, ServerPlayer player, BlockPos pos) {
         GameType mode = player.gameMode.getGameModeForPlayer();
-        if (ForgeHooks.onBlockBreakEvent(level, mode, player, pos) == -1) {
-            return false;
-        }
-        return !player.blockActionRestricted(level, pos, mode);
+        int event = ForgeHooks.onBlockBreakEvent(level, mode, player, pos);
+        boolean allowed = event != -1 && !player.blockActionRestricted(level, pos, mode);
+        // 创造模式下 ForgeHooks 会把该位置当成已破坏同步给客户端；切割器并没有真的
+        // 破坏方块，必须把真实状态补回去，否则矿脉会一直显示成空气。
+        player.connection.send(
+                new net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket(level, pos));
+        return allowed;
     }
 
     /** 累计切割进度；达到 {@code applications} 次就执行 {@code finish}。 */

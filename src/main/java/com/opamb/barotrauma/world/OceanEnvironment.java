@@ -208,9 +208,15 @@ public final class OceanEnvironment {
 
     /** 只判物理船舱室（不含方块船干舱）：潜行防掉边 mixin 专用。 */
     public static boolean isInsidePhysicalShipCompartment(Level level, Vec3 pos) {
-        return isInOcean(level, pos)
-                && com.opamb.barotrauma.ship.vs.VsState
-                .queryPlayerInDryCompartment(level, pos) != null;
+        if (!isInOcean(level, pos)) {
+            return false;
+        }
+        if (com.opamb.barotrauma.ship.vs.VsState
+                .queryPlayerInDryCompartment(level, pos) != null) {
+            return true;
+        }
+        // 客户端没有服务端 compartmentQuery 桥时，用同步过来的水面盒判断舱内。
+        return com.opamb.barotrauma.ship.vs.VsPilot.isInsideCompartment(level, pos);
     }
 
     /**

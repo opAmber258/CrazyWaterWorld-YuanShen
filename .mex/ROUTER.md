@@ -93,6 +93,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
   **第九次 full review（`c07454e` 之后，13 条 + 1 条 nitpick）**：`docs/OUTPOST_SERVICES.md` 协议更新到 16 并注明出售只收主背包 0–35；`PowerBindPacket` 成功/失败都回刷新，接线盒按钮不会永久禁用；商店提交 3 秒超时解锁；`PlayerSneakEdgeMixin` 改用只判物理船的 `isInsidePhysicalShipCompartment`；`SonarPingPacket` 按声纳/玩家归属解析物理船；`ShipGeometry.collectHull` 增加设备谓词，孤立接线盒不再抢走最近船体（新增回归用例）；靠泊搬人/货改用 `dx - (now - assembledPos)` 的完整位移；`sellCart` 限主背包槽、`resolveItem` 拒绝 AIR；商店/诊所提示全部 `Component.translatable` 并补双语键；`RoutePathTest` 增加中心线高度断言。**跳过**：出生站矿脉预加载耗时（需实机 profile）、旧区块矿脉产量保证（需产品层提示方案）。
 
+  **第十次 full review（`5240cb0` 之后，11 条 + 1 条 outside-diff）**：商店出售列表按 `Inventory.INVENTORY_SIZE` 截断；服务器重置同时复位 `routeOutposts`；切割 `canBreak` 后补发 `ClientboundBlockUpdatePacket`（创造模式不再把矿脉显示成空气）；采矿 READY 后矿物不足退回 ACTIVE（新增 `MissionSavedData.markActive`）；`SonarPingPacket` 物理船判定补舱室/船心距离并排除附近方块船；`VsPilot.adopt` 的 `scanShip` 补 `isShell` 谓词；`shipContainers` 要求柜子落在 `bodyOf >= 0` 的舱室/连海空腔；`LevelParams` 槽位注释改 1024；客户端潜行保护用 `VsPilot.isInsideCompartment` 同步水面盒兜底；`SonarScan` 采样网格向上取整覆盖射程边缘。**跳过**：`fillFromNoise` 已提交任务在 `setRouteLevel` 切换后仍可能读新关卡 —— 需要把 RouteLevel/RoutePath 快照穿透 SeaTerrain 与生成器整条调用链，属结构改造，留待下一轮。
+
 - **资产记录分工（2026-11-15，维护者确认）**：采用唯一验证摘要与按需上下文；公共入口为 `tools/asset_delivery.py`，数据格式与命令见 `docs/ASSET_VALIDATION.md`。这里只保留规则入口，不逐件复制规格和验收。
 
 - **美术发布规则（2026-11-15，维护者确认）**：用户要求发布指定纯美术资产时，默认交付自查后直接推送上游 `main`，不创建 PR、不等待 CodeRabbit 或 PR 门禁；资产 README、validation 与 Discussion #39 登记承担本轮记账。代码、运行时资源、共享工具及规则变更仍走通用 PR 流程。范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7、`patterns/publish.md`。

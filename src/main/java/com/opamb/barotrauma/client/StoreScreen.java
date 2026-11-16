@@ -130,7 +130,7 @@ public final class StoreScreen extends Screen {
             byId.put(entry.itemId(), entry);
         }
         var inventory = minecraft.player.getInventory();
-        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+        for (int slot = 0; slot < net.minecraft.world.entity.player.Inventory.INVENTORY_SIZE; slot++) {
             ItemStack stack = inventory.getItem(slot);
             if (stack.isEmpty()) {
                 continue;

@@ -2984,7 +2984,13 @@ public final class VsPilot {
             }
         };
         ShipGeometry.Result geometry = ShipGeometry.scanShip(core, ShipCoreBlockEntity.RADIUS,
-                snap::containsKey, probe, 0, null,
+                snap::containsKey, probe, 0,
+                // 和 rebuildGeometry 用同一套船壳判定，认领时才能正确排除船外空气。
+                pos -> {
+                    BlockState st = snap.get(pos);
+                    return st != null && (ModShipBlocks.isRepairableHull(st)
+                            || ModShipBlocks.isDoorway(st));
+                },
                 pos -> {
                     BlockState st = snap.get(pos);
                     return st != null && ModShipBlocks.isEquipment(st);

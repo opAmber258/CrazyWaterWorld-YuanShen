@@ -79,6 +79,13 @@ public final class MissionProgress {
                     changed = true;
                     continue;
                 }
+                // 采矿任务已经 READY 后又把矿物交掉/丢掉：退回 ACTIVE，靠泊时不能按达成结算。
+                if (mission.state() == Mission.State.READY && mission.type == MissionType.MINERAL
+                        && mission.mineralCount() > 0
+                        && countMineral(player, mission.mineralItem()) < mission.mineralCount()) {
+                    data.markActive(mission);
+                    changed = true;
+                }
                 if (mission.state() != Mission.State.ACTIVE) {
                     continue;
                 }
