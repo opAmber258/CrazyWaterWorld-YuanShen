@@ -65,12 +65,25 @@ public class PlasmaCutterItem extends Item {
     private static final int VEIN_CUT_APPLICATIONS = 40;
     /** 切烂一扇门/一个舱口要多少次应用：60 次 = 6 秒。 */
     private static final int FIXTURE_CUT_APPLICATIONS = 60;
-    /** 氧气瓶消耗间隔（原作 1/s）。 */
-    private static final int OXYGEN_INTERVAL = 20;
+    /**
+     * 每成功应用多少次切割扣 1 点氧气（原作 1/s；这里按真正切到的次数结算）。
+     *
+     * <p>不能用 {@code player.tickCount % 20}：生存玩家可以在扣氧的 tick 之前把准星
+     * 移开让 MISS 提前返回，反复蹭出船壳伤害却不耗氧。</p>
+     */
+    private static final int OXYGEN_CUTS_PER_UNIT = 10;
     private static final double REACH = 4.5D;
 
     /** 服务端每名玩家当前的切割目标；换目标/松手就清零。 */
     private static final Map<UUID, CutTarget> CUTS = new HashMap<>();
+
+    /**
+     * 已成功切割、还没结算成氧气的应用次数。
+     *
+     * <p>松手/换目标都不清零（否则反复瞄一下就能白嫖），只有扣氧时减去结算部分；
+     * 玩家退出时随 {@link #clearPlayer(UUID)} 一起清掉。</p>
+     */
+    private static final Map<UUID, Integer> OXYGEN_CREDIT = new HashMap<>();
 
     /** 正在切的格子、已切次数、是否被拒绝、最后一次应用的玩家 tick。 */
     private record CutTarget(BlockPos pos, int applications, boolean allowed, int tick) {
@@ -154,7 +167,10 @@ public class PlasmaCutterItem extends Item {
             // 被拒绝的目标保留记录：按住不放时不再每 2 tick 重发破坏事件。
             return;
         }
-        if (player.tickCount % OXYGEN_INTERVAL == 0) {
+        // 只有真正切到东西的应用才计数；累计到 10 次扣 1 点氧气。
+        int applied = OXYGEN_CREDIT.merge(player.getUUID(), 1, Integer::sum);
+        if (applied >= OXYGEN_CUTS_PER_UNIT) {
+            OXYGEN_CREDIT.put(player.getUUID(), applied - OXYGEN_CUTS_PER_UNIT);
             consumeOxygen(stack, player);
             if (!hasOxygen(stack)) {
                 player.stopUsingItem();
@@ -290,12 +306,15 @@ public class PlasmaCutterItem extends Item {
 
     /**
      * 与原版方块破坏路径一致：先发出 {@code BlockEvent.BreakEvent}，再检查位置级
-     * 破坏限制（冒险模式/领地/出生点保护）；{@code mayBuild()} 只是玩家级权限。
+     * 破坏限制（冒险模式/领地）；{@code mayBuild()} 只是玩家级权限，出生点保护
+     * 在 {@link net.minecraft.server.level.ServerLevel#mayInteract} 里，必须单独查。
      */
     private static boolean canBreak(ServerLevel level, ServerPlayer player, BlockPos pos) {
         GameType mode = player.gameMode.getGameModeForPlayer();
         int event = ForgeHooks.onBlockBreakEvent(level, mode, player, pos);
-        boolean allowed = event != -1 && !player.blockActionRestricted(level, pos, mode);
+        boolean allowed = level.mayInteract(player, pos)
+                && event != -1
+                && !player.blockActionRestricted(level, pos, mode);
         // 创造模式下 ForgeHooks 会把该位置当成已破坏同步给客户端；切割器并没有真的
         // 破坏方块，必须把真实状态补回去，否则矿脉会一直显示成空气。
         player.connection.send(
@@ -331,9 +350,10 @@ public class PlasmaCutterItem extends Item {
         }
     }
 
-    /** 玩家退出时清掉服务端残留的切割/拒绝记录。 */
+    /** 玩家退出时清掉服务端残留的切割/拒绝记录与未结算的扣氧计数。 */
     public static void clearPlayer(UUID player) {
         CUTS.remove(player);
+        OXYGEN_CREDIT.remove(player);
     }
 
     /** 方块船上的舱门/舱口（物理船上的由 {@link VsState#tryCut} 处理）。 */

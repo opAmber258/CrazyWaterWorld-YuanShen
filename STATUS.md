@@ -3,7 +3,7 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-16（PR #61 第十四轮 CodeRabbit 修复，279 项测试通过，协议 16；
+> 上次更新：2026-11-16（PR #61 第十五轮 CodeRabbit 修复，282 项测试通过，协议 16；
 > 本地 `main` 仍在 `77009a7`，`origin/main` 已多 3 个美术提交，**还没 pull**）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
@@ -51,7 +51,7 @@
 - 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
 
 ### 4. 验证 / 未做
-- `./gradlew compileJava test --offline`：**279 项测试 0 失败（48 个测试类）**（2026-11-16 第十四轮后）。
+- `./gradlew compileJava test --offline`：**282 项测试 0 失败（48 个测试类）**（2026-11-16 第十五轮后）。
 - 客户端本轮未起（用户要求等通知）；实机验收待用户。
 - 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
   任务/沉船/怪物等 P0 缺口。
@@ -174,8 +174,23 @@
   焦点行读实际已选数量；诊所补键盘焦点（Tab/方向键/Enter）与旁白；放门/舱口后
   `ShipCores.refreshNearby` 重扫附近核心 + 物理船几何，新门格不再漏出舱室/水量。
   **仍跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+- 第十五次 full review 批次（8 条 + 1 条 nitpick）：商店出售列表过滤任务箱
+  （空箱也带任务标记，混进购物车会让整单被服务端拒绝）；`StoreScreen` 面板
+  宽/高/可见行按 GUI 尺寸收缩（320 宽的窄屏不再把左半边画到屏幕外），数量 −/+
+  控件改按面板右边对齐、绘制与命中共用同一组坐标；等离子切割机氧气改按成功
+  应用次数结算（每 10 次扣 1 点，MISS/暂停不清零，堵住"移开准星蹭船壳伤害"）；
+  `canBreak` 补 `level.mayInteract`（出生点保护，安全审查 Major）；客户端潜行
+  防掉边的物理船分支改读同步水盒 + 客户端船逆变换（专用服务器客户端也生效，
+  方块船显式排除）；`ShipGeometry.Result` 增加 `equipment` + `owns()`，船壳
+  选择仍排除设备块，但船内独立接线盒/小型泵仍被 `tracksHullBlock` 认领（新增
+  两条回归）；靠泊搬人/货改用船体逆变换映射（偏航非零不再把人放到错误舷侧）；
+  `MissionInstance.publishRoute` 一次写锁原子发布 RouteLevel + 两端哨站标记，
+  `DockingBay.activeSites` 用保存的槽位间距/出发距离；`RoundStateTest` 补实例
+  锚点迁移与往返。**仍跳过**：`restoreBlocks` 的 PowerBox 坐标平移（用户明确
+  先不动电力）、矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
 - **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
-  靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。
+  靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。第十五轮 CodeRabbit
+  又按 `restoreBlocks` 提了一次，仍按用户"先不管电力那块"跳过。
 - 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的
   `PowerPanelState.java`/`PowerStatePacket.java`），主工作区未改动。
 

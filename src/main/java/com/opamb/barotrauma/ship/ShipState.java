@@ -131,9 +131,14 @@ public final class ShipState {
         return 1.0F + ENGINE_STEP * net.minecraft.util.Mth.clamp(level, 0, ENGINE_MAX_LEVEL);
     }
 
-    /** 这个方块是不是当前船体几何里的一格结构（用于拒绝空气/隔墙上的伤害）。 */
+    /**
+     * 这个方块是不是当前船体几何里的一格结构（用于拒绝空气/隔墙上的伤害）。
+     *
+     * <p>船内独立设备（接线盒、小型泵）不和船壳连通，但同样属于这艘船，
+     * 走 {@link ShipGeometry.Result#owns(BlockPos)} 一起认。</p>
+     */
     public boolean tracksHullBlock(net.minecraft.core.BlockPos pos) {
-        return geometry.hull().contains(pos);
+        return geometry.owns(pos);
     }
 
     public MachineCount machines() {
@@ -160,7 +165,8 @@ public final class ShipState {
         Map<BlockPos, Double> carried = old == null ? Map.of() : waterByCell();
         this.geometry = next;
         // 已经打没的方块不再属于新几何；把它们的耐久记录清掉，客户端不会在空气里画血条。
-        this.hullDamage.retain(next.hull()::contains);
+        // 船内独立设备（接线盒/小型泵）也吃船壳伤害，重扫后不能把它们的耐久记录清掉。
+        this.hullDamage.retain(next::owns);
         this.leakCompartmentByCell = null;
         this.leakInsideCells = null;
         this.waterBoxCache = null;

@@ -294,6 +294,49 @@ public final class ShipWaterRenderer {
     }
 
     /**
+     * 客户端：这个位置是否在某艘<b>物理船</b>的舱室里（方块船不算）。
+     *
+     * <p>连专用服务器时客户端没有服务端的 {@code ShipState}，只能用同步过来的水盒；
+     * 水盒是装配坐标，必须用客户端船的实时逆变换映射回去——航行中偏航非零时
+     * 只减平移量（{@code lastDelta*}）会把整艘船算错。{@code physical=false}
+     * 的方块船直接返回 false，潜行防掉边另走方块船干舱判定。</p>
+     */
+    public static boolean isInsidePhysicalCompartment(Level level, Vec3 pos) {
+        if (pos == null || !(level instanceof ClientLevel clientLevel)) {
+            return false;
+        }
+        ShipWaterStatePacket data = state;
+        float[] boxes = data.boxes();
+        if (!data.physical() || data.shipId() < 0 || boxes.length < 7) {
+            return false;
+        }
+        ClientShip ship = findClientShip(clientLevel, data.shipId());
+        if (ship == null) {
+            return false;
+        }
+        ShipTransform transform = ship.getTransform();
+        Vector3dc positionInShip = transform.getPositionInShip();
+        Vector3d local;
+        try {
+            local = new Matrix4d(transform.getShipToWorld()).invert()
+                    .transformPosition(new Vector3d(pos.x, pos.y, pos.z), new Vector3d());
+        } catch (Throwable ignored) {
+            return false;
+        }
+        double lx = local.x - positionInShip.x() + data.anchorX();
+        double ly = local.y - positionInShip.y() + data.anchorY();
+        double lz = local.z - positionInShip.z() + data.anchorZ();
+        for (int i = 0; i + 6 < boxes.length; i += 7) {
+            if (lx >= boxes[i] && lx <= boxes[i + 3] + 1.0F
+                    && ly >= boxes[i + 1] && ly <= boxes[i + 4] + 1.0F
+                    && lz >= boxes[i + 2] && lz <= boxes[i + 5] + 1.0F) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 客户端判断某个位置是否在“未进水的船舱”里。
      *
      * <p>水面包里的盒子是装配坐标，渲染位置相对锚点的位移由 onRenderStage 每帧缓存；

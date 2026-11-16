@@ -122,6 +122,35 @@ public final class MissionInstance {
         }
     }
 
+    /**
+     * 一次性发布关卡配置 + 两端哨站标记。
+     *
+     * <p>读档/出发时必须原子发布：生成线程持读锁跑 {@code generate()}，如果先
+     * {@link #setRouteLevel} 再 {@link #setRouteOutposts}，中间可能被它读到
+     * "新关卡 + 旧 routeSlot"，{@link #outpostExpected} 于是给无人航路点建站。</p>
+     */
+    public static void publishRoute(@org.jetbrains.annotations.Nullable RouteLevel level,
+                                    int outpostSlot,
+                                    boolean startOutpost, boolean endOutpost) {
+        // 每 tick 恢复时配置通常没变：先做一次无锁比较，避免和生成线程抢写锁。
+        if (java.util.Objects.equals(routeLevel, level)
+                && routeSlot == outpostSlot
+                && routeStartOutpost == startOutpost
+                && routeEndOutpost == endOutpost) {
+            return;
+        }
+        java.util.concurrent.locks.Lock lock = ROUTE_LOCK.writeLock();
+        lock.lock();
+        try {
+            routeLevel = level;
+            routeSlot = outpostSlot;
+            routeStartOutpost = startOutpost;
+            routeEndOutpost = endOutpost;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /** 当前活动关卡；没有返回 null。 */
     public static RouteLevel routeLevel() {
         return routeLevel;
@@ -194,11 +223,22 @@ public final class MissionInstance {
                 ? level.startDistance() : START_DISTANCE;
     }
 
-    /** 下潜时写入本轮起点/终点是否需要哨站；世界生成按这个决定建不建站。 */
+    /**
+     * 下潜时写入本轮起点/终点是否需要哨站；世界生成按这个决定建不建站。
+     *
+     * <p>和 {@link #setRouteLevel} 一起改配置时请用 {@link #publishRoute}：
+     * 分两步发布会让生成线程读到"新关卡 + 旧哨站标记"。</p>
+     */
     public static void setRouteOutposts(int slot, boolean startOutpost, boolean endOutpost) {
-        routeSlot = slot;
-        routeStartOutpost = startOutpost;
-        routeEndOutpost = endOutpost;
+        java.util.concurrent.locks.Lock lock = ROUTE_LOCK.writeLock();
+        lock.lock();
+        try {
+            routeSlot = slot;
+            routeStartOutpost = startOutpost;
+            routeEndOutpost = endOutpost;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /** 这个站点本轮要不要生成哨站（主站永远要）。 */

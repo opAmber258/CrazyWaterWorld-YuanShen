@@ -434,9 +434,14 @@ public final class DockingBay {
                 if (!instance.equals(Site.MAIN)) {
                     sites.add(instance);
                 }
-                int slot = Math.max(0, Math.round((round.instanceX() - MissionInstance.BASE_X)
-                        / (float) MissionInstance.SPACING));
-                Site start = MissionInstance.startSite(MissionInstance.anchorForRound(slot));
+                // 旧存档的槽位间距/出发距离以保存值为准：按当前 SPACING 反推会把
+                // 槽位 5（锚点 25120）算成槽位 3，列出一个实际不存在的出发站，
+                // ensureStationHatch/open/close 于是漏掉真正的出发站。
+                int slot = MissionInstance.slotForX(round.instanceX(), round.levelSpacing());
+                MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+                int distance = round.levelDistance() > 0
+                        ? round.levelDistance() : MissionInstance.startDistanceFor(anchor);
+                Site start = MissionInstance.startSite(anchor, distance);
                 if (!sites.contains(start)) {
                     sites.add(start);
                 }

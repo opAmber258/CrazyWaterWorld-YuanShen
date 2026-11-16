@@ -2516,11 +2516,33 @@ public final class VsPilot {
      * 拆回方块。
      *
      * <p>用装配时的方块快照铺回世界，位置 = 原坐标 + 船自装配以来的整数位移。
-     * 因为姿态是锁死的（永远平行于海平面，见 {@link VsThruster}），
-     * 这里不需要做旋转变换，位移就是纯平移。</p>
+     * 俯仰/横滚是锁死的（永远平行于海平面，见 {@link VsThruster}），但<b>偏航角
+     * 不锁</b>：船可以转向，铺回的方块却还是装配时未旋转的快照。所以船上的
+     * 乘客/货物要按船体逆变换映射回快照坐标，不能只加平移。</p>
      */
     public static String dock(ServerLevel level) {
         return dock(level, false);
+    }
+
+    /**
+     * 拆船后乘客/任务散箱的落点：世界坐标 → 快照船体坐标 → 铺回后的方块坐标。
+     *
+     * <p>{@code toWorld()} 的逆运算：世界点先乘 {@code shipToWorld⁻¹}，减去
+     * {@code positionInShip}、加回装配锚点就得到快照坐标（方块格原点 + 0.5），
+     * 再叠加铺回位移 {@code (dx,dy,dz)}。取不到变换时退回纯平移，与旧行为一致。</p>
+     */
+    private static org.joml.Vector3d dockRestorePoint(
+            @Nullable org.joml.Matrix4dc worldToShip, @Nullable org.joml.Vector3dc shipOrigin,
+            double x, double y, double z, int dx, int dy, int dz,
+            double shiftX, double shiftY, double shiftZ) {
+        if (worldToShip == null || shipOrigin == null) {
+            return new org.joml.Vector3d(x + shiftX, y + shiftY, z + shiftZ);
+        }
+        org.joml.Vector3d local = worldToShip.transformPosition(
+                new org.joml.Vector3d(x, y, z), new org.joml.Vector3d());
+        return local.sub(shipOrigin)
+                .add(assembledPos.x, assembledPos.y, assembledPos.z)
+                .add(dx, dy, dz);
     }
 
     /**
@@ -2542,6 +2564,17 @@ public final class VsPilot {
         int dx = (int) Math.round(now.x - assembledPos.x);
         int dy = (int) Math.round(now.y - assembledPos.y);
         int dz = (int) Math.round(now.z - assembledPos.z);
+        // 拆船前记下船体逆变换：航行中偏航角可能非零，而铺回的方块是未旋转的快照。
+        // 乘客/货物的相对船体位置必须按船体坐标映射回去，只加平移会把人放错舷侧。
+        org.joml.Matrix4dc worldToShip = null;
+        org.joml.Vector3dc shipOrigin = null;
+        try {
+            var transform = live.getTransform();
+            worldToShip = new org.joml.Matrix4d(transform.getShipToWorld()).invert();
+            shipOrigin = new org.joml.Vector3d(transform.getPositionInShip());
+        } catch (Throwable ignored) {
+            // 取不到变换就退回纯平移（与旧行为一致）
+        }
         Map<BlockPos, BlockState> restore = snapshot;
         BlockPos oldCore = corePos;
         // 靠泊吸附会整体平移船；先把"在船上"的玩家和任务散箱记下来，拆完一起搬。
@@ -2643,21 +2676,27 @@ public final class VsPilot {
         }
         // 靠泊吸附把船整体搬走时，船上的玩家和任务散箱要一起搬：否则船瞬移到码头、
         // 人还留在海里，散箱也会被落下导致货运结算 0 箱（用户实测）。
-        // 位移 = 恢复后的方块位置 - 拆船前的实际位置，含取整差；不能只用 snap，
-        // 也不能漏掉航行过程中已经产生的位移。
+        // 偏航非零时，光加平移会把"船头的人"放到恢复后船体的侧舷：先按船体逆变换
+        // 把位置换回快照坐标（original + 0.5），再映射到铺回后的方块布局。
         double shiftX = dx - (now.x - assembledPos.x);
         double shiftY = dy - (now.y - assembledPos.y);
         double shiftZ = dz - (now.z - assembledPos.z);
-        if (Math.abs(shiftX) > 1.0E-6D || Math.abs(shiftY) > 1.0E-6D
+        boolean rotated = worldToShip != null && shipOrigin != null;
+        if (rotated || Math.abs(shiftX) > 1.0E-6D || Math.abs(shiftY) > 1.0E-6D
                 || Math.abs(shiftZ) > 1.0E-6D) {
             for (ServerPlayer rider : riders) {
-                rider.teleportTo(level, rider.getX() + shiftX, rider.getY() + shiftY,
-                        rider.getZ() + shiftZ, rider.getYRot(), rider.getXRot());
+                org.joml.Vector3d dest = dockRestorePoint(worldToShip, shipOrigin,
+                        rider.getX(), rider.getY(), rider.getZ(), dx, dy, dz,
+                        shiftX, shiftY, shiftZ);
+                rider.teleportTo(level, dest.x, dest.y, dest.z, rider.getYRot(), rider.getXRot());
                 rider.setDeltaMovement(Vec3.ZERO);
                 rider.fallDistance = 0.0F;
             }
             for (net.minecraft.world.entity.item.ItemEntity item : pinnedCargo) {
-                item.setPos(item.getX() + shiftX, item.getY() + shiftY, item.getZ() + shiftZ);
+                org.joml.Vector3d dest = dockRestorePoint(worldToShip, shipOrigin,
+                        item.getX(), item.getY(), item.getZ(), dx, dy, dz,
+                        shiftX, shiftY, shiftZ);
+                item.setPos(dest.x, dest.y, dest.z);
                 item.setDeltaMovement(Vec3.ZERO);
             }
         }

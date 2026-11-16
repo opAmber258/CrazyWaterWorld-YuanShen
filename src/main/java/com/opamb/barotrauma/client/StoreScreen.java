@@ -3,6 +3,7 @@ package com.opamb.barotrauma.client;
 import com.opamb.barotrauma.equipment.CrateContainer;
 import com.opamb.barotrauma.equipment.ItemSubSlot;
 import com.opamb.barotrauma.item.CrateItem;
+import com.opamb.barotrauma.mission.MissionCargo;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.StoreActionPacket;
 import com.opamb.barotrauma.network.StoreStatePacket;
@@ -105,11 +106,29 @@ public final class StoreScreen extends Screen {
     }
 
     private int leftPos() {
-        return (width - PANEL_W) / 2;
+        return (width - panelW()) / 2;
     }
 
     private int topPos() {
-        return (height - PANEL_H) / 2;
+        return (height - panelH()) / 2;
+    }
+
+    /**
+     * 面板宽度：GUI 缩放后可用宽度可能只有 320（1280×720 + 缩放 4），
+     * 固定 440 会让左半边跑到屏幕外。绘制和鼠标命中都走这里，保证一致。
+     */
+    private int panelW() {
+        return Math.max(160, Math.min(PANEL_W, width - 16));
+    }
+
+    /** 面板高度：矮窗口时收窄，避免底部购物车/按钮画出屏幕。 */
+    private int panelH() {
+        return Math.max(140, Math.min(PANEL_H, height - 8));
+    }
+
+    /** 可见行数：按面板高度算；矮窗口少显示几行，其余靠滚动。 */
+    private int visibleRows() {
+        return Math.max(3, Math.min(VISIBLE_ROWS, (panelH() - 78) / ROW_H));
     }
 
     private int listTop() {
@@ -156,6 +175,11 @@ public final class StoreScreen extends Screen {
     }
 
     private static boolean canSell(ItemStack stack) {
+        // 任务箱即使被搬空也带着任务标记，服务端整单会拒绝；这里先过滤，
+        // 否则购物车里混进任务箱后连普通商品一起卖不出去。
+        if (MissionCargo.isMissionCrate(stack)) {
+            return false;
+        }
         if (ItemSubSlot.hasSubSlot(stack) && !ItemSubSlot.get(stack).isEmpty()) {
             return false;
         }
@@ -180,7 +204,7 @@ public final class StoreScreen extends Screen {
     }
 
     private int maxScroll() {
-        return Math.max(0, rowCount() - VISIBLE_ROWS);
+        return Math.max(0, rowCount() - visibleRows());
     }
 
     private int buyQuantity(String itemId) {
@@ -277,18 +301,18 @@ public final class StoreScreen extends Screen {
         renderBackground(g);
         int x = leftPos();
         int y = topPos();
-        g.fill(x, y, x + PANEL_W, y + PANEL_H, BG);
-        g.fill(x, y, x + PANEL_W, y + 1, EDGE);
-        g.fill(x, y + PANEL_H - 1, x + PANEL_W, y + PANEL_H, EDGE);
-        g.fill(x, y, x + 1, y + PANEL_H, EDGE);
-        g.fill(x + PANEL_W - 1, y, x + PANEL_W, y + PANEL_H, EDGE);
+        g.fill(x, y, x + panelW(), y + panelH(), BG);
+        g.fill(x, y, x + panelW(), y + 1, EDGE);
+        g.fill(x, y + panelH() - 1, x + panelW(), y + panelH(), EDGE);
+        g.fill(x, y, x + 1, y + panelH(), EDGE);
+        g.fill(x + panelW() - 1, y, x + panelW(), y + panelH(), EDGE);
 
         g.drawString(font, Component.translatable("store.title"), x + 10, y + 6, ACCENT, false);
         String wallet = Component.translatable("store.wallet", state.wallet()).getString();
-        g.drawString(font, wallet, x + PANEL_W - 10 - font.width(wallet), y + 6, GREEN, false);
+        g.drawString(font, wallet, x + panelW() - 10 - font.width(wallet), y + 6, GREEN, false);
         String balance = Component.translatable("store.merchant_balance",
                 state.merchantBalance()).getString();
-        g.drawString(font, balance, x + PANEL_W - 10 - font.width(balance), y + 18, DIM, false);
+        g.drawString(font, balance, x + panelW() - 10 - font.width(balance), y + 18, DIM, false);
 
         drawTab(g, x + 10, y + 22, Component.translatable("store.tab.buy").getString(),
                 tab == TAB_BUY, mouseX, mouseY);
@@ -304,7 +328,7 @@ public final class StoreScreen extends Screen {
             g.fill(tabX - 1, y + 21, tabX, y + 37, ACCENT);
             g.fill(tabX + 56, y + 21, tabX + 57, y + 37, ACCENT);
         }
-        g.fill(x + 8, listTop() - 3, x + PANEL_W - 8, listTop() - 2, EDGE);
+        g.fill(x + 8, listTop() - 3, x + panelW() - 8, listTop() - 2, EDGE);
 
         if (tab == TAB_BUY) {
             renderBuy(g, mouseX, mouseY);
@@ -315,7 +339,7 @@ public final class StoreScreen extends Screen {
         }
 
         int total = tab == TAB_BUY ? buyTotal() : tab == TAB_SELL ? sellTotal() : subTotal();
-        int cartY = y + PANEL_H - 38;
+        int cartY = y + panelH() - 38;
         String cartText = switch (tab) {
             case TAB_BUY -> Component.translatable("store.cart.buy",
                     cartCount(), total).getString();
@@ -326,7 +350,7 @@ public final class StoreScreen extends Screen {
         };
         g.drawString(font, cartText, x + 10, cartY + 5, total > state.wallet()
                 && tab == TAB_BUY ? RED : TEXT, false);
-        int buttonX = x + PANEL_W - 120;
+        int buttonX = x + panelW() - 120;
         boolean can = cartCount() > 0;
         boolean buttonFocused = focusArea == 2 && can;
         boolean hover = can && mouseX >= buttonX && mouseX < buttonX + 110
@@ -346,10 +370,10 @@ public final class StoreScreen extends Screen {
 
         if (submitUnknown) {
             g.drawCenteredString(font, Component.translatable("store.result_unknown"),
-                    x + PANEL_W / 2, y + PANEL_H - 27, RED);
+                    x + panelW() / 2, y + panelH() - 27, RED);
         }
         g.drawString(font, Component.translatable("store.hint"),
-                x + 10, y + PANEL_H - 14, DIM, false);
+                x + 10, y + panelH() - 14, DIM, false);
 
         if (deliveryPrompt) {
             renderDeliveryPrompt(g, mouseX, mouseY);
@@ -406,14 +430,14 @@ public final class StoreScreen extends Screen {
         List<StoreStatePacket.Entry> entries = buyEntries();
         int x = leftPos();
         int top = listTop();
-        int shown = Math.min(VISIBLE_ROWS, Math.max(0, entries.size() - scroll));
+        int shown = Math.min(visibleRows(), Math.max(0, entries.size() - scroll));
         for (int i = 0; i < shown; i++) {
             StoreStatePacket.Entry entry = entries.get(scroll + i);
             int rowY = top + i * ROW_H;
             boolean focused = focusArea == 1 && focusRow == scroll + i;
-            boolean hover = mouseX >= x + 8 && mouseX < x + PANEL_W - 8
+            boolean hover = mouseX >= x + 8 && mouseX < x + panelW() - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H,
+            g.fill(x + 8, rowY, x + panelW() - 8, rowY + ROW_H,
                     (hover || focused) ? HOVER : BOX);
             if (focused) {
                 g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
@@ -432,7 +456,7 @@ public final class StoreScreen extends Screen {
                     entry.stock() > 0 ? DIM : RED, false);
             drawQuantity(g, x, rowY, buyQuantity(entry.itemId()), entry.stock(), mouseX, mouseY);
             String price = entry.buyPrice() + " mk";
-            g.drawString(font, price, x + PANEL_W - 14 - font.width(price), rowY + 5,
+            g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5,
                     state.wallet() >= entry.buyPrice() ? GREEN : RED, false);
         }
         if (entries.isEmpty()) {
@@ -455,14 +479,14 @@ public final class StoreScreen extends Screen {
         List<SellRow> rows = sellRows();
         int x = leftPos();
         int top = listTop();
-        int shown = Math.min(VISIBLE_ROWS, Math.max(0, rows.size() - scroll));
+        int shown = Math.min(visibleRows(), Math.max(0, rows.size() - scroll));
         for (int i = 0; i < shown; i++) {
             SellRow row = rows.get(scroll + i);
             int rowY = top + i * ROW_H;
             boolean focused = focusArea == 1 && focusRow == scroll + i;
-            boolean hover = mouseX >= x + 8 && mouseX < x + PANEL_W - 8
+            boolean hover = mouseX >= x + 8 && mouseX < x + panelW() - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H,
+            g.fill(x + 8, rowY, x + panelW() - 8, rowY + ROW_H,
                     (hover || focused) ? HOVER : BOX);
             if (focused) {
                 g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
@@ -474,7 +498,7 @@ public final class StoreScreen extends Screen {
             g.drawString(font, "×" + row.stack().getCount(), x + 262, rowY + 5, DIM, false);
             drawQuantity(g, x, rowY, sellQuantity(row.slot()), row.stack().getCount(), mouseX, mouseY);
             String price = row.entry().sellPrice() + " mk";
-            g.drawString(font, price, x + PANEL_W - 14 - font.width(price), rowY + 5, GREEN, false);
+            g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5, GREEN, false);
         }
         if (rows.isEmpty()) {
             g.drawString(font, Component.translatable("store.empty_bag"),
@@ -487,14 +511,14 @@ public final class StoreScreen extends Screen {
         List<StoreStatePacket.SubEntry> entries = state.subEntries();
         int x = leftPos();
         int top = listTop();
-        int shown = Math.min(VISIBLE_ROWS, Math.max(0, entries.size() - scroll));
+        int shown = Math.min(visibleRows(), Math.max(0, entries.size() - scroll));
         for (int i = 0; i < shown; i++) {
             StoreStatePacket.SubEntry entry = entries.get(scroll + i);
             int rowY = top + i * ROW_H;
             boolean focused = focusArea == 1 && focusRow == scroll + i;
-            boolean hover = mouseX >= x + 8 && mouseX < x + PANEL_W - 8
+            boolean hover = mouseX >= x + 8 && mouseX < x + panelW() - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H,
+            g.fill(x + 8, rowY, x + panelW() - 8, rowY + ROW_H,
                     (hover || focused) ? HOVER : BOX);
             if (focused) {
                 g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
@@ -509,7 +533,7 @@ public final class StoreScreen extends Screen {
                     x + 196, rowY + 5, DIM, false);
             drawQuantity(g, x, rowY, subQuantity(entry.itemId()), entry.quantity(), mouseX, mouseY);
             String price = entry.sellPrice() + " mk";
-            g.drawString(font, price, x + PANEL_W - 14 - font.width(price), rowY + 5, GREEN, false);
+            g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5, GREEN, false);
         }
         if (entries.isEmpty()) {
             g.drawString(font, Component.translatable("store.empty_sub"),
@@ -517,12 +541,21 @@ public final class StoreScreen extends Screen {
         }
     }
 
+    /** 行内数量控件的 −/+ 左边界：按面板右边对齐，窄面板时不会跑到面板外。 */
+    private int quantityMinusX(int x) {
+        return x + panelW() - 140;
+    }
+
+    private int quantityPlusX(int x) {
+        return x + panelW() - 94;
+    }
+
     /** 行内 − 数量 + 控件；命中区与 mouseClicked 保持一致。 */
     private void drawQuantity(GuiGraphics g, int x, int rowY, int quantity, int max,
                               int mouseX, int mouseY) {
-        int minusX = x + 300;
-        int plusX = x + 346;
-        int qtyX = x + 316;
+        int minusX = quantityMinusX(x);
+        int plusX = quantityPlusX(x);
+        int qtyX = x + panelW() - 125;
         boolean minusHover = mouseX >= minusX && mouseX < minusX + 14
                 && mouseY >= rowY + 2 && mouseY < rowY + 16;
         boolean plusHover = mouseX >= plusX && mouseX < plusX + 14
@@ -573,8 +606,8 @@ public final class StoreScreen extends Screen {
             return true;
         }
         int top = listTop();
-        if (mouseY >= top && mouseY < top + VISIBLE_ROWS * ROW_H
-                && mouseX >= x + 8 && mouseX < x + PANEL_W - 8) {
+        if (mouseY >= top && mouseY < top + visibleRows() * ROW_H
+                && mouseX >= x + 8 && mouseX < x + panelW() - 8) {
             int index = scroll + (int) ((mouseY - top) / ROW_H);
             if (tab == TAB_BUY) {
                 List<StoreStatePacket.Entry> entries = buyEntries();
@@ -585,14 +618,14 @@ public final class StoreScreen extends Screen {
                 focusRow = index;
                 StoreStatePacket.Entry entry = entries.get(index);
                 int current = buyQuantity(entry.itemId());
-                if (mouseX >= x + 300 && mouseX < x + 314) {
+                if (mouseX >= quantityMinusX(x) && mouseX < quantityMinusX(x) + 14) {
                     // 数量为 0 时也消费减号点击，别继续落到"整行 +1"。
                     if (current > 0) {
                         setBuyQuantity(entry.itemId(), current - 1);
                     }
                     return true;
                 }
-                if (mouseX >= x + 346 && mouseX < x + 360 && current < entry.stock()) {
+                if (mouseX >= quantityPlusX(x) && mouseX < quantityPlusX(x) + 14 && current < entry.stock()) {
                     setBuyQuantity(entry.itemId(), current + 1);
                     return true;
                 }
@@ -610,13 +643,13 @@ public final class StoreScreen extends Screen {
                 focusRow = index;
                 SellRow row = rows.get(index);
                 int current = sellQuantity(row.slot());
-                if (mouseX >= x + 300 && mouseX < x + 314) {
+                if (mouseX >= quantityMinusX(x) && mouseX < quantityMinusX(x) + 14) {
                     if (current > 0) {
                         setSellQuantity(row.slot(), current - 1, itemIdOf(row.stack()));
                     }
                     return true;
                 }
-                if (mouseX >= x + 346 && mouseX < x + 360 && current < row.stack().getCount()) {
+                if (mouseX >= quantityPlusX(x) && mouseX < quantityPlusX(x) + 14 && current < row.stack().getCount()) {
                     setSellQuantity(row.slot(), current + 1, itemIdOf(row.stack()));
                     return true;
                 }
@@ -633,13 +666,13 @@ public final class StoreScreen extends Screen {
             focusRow = index;
             StoreStatePacket.SubEntry entry = entries.get(index);
             int current = subQuantity(entry.itemId());
-            if (mouseX >= x + 300 && mouseX < x + 314) {
+            if (mouseX >= quantityMinusX(x) && mouseX < quantityMinusX(x) + 14) {
                 if (current > 0) {
                     setSubQuantity(entry.itemId(), current - 1);
                 }
                 return true;
             }
-            if (mouseX >= x + 346 && mouseX < x + 360
+            if (mouseX >= quantityPlusX(x) && mouseX < quantityPlusX(x) + 14
                     && current < Math.min(entry.quantity(), MAX_SUB_QUANTITY)) {
                 setSubQuantity(entry.itemId(), current + 1);
                 return true;
@@ -649,8 +682,8 @@ public final class StoreScreen extends Screen {
             }
             return true;
         }
-        int cartY = y + PANEL_H - 38;
-        int buttonX = x + PANEL_W - 120;
+        int cartY = y + panelH() - 38;
+        int buttonX = x + panelW() - 120;
         if (cartCount() > 0 && mouseX >= buttonX && mouseX < buttonX + 110
                 && mouseY >= cartY && mouseY < cartY + 18) {
             submitCart();
@@ -800,8 +833,8 @@ public final class StoreScreen extends Screen {
         focusRow = next;
         if (next < scroll) {
             scroll = next;
-        } else if (next >= scroll + VISIBLE_ROWS) {
-            scroll = next - VISIBLE_ROWS + 1;
+        } else if (next >= scroll + visibleRows()) {
+            scroll = next - visibleRows() + 1;
         }
         narrate(rowNarration(next));
     }

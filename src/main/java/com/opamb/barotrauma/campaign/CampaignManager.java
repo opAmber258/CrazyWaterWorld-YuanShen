@@ -102,13 +102,15 @@ public final class CampaignManager {
                 com.opamb.barotrauma.world.level.LevelSelector.connectionType(
                         state.roundsCompleted() == 0, levelDifficulty, levelSeed);
         com.opamb.barotrauma.world.level.LevelParams levelParams = levelType.params();
-        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+        MissionInstance.RouteLevel routeLevel = new MissionInstance.RouteLevel(
                 anchor.slot(), levelType, levelSeed, levelDifficulty,
-                levelParams.routeLength(), anchor.x()));
-        com.opamb.barotrauma.world.DockingBay.Site startSite = MissionInstance.startSite(anchor);
+                levelParams.routeLength(), anchor.x());
+        com.opamb.barotrauma.world.DockingBay.Site startSite =
+                MissionInstance.startSite(anchor, levelParams.routeLength());
         boolean startHasOutpost = originNode != null && originNode.type() == NodeType.OUTPOST;
         boolean endHasOutpost = destNode != null && destNode.type() == NodeType.OUTPOST;
-        MissionInstance.setRouteOutposts(anchor.slot(), startHasOutpost, endHasOutpost);
+        // 关卡配置和哨站标记必须原子发布：新区块可能在下一 tick 就开始生成。
+        MissionInstance.publishRoute(routeLevel, anchor.slot(), startHasOutpost, endHasOutpost);
         BarotraumaMod.LOGGER.info("[level] slot={} type={} difficulty={} route={} start=({},{})",
                 anchor.slot(), levelType.id(), levelDifficulty, levelParams.routeLength(),
                 startSite.x(), startSite.z());
@@ -328,7 +330,7 @@ public final class CampaignManager {
      */
     public static void restoreRoute(RoundState round) {
         if (!round.hasInstance()) {
-            MissionInstance.setRouteLevel(null);
+            MissionInstance.publishRoute(null, Integer.MIN_VALUE, true, true);
             return;
         }
         int slot = MissionInstance.slotForX(round.instanceX(), round.levelSpacing());
@@ -338,12 +340,13 @@ public final class CampaignManager {
                     com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
             com.opamb.barotrauma.world.level.LevelParams params = type.params();
             int distance = round.levelDistance() > 0 ? round.levelDistance() : params.routeLength();
-            MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+            level = new MissionInstance.RouteLevel(
                     slot, type, round.levelSeed(), round.levelDifficulty(), distance,
-                    round.instanceX()));
+                    round.instanceX());
         }
         // AT_NODE 也恢复哨站标记：routeSlot 不随存档保存，重启后默认 true 会在无人航路点建站。
-        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
+        // 关卡配置与标记一次写锁发布，生成线程不会读到"新关卡 + 旧 routeSlot"。
+        MissionInstance.publishRoute(level, slot, round.startHasOutpost(), round.endHasOutpost());
     }
 
     /**

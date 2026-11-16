@@ -211,6 +211,14 @@ public final class OceanEnvironment {
         if (!isInOcean(level, pos)) {
             return false;
         }
+        if (level.isClientSide()) {
+            // 客户端（尤其是连专用服务器时）拿不到服务端的 compartmentQuery，
+            // 只能读同步过来的水面盒；方块船没有物理刚体，这条分支显式不算。
+            return Boolean.TRUE.equals(net.minecraftforge.fml.DistExecutor.unsafeCallWhenOn(
+                    net.minecraftforge.api.distmarker.Dist.CLIENT,
+                    () -> () -> com.opamb.barotrauma.client.ShipWaterRenderer
+                            .isInsidePhysicalCompartment(level, pos)));
+        }
         if (com.opamb.barotrauma.ship.vs.VsState
                 .queryPlayerInDryCompartment(level, pos) != null) {
             return true;
@@ -219,7 +227,7 @@ public final class OceanEnvironment {
         if (!com.opamb.barotrauma.ship.vs.VsSupport.available()) {
             return false;
         }
-        // 客户端没有服务端 compartmentQuery 桥时，用同步过来的水面盒判断舱内。
+        // 服务端没有 compartmentQuery 桥时（理论上不会）退回装配坐标水面盒。
         return com.opamb.barotrauma.ship.vs.VsPilot.isInsideCompartment(level, pos);
     }
 
