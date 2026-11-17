@@ -75,9 +75,20 @@ public class DeconstructorMenu extends AbstractContainerMenu {
         this.serverMachine = machine;
         Container container = machine != null ? machine : new SimpleContainer(MACHINE_SLOTS);
         for (int i = 0; i < INPUT_SLOTS; i++) {
+            final int slotIndex = i;
             addSlot(new Slot(container, i,
                     INPUT_X + (i % INPUT_COLUMNS) * SLOT_PITCH,
-                    INPUT_Y + (i / INPUT_COLUMNS) * SLOT_PITCH));
+                    INPUT_Y + (i / INPUT_COLUMNS) * SLOT_PITCH) {
+                @Override
+                public boolean mayPlace(ItemStack stack) {
+                    return !locked(slotIndex);
+                }
+
+                @Override
+                public boolean mayPickup(Player player) {
+                    return !locked(slotIndex);
+                }
+            });
         }
         for (int i = 0; i < OUTPUT_SLOTS; i++) {
             addSlot(new Slot(container, INPUT_SLOTS + i, INPUT_X + i * SLOT_PITCH, 86) {
@@ -159,6 +170,12 @@ public class DeconstructorMenu extends AbstractContainerMenu {
             return true;
         }
         return false;
+    }
+
+    /** 工作期间锁住活动输入槽（和机器 setItem/removeItem 的守卫一致）。 */
+    private boolean locked(int slot) {
+        return serverMachine != null && serverMachine.working()
+                && serverMachine.workingSlot() == slot;
     }
 
     @Override

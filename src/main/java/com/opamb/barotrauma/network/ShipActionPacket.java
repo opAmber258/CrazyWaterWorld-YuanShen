@@ -101,6 +101,10 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
             if (terminal == null && com.opamb.barotrauma.ship.vs.VsState.active()) {
                 terminal = com.opamb.barotrauma.ship.vs.VsPilot.sonarCoreBlockEntity(level);
             }
+            // 物理船必须有声纳核心：核心被拆后不能再操舵/控泵。
+            if (terminal == null && com.opamb.barotrauma.ship.vs.VsState.active()) {
+                return;
+            }
             if (terminal != null && terminal.condition() <= 0.0D) {
                 return;
             }

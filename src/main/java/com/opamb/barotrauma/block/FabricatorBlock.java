@@ -297,13 +297,9 @@ public class FabricatorBlock extends Block implements EntityBlock {
 
     @Override
     public BlockState mirror(BlockState state, Mirror mirror) {
-        BlockState rotated = state.rotate(mirror.getRotation(state.getValue(FACING)));
-        if (mirror == Mirror.NONE) {
-            return rotated;
-        }
-        // 镜像会翻转列方向：左右段互换、行号不变，否则附属段反推的主段位置是错的。
-        Part part = rotated.getValue(PART);
-        Part swapped = Part.values()[part.row() * 2 + (part.column() == 0 ? 1 : 0)];
-        return rotated.setValue(PART, swapped);
+        // rotate() 已经把 FACING 转过去了，而列轴 = FACING.getClockWise()，
+        // 所以镜像后 PART 的左右列语义自动正确。不能再交换 PART：那样主段会
+        // 变成没有方块实体的另一列，结构模板镜像放置会丢库存/耐久/任务数据。
+        return state.rotate(mirror.getRotation(state.getValue(FACING)));
     }
 }

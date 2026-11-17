@@ -410,7 +410,7 @@ public final class StoreService {
         // 1) 货架上摆着的箱子。未装配时没有物理船位置，按起航锚点找核心。
         for (CabinetBlockEntity shelf : MissionCargo.shelvesNear(level, shipAnchor)) {
             for (int i = 0; i < shelf.getContainerSize(); i++) {
-                addCrateSlots(out, shelf.getItem(i));
+                addCrateSlots(out, shelf.getItem(i), shelf);
             }
         }
         // 2) 货舱地上躺着的箱子（物理船的箱子跟着船在世界坐标里）。
@@ -438,13 +438,19 @@ public final class StoreService {
     }
 
     private static void addCrateSlots(List<ContainerSlot> out, ItemStack crate) {
+        addCrateSlots(out, crate, null);
+    }
+
+    /** @param host 箱子所在的宿主容器（货架/柜子）；地面箱子传 null */
+    private static void addCrateSlots(List<ContainerSlot> out, ItemStack crate,
+                                      @Nullable Container host) {
         if (!isCargoCrate(crate)) {
             return;
         }
         int capacity = ((CrateItem) crate.getItem()).capacity();
         CrateContainer container = new CrateContainer(crate, capacity);
         for (int i = 0; i < capacity; i++) {
-            out.add(new ContainerSlot(container, i));
+            out.add(new ContainerSlot(container, i, host));
         }
     }
 
@@ -544,7 +550,7 @@ public final class StoreService {
             }
             existing.grow(move);
             stack.shrink(move);
-            slot.container().setChanged();
+            slot.setChanged();
             if (stack.isEmpty()) {
                 return true;
             }
@@ -555,7 +561,7 @@ public final class StoreService {
                 continue;
             }
             slot.container().setItem(slot.slot(), stack.copy());
-            slot.container().setChanged();
+            slot.setChanged();
             stack.setCount(0);
             return true;
         }
@@ -748,7 +754,7 @@ public final class StoreService {
                     firstName = stack.getHoverName();
                 }
                 slot.container().removeItem(slot.slot(), take);
-                slot.container().setChanged();
+                slot.setChanged();
                 remaining -= take;
                 sold += take;
                 earned += sale.unitPrice() * take;
@@ -766,8 +772,23 @@ public final class StoreService {
     private record SubSale(String itemId, int quantity, int unitPrice) {
     }
 
-    /** 一个可写入的容器格：钢柜/货架方块实体，或箱子物品内部的 {@link CrateContainer}。 */
-    private record ContainerSlot(Container container, int slot) {
+    /**
+     * 一个可写入的容器格：钢柜/货架方块实体，或箱子物品内部的 {@link CrateContainer}。
+     *
+     * <p>{@code host} 是箱子所在的宿主容器：卖箱内商品后只标箱子物品的 NBT 不够，
+     * 宿主货架区块也要 setChanged，否则存档会跳过、售出的货重载后回来。</p>
+     */
+    private record ContainerSlot(Container container, int slot, @Nullable Container host) {
+        ContainerSlot(Container container, int slot) {
+            this(container, slot, container);
+        }
+
+        void setChanged() {
+            container.setChanged();
+            if (host != null && host != container) {
+                host.setChanged();
+            }
+        }
     }
 
     /** 玩家所在潜艇上的所有钢柜/货架槽位；找不到船核心时返回空表。 */
@@ -848,7 +869,7 @@ public final class StoreService {
                         for (int slot = 0; slot < cabinet.getContainerSize(); slot++) {
                             out.add(new ContainerSlot(cabinet, slot));
                             // 货舱箱子里的商品也要能卖：把箱内容器展开成槽位。
-                            addCrateSlots(out, cabinet.getItem(slot));
+                            addCrateSlots(out, cabinet.getItem(slot), cabinet);
                         }
                     }
                 }

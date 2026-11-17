@@ -105,17 +105,12 @@ public class DeconstructorBlockEntity extends BlockEntity
         if (!ship.tracksHullBlock(cell)) {
             return;
         }
-        // 机器格本身是实心，bodyOf(自己) 恒为 -1；用相邻舱室格判断。
-        BlockPos wetCell = ship.simulation().bodyCellNear(cell);
-        boolean submerged = false;
-        if (wetCell != null && ship.simulation().bodyIsWet(ship.simulation().bodyOf(wetCell))) {
-            java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
-            for (ShipState.Breach breach : ship.breaches()) {
-                breachSources.add(breach.pos());
-            }
-            submerged = wetCell.getY()
-                    < ship.simulation().waterLevelAt(wetCell, breachSources);
+        // 机器格本身是实心，bodyOf(自己) 恒为 -1；任一相邻舱室格进水就算泡水。
+        java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
+        for (ShipState.Breach breach : ship.breaches()) {
+            breachSources.add(breach.pos());
         }
+        boolean submerged = ship.simulation().submergedAt(cell, breachSources);
         if (submerged) {
             be.condition.damage(SUBMERGED_DECAY / 20.0D);
             be.setChanged();
@@ -396,8 +391,23 @@ public class DeconstructorBlockEntity extends BlockEntity
         return slot >= 0 && slot < SLOTS ? items.get(slot) : ItemStack.EMPTY;
     }
 
+    /** 是否正在拆解。 */
+    public boolean working() {
+        return working;
+    }
+
+    /** 正在拆解的输入槽；空闲为 -1。 */
+    public int workingSlot() {
+        return workingSlot;
+    }
+
     @Override
     public ItemStack removeItem(int slot, int amount) {
+        // 工作期间锁住活动输入：否则换成别的物品后 finish() 会按新物品产出，
+        // 耗时却还是旧配方的。
+        if (working && slot == workingSlot) {
+            return ItemStack.EMPTY;
+        }
         ItemStack stack = getItem(slot);
         if (stack.isEmpty()) {
             return ItemStack.EMPTY;
@@ -411,6 +421,9 @@ public class DeconstructorBlockEntity extends BlockEntity
 
     @Override
     public ItemStack removeItemNoUpdate(int slot) {
+        if (working && slot == workingSlot) {
+            return ItemStack.EMPTY;
+        }
         ItemStack stack = getItem(slot);
         items.set(slot, ItemStack.EMPTY);
         return stack;
@@ -419,6 +432,9 @@ public class DeconstructorBlockEntity extends BlockEntity
     @Override
     public void setItem(int slot, ItemStack stack) {
         if (slot < 0 || slot >= SLOTS) {
+            return;
+        }
+        if (working && slot == workingSlot) {
             return;
         }
         items.set(slot, stack);

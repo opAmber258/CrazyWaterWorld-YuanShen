@@ -501,6 +501,7 @@
   "gui.barotrauma.repair": "修理",
   "gui.barotrauma.battery_cell.charge": "电量：%s / %s",
   "gui.barotrauma.deconstructor.input": "输入",
+  "gui.barotrauma.hatch.broken": "舱口已损坏，需要扳手修理",
   "gui.barotrauma.deconstructor.output": "产出",
   "gui.barotrauma.deconstructor.broken": "已损坏（需要扳手）",
   "gui.barotrauma.deconstructor.no_power_paused": "供电不足，拆解暂停",

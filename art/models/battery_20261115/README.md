@@ -1,5 +1,7 @@
 # 电池 Battery · 候选 A（Java 方块模型）
 
+- 验证摘要（唯一）：[validation.json](validation.json)
+
 - 日期：2026-11-15
 - 作者：Han-xing-official
 - 制作来源：人工（Han-xing-official）—— 建模、贴图绘制、预览截图全部人工完成；AI（GLM-5.3-Flash，经 ZCode CLI）仅承担交付打包、离线一致性校验与文档起草，未参与几何、UV、贴图、预览的制作。
@@ -40,11 +42,11 @@
 | 低电（1 段红） | — | `reference/screen_states/battery_tex_low.png` |
 | 空电（全暗） | — | `reference/screen_states/battery_tex_empty.png` |
 
-四个状态均为完整 64×64 贴图，像素比对确认实际差异仅在屏幕正面 UV 区（6 px），其余 ≤8 px 为图层合成舍入噪声（Δ≤7，不可见）。集成侧可用 blockstate 按方块内电量切换贴图；主贴图为满电状态，与预览一致。
+四个状态均为完整贴图，像素统计与差异范围见 `validation.json`；集成侧可用 blockstate 按方块内电量切换贴图。
 
 ## 尺寸依据与换算
 
-按 16 模型单位 = 1 格换算：0.625（宽）× 0.969（高）× 0.375（厚）格。原版中该设备为贴墙安装的蓄电设施，本轮厚度与比例由作者对照原作精灵图自定；未随附 blockstate / loot table / lang（属集成者接入范围）。
+按 16 模型单位 = 1 格换算，具体包围盒见 `validation.json`。原版中该设备为贴墙安装的蓄电设施，本轮厚度与比例由作者对照原作精灵图自定；blockstate / loot table / lang 属集成者接入范围。
 
 ## 旋转与格式注意（接入前必读）
 
@@ -60,8 +62,7 @@
 
 ## 预览与验证
 
-- 四张预览由作者在 Blockbench 视口手动截图导出（非脚本渲染）：正视（屏幕面，−Z 北向）/ 背视 / 侧视 / 斜视（透视），1200×900；
+- 四张预览由作者在 Blockbench 视口手动截图导出（非脚本渲染）：正视（屏幕面，−Z 北向）/ 背视 / 侧视 / 斜视（透视）；
 - 离线渲染器（`reference/render_bbmodel.js`，ZYX 欧拉序）复算世界包围盒并渲染比对预览轮廓；
-- `reference/validate_deliverable.js` 在仓库根可重跑：命名、格式、计数、贴图 2 的幂与真透明、贴图与内嵌字节一致、预览尺寸等；
-- bbmodel 已由作者在 Blockbench 5.x 中重开编辑并保存（2026-11-15）；
+- `reference/validate_deliverable.js` 可重跑全部校验，结果汇总在 `validation.json`；
 - 已接入 `src/main/resources`（`battery.geo.json` + 方块注册，按电量切换四段贴图）；游戏内验收状态见 `validation.json` 的 `runtime.in_game_verified`。

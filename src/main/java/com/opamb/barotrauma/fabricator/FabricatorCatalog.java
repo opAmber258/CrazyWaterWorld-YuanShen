@@ -73,12 +73,16 @@ public final class FabricatorCatalog {
         List<Recipe> recipes = new ArrayList<>();
         for (JsonElement element : root.getAsJsonArray("recipes")) {
             JsonObject object = element.getAsJsonObject();
+            // 原作分类可能是 "Equipment,Electrical" 这种组合标签：界面按单一
+            // 分类建按钮，直接用完整字符串会出现两个同名「设备」页签。
+            String rawCategory = object.get("category").getAsString();
+            String category = rawCategory.split(",")[0].trim();
             recipes.add(new Recipe(
                     object.get("id").getAsString(),
                     object.get("output").getAsString(),
                     object.get("count").getAsInt(),
                     object.get("time").getAsDouble(),
-                    object.get("category").getAsString(),
+                    category,
                     ingredients(object.getAsJsonArray("ingredients"))));
         }
         List<Deconstruct> deconstructs = new ArrayList<>();

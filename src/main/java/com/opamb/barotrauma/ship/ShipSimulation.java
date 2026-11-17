@@ -1290,6 +1290,30 @@ public final class ShipSimulation {
         return null;
     }
 
+    /**
+     * 实心机器格是否泡水：任一相邻舱室格的水位达到机器格就算。
+     *
+     * <p>只看第一个相邻格会漏：北侧干舱、南侧积水舱时机器南面已经淹了。</p>
+     */
+    public boolean submergedAt(net.minecraft.core.BlockPos cell,
+                               java.util.Collection<net.minecraft.core.BlockPos> breachSources) {
+        if (cell == null) {
+            return false;
+        }
+        for (net.minecraft.core.BlockPos next : new net.minecraft.core.BlockPos[]{
+                cell.above(), cell.below(), cell.north(), cell.south(),
+                cell.east(), cell.west()}) {
+            int body = bodyOf(next);
+            if (body < 0 || !bodyIsWet(body)) {
+                continue;
+            }
+            if (next.getY() < waterLevelAt(next, breachSources)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** 这一格在第几个水体里（0..n-1 密闭舱室，n.. 连海空腔）；不在任何舱里返回 -1。 */
     public int bodyOf(net.minecraft.core.BlockPos cell) {
         if (cell == null) {

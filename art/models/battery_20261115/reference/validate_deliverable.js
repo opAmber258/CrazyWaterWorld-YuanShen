@@ -12,13 +12,17 @@ const results = [];
 const check = (name, pass, detail) => { results.push({ name, pass, detail }); console.log((pass ? 'PASS' : 'FAIL') + ' | ' + name + (detail ? ' | ' + detail : '')); };
 
 function decodePNG(buf) {
-  let pos = 8, w = 0, h = 0, ct = -1;
+  let pos = 8, w = 0, h = 0, ct = -1, bd = -1, interlace = -1;
   const idat = [];
   while (pos < buf.length) {
     const len = buf.readUInt32BE(pos), type = buf.toString('ascii', pos + 4, pos + 8);
-    if (type === 'IHDR') { w = buf.readUInt32BE(pos + 8); h = buf.readUInt32BE(pos + 12); ct = buf[pos + 17]; }
+    if (type === 'IHDR') { w = buf.readUInt32BE(pos + 8); h = buf.readUInt32BE(pos + 12);
+      bd = buf[pos + 16]; ct = buf[pos + 17]; interlace = buf[pos + 20]; }
     if (type === 'IDAT') idat.push(buf.subarray(pos + 8, pos + 8 + len));
     pos += 12 + len;
+  }
+  if (bd !== 8 || (ct !== 6 && ct !== 2) || interlace !== 0) {
+    throw new Error('unsupported PNG: bitDepth=' + bd + ' colorType=' + ct + ' interlace=' + interlace);
   }
   const raw = zlib.inflateSync(Buffer.concat(idat));
   const ch = ct === 6 ? 4 : 3;
@@ -86,7 +90,10 @@ check('java_block 格式', meta.model_format === 'java_block', meta.model_format
 check('bbmodel format_version 5.0（Blockbench 5.x）', String(meta.format_version) === '5.0', meta.format_version);
 const faces = bb.elements.reduce((n, e) => n + Object.values(e.faces || {}).filter(f => f && f.uv).length, 0);
 check('元素/面计数', true, bb.elements.length + ' cubes / ' + faces + ' faces / ' + (bb.groups || []).length + ' groups / 0 bones');
-check('无隐藏几何', bb.elements.filter(e => e.visibility === false).length === 0, bb.elements.filter(e => e.visibility === false).length + ' hidden elements');
+const hiddenElements = bb.elements.filter(e => e.visibility === false);
+const hiddenGroups = (bb.groups || []).filter(g => g.visibility === false);
+check('无隐藏几何', hiddenElements.length === 0 && hiddenGroups.length === 0,
+      hiddenElements.length + ' hidden elements, ' + hiddenGroups.length + ' hidden groups');
 const bbox = worldBBox(bb);
 check('世界包围盒', true, 'size ' + bbox.size.join(' × ') + '，min ' + bbox.min.join(',') + '，max ' + bbox.max.join(','));
 

@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -117,5 +118,20 @@ class FabricatorCatalogTest {
                 assertFalse(entry.outputs().isEmpty(), entry.inputId());
             }
         }
+    }
+
+    @Test
+    void 组合分类按第一个标签归类() throws IOException {
+        String json = """
+                {"recipes":[
+                  {"id":"cell","output":"barotrauma:cell","count":1,"time":1.0,"money":0,
+                   "category":"Equipment,Electrical","ingredients":[]},
+                  {"id":"wrench","output":"barotrauma:wrench","count":1,"time":1.0,"money":0,
+                   "category":"Equipment","ingredients":[]}
+                ],"deconstruct":[]}
+                """;
+        FabricatorCatalog.Catalog catalog = FabricatorCatalog.parse(new StringReader(json));
+        assertEquals("Equipment", catalog.recipe("cell").category());
+        assertEquals(List.of("Equipment"), catalog.categories());
     }
 }

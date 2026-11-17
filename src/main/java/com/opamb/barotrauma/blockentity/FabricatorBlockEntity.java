@@ -102,17 +102,12 @@ public class FabricatorBlockEntity extends BlockEntity
             return;
         }
         // 泡水：原作 InWater 每秒 -0.5 耐久（与是否在加工无关）。
-        // 机器格本身是实心，bodyOf(自己) 恒为 -1；用相邻舱室格判断。
-        BlockPos wetCell = ship.simulation().bodyCellNear(cell);
-        boolean submerged = false;
-        if (wetCell != null && ship.simulation().bodyIsWet(ship.simulation().bodyOf(wetCell))) {
-            java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
-            for (ShipState.Breach breach : ship.breaches()) {
-                breachSources.add(breach.pos());
-            }
-            submerged = wetCell.getY()
-                    < ship.simulation().waterLevelAt(wetCell, breachSources);
+        // 机器格本身是实心，bodyOf(自己) 恒为 -1；任一相邻舱室格进水就算泡水。
+        java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
+        for (ShipState.Breach breach : ship.breaches()) {
+            breachSources.add(breach.pos());
         }
+        boolean submerged = ship.simulation().submergedAt(cell, breachSources);
         if (submerged) {
             be.condition.damage(SUBMERGED_DECAY / 20.0D);
             be.setChanged();

@@ -14,13 +14,17 @@ const bb = JSON.parse(fs.readFileSync(bbPath, 'utf8'));
 
 // ---------- PNG decode (embedded texture) ----------
 function decodePNG(buf) {
-  let pos = 8, w = 0, h = 0, ct = -1;
+  let pos = 8, w = 0, h = 0, ct = -1, bd = -1, interlace = -1;
   const idat = [];
   while (pos < buf.length) {
     const len = buf.readUInt32BE(pos), type = buf.toString('ascii', pos + 4, pos + 8);
-    if (type === 'IHDR') { w = buf.readUInt32BE(pos + 8); h = buf.readUInt32BE(pos + 12); ct = buf[pos + 17]; }
+    if (type === 'IHDR') { w = buf.readUInt32BE(pos + 8); h = buf.readUInt32BE(pos + 12);
+      bd = buf[pos + 16]; ct = buf[pos + 17]; interlace = buf[pos + 20]; }
     if (type === 'IDAT') idat.push(buf.subarray(pos + 8, pos + 8 + len));
     pos += 12 + len;
+  }
+  if (bd !== 8 || (ct !== 6 && ct !== 2) || interlace !== 0) {
+    throw new Error('unsupported PNG: bitDepth=' + bd + ' colorType=' + ct + ' interlace=' + interlace);
   }
   const raw = zlib.inflateSync(Buffer.concat(idat));
   const ch = ct === 6 ? 4 : 3;
@@ -256,7 +260,10 @@ function render(view, W, H, file) {
         const l1 = ((C.x - sx) * (A.y - sy) - (C.y - sy) * (A.x - sx)) / area;
         const l2 = 1 - l0 - l1;
         if (l0 < 0 || l1 < 0 || l2 < 0) continue;
-        const depth = l0 * A.z + l1 * B.z + l2 * C.z;
+        // 透视深度要按 1/z 插值；线性插值会让较远的面错误遮住较近的面。
+        const depth = ortho
+            ? l0 * A.z + l1 * B.z + l2 * C.z
+            : 1 / (l0 / A.z + l1 / B.z + l2 / C.z);
         const idx = py * W + px;
         if (depth >= zbuf[idx]) continue;
         let tu, tv;
