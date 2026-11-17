@@ -502,6 +502,7 @@
   "gui.barotrauma.battery_cell.charge": "Charge: %s / %s",
   "gui.barotrauma.deconstructor.input": "Input",
   "gui.barotrauma.hatch.broken": "Hatch broken; repair it with a wrench",
+  "gui.barotrauma.bulkhead_door.broken": "Bulkhead door broken; repair it with a wrench",
   "gui.barotrauma.deconstructor.output": "Output",
   "gui.barotrauma.deconstructor.broken": "Broken (needs wrench)",
   "gui.barotrauma.deconstructor.no_power_paused": "No power; deconstruction paused",

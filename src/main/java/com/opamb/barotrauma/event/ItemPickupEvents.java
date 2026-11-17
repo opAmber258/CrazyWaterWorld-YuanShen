@@ -72,7 +72,7 @@ public final class ItemPickupEvents {
      */
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (event.getLevel().isClientSide || !event.getItemStack().isEmpty()
+        if (!event.getItemStack().isEmpty()
                 || event.getHand() != InteractionHand.MAIN_HAND) {
             return;
         }
@@ -86,6 +86,13 @@ public final class ItemPickupEvents {
         Vec3 hit = event.getHitVec().getLocation();
         if (eye.distanceTo(hit) < eye.distanceTo(center) - 1.0E-3D) {
             // 准星先打到方块（机器面板/柜门等在物品前面），交给方块自己处理。
+            return;
+        }
+        if (player.level().isClientSide) {
+            // 客户端也要消费这次点击：否则原版会继续走副手，抱着箱子时
+            // 捡东西还会把箱子界面弹出来。实际拾取只由服务端执行。
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
             return;
         }
         if (tryPickup(player, target) == Pickup.FAILED) {

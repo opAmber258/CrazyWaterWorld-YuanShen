@@ -159,7 +159,8 @@ public class DeconstructorBlockEntity extends BlockEntity
     }
 
     /** 第一个输入格里的物品对应的拆解表；没有就返回 null。 */
-    public FabricatorCatalog.Deconstruct recipeForInput() {
+    /** 第一个“有配方”的非空输入槽；没有返回 -1。 */
+    private int firstRecipeSlot() {
         for (int i = 0; i < INPUT_SLOTS; i++) {
             ItemStack stack = items.get(i);
             if (stack.isEmpty()) {
@@ -167,9 +168,21 @@ public class DeconstructorBlockEntity extends BlockEntity
             }
             String id = net.minecraft.core.registries.BuiltInRegistries.ITEM
                     .getKey(stack.getItem()).toString();
-            return FabricatorData.catalog().deconstruct(id);
+            if (FabricatorData.catalog().deconstruct(id) != null) {
+                return i;
+            }
         }
-        return null;
+        return -1;
+    }
+
+    public FabricatorCatalog.Deconstruct recipeForInput() {
+        int slot = firstRecipeSlot();
+        if (slot < 0) {
+            return null;
+        }
+        String id = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(items.get(slot).getItem()).toString();
+        return FabricatorData.catalog().deconstruct(id);
     }
 
     public boolean canStart() {
@@ -183,12 +196,9 @@ public class DeconstructorBlockEntity extends BlockEntity
         if (!canStart()) {
             return false;
         }
-        for (int i = 0; i < INPUT_SLOTS; i++) {
-            if (!items.get(i).isEmpty()) {
-                workingSlot = i;
-                break;
-            }
-        }
+        // 和工作槽用同一个选择方法：槽 0 放了没配方的物品时，
+        // 不能挡住后面真正能拆的输入。
+        workingSlot = firstRecipeSlot();
         FabricatorCatalog.Deconstruct recipe = recipeForInput();
         if (recipe == null) {
             return false;

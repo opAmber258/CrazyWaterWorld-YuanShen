@@ -195,7 +195,8 @@ public class DeconstructorMenu extends AbstractContainerMenu {
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot slot = slots.get(index);
-        if (!slot.hasItem()) {
+        // Shift 点击也要尊重槽位锁（工作中活动输入槽 mayPickup=false）。
+        if (!slot.hasItem() || !slot.mayPickup(player)) {
             return ItemStack.EMPTY;
         }
         ItemStack stack = slot.getItem();

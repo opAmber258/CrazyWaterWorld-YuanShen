@@ -1307,7 +1307,9 @@ public final class ShipSimulation {
             if (body < 0 || !bodyIsWet(body)) {
                 continue;
             }
-            if (next.getY() < waterLevelAt(next, breachSources)) {
+            // 水位要跟机器自己的底面比：相邻格在机器下方时，水位没过邻居
+            // 不代表淹到机器。
+            if (cell.getY() < waterLevelAt(next, breachSources)) {
                 return true;
             }
         }

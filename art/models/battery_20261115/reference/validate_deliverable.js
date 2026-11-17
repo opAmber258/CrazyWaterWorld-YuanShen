@@ -27,10 +27,16 @@ function decodePNG(buf) {
   const raw = zlib.inflateSync(Buffer.concat(idat));
   const ch = ct === 6 ? 4 : 3;
   const stride = w * ch + 1;
+  if (raw.length !== h * stride) {
+    throw new Error('PNG 扫描行长度不符: ' + raw.length + ' != ' + h * stride);
+  }
   const px = Buffer.alloc(w * h * 4);
   let prev = Buffer.alloc(w * ch);
   for (let y = 0; y < h; y++) {
     const f = raw[y * stride];
+    if (f > 4) {
+      throw new Error('PNG 过滤类型非法: ' + f + ' @row ' + y);
+    }
     const line = raw.subarray(y * stride + 1, (y + 1) * stride);
     const cur = Buffer.alloc(w * ch);
     for (let i = 0; i < w * ch; i++) {
@@ -114,8 +120,15 @@ for (const f of ['preview_front.png', 'preview_back.png', 'preview_side.png', 'p
   const p = path.join(DIR, f);
   if (!fs.existsSync(p)) { check('预览 ' + f, false, '缺失'); continue; }
   const d = fs.readFileSync(p);
-  const pw = d.readUInt32BE(16), ph = d.readUInt32BE(20);
-  check('预览 ' + f + ' 尺寸 1200×900', pw === 1200 && ph === 900, pw + '×' + ph);
+  let decoded;
+  try {
+    decoded = decodePNG(d);
+  } catch (err) {
+    check('预览 ' + f + ' 可解码', false, String(err.message || err));
+    continue;
+  }
+  check('预览 ' + f + ' 尺寸 1200×900', decoded.w === 1200 && decoded.h === 900,
+        decoded.w + '×' + decoded.h);
 }
 check('README.md 存在', fs.existsSync(path.join(DIR, 'README.md')));
 check('validation.json 存在', fs.existsSync(path.join(DIR, 'validation.json')));

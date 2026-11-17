@@ -6,6 +6,7 @@ import com.opamb.barotrauma.ship.RepairTarget;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.block.Block;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.ExplosionEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -46,10 +47,42 @@ public final class RepairDamageEvents {
         if (!(event.getLevel() instanceof ServerLevel level)) {
             return;
         }
-        for (BlockPos pos : event.getAffectedBlocks()) {
-            if (level.getBlockEntity(pos) instanceof RepairTarget target) {
-                target.damage(EXPLOSION_DAMAGE);
+        // 设备只掉耐久、不该被原版爆炸删掉：单格设备把格子移出破坏列表，
+        // 多段设备把同一方块类的相邻段一起保留（否则段被删会连带主段）。
+        java.util.List<BlockPos> affected = event.getAffectedBlocks();
+        java.util.List<BlockPos> keep = new java.util.ArrayList<>();
+        for (BlockPos pos : affected) {
+            if (!(level.getBlockEntity(pos) instanceof RepairTarget target)) {
+                continue;
+            }
+            target.damage(EXPLOSION_DAMAGE);
+            keep.add(pos);
+            Block block = level.getBlockState(pos).getBlock();
+            if (!isMultiPart(block)) {
+                continue;
+            }
+            for (BlockPos other : affected) {
+                if (other.equals(pos) || other.distManhattan(pos) > 4) {
+                    continue;
+                }
+                if (level.getBlockState(other).getBlock() == block) {
+                    keep.add(other);
+                }
             }
         }
+        affected.removeAll(keep);
+    }
+
+    /** 多段设备：爆炸时保留所有段，避免段被删后主段/数据一起失效。 */
+    private static boolean isMultiPart(Block block) {
+        return block == com.opamb.barotrauma.registry.ModBlocks.FABRICATOR.get()
+                || block == com.opamb.barotrauma.registry.ModBlocks.DECONSTRUCTOR.get()
+                || block == com.opamb.barotrauma.registry.ModBlocks.REACTOR.get()
+                || block == com.opamb.barotrauma.registry.ModBlocks.ENGINE.get()
+                || block == com.opamb.barotrauma.registry.ModBlocks.BALLAST_PUMP.get()
+                || block == com.opamb.barotrauma.registry.ModShipBlocks.HATCH.get()
+                || block == com.opamb.barotrauma.registry.ModShipBlocks.HATCH_LADDER.get()
+                || block == com.opamb.barotrauma.registry.ModShipBlocks.BULKHEAD_DOOR.get()
+                || block == com.opamb.barotrauma.registry.ModShipBlocks.NAVIGATION_TERMINAL.get();
     }
 }

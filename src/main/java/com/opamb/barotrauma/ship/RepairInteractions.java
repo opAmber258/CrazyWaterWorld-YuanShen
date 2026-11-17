@@ -36,6 +36,11 @@ public final class RepairInteractions {
         if (player == null) {
             return false;
         }
+        // 抱着双手物品时两只手都占着：即使主手拿着扳手，也不能触发方块里的
+        // 修理分支（否则右键门会弹修理窗口而不是开门）。
+        if (com.opamb.barotrauma.item.TwoHanded.isCarrying(player)) {
+            return false;
+        }
         Item required = tool == RepairTarget.Tool.WRENCH
                 ? ModItems.WRENCH.get() : ModItems.SCREWDRIVER.get();
         return player.getMainHandItem().is(required) || player.getOffhandItem().is(required);

@@ -57,7 +57,7 @@ public record FabricatorActionPacket(BlockPos pos, int action, int recipeIndex, 
                 return;
             }
             switch (action) {
-                case CANCEL -> machine.cancel();
+                case CANCEL -> machine.cancel(level);
                 case START -> {
                     if (recipeIndex < 0
                             || recipeIndex >= FabricatorData.catalog().recipes().size()) {

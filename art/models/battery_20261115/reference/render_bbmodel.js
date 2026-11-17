@@ -29,10 +29,16 @@ function decodePNG(buf) {
   const raw = zlib.inflateSync(Buffer.concat(idat));
   const ch = ct === 6 ? 4 : 3;
   const stride = w * ch + 1;
+  if (raw.length !== h * stride) {
+    throw new Error('PNG 扫描行长度不符: ' + raw.length + ' != ' + h * stride);
+  }
   const px = Buffer.alloc(w * h * 4);
   let prev = Buffer.alloc(w * ch);
   for (let y = 0; y < h; y++) {
     const f = raw[y * stride];
+    if (f > 4) {
+      throw new Error('PNG 过滤类型非法: ' + f + ' @row ' + y);
+    }
     const line = raw.subarray(y * stride + 1, (y + 1) * stride);
     const cur = Buffer.alloc(w * ch);
     for (let i = 0; i < w * ch; i++) {

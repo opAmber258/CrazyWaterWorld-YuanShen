@@ -185,7 +185,8 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
                     return InteractionResult.CONSUME;
                 }
                 if (door.condition() <= 0.0D) {
-                    player.displayClientMessage(Component.literal("门已损坏，需要扳手修理"), true);
+                    player.displayClientMessage(
+                            Component.translatable("gui.barotrauma.bulkhead_door.broken"), true);
                     return InteractionResult.CONSUME;
                 }
                 if (player.isShiftKeyDown()) {

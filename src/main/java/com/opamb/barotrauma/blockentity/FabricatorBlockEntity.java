@@ -193,15 +193,38 @@ public class FabricatorBlockEntity extends BlockEntity
         return true;
     }
 
-    public void cancel() {
-        if (working) {
-            working = false;
-            progressSeconds = 0.0D;
-            recipeId = null;
-            pendingCrafts = 0;
-            ownerId = null;
-            setChanged();
+    /**
+     * 取消制作：当前这一件已经扣过料，先退给发起者（离线/背包满就掉在机器旁）。
+     * 队列里没开工的件数没有扣料，不用退。
+     */
+    public void cancel(ServerLevel level) {
+        if (!working) {
+            return;
         }
+        FabricatorCatalog.Recipe recipe = recipeId == null ? null
+                : FabricatorData.catalog().recipe(recipeId);
+        Player owner = ownerId == null ? null
+                : level.getServer().getPlayerList().getPlayer(ownerId);
+        if (recipe != null) {
+            for (FabricatorCatalog.Ingredient ingredient : recipe.ingredients()) {
+                ItemStack refund = new ItemStack(FabricatorData.item(ingredient.itemId()),
+                        ingredient.count());
+                if (refund.isEmpty()) {
+                    continue;
+                }
+                if (owner != null && owner.getInventory().add(refund)) {
+                    continue;
+                }
+                Containers.dropItemStack(level, worldPosition.getX() + 0.5D,
+                        worldPosition.getY() + 1.0D, worldPosition.getZ() + 0.5D, refund);
+            }
+        }
+        working = false;
+        progressSeconds = 0.0D;
+        recipeId = null;
+        pendingCrafts = 0;
+        ownerId = null;
+        setChanged();
     }
 
     private void finishCraft(ServerLevel level) {

@@ -876,7 +876,8 @@ public final class StoreService {
             }
         }
         // 地面上的跟船货箱（交付时生成的金属箱）也要能出售。
-        Vec3 coreCenter = MissionCargo.coreWorld(level);
+        // 已拆回方块形态的潜艇没有 shipPosition()，用锚点找核心。
+        Vec3 coreCenter = MissionCargo.coreWorldNear(level, center);
         if (coreCenter != null) {
             double radius = 48.0D;
             AABB area = new AABB(coreCenter.x - radius, coreCenter.y - radius, coreCenter.z - radius,
