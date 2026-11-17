@@ -11,7 +11,7 @@ class ConditionComponentTest {
 
     @Test
     void 活动时按每秒速度掉耐久() {
-        ConditionComponent condition = new ConditionComponent(100.0D, 1.0D, 0, 0, 0.0D, 80.0D);
+        ConditionComponent condition = new ConditionComponent(100.0D, 1.0D, 0, 0, 0.0D, 0.8D);
         for (int i = 0; i < 20; i++) {
             condition.tick(null, true);
         }
@@ -20,7 +20,7 @@ class ConditionComponentTest {
 
     @Test
     void 不活动不劣化() {
-        ConditionComponent condition = new ConditionComponent(100.0D, 1.0D, 0, 0, 0.0D, 80.0D);
+        ConditionComponent condition = new ConditionComponent(100.0D, 1.0D, 0, 0, 0.0D, 0.8D);
         for (int i = 0; i < 100; i++) {
             condition.tick(null, false);
         }
@@ -29,7 +29,7 @@ class ConditionComponentTest {
 
     @Test
     void 不会低于最小劣化耐久() {
-        ConditionComponent condition = new ConditionComponent(100.0D, 100.0D, 0, 0, 10.0D, 80.0D);
+        ConditionComponent condition = new ConditionComponent(100.0D, 100.0D, 0, 0, 10.0D, 0.8D);
         for (int i = 0; i < 200; i++) {
             condition.tick(null, true);
         }
@@ -38,7 +38,7 @@ class ConditionComponentTest {
 
     @Test
     void 修理到满并重置比例() {
-        ConditionComponent condition = new ConditionComponent(100.0D, 1.0D, 0, 0, 0.0D, 80.0D);
+        ConditionComponent condition = new ConditionComponent(100.0D, 1.0D, 0, 0, 0.0D, 0.8D);
         condition.damage(50.0D);
         assertEquals(0.5D, condition.fraction(), 1.0E-9D);
         assertTrue(condition.canRepair());
@@ -49,8 +49,19 @@ class ConditionComponentTest {
     }
 
     @Test
+    void 修理阈值按比例判定() {
+        ConditionComponent condition = new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 0.8D);
+        condition.damage(21.0D); // 79%
+        assertTrue(condition.canRepair());
+        condition.repair(1.0D); // 80%
+        assertFalse(condition.canRepair());
+        condition.repair(1.0D); // 81%
+        assertFalse(condition.canRepair());
+    }
+
+    @Test
     void 损坏判定为零() {
-        ConditionComponent condition = new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 80.0D);
+        ConditionComponent condition = new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 0.8D);
         condition.damage(100.0D);
         assertTrue(condition.broken());
         assertEquals(0.0D, condition.fraction(), 1.0E-9D);
@@ -58,7 +69,7 @@ class ConditionComponentTest {
 
     @Test
     void 低耐久耗电惩罚() {
-        ConditionComponent condition = new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 80.0D);
+        ConditionComponent condition = new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 0.8D);
         assertEquals(1.0D, condition.powerPenalty(), 1.0E-9D);
         condition.damage(70.0D); // 30% 耐久
         assertEquals(1.3125D, condition.powerPenalty(), 1.0E-9D);

@@ -132,6 +132,11 @@ public class FabricatorBlock extends Block implements EntityBlock {
         Direction facing = context.getHorizontalDirection().getOpposite();
         for (Part part : Part.values()) {
             BlockPos pos = partPos(master, facing, part);
+            // 超出建造高度时 getBlockState 是虚空空气、canBeReplaced 会放行，
+            // 但 setBlock 会失败，最终只剩半台机器。
+            if (level.isOutsideBuildHeight(pos)) {
+                return null;
+            }
             if (!level.getBlockState(pos).canBeReplaced(context)) {
                 return null;
             }
@@ -292,6 +297,13 @@ public class FabricatorBlock extends Block implements EntityBlock {
 
     @Override
     public BlockState mirror(BlockState state, Mirror mirror) {
-        return state.rotate(mirror.getRotation(state.getValue(FACING)));
+        BlockState rotated = state.rotate(mirror.getRotation(state.getValue(FACING)));
+        if (mirror == Mirror.NONE) {
+            return rotated;
+        }
+        // 镜像会翻转列方向：左右段互换、行号不变，否则附属段反推的主段位置是错的。
+        Part part = rotated.getValue(PART);
+        Part swapped = Part.values()[part.row() * 2 + (part.column() == 0 ? 1 : 0)];
+        return rotated.setValue(PART, swapped);
     }
 }

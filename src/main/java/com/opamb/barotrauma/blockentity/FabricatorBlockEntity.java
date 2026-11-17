@@ -90,13 +90,11 @@ public class FabricatorBlockEntity extends BlockEntity
         }
         ShipState ship = be.resolveShip(server, pos);
         if (ship == null) {
+            // 核心被拆/区块未加载只是暂时找不到船：只暂停，保留 working 和已扣料，
+            // 核心恢复后继续做。
             be.powered = false;
             be.powerAvailable = false;
             be.lastVoltage = 0.0D;
-            if (be.working) {
-                be.working = false;
-                be.setChanged();
-            }
             return;
         }
         BlockPos cell = assemblyPos(server, pos);
@@ -123,7 +121,9 @@ public class FabricatorBlockEntity extends BlockEntity
         // 清 working 的话玩家再点制作会重新扣一份料。
         // 空转也上报（需求 0），这样面板能直接读到"现在有没有电"，
         // 而不是等到开工才发现电压不够。
-        double demand = be.working ? POWER_KW * be.condition.powerPenalty() : 0.0D;
+        // 损坏的机器保留任务但不再吃电：否则 750 kW 会一直计入全船负载。
+        double demand = be.working && !be.condition.broken()
+                ? POWER_KW * be.condition.powerPenalty() : 0.0D;
         ship.simulation().reportConsumer(cell, demand, MIN_VOLTAGE, be.boundBox);
         be.lastVoltage = ship.simulation().consumerVoltage(cell);
         be.powerAvailable = be.lastVoltage >= MIN_VOLTAGE;
@@ -373,7 +373,7 @@ public class FabricatorBlockEntity extends BlockEntity
 
     @Override
     public double powerDemandKw() {
-        return working ? POWER_KW : 0.0D;
+        return working && !condition.broken() ? POWER_KW : 0.0D;
     }
 
     @Override

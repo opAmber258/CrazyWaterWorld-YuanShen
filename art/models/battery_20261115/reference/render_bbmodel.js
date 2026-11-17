@@ -224,7 +224,7 @@ function render(view, W, H, file) {
     const aspect = H / W;
     if (ortho) return { x: (x / span) * aspect + 0.5, y: 0.5 - y / span, z };
     const ez = dot(rel, f) + 40; // distance along view axis from eye plane
-    const scale = 1 / (ez * Math.tan(persp.fov / 2));
+    const scale = 0.5 / (ez * Math.tan(persp.fov / 2));
     return { x: 0.5 + x * scale * aspect, y: 0.5 - y * scale, z: ez };
   };
 

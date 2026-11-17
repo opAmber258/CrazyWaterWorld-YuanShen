@@ -145,6 +145,8 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
             // 输出单独上报 0，避免损坏的反应堆继续发电；但残余热仍可能起火/熔毁，
             // 事件不能丢。
             int events = be.state.tick(SECONDS_PER_TICK, be.availableFuel(), 0.0D);
+            // 温度/裂变/危险计时器在损坏后仍会变：必须标脏，否则读档回到旧热状态。
+            be.setChanged();
             if (ship != null && cell != null) {
                 ship.simulation().reportReactor(cell, 0.0D, be.state.capacityKw(),
                         be.state.temperature(), be.state.overheated(), be.state.meltedDown());
@@ -155,6 +157,8 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
             if ((events & ReactorState.EVENT_MELTDOWN) != 0) {
                 be.meltdown(server);
             }
+            // 损坏不等于安全：过热警报/烟雾要继续，和正常分支共用。
+            dangerEffects(server, be);
             return;
         }
 
@@ -177,6 +181,11 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
             be.meltdown(server);
         }
 
+        dangerEffects(server, be);
+    }
+
+    /** 过热/熔毁警报 + 过热白烟；损坏停机后也要继续跑。 */
+    private static void dangerEffects(ServerLevel server, ReactorBlockEntity be) {
         // 过热/熔毁警报：每 2 秒响一次原版 AlarmBuzzerLoop（不需要独立警报方块）。
         if (be.state.overheated() || be.state.meltedDown()) {
             be.alarmTimer += SECONDS_PER_TICK;

@@ -847,8 +847,22 @@ public final class StoreService {
                     if (chunk.getBlockEntity(pos) instanceof CabinetBlockEntity cabinet) {
                         for (int slot = 0; slot < cabinet.getContainerSize(); slot++) {
                             out.add(new ContainerSlot(cabinet, slot));
+                            // 货舱箱子里的商品也要能卖：把箱内容器展开成槽位。
+                            addCrateSlots(out, cabinet.getItem(slot));
                         }
                     }
+                }
+            }
+        }
+        // 地面上的跟船货箱（交付时生成的金属箱）也要能出售。
+        Vec3 coreCenter = MissionCargo.coreWorld(level);
+        if (coreCenter != null) {
+            double radius = 48.0D;
+            AABB area = new AABB(coreCenter.x - radius, coreCenter.y - radius, coreCenter.z - radius,
+                    coreCenter.x + radius, coreCenter.y + radius, coreCenter.z + radius);
+            for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, area)) {
+                if (entity.getPersistentData().getBoolean(MissionCargo.TAG_PINNED)) {
+                    addCrateSlots(out, entity.getItem());
                 }
             }
         }

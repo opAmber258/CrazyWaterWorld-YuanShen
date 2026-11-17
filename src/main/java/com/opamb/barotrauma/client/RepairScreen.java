@@ -40,13 +40,10 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
     private static final int RED = 0xFFC8483C;
     private static final int TRACK = 0xFF0C120E;
 
-    /** 原作 QteDuration / QteCooldownDuration。 */
-    private static final float QTE_DURATION = 0.5F;
-    private static final float QTE_COOLDOWN = 0.5F;
-
-    private float qteTimer = QTE_DURATION;
-    private float qteCooldown;
     private int startPendingTicks;
+    /** 上一 tick / 当前 tick 的服务端 QTE 指针，渲染时插值。 */
+    private float prevMarker = 1.0F;
+    private float curMarker = 1.0F;
 
     private double prevFraction;
     private double curFraction;
@@ -91,7 +88,8 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
     @Override
     protected void containerTick() {
         super.containerTick();
-        updateQte();
+        prevMarker = curMarker;
+        curMarker = markerFraction();
         if (startPendingTicks > 0) {
             startPendingTicks--;
         }
@@ -104,29 +102,15 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
         }
     }
 
-    /** 每 tick 推进 QTE：和服务端同一个 20 Hz 步长，按帧推进会逐渐漂移。 */
-    private void updateQte() {
-        float dt = 1.0F / 20.0F;
-        if (!repairingView()) {
-            qteTimer = QTE_DURATION;
-            qteCooldown = 0.0F;
-            return;
-        }
-        if (qteCooldown > 0.0F) {
-            qteCooldown -= dt;
-            if (qteCooldown <= 0.0F) {
-                qteTimer = QTE_DURATION;
-            }
-        } else {
-            qteTimer -= dt * (qteTimer / QTE_DURATION);
-            if (qteTimer < 0.0F) {
-                qteTimer = QTE_DURATION;
-            }
-        }
+    /** 指针位置完全由服务端数据位决定（服务端才是判定方）。 */
+    private float markerFraction() {
+        return Mth.clamp(menu.data().get(RepairMenu.DATA_QTE) / 1000.0F, 0.0F, 1.0F);
     }
 
-    private float markerFraction() {
-        return Mth.clamp(qteTimer / QTE_DURATION, 0.0F, 1.0F);
+    /** 两个 tick 之间插值，指针不会一格一格跳。 */
+    private float shownMarker() {
+        double partial = minecraft == null ? 1.0D : minecraft.getFrameTime();
+        return Mth.clamp((float) Mth.lerp(partial, prevMarker, curMarker), 0.0F, 1.0F);
     }
 
     /* ---------------------------------------------------------------- 交互 */
@@ -183,21 +167,11 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
         if (!repairingView()) {
             // 原作第一次点击只开始持续修理（OnButtonDown 早于开始修理，不算 QTE）。
             startPendingTicks = 3;
-            qteTimer = QTE_DURATION;
-            qteCooldown = 0.0F;
             send(RepairActionPacket.ACTION_START, 0.0F);
             return;
         }
-        float marker = markerFraction();
-        boolean cooling = qteCooldown > 0.0F;
-        if (cooling) {
-            // 原作：冷却中乱点只把指针打回右端，不重置剩余冷却
-            //（服务端也保留剩余 tick，两端恢复时间要一致）。
-            qteTimer = QTE_DURATION;
-        } else {
-            qteCooldown = QTE_COOLDOWN;
-        }
-        send(RepairActionPacket.ACTION_QTE, marker);
+        // 指针位置/冷却全在服务端；客户端只提交点击。
+        send(RepairActionPacket.ACTION_QTE, markerFraction());
     }
 
     private void send(byte action, float marker) {
@@ -273,7 +247,7 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
         graphics.fill(thresholdX, barY, thresholdX + 1, barY + barH, 0x88FFFFFF);
 
         // QTE 指针：按用户要求始终白色，不做成功/失败着色。
-        float marker = markerFraction();
+        float marker = shownMarker();
         int markerX = barX + Math.round(barW * marker);
         graphics.fill(markerX - 1, barY - 3, markerX + 2, barY + barH + 3, 0xFFFFFFFF);
 

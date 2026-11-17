@@ -210,13 +210,19 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
         int working = menu.data().get(FabricatorMenu.DATA_WORKING);
         int power = menu.data().get(FabricatorMenu.DATA_POWER);
         int condition = menu.data().get(FabricatorMenu.DATA_CONDITION);
-        String status = condition <= 0 ? "已损坏（需要扳手）"
-                : power == 0 ? (working != 0 ? "供电不足，制作暂停" : "供电不足（未通电）")
-                : "状态：可用";
+        String status = condition <= 0
+                ? Component.translatable("gui.barotrauma.fabricator.broken").getString()
+                : power == 0
+                        ? Component.translatable(working != 0
+                                ? "gui.barotrauma.fabricator.no_power_paused"
+                                : "gui.barotrauma.fabricator.no_power").getString()
+                        : Component.translatable("gui.barotrauma.fabricator.ready").getString();
         int color = condition <= 0 ? RED : power == 0 ? 0xFFD8B44A : DIM;
         graphics.drawString(font, status, W - 8 - font.width(status), 6, color, false);
-        graphics.drawString(font, "输入", LIST_X, 202, DIM, false);
-        graphics.drawString(font, "输出", 206, 202, DIM, false);
+        graphics.drawString(font, Component.translatable(
+                "gui.barotrauma.fabricator.input").getString(), LIST_X, 202, DIM, false);
+        graphics.drawString(font, Component.translatable(
+                "gui.barotrauma.fabricator.output").getString(), 206, 202, DIM, false);
 
 
         FabricatorCatalog.Recipe recipe = selected();
@@ -225,7 +231,8 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
         }
         ItemStack result = FabricatorData.result(recipe);
         graphics.drawString(font, result.getHoverName(), 228, 28, TEXT, false);
-        graphics.drawString(font, "所需材料", 206, 46, DIM, false);
+        graphics.drawString(font, Component.translatable(
+                "gui.barotrauma.fabricator.materials").getString(), 206, 46, DIM, false);
         int y = 60;
         for (FabricatorCatalog.Ingredient ingredient : recipe.ingredients()) {
             int have = available(ingredient.itemId());
@@ -236,7 +243,9 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
                     226, y + 1, have >= need ? GREEN : RED, false);
             y += 16;
         }
-        graphics.drawString(font, String.format("%.0f 秒 · %.0f kW", recipe.time(), 500.0D),
+        graphics.drawString(font, Component.translatable("gui.barotrauma.fabricator.time_power",
+                String.format(java.util.Locale.ROOT, "%.0f", recipe.time()),
+                String.format(java.util.Locale.ROOT, "%.0f", 500.0D)).getString(),
                 206, 132, DIM, false);
         String amountText = String.valueOf(amount);
         graphics.drawString(font, amountText, 246 - font.width(amountText) / 2, 152, TEXT, false);
@@ -284,7 +293,9 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
                     chosen ? TEXT : DIM, false);
         }
         if (recipes.isEmpty()) {
-            graphics.drawString(font, "没有匹配的配方", x + LIST_X, y + LIST_Y, DIM, false);
+            graphics.drawString(font, Component.translatable(
+                    "gui.barotrauma.fabricator.no_match").getString(),
+                    x + LIST_X, y + LIST_Y, DIM, false);
         }
 
         // 右侧：成品预览、数量、按钮、进度
@@ -299,7 +310,10 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
                 && menu.data().get(FabricatorMenu.DATA_CONDITION) > 0
                 && menu.data().get(FabricatorMenu.DATA_POWER) != 0;
         drawButton(graphics, x + 296, y + 146, 136, 22,
-                working ? "取消制作" : "制作", canCraft, mouseX, mouseY);
+                Component.translatable(working
+                        ? "gui.barotrauma.fabricator.cancel"
+                        : "gui.barotrauma.fabricator.start").getString(),
+                canCraft, mouseX, mouseY);
 
         int progress = menu.data().get(FabricatorMenu.DATA_PROGRESS);
         graphics.fill(x + 206, y + 178, x + 432, y + 188, TRACK);

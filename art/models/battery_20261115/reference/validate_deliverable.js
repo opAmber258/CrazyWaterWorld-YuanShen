@@ -116,5 +116,5 @@ check('validation.json 存在', fs.existsSync(path.join(DIR, 'validation.json'))
 const fails = results.filter(r => !r.pass).length;
 console.log('---');
 console.log(results.length + ' checks, ' + fails + ' failed');
-fs.writeFileSync(path.join(DIR, 'validation_output.json'), JSON.stringify({ date: new Date().toISOString().slice(0, 10), identifier: ID, results }, null, 2));
+fs.writeFileSync(path.join(__dirname, 'validation_output.json'), JSON.stringify({ date: new Date().toISOString().slice(0, 10), identifier: ID, results }, null, 2));
 process.exit(fails ? 1 : 0);

@@ -60,7 +60,8 @@ def parse_items(content: Path):
     for xml_path in sorted(content.glob("Items/**/*.xml")):
         try:
             root = ElementTree.parse(xml_path).getroot()
-        except ElementTree.ParseError:
+        except ElementTree.ParseError as err:
+            print(f"解析失败，跳过 {xml_path}: {err}", file=sys.stderr)
             continue
         for item in root.iter("Item"):
             identifier = item.get("identifier")
@@ -131,6 +132,10 @@ def main() -> int:
 
     mapping = load_mod_items()
     _items, fabricates, deconstructs = parse_items(args.content)
+    if not _items:
+        print(f"没有找到任何物品 XML（{args.content}/Items/**/*.xml），保留现有配方表",
+              file=sys.stderr)
+        return 1
 
     def mod_id(identifier: str) -> str | None:
         return mapping.get(identifier.replace("_", ""))

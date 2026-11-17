@@ -133,6 +133,7 @@ public class DeconstructorBlockEntity extends BlockEntity
             return;
         }
         be.progressSeconds += 1.0D / 20.0D;
+        be.setChanged();
         if (be.progressSeconds >= be.durationSeconds) {
             be.finish(server, pos, state);
         }

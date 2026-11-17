@@ -6,6 +6,7 @@ import com.opamb.barotrauma.ship.RepairInteractions;
 import com.opamb.barotrauma.ship.RepairTarget;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.util.Mth;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -45,8 +46,10 @@ public class RepairMenu extends AbstractContainerMenu {
     public static final int DATA_REPAIRING = 6;
     /** 耐久为 0（0/1）。 */
     public static final int DATA_BROKEN = 7;
+    /** 服务端 QTE 指针位置 × 1000（0..1000）：客户端只画这个值。 */
+    public static final int DATA_QTE = 8;
 
-    public static final int DATA_COUNT = 8;
+    public static final int DATA_COUNT = 9;
 
     /** QTE 冷却：原作 0.5 秒 = 10 tick。 */
     private static final int QTE_COOLDOWN_TICKS = 10;
@@ -98,6 +101,8 @@ public class RepairMenu extends AbstractContainerMenu {
                         case DATA_CAN_REPAIR -> handle.canRepair() ? 1 : 0;
                         case DATA_REPAIRING -> repairing ? 1 : 0;
                         case DATA_BROKEN -> handle.condition() <= 0.0D ? 1 : 0;
+                        case DATA_QTE -> Math.round(Mth.clamp(qteTimer / QTE_DURATION, 0.0F, 1.0F)
+                                * 1000.0F);
                         default -> 0;
                     };
                 }
@@ -119,6 +124,7 @@ public class RepairMenu extends AbstractContainerMenu {
             fallback.set(DATA_MAX, 10000);
             fallback.set(DATA_THRESHOLD, 8000);
             fallback.set(DATA_HAS_TOOL, 1);
+            fallback.set(DATA_QTE, 1000);
             this.data = fallback;
         }
         addDataSlots(data);
