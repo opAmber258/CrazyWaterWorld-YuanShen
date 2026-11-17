@@ -127,9 +127,6 @@ public final class ShipSimulation {
     private long boxTick;
     private static final int BOX_STALE_TICKS = 40;
 
-    /** 原版 vanilla 潜艇接线盒的过压阈值（Dugong.sub 里是 1.7；代码默认 2.0）。 */
-    public static final double JUNCTION_BOX_OVERVOLTAGE = 1.7D;
-
     /** 上一次 tick 的全船电压（供电/负载，不封顶）。 */
     private double lastVoltage;
     /** 上一次 tick 的全船供电（kW）。 */

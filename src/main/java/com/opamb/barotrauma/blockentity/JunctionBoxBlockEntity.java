@@ -35,7 +35,11 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
     private static final double DECAY_SUBMERGED = 0.25D;
     /** 过压衰减速度（/秒）。 */
     private static final double DECAY_OVERVOLTAGE = 10.0D;
-    /** 过压阈值（原版 vanilla 潜艇 1.7）。 */
+    /**
+     * 过压阈值：原版 vanilla 潜艇（Dugong.sub）是 1.7，代码默认 2.0。
+     *
+     * <p>全仓只有这一份阈值；判定统一走 {@link PowerGrid#overvoltage}。</p>
+     */
     public static final double OVERVOLTAGE = 1.7D;
 
     private double condition = 100.0D;
