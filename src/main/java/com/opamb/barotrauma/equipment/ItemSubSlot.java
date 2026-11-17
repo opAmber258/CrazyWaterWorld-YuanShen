@@ -20,11 +20,12 @@ public final class ItemSubSlot {
     private ItemSubSlot() {
     }
 
-    /** 宿主物品是不是有子格（潜水服 / 焊接工具）。 */
+    /** 宿主物品是不是有子格（潜水服 / 焊接工具 / 等离子切割机）。 */
     public static boolean hasSubSlot(ItemStack host) {
         return !host.isEmpty()
                 && (host.getItem() instanceof DivingSuitItem
-                || host.getItem() instanceof WeldingToolItem);
+                || host.getItem() instanceof WeldingToolItem
+                || host.getItem() instanceof com.opamb.barotrauma.item.PlasmaCutterItem);
     }
 
     /** 子格里现在装的东西。 */
@@ -70,12 +71,21 @@ public final class ItemSubSlot {
         if (host.getItem() instanceof WeldingToolItem) {
             return candidate.is(ModItems.WELDING_FUEL_TANK.get());
         }
+        if (host.getItem() instanceof com.opamb.barotrauma.item.PlasmaCutterItem) {
+            // 原作 plasmacutter 的容器只该放氧气瓶；焊接油箱放进去会炸（1.13.5
+            // tools.xml 里对 weldingfueltank 有 OnUse 爆炸效果），所以这里直接拒绝。
+            return candidate.is(EquipmentTags.OXYGEN_TANK);
+        }
         return false;
     }
 
     /** 空子格上画的两字符提示。 */
     public static String hint(ItemStack host) {
         if (host.getItem() instanceof DivingSuitItem) {
+            return "O2";
+        }
+        if (host.getItem() instanceof DivingSuitItem
+                || host.getItem() instanceof com.opamb.barotrauma.item.PlasmaCutterItem) {
             return "O2";
         }
         if (host.getItem() instanceof WeldingToolItem) {

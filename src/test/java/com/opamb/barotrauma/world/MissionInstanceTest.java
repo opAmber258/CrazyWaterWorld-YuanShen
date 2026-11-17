@@ -1,5 +1,9 @@
 package com.opamb.barotrauma.world;
 
+import com.opamb.barotrauma.world.level.LevelParams;
+import com.opamb.barotrauma.world.level.LevelType;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -10,6 +14,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** 任务海域实例的锚点布局（地形已改用主世界开阔海域）。 */
 class MissionInstanceTest {
+
+    @BeforeEach
+    void resetBefore() {
+        clearRouteLevel();
+    }
+
+    @AfterEach
+    void resetAfter() {
+        clearRouteLevel();
+    }
+
+    private static void clearRouteLevel() {
+        MissionInstance.setRouteLevel(null);
+        MissionInstance.setRouteOutposts(Integer.MIN_VALUE, true, true);
+    }
 
     @Test
     @DisplayName("锚点按轮次递增、间距固定、互不重叠")
@@ -65,5 +84,169 @@ class MissionInstanceTest {
         assertTrue(SeaTerrain.inClearZone(anchor.x() + 40, 0));
         int floor = SeaTerrain.floorY(0x5EED1234L, anchor.x(), anchor.z());
         assertTrue(floor <= -500 && floor >= -544, "副本站下方是开放海域的海底，不是岩台");
+    }
+
+    @Test
+    @DisplayName("活动关卡的出发站距离按类型路线长度，其它槽位回退 192")
+    void routeLevelStartDistance() {
+        LevelParams basic = LevelType.BASIC.params();
+        MissionInstance.Anchor anchor = MissionInstance.anchorForRound(4);
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                4, LevelType.BASIC, 123L, 3, basic.routeLength(), anchor.x()));
+
+        assertEquals(basic.routeLength(), MissionInstance.startDistanceFor(anchor));
+        assertEquals(anchor.x(), MissionInstance.startSite(anchor).x(),
+                "basic 700 已超过 432，改走南北：x 与目的站相同");
+        assertEquals(anchor.z() - basic.routeLength(), MissionInstance.startSite(anchor).z(),
+                "slot 4 偶数走北，距离是 basic 的路线长度");
+        var north = MissionInstance.startSite(anchor);
+        assertEquals(Integer.valueOf(north.x()),
+                MissionInstance.siteXAt(north.x(), north.z()),
+                "南北出发站的 z 超出默认 |z|<=64 过滤，也必须能认出来");
+        assertEquals(MissionInstance.START_DISTANCE,
+                MissionInstance.startDistanceFor(MissionInstance.anchorForRound(5)),
+                "非活动槽位仍用默认 192");
+        assertEquals(LevelType.BASIC, MissionInstance.paramsForSlot(4).type());
+        assertNull(MissionInstance.paramsForSlot(5));
+    }
+
+    @Test
+    @DisplayName("旧存档 1024 间距：活动槽位按保存的 anchorX 判定")
+    void legacySpacingAnchors() {
+        int legacy = 1024;
+        LevelParams basic = LevelType.BASIC.params();
+
+        // 槽位 2：锚点 22048 在当前 2048 间距下会被反推成槽位 1。
+        int anchor2 = MissionInstance.BASE_X + 2 * legacy;
+        MissionInstance.Anchor a2 = new MissionInstance.Anchor(
+                2, anchor2, MissionInstance.ANCHOR_Y, 0);
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                2, LevelType.BASIC, 11L, 4, basic.routeLength(), anchor2));
+        MissionInstance.setRouteOutposts(2, true, false);
+
+        assertEquals(anchor2, MissionInstance.anchorForRound(2).x());
+        assertEquals(2, MissionInstance.siteSlot(DockingBay.Site.forSlot(2)));
+        assertEquals(2, MissionInstance.siteSlot(MissionInstance.startSite(a2)),
+                "出发站也要认回同一槽位");
+        assertEquals(Integer.valueOf(anchor2), MissionInstance.siteXAt(anchor2, 0));
+        assertFalse(MissionInstance.outpostExpected(DockingBay.Site.forSlot(2)),
+                "routeEndOutpost=false 的航路点不能生成哨站");
+
+        // 槽位 3：锚点 23072 用当前间距反推会漏掉整个活动槽位。
+        int anchor3 = MissionInstance.BASE_X + 3 * legacy;
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                3, LevelType.BASIC, 12L, 4, basic.routeLength(), anchor3));
+        MissionInstance.setRouteOutposts(3, true, true);
+
+        assertEquals(3, MissionInstance.siteSlot(DockingBay.Site.forSlot(3)));
+        assertEquals(Integer.valueOf(anchor3), MissionInstance.siteXAt(anchor3, 0));
+        assertTrue(MissionInstance.inRouteZone(anchor3 - 1, 0),
+                "锚点净空必须算在航道内（当前间距反推的 base 落在槽位 1）");
+        assertTrue(MissionInstance.inMiningZone(anchor3 - 100, 0),
+                "锚点 24..150 格内是矿区");
+    }
+
+    @Test
+    @DisplayName("旧存档槽位 5 的锚点仍能被站点查询找到")
+    void legacySlotFiveSiteLookup() {
+        int legacy = 1024;
+        int anchor5 = MissionInstance.BASE_X + 5 * legacy; // 25120
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                5, LevelType.BASIC, 21L, 5,
+                LevelType.BASIC.params().routeLength(), anchor5));
+        MissionInstance.setRouteOutposts(5, true, true);
+
+        DockingBay.Site site = new DockingBay.Site(anchor5, 0);
+        assertEquals(site, DockingBay.siteAt(anchor5, 0),
+                "旧槽位 5 不能因为当前间距反推成槽位 3 就丢掉");
+        assertEquals(site, DockingBay.siteAt(anchor5 + 20, 0));
+        assertTrue(DockingBay.sitesNear(new net.minecraft.world.level.ChunkPos(
+                        anchor5 >> 4, 0)).contains(site),
+                "区块站点枚举也要包含旧槽位 5");
+    }
+
+    @Test
+    @DisplayName("旧锚点附近的新区块按保存的锚点选关卡参数")
+    void legacyAnchorColumnParams() {
+        int legacy = 1024;
+        int anchor5 = MissionInstance.BASE_X + 5 * legacy; // 25120，按当前间距会反推成槽位 3
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                5, LevelType.ADVANCED, 31L, 9,
+                LevelType.ADVANCED.params().routeLength(), anchor5));
+        MissionInstance.setRouteOutposts(5, true, true);
+
+        assertEquals(LevelType.ADVANCED.params(), MissionInstance.paramsForColumn(anchor5),
+                "活动锚点所在列必须拿到关卡参数，不能因为反推成槽位 3 就退回默认密度");
+        assertEquals(LevelType.ADVANCED.params(), MissionInstance.paramsForColumn(anchor5 + 40),
+                "锚点附近仍在关卡影响半径内");
+        assertNull(MissionInstance.paramsForColumn(anchor5 + 3 * MissionInstance.SPACING),
+                "远离活动关卡的列仍按间距回退，非活动槽位没有关卡参数");
+    }
+
+    @Test
+    @DisplayName("活动槽位 0 时，BASE_X 以西的列不用活动关卡参数")
+    void negativeColumnsDoNotUseActiveLevel() {
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                0, LevelType.ADVANCED, 7L, 9,
+                LevelType.ADVANCED.params().routeLength(), MissionInstance.BASE_X));
+        MissionInstance.setRouteOutposts(0, true, true);
+
+        // BASE_X 以西 1 个间距：按间距反推是槽位 -1，不是活动槽位 0。
+        assertNull(MissionInstance.paramsForColumn(MissionInstance.BASE_X - MissionInstance.SPACING),
+                "负槽位不属于任何关卡，不能钳到 0 去用活动参数");
+    }
+
+    @Test
+    @DisplayName("没有活动关卡时出发站距离回退 192")
+    void noRouteLevelFallback() {
+        MissionInstance.setRouteLevel(null);
+        assertEquals(MissionInstance.START_DISTANCE,
+                MissionInstance.startDistanceFor(MissionInstance.anchorForRound(0)));
+    }
+
+    @Test
+    @DisplayName("旧槽位 4 的锚点与新布局槽位 2 重合：不认虚构的出发站")
+    void legacySlotFourOverlapsNewLayout() {
+        int legacy = 1024;
+        int anchor4 = MissionInstance.BASE_X + 4 * legacy; // 24096 = 新布局槽位 2 的锚点
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                4, LevelType.BASIC, 41L, 4,
+                LevelType.BASIC.params().routeLength(), anchor4));
+        MissionInstance.setRouteOutposts(4, false, false);
+
+        assertEquals(new DockingBay.Site(anchor4, 0), DockingBay.siteAt(anchor4, 0),
+                "活动锚点仍要能认出来");
+        DockingBay.Site start = MissionInstance.startSite(MissionInstance.anchorForRound(4));
+        assertEquals(start, DockingBay.siteAt(start.x(), start.z()),
+                "真实出发站要能认出来");
+        // 新布局槽位 2 的出发站（east，24288）是虚构的：该槽位和活动锚点重合，
+        // 必须整个跳过，否则 siteAt 会认出它、outpostExpected 还会给它建站。
+        int bogus = MissionInstance.BASE_X + 2 * MissionInstance.SPACING
+                + MissionInstance.START_DISTANCE;
+        assertNull(DockingBay.siteAt(bogus, 0), "重合槽位的虚构出发站不能被识别");
+        assertFalse(DockingBay.sitesNear(new net.minecraft.world.level.ChunkPos(
+                        bogus >> 4, 0)).contains(new DockingBay.Site(bogus, 0)),
+                "区块站点枚举也不能加入虚构站");
+    }
+
+    @Test
+    @DisplayName("长路线（advanced 600 / maze 520）走南北，x 留在同一槽位")
+    void longRouteUsesNorthSouth() {
+        LevelParams advanced = LevelType.ADVANCED.params();
+        MissionInstance.Anchor even = MissionInstance.anchorForRound(8);
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                8, LevelType.ADVANCED, 1L, 9, advanced.routeLength(), even.x()));
+        var north = MissionInstance.startSite(even);
+        assertEquals(even.x(), north.x(), "长路线 x 不变");
+        assertEquals(even.z() - advanced.routeLength(), north.z(), "slot 8 偶数走北");
+        assertEquals(8, MissionInstance.siteSlot(north), "出发站仍在同一槽位");
+
+        MissionInstance.Anchor odd = MissionInstance.anchorForRound(9);
+        MissionInstance.setRouteLevel(new MissionInstance.RouteLevel(
+                9, LevelType.ADVANCED, 2L, 9, advanced.routeLength(), odd.x()));
+        var south = MissionInstance.startSite(odd);
+        assertEquals(odd.x(), south.x());
+        assertEquals(odd.z() + advanced.routeLength(), south.z(), "slot 9 奇数走南");
+        assertEquals(9, MissionInstance.siteSlot(south));
     }
 }

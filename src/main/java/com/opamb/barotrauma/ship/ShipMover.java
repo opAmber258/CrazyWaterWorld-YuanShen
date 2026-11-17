@@ -62,6 +62,30 @@ public final class ShipMover {
         for (BlockPos pos : moving) {
             blocks.put(pos, level.getBlockState(pos));
         }
+        // setBlock 会重建方块实体，接线盒绑定（PowerBox）不会跟着走，先记下来。
+        Map<BlockPos, BlockPos> powerBoxes = new HashMap<>();
+        // 接线盒耐久只存在方块实体 NBT 里；不搬就会在新位置重置成 100%。
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> junctionTags = new HashMap<>();
+        // 舱口的自动模式（WATERTIGHT/MOTION）也只存在 BE NBT 里。
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> hatchTags = new HashMap<>();
+        // 舱壁门的自动模式同理。
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> doorTags = new HashMap<>();
+        for (BlockPos pos : moving) {
+            if (level.getBlockEntity(pos) instanceof PowerConsumer consumer
+                    && consumer.powerBox() != null) {
+                powerBoxes.put(pos.immutable(), consumer.powerBox());
+            }
+            if (level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity junction) {
+                junctionTags.put(pos.immutable(), junction.saveWithoutMetadata());
+            }
+            if (level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.HatchBlockEntity hatch) {
+                hatchTags.put(pos.immutable(), hatch.saveWithoutMetadata());
+            }
+            if (level.getBlockEntity(pos)
+                    instanceof com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity door) {
+                doorTags.put(pos.immutable(), door.saveWithoutMetadata());
+            }
+        }
         List<BlockPos> interior = new ArrayList<>();
         for (ShipGeometry.Compartment compartment : state.compartments()) {
             interior.addAll(compartment.cells());
@@ -86,6 +110,41 @@ public final class ShipMover {
         }
         for (Map.Entry<BlockPos, BlockState> entry : blocks.entrySet()) {
             level.setBlock(entry.getKey().offset(dx, dy, dz), entry.getValue(), 3);
+        }
+        // 恢复设备绑定：接线盒和设备一起平移，绑定坐标也要跟着走。
+        for (Map.Entry<BlockPos, BlockPos> entry : powerBoxes.entrySet()) {
+            BlockPos target = entry.getKey().offset(dx, dy, dz);
+            if (level.getBlockEntity(target) instanceof PowerConsumer consumer) {
+                consumer.setPowerBox(entry.getValue().offset(dx, dy, dz));
+                level.getBlockEntity(target).setChanged();
+            }
+        }
+        // 恢复接线盒耐久/宽限期：重建的方块实体默认 100%，搬一次就白修了。
+        for (Map.Entry<BlockPos, net.minecraft.nbt.CompoundTag> entry : junctionTags.entrySet()) {
+            BlockPos target = entry.getKey().offset(dx, dy, dz);
+            if (level.getBlockEntity(target)
+                    instanceof com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity junction) {
+                junction.load(entry.getValue());
+                junction.setChanged();
+            }
+        }
+        // 恢复舱口自动模式，否则搬一次就退回 MANUAL。
+        for (Map.Entry<BlockPos, net.minecraft.nbt.CompoundTag> entry : hatchTags.entrySet()) {
+            BlockPos target = entry.getKey().offset(dx, dy, dz);
+            if (level.getBlockEntity(target)
+                    instanceof com.opamb.barotrauma.blockentity.HatchBlockEntity hatch) {
+                hatch.load(entry.getValue());
+                hatch.setChanged();
+            }
+        }
+        // 舱壁门的自动模式也要跟着搬。
+        for (Map.Entry<BlockPos, net.minecraft.nbt.CompoundTag> entry : doorTags.entrySet()) {
+            BlockPos target = entry.getKey().offset(dx, dy, dz);
+            if (level.getBlockEntity(target)
+                    instanceof com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity door) {
+                door.load(entry.getValue());
+                door.setChanged();
+            }
         }
 
         // 5) 把船范围内的实体一起搬走

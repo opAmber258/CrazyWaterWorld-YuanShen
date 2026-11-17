@@ -231,6 +231,7 @@ public final class CampaignMapScreen extends Screen {
             case RECON -> "侦察";
             case DELIVERY -> "货运";
             case URGENT_DELIVERY -> "紧急货运";
+            case MINERAL -> "采矿";
         };
     }
 

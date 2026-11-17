@@ -70,7 +70,9 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         int shopY = shopTop();
         graphics.fill(x + 8, shopY - 4, x + PANEL_W - 8, shopY - 3, EDGE);
         graphics.drawString(font, "商店", x + 10, shopY, ACCENT, false);
-        String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（30）",
+        // 报价必须和服务端扣款一致（MissionActionPacket 的 COST_*）：
+        // 焊枪卖 150（和商店基础价一致，防止旧接口低价买入再高价卖给商店）。
+        String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（150）",
                 "船体加固（150 起）", "引擎（150 起）", "深潜许可（500）"};
         for (int i = 0; i < labels.length; i++) {
             int bx = x + 8 + (i % 3) * 80;

@@ -10,8 +10,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class ModNetwork {
 
-    // 8：站务员改成对话发任务（C2S 提问 + S2C 对话），报价按站点各自刷新。
-    private static final String PROTOCOL = "8";
+    // 14：诊所状态包区分“首次打开 / 治疗后刷新”；13：购买确认两个交付选项 + 商店三标签。
+    private static final String PROTOCOL = "16";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -86,6 +86,27 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(CrateSlotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(CrateSlotPacket::encode).decoder(CrateSlotPacket::decode)
                 .consumerNetworkThread(CrateSlotPacket::handle).add();
+        CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(PowerStatePacket::encode).decoder(PowerStatePacket::decode)
+                .consumerNetworkThread(PowerStatePacket::handle).add();
+        CHANNEL.messageBuilder(PowerBindPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(PowerBindPacket::encode).decoder(PowerBindPacket::decode)
+                .consumerNetworkThread(PowerBindPacket::handle).add();
+        CHANNEL.messageBuilder(PowerOpenRequestPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(PowerOpenRequestPacket::encode).decoder(PowerOpenRequestPacket::decode)
+                .consumerNetworkThread(PowerOpenRequestPacket::handle).add();
+        CHANNEL.messageBuilder(StoreStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(StoreStatePacket::encode).decoder(StoreStatePacket::decode)
+                .consumerNetworkThread(StoreStatePacket::handle).add();
+        CHANNEL.messageBuilder(StoreActionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(StoreActionPacket::encode).decoder(StoreActionPacket::decode)
+                .consumerNetworkThread(StoreActionPacket::handle).add();
+        CHANNEL.messageBuilder(ClinicStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ClinicStatePacket::encode).decoder(ClinicStatePacket::decode)
+                .consumerNetworkThread(ClinicStatePacket::handle).add();
+        CHANNEL.messageBuilder(ClinicActionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ClinicActionPacket::encode).decoder(ClinicActionPacket::decode)
+                .consumerNetworkThread(ClinicActionPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

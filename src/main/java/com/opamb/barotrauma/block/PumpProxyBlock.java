@@ -11,10 +11,16 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.network.NetworkHooks;
 
 /**
@@ -23,11 +29,36 @@ import net.minecraftforge.network.NetworkHooks;
  * <p>VS2 把泵方块收进刚体后，世界里右键不到泵；这里在泵原位放一个不可见、
  * 不碰撞的方块，跟着船整格移动，右键它打开泵菜单。菜单服务端会通过
  * {@code VsPilot.pumpBlockEntity(pos)} 找到船坞里对应的那台泵方块实体。</p>
+ *
+ * <p>锚点本身不可破坏（strength -1），但瞄准形状必须贴着小泵，不能是整格：
+ * 整格的透明描边会让玩家以为泵上多了一个"透明不可破坏方块"（用户实测）。</p>
  */
 public class PumpProxyBlock extends Block {
 
+    /** 小泵模型约 10.9×5.9×4.4 像素；描边取 12×6×12，够点右键又不显眼。 */
+    private static final VoxelShape SMALL_SHAPE = Shapes.box(
+            2.0D / 16.0D, 0.0D, 2.0D / 16.0D,
+            14.0D / 16.0D, 6.0D / 16.0D, 14.0D / 16.0D);
+
+    /** 这台泵是不是小泵：小泵模型只有 6/16 高，排水泵/压载泵要用整格范围。 */
+    public static final BooleanProperty SMALL = BooleanProperty.create("small");
+
     public PumpProxyBlock(Properties properties) {
         super(properties);
+        registerDefaultState(stateDefinition.any().setValue(SMALL, Boolean.FALSE));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(SMALL);
+    }
+
+    @Override
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
+                               CollisionContext context) {
+        // 排水泵/压载泵的模型比小泵高，代理必须用整格范围，
+        // 否则从泵体上半部右键点不到代理、打不开菜单。
+        return state.getValue(SMALL) ? SMALL_SHAPE : Shapes.block();
     }
 
     @Override

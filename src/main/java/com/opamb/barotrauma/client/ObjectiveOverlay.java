@@ -98,6 +98,15 @@ public final class ObjectiveOverlay {
         if (mission.state() == Mission.State.READY) {
             return "任务 #" + mission.id + " 目标达成：靠泊目的站后自动结算" + deadline;
         }
+        if (mission.type == com.opamb.barotrauma.mission.MissionType.MINERAL) {
+            String destination = mission.destinationNode() >= 0
+                    ? Component.translatable("campaign.barotrauma.node."
+                            + mission.destinationNode()).getString()
+                    : "目的站";
+            return "任务 #" + mission.id + "：采集 "
+                    + mineralName(mission.mineralItem()) + " ×" + mission.mineralCount()
+                    + "，送到 " + destination + "（靠泊后结算）" + deadline;
+        }
         if (cargo) {
             int crates = mission.cargoTotal() > 0 ? mission.cargoTotal() : 1;
             String destination = mission.destinationNode() >= 0
@@ -112,5 +121,17 @@ public final class ObjectiveOverlay {
 
     private static Minecraft minecraft() {
         return Minecraft.getInstance();
+    }
+
+    /** 矿物显示名（客户端注册表取物品名；找不到退回注册名）。 */
+    private static String mineralName(String itemId) {
+        net.minecraft.resources.ResourceLocation id =
+                net.minecraft.resources.ResourceLocation.tryParse(itemId == null ? "" : itemId);
+        if (id == null) {
+            return String.valueOf(itemId);
+        }
+        net.minecraft.world.item.Item item =
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.get(id);
+        return item.getDescription().getString();
     }
 }

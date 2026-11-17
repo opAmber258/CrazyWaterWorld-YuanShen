@@ -1,10 +1,12 @@
 package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.PowerConsumer;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -25,7 +27,7 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * {@code 目标力/100 的 1.5 次方 × 2000 kW} 上报耗电。多台引擎相加，
  * {@code VsThruster} 按引擎数量放大推力，并受全船供电比例限制。</p>
  */
-public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity {
+public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity, PowerConsumer {
 
     /** 单台标准引擎的额定耗电（原作 engine powerconsumption=2000）。 */
     public static final double MAX_POWER_KW = 2000.0D;
@@ -36,6 +38,8 @@ public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity {
     private double lastSupply;
     private double lastDemandKw;
     private int lastEngineCount;
+    /** 绑定的接线盒；null = 默认总线。 */
+    private BlockPos boundBox;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public EngineBlockEntity(BlockPos pos, BlockState state) {
@@ -78,11 +82,33 @@ public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity {
         // 油门停车时目标力 0；有油门时用声纳面板的推力百分比（5..100）。
         double force = ship.throttled() ? ship.power() : 0.0D;
         double demand = MAX_POWER_KW * Math.pow(Math.max(0.0D, force) / 100.0D, 1.5D);
-        ship.simulation().reportEngine(cell, force, demand, MAX_FORCE);
         be.lastForce = force;
         be.lastDemandKw = demand;
-        be.lastSupply = ship.simulation().powerRatio();
+        ship.simulation().reportEngine(cell, force, demand, MAX_FORCE);
+        ship.simulation().reportConsumer(cell, demand, be.minVoltage(), be.boundBox);
+        be.lastSupply = ship.simulation().consumerVoltage(cell);
         be.lastEngineCount = ship.simulation().engineCount();
+    }
+
+    @Override
+    public double powerDemandKw() {
+        return lastDemandKw;
+    }
+
+    @Override
+    public double minVoltage() {
+        return 0.5D;
+    }
+
+    @Override
+    public BlockPos powerBox() {
+        return boundBox;
+    }
+
+    @Override
+    public void setPowerBox(BlockPos box) {
+        this.boundBox = box == null ? null : box.immutable();
+        setChanged();
     }
 
     public double lastForce() {
@@ -107,6 +133,20 @@ public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity {
 
     public Component displayName() {
         return Component.translatable(getBlockState().getBlock().getDescriptionId());
+    }
+
+    @Override
+    protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
+        if (boundBox != null) {
+            tag.putLong("PowerBox", boundBox.asLong());
+        }
+    }
+
+    @Override
+    public void load(CompoundTag tag) {
+        super.load(tag);
+        boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
     }
 
     @Override

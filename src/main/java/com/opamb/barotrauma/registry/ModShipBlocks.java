@@ -210,6 +210,10 @@ public final class ModShipBlocks {
         if (state.getBlock() == ModBlocks.SMALL_PUMP.get()) {
             return false;
         }
+        // 接线盒是墙挂小盒（0.625×1×0.55），不该占满整格挡水/分舱。
+        if (state.getBlock() == ModBlocks.JUNCTION_BOX.get()) {
+            return false;
+        }
         // 门/舱口永远算"水密"：门板只有 1px 厚，但按格子算隔断。开着的门不靠
         // 洪水填充连通两侧（那样一开门水就瞬间均摊），而是由 ShipGeometry.DoorLink
         // 按限速流量慢慢补平。
@@ -236,6 +240,23 @@ public final class ModShipBlocks {
         return state.getBlock() == ModBlocks.DRAIN_OUTLET.get();
     }
 
+    /** 纯设备格：单独放在房间里时不能当作"船体连通块"的起点。 */
+    public static boolean isEquipment(BlockState state) {
+        // 独立设备/家具（接线盒、各种泵、柜子）连成的小块离核心更近时，
+        // 不能抢走真正的船壳连通块；它们仍在船壳包围盒内时记进 equipment。
+        Block block = state.getBlock();
+        return block == ModBlocks.JUNCTION_BOX.get()
+                || block == ModBlocks.SMALL_PUMP.get()
+                || block == ModBlocks.DRAIN_PUMP.get()
+                || block == ModBlocks.BALLAST_PUMP.get()
+                || block == ModBlocks.MEDIUM_STEEL_CABINET.get()
+                || block == ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get()
+                || block == ModBlocks.CRATE_SHELF.get()
+                || block == ModBlocks.DIVING_SUIT_LOCKER.get()
+                || block == ModBlocks.OXYGEN_TANK_SHELF.get()
+                || block == ModBlocks.DIVING_SUIT_STATION.get();
+    }
+
     /** 判定一个方块是否属于"船体结构"（用于识别船的范围）。核心不算，站体也不算。 */
     public static boolean isShipBlock(BlockState state) {
         Block block = state.getBlock();
@@ -251,6 +272,7 @@ public final class ModShipBlocks {
                 || block == ModBlocks.BALLAST_PUMP.get()
                 || block == ModBlocks.REACTOR.get()
                 || block == ModBlocks.ENGINE.get()
+                || block == ModBlocks.JUNCTION_BOX.get()
                 // 容器家具也要跟船走，否则装配后钢柜/货架留在码头原地。
                 || block == ModBlocks.MEDIUM_STEEL_CABINET.get()
                 || block == ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get()

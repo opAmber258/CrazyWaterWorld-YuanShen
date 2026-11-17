@@ -24,10 +24,16 @@ public final class ModCreativeTabs {
                     .displayItems((params, output) -> {
                         output.accept(ModItems.OXYGEN_TANK.get());
                         output.accept(ModItems.DIVING_SUIT.get());
+                        output.accept(ModItems.GLASS_DIVING_SUIT.get());
                         output.accept(ModItems.DEEP_PERMIT.get());
                         output.accept(ModItems.DIVING_KNIFE.get());
                         output.accept(ModItems.WELDING_TOOL.get());
                         output.accept(ModItems.WELDING_FUEL_TANK.get());
+                        output.accept(ModItems.SCREWDRIVER.get());
+                        output.accept(ModItems.PLASMA_CUTTER.get());
+                        output.accept(ModItems.QUARTZ_VEIN.get());
+                        output.accept(ModItems.PYROMORPHITE_VEIN.get());
+                        output.accept(ModItems.URANIUM_VEIN.get());
                         output.accept(ModItems.SUBMARINE_PLATING.get());
                         output.accept(ModItems.HULL_GLASS.get());
                         output.accept(ModItems.TEST_HULL.get());
@@ -42,6 +48,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.BALLAST_PUMP.get());
                         output.accept(ModItems.REACTOR.get());
                         output.accept(ModItems.ENGINE.get());
+                        output.accept(ModItems.JUNCTION_BOX.get());
                         output.accept(ModItems.MEDIUM_STEEL_CABINET.get());
                         output.accept(ModItems.MEDIUM_WINDOWED_STEEL_CABINET.get());
                         output.accept(ModItems.CRATE_SHELF.get());

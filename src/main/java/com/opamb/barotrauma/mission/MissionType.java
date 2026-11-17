@@ -10,12 +10,15 @@ package com.opamb.barotrauma.mission;
  *   <li>{@code DELIVERY}——货运：接取时把真实货箱装到船上货架，靠泊目的站后
  *       按原版 98% 规则自动结算（不需要回终端点交付）；</li>
  *   <li>{@code URGENT_DELIVERY}——紧急货运：规则同 DELIVERY 但有时限，
- *       超时判 FAILED（需求 §5.7：仅紧急类才有时限）。</li>
+ *       超时判 FAILED（需求 §5.7：仅紧急类才有时限）；</li>
+ *   <li>{@code MINERAL}——采矿：在目的站海域的岩壁矿脉里采够指定矿物，
+ *       靠泊目的站后自动结算，只上交原作 {@code resourceHandoverAmount}（25%）。</li>
  * </ul>
  */
 public enum MissionType {
     SALVAGE,
     RECON,
     DELIVERY,
-    URGENT_DELIVERY
+    URGENT_DELIVERY,
+    MINERAL
 }

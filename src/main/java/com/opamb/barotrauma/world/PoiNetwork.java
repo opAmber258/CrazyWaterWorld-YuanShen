@@ -89,6 +89,14 @@ public final class PoiNetwork {
                 }
                 case SALVAGE -> out.add(new Mission(id++, MissionType.SALVAGE,
                         WRECK_A, 20, Math.max(1, spec.reward())));
+                case MINERAL -> {
+                    // 采矿任务没有固定目标点：矿物在目的站海域的岩壁矿脉里，
+                    // 靠泊目的站时按背包里的矿物数量结算。
+                    Mission mission = new Mission(id++, MissionType.MINERAL,
+                            BlockPos.ZERO, 0, Math.max(1, spec.reward()));
+                    mission.setMineral(spec.mineralItem(), spec.mineralCount(), spec.handover());
+                    out.add(mission);
+                }
                 // 说明：当前 SALVAGE 的实际目标是 WRECK_A 里的黑匣子（MissionProgress 只认
                 // BLACK_BOX），终端显示名已在 lang 里改成"打捞沉船黑匣子"。等洞穴异星遗物的
                 // 生成/交付实装后，再把 lang 名恢复成原版"打捞一件异星遗物"。

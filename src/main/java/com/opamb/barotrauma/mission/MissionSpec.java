@@ -15,10 +15,14 @@ package com.opamb.barotrauma.mission;
  * @param spawnType           目标关卡需要的生成物：none / cave / wreck / ruin / abysscave
  * @param fromType            起点地点类型（AnyOutpost / Outpost / City / any）
  * @param toType              终点地点类型
+ * @param mineralItem         采矿任务要采的矿物注册名（如 {@code barotrauma:quartz}）
+ * @param mineralCount        采矿任务要采几个
+ * @param handover            原作 resourceHandoverAmount：结算时上交比例（0..1）
  */
 public record MissionSpec(String id, MissionKind kind, String text, String nameZh, String nameEn,
                           int reward, int difficulty, int minLevelDifficulty, int maxLevelDifficulty,
-                          String spawnType, String fromType, String toType) {
+                          String spawnType, String fromType, String toType,
+                          String mineralItem, int mineralCount, double handover) {
 
     /** 任务依赖的底层功能是否已经实装。 */
     public boolean implemented() {

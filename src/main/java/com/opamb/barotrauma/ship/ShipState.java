@@ -76,9 +76,79 @@ public final class ShipState {
     /** 自动驾驶目标（世界坐标）；null = 还没标记。 */
     private net.minecraft.core.BlockPos autopilotTarget;
 
+    /** 历史确认过的舱内格（只增不减）：切掉外壁舱口后重扫会把空腔 interior 清空。 */
+    private java.util.Set<BlockPos> knownInterior = java.util.Set.of();
+
     public ShipState(ShipGeometry.Result geometry, MachineCount machines) {
         this.geometry = geometry;
         this.machines = machines;
+        this.knownInterior = collectInterior(geometry);
+    }
+
+    private static java.util.Set<BlockPos> collectInterior(ShipGeometry.Result geometry) {
+        if (geometry == null) {
+            return java.util.Set.of();
+        }
+        java.util.Set<BlockPos> out = new java.util.HashSet<>();
+        for (ShipGeometry.Compartment compartment : geometry.compartments()) {
+            out.addAll(compartment.interiorCells());
+        }
+        for (ShipGeometry.Compartment pocket : geometry.openPockets()) {
+            out.addAll(pocket.interiorCells());
+        }
+        return java.util.Set.copyOf(out);
+    }
+
+    /**
+     * 空腔的壳内格：几何给空时用历史确认过的舱内格兜底。
+     *
+     * <p>切掉外壁舱口后 {@code exteriorCells()} 会穿过洞口，房间的 interiorCells
+     * 可能变空；不兜底的话进水体积/水面都会变成 0，船灌满也不沉。</p>
+     */
+    public java.util.Set<BlockPos> interiorCellsOf(ShipGeometry.Compartment pocket) {
+        if (!pocket.interiorCells().isEmpty()) {
+            return pocket.interiorCells();
+        }
+        java.util.Set<BlockPos> out = new java.util.HashSet<>();
+        for (BlockPos cell : pocket.cells()) {
+            if (knownInterior.contains(cell)) {
+                out.add(cell);
+            }
+        }
+        // 没有历史舱内格 = 纯船外空气（圆角包围盒四角），不能把整块空腔算成舱内。
+        return out;
+    }
+
+    /** 历史舱内格（核心 NBT 保存用）。 */
+    public long[] knownInteriorArray() {
+        long[] out = new long[knownInterior.size()];
+        int i = 0;
+        for (BlockPos pos : knownInterior) {
+            out[i++] = pos.asLong();
+        }
+        return out;
+    }
+
+    /** 世界重开后的首次重扫：恢复 NBT 里保存的历史舱内格。 */
+    public void restoreKnownInterior(long[] values) {
+        if (values == null || values.length == 0) {
+            return;
+        }
+        java.util.Set<BlockPos> merged = new java.util.HashSet<>(knownInterior);
+        for (long value : values) {
+            merged.add(BlockPos.of(value));
+        }
+        knownInterior = java.util.Set.copyOf(merged);
+    }
+
+    /** 重扫换新对象时合并历史舱内格（只增不减）。 */
+    public void inheritInteriorFrom(ShipState previous) {
+        if (previous == null) {
+            return;
+        }
+        java.util.Set<BlockPos> merged = new java.util.HashSet<>(knownInterior);
+        merged.addAll(previous.knownInterior);
+        knownInterior = java.util.Set.copyOf(merged);
     }
 
     public ShipGeometry.Result geometry() {
@@ -131,9 +201,14 @@ public final class ShipState {
         return 1.0F + ENGINE_STEP * net.minecraft.util.Mth.clamp(level, 0, ENGINE_MAX_LEVEL);
     }
 
-    /** 这个方块是不是当前船体几何里的一格结构（用于拒绝空气/隔墙上的伤害）。 */
+    /**
+     * 这个方块是不是当前船体几何里的一格结构（用于拒绝空气/隔墙上的伤害）。
+     *
+     * <p>船内独立设备（接线盒、小型泵）不和船壳连通，但同样属于这艘船，
+     * 走 {@link ShipGeometry.Result#owns(BlockPos)} 一起认。</p>
+     */
     public boolean tracksHullBlock(net.minecraft.core.BlockPos pos) {
-        return geometry.hull().contains(pos);
+        return geometry.owns(pos);
     }
 
     public MachineCount machines() {
@@ -159,8 +234,13 @@ public final class ShipState {
         // 那一瞬间水整体跑到漏水侧（用户实测：完好侧被清空）。
         Map<BlockPos, Double> carried = old == null ? Map.of() : waterByCell();
         this.geometry = next;
+        // 新几何确认的舱内格也要并入历史：只增不减，破损后仍能兜底。
+        java.util.Set<BlockPos> mergedInterior = new java.util.HashSet<>(knownInterior);
+        mergedInterior.addAll(collectInterior(next));
+        knownInterior = java.util.Set.copyOf(mergedInterior);
         // 已经打没的方块不再属于新几何；把它们的耐久记录清掉，客户端不会在空气里画血条。
-        this.hullDamage.retain(next.hull()::contains);
+        // 船内独立设备（接线盒/小型泵）也吃船壳伤害，重扫后不能把它们的耐久记录清掉。
+        this.hullDamage.retain(next::owns);
         this.leakCompartmentByCell = null;
         this.leakInsideCells = null;
         this.waterBoxCache = null;
@@ -655,23 +735,28 @@ public final class ShipState {
             volume += compartment.volume();
         }
         for (ShipGeometry.Compartment pocket : geometry.openPockets()) {
-            volume += pocket.interiorVolume();
+            volume += interiorCellsOf(pocket).size();
         }
         if (volume <= 0.0D) {
             return 0.0D;
         }
-        // 连海空腔里的水按"壳内格数 / 空腔总格数"折算：空腔水位均匀，
-        // 只有船壳包住的那一部分才算船里的水。
+        // 连海空腔按逐列水位累加“船壳内格”的实际水量：各列底高不同，
+        // 按格数比例折算会让进水比例偏离真实水量（下沉判断跟着错）。
         double pocketWater = 0.0D;
         List<ShipGeometry.Compartment> pockets = geometry.openPockets();
         for (int i = 0; i < pockets.size(); i++) {
             ShipGeometry.Compartment pocket = pockets.get(i);
-            int cells = pocket.volume();
-            if (cells <= 0 || pocket.interiorVolume() <= 0) {
+            java.util.Set<BlockPos> interior = interiorCellsOf(pocket);
+            if (interior.isEmpty()) {
                 continue;
             }
-            pocketWater += simulation().pocketWater(i)
-                    * (pocket.interiorVolume() / (double) cells);
+            java.util.List<BlockPos> sources = new java.util.ArrayList<>();
+            for (Breach breach : breaches.values()) {
+                if (pocket.cells().contains(breach.pos())) {
+                    sources.add(breach.pos());
+                }
+            }
+            pocketWater += simulation().interiorWater(i, interior, sources);
         }
         double units = simulation().waterUnits() + pocketWater;
         double capacity = volume * ShipSimulation.UNITS_PER_BLOCK;
@@ -785,6 +870,23 @@ public final class ShipState {
     }
 
     /**
+     * 重扫换了新 ShipState 对象时，把航行控制状态从旧实例带过来。
+     *
+     * <p>不迁的话开合一次门/放一台机器就会把油门、功率和自动驾驶目标重置成默认值。</p>
+     */
+    public void inheritControlFrom(ShipState previous) {
+        if (previous == null) {
+            return;
+        }
+        this.throttleX = previous.throttleX;
+        this.throttleY = previous.throttleY;
+        this.throttleZ = previous.throttleZ;
+        this.power = previous.power;
+        this.autopilotHold = previous.autopilotHold;
+        this.autopilotTarget = previous.autopilotTarget;
+    }
+
+    /**
      * 平移后的船状态：几何整体偏移，模拟实例原样带过去。
      *
      * <p>船是刚体，挪一格不改变舱室，所以不需要重扫；温度和舱内水位也跟着保留——
@@ -793,6 +895,27 @@ public final class ShipState {
     public ShipState shifted(int dx, int dy, int dz) {
         ShipState next = new ShipState(geometry.shifted(dx, dy, dz), machines);
         next.simulation = this.simulation;
+        if (next.simulation != null) {
+            // 模拟实例原样带过去，但几何/上报表的键还是平移前的坐标：
+            // 几何不换的话 bodyOf()/waterLevelAt() 查不到新位置；
+            // 上报表不换的话设备按新坐标上报后旧记录还会重复计入需求。
+            next.simulation.shiftGeometry(dx, dy, dz);
+            next.simulation.shiftReports(dx, dy, dz);
+        }
+        // 历史舱内格也要平移，否则破洞兜底会指向旧坐标。
+        java.util.Set<BlockPos> movedInterior = new java.util.HashSet<>();
+        for (BlockPos cell : knownInterior) {
+            movedInterior.add(cell.offset(dx, dy, dz));
+        }
+        next.knownInterior = java.util.Set.copyOf(movedInterior);
+        // 破口入口也要平移：waterLevelAt 用破口位置算列水位，breaches 为空时
+        // 会退回整块统一水位，平移后干燥侧又会被误判成泡水。
+        next.breaches.clear();
+        for (java.util.Map.Entry<BlockPos, Breach> entry : this.breaches.entrySet()) {
+            Breach breach = entry.getValue();
+            BlockPos moved = breach.pos().offset(dx, dy, dz);
+            next.breaches.put(moved, new Breach(moved, breach.dirX(), breach.dirZ()));
+        }
         // 船壳耐久是逐格记录的，整船平移时必须跟着坐标一起挪。
         next.hullDamage.copyFrom(this.hullDamage);
         next.hullDamage.shift(dx, dy, dz);
@@ -821,12 +944,13 @@ public final class ShipState {
             aimAtTarget(corePos);
         }
         double dt = 0.1D;
-        // 硬核供电：没反应堆/没开机时 supply=0；没有引擎时 engineFactor=0，推进器不出力。
-        double supply = simulation().powerRatio();
-        int engineFactor = Math.min(8, Math.max(0, simulation().engineCount()));
+        // 硬核供电：每台引擎按自己实际拿到的电压贡献推力；没有引擎/没电时为 0。
+        // 台数上限已经在 engineSupplyFactor() 里按 MAX_ENGINES 算；这里限制的是
+        // 效率总和（8 台过压引擎约 12.7），再截 8 会白丢超压加成。
+        double engineSupply = Math.max(0.0D, simulation().engineSupplyFactor());
         if (autopilotHold && autopilotTarget != null) {
             // P 控制：离目标越远目标速度越大；靠近时目标速度自己收敛到 0，不用额外刹车
-            double gain = 0.7D * power / 100.0D * supply * engineFactor;
+            double gain = 0.7D * power / 100.0D * engineSupply;
             double tx = net.minecraft.util.Mth.clamp(
                     (autopilotTarget.getX() - corePos.getX()) * gain, -ShipPhysics.MAX_SPEED, ShipPhysics.MAX_SPEED);
             double ty = net.minecraft.util.Mth.clamp(
@@ -835,7 +959,7 @@ public final class ShipState {
                     (autopilotTarget.getZ() - corePos.getZ()) * gain, -ShipPhysics.MAX_SPEED, ShipPhysics.MAX_SPEED);
             physics.tickAuto(dt, tx, ty, tz);
         } else {
-            int effectivePower = (int) Math.round(power * supply * engineFactor);
+            int effectivePower = (int) Math.round(power * engineSupply);
             physics.tickManual(dt, throttleX, throttleY, throttleZ, effectivePower,
                     simulation().ballastPercent(), floodRatio());
         }

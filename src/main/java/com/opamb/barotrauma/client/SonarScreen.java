@@ -67,6 +67,15 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     private static final int DOCK_CY = 292;
     private static final int DOCK_R = 32;
 
+    /**
+     * 设计分辨率 620×340 到屏幕的等比缩放：窗口/GUI 尺寸不够时整体缩小，
+     * 不会再把面板裁掉。绘制和命中测试全部用设计坐标，leftPos/topPos 归零。
+     */
+    private float uiScale = 1.0F;
+    /** 缩放后面板左上角在屏幕上的位置。 */
+    private int panelX;
+    private int panelY;
+
     /** 一次声纳脉冲由内向外扩散的周期（毫秒）。 */
     private static final float PING_MS = 2600.0F;
 
@@ -136,9 +145,28 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     @Override
     protected void init() {
         super.init();
+        // 按可用 GUI 空间等比缩放：窗口小 / GUI Scale 大时整块面板缩进去，不再被裁。
+        float margin = 12.0F;
+        float fitW = (this.width - margin * 2.0F) / PANEL_W;
+        float fitH = (this.height - margin * 2.0F) / PANEL_H;
+        uiScale = Mth.clamp(Math.min(fitW, fitH), 0.30F, 1.0F);
+        panelX = Math.round((this.width - PANEL_W * uiScale) * 0.5F);
+        panelY = Math.round((this.height - PANEL_H * uiScale) * 0.5F);
+        // 所有绘制/命中测试改用设计坐标（0..620 / 0..340），渲染时统一 translate+scale。
+        this.leftPos = 0;
+        this.topPos = 0;
         ClientSonarCache.clear();
         openedAt = System.currentTimeMillis();
         sendPing();
+    }
+
+    /** 屏幕坐标 → 设计坐标（缩放后的面板内部坐标）。 */
+    private int designX(double screenX) {
+        return (int) Math.floor((screenX - panelX) / uiScale);
+    }
+
+    private int designY(double screenY) {
+        return (int) Math.floor((screenY - panelY) / uiScale);
     }
 
     @Override
@@ -154,7 +182,9 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         double cp = Math.cos(camPitch);
         ModNetwork.send(new SonarPingPacket(menu.sonarPos(), range, mode.id(),
                 (float) (Math.sin(camYaw) * cp), (float) Math.sin(camPitch), (float) (Math.cos(camYaw) * cp)));
-        pingCooldown = 20;
+        // 原作声纳的数据刷新很快（网络 0.1s / 10Hz），扫掠只负责"什么时候亮出来"；
+        // 这里同样 10Hz 重新扫描，视觉上仍由 drawScope 的波前控制显现节奏。
+        pingCooldown = 2;
     }
 
     // ------------------------------------------------------------------ 键盘（手动模式）
@@ -254,22 +284,30 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             headingZ = ClientSonarCache.headingZ();
             synced = true;
         }
-        super.render(graphics, mouseX, mouseY, partialTick);
+        // 全屏压暗不参与缩放。
+        renderBackground(graphics);
+        int dmx = designX(mouseX);
+        int dmy = designY(mouseY);
+        graphics.pose().pushPose();
+        graphics.pose().translate(panelX, panelY, 0.0F);
+        graphics.pose().scale(uiScale, uiScale, 1.0F);
+        renderBg(graphics, partialTick, dmx, dmy);
         drawBanner(graphics);
         if (page == 0) {
-            drawScope(graphics, mouseX, mouseY);
+            drawScope(graphics, dmx, dmy);
             drawStatusPanel(graphics);
             drawLogPanel(graphics);
             drawSonarBox(graphics);
-            drawHelmBox(graphics, mouseX, mouseY);
-            drawDockButton(graphics, mouseX, mouseY);
+            drawHelmBox(graphics, dmx, dmy);
+            drawDockButton(graphics, dmx, dmy);
             drawBottomHint(graphics);
         } else if (page == 1) {
             drawCorePage(graphics);
         } else {
-            drawMissionPage(graphics, mouseX, mouseY);
+            drawMissionPage(graphics, dmx, dmy);
         }
-        drawTabs(graphics, mouseX, mouseY);
+        drawTabs(graphics, dmx, dmy);
+        graphics.pose().popPose();
     }
 
     // ---------------------------------------------------------- 顶部横幅 / 页签
@@ -363,10 +401,12 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
                 : net.minecraft.network.chat.Component.translatable(spec.nameKey()).getString();
         int dist = (int) Math.sqrt(minecraft.player.blockPosition().distSqr(mission.target));
         int reward = mission.cargoTotal() > 0 ? mission.cargoPayout() : mission.reward;
-        // 货运模板的目标坐标固定是旧 B 站，进入副本后距离没有意义：改显示本轮目的站。
-        boolean cargo = mission.type == com.opamb.barotrauma.mission.MissionType.DELIVERY
-                || mission.type == com.opamb.barotrauma.mission.MissionType.URGENT_DELIVERY;
-        String where = cargo
+        // 货运/采矿模板的目标坐标是固定占位（采矿甚至是 0,0,0），距离没有意义：
+        // 改显示本轮绑定的目的站。
+        boolean stationBound = mission.type == com.opamb.barotrauma.mission.MissionType.DELIVERY
+                || mission.type == com.opamb.barotrauma.mission.MissionType.URGENT_DELIVERY
+                || mission.type == com.opamb.barotrauma.mission.MissionType.MINERAL;
+        String where = stationBound
                 ? (mission.destinationNode() >= 0
                 ? net.minecraft.network.chat.Component.translatable(
                         "campaign.barotrauma.node." + mission.destinationNode()).getString()
@@ -682,7 +722,8 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             if (depth < 2.0F) {
                 continue;
             }
-            if (type == SonarScan.TYPE_TERRAIN && depth < camDistance) {
+            boolean terrainLike = type == SonarScan.TYPE_TERRAIN || type == SonarScan.TYPE_ORE;
+            if (terrainLike && depth < camDistance) {
                 continue;
             }
             int px = cx + Math.round((dx * rx + dz * rz) * focal / depth);
@@ -694,7 +735,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             }
 
             float reveal = 1.0F;
-            if (type == SonarScan.TYPE_TERRAIN) {
+            if (terrainLike) {
                 // 屏幕半径 = 这条回声走了多远
                 float sr = (float) Math.sqrt((double) (ox * ox + oy * oy)) / FIELD_R;
                 float age = wavefront - sr;
@@ -722,6 +763,14 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         }
         if (type == SonarScan.TYPE_CONTACT) {
             return argb(255, 255, 90, 74);
+        }
+        if (type == SonarScan.TYPE_ORE) {
+            // 矿脉：琥珀金，和地形青色、船体绿色、接触点红色区分开。
+            int alpha = (int) ((1.05F - 0.45F * t) * reveal * 255.0F);
+            int r = (int) (255 - 25 * t);
+            int g = (int) (205 - 55 * t);
+            int b = (int) (70 - 30 * t);
+            return argb(Mth.clamp(alpha, 0, 255), r, g, b);
         }
         int alpha = (int) ((1.05F - 0.45F * t) * reveal * 255.0F);
         int r = (int) (30 + 80 * (1 - t));
@@ -1218,15 +1267,15 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     // ---------------------------------------------------------- 交互
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double mouseX, double mouseY, int button) { double mx = designX(mouseX); double my = designY(mouseY);
         // 页签优先：任何时候都能切页
         if (button == 0) {
             int tabX = leftPos + LEFT_X;
             int tabY = topPos + TAB_Y;
-            if (mouseY >= tabY && mouseY < tabY + TAB_H) {
+            if (my >= tabY && my < tabY + TAB_H) {
                 for (int i = 0; i < 3; i++) {
                     int x0 = tabX + i * (TAB_W + 2);
-                    if (mouseX >= x0 && mouseX < x0 + TAB_W) {
+                    if (mx >= x0 && mx < x0 + TAB_W) {
                         page = i;
                         return true;
                     }
@@ -1244,17 +1293,17 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
 
         int cx = leftPos + SCOPE_CX;
         int cy = topPos + SCOPE_CY;
-        double ox = mouseX - cx;
-        double oy = mouseY - cy;
+        double ox = mx - cx;
+        double oy = my - cy;
         boolean inScope = ox * ox + oy * oy <= (double) SCOPE_R * SCOPE_R;
 
         if (button == 0 && inScope) {
             orbiting = true;
-            pressX = mouseX;
-            pressY = mouseY;
+            pressX = mx;
+            pressY = my;
             draggedFarEnough = false;
-            lastMouseX = mouseX;
-            lastMouseY = mouseY;
+            lastMouseX = mx;
+            lastMouseY = my;
             return true;
         }
         if (button != 0) {
@@ -1262,59 +1311,59 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         }
 
         // 右下圆形按钮：离港 / 对接 / 下潜
-        if (inCircle(mouseX, mouseY, leftPos + DOCK_CX, topPos + DOCK_CY, DOCK_R)) {
+        if (inCircle(mx, my, leftPos + DOCK_CX, topPos + DOCK_CY, DOCK_R)) {
             clickDockButton();
             return true;
         }
 
         int x = leftPos + COL_X;
         int sy = topPos + SONAR_BOX_Y;
-        if (inRect(mouseX, mouseY, x + 4, sy + 6, 150, 14)) {
+        if (inRect(mx, my, x + 4, sy + 6, 150, 14)) {
             setMode(SonarScan.Mode.PASSIVE);
             return true;
         }
-        if (inRect(mouseX, mouseY, x + 4, sy + 20, 150, 14)) {
+        if (inRect(mx, my, x + 4, sy + 20, 150, 14)) {
             setMode(SonarScan.Mode.ACTIVE);
             return true;
         }
-        if (inRect(mouseX, mouseY, x + 4, sy + 36, 160, 14)) {
+        if (inRect(mx, my, x + 4, sy + 36, 160, 14)) {
             setMode(mode == SonarScan.Mode.DIRECTIONAL ? SonarScan.Mode.ACTIVE : SonarScan.Mode.DIRECTIONAL);
             return true;
         }
-        if (inRect(mouseX, mouseY, x + 4, sy + 66, COL_W - 8, 14)) {
+        if (inRect(mx, my, x + 4, sy + 66, COL_W - 8, 14)) {
             draggingZoom = true;
-            applyZoom(mouseX);
+            applyZoom(mx);
             return true;
         }
 
         int hy = topPos + HELM_BOX_Y;
-        if (inRect(mouseX, mouseY, x + 4, hy + 6, 160, 14)) {
+        if (inRect(mx, my, x + 4, hy + 6, 160, 14)) {
             setAuto(false);
             return true;
         }
-        if (inRect(mouseX, mouseY, x + 4, hy + 20, 160, 14)) {
+        if (inRect(mx, my, x + 4, hy + 20, 160, 14)) {
             setAuto(true);
             return true;
         }
-        if (inRect(mouseX, mouseY, x + 40, hy + 108, COL_W - 50, 14)) {
-            applyPower(mouseX, x);
+        if (inRect(mx, my, x + 40, hy + 108, COL_W - 50, 14)) {
+            applyPower(mx, x);
             return true;
         }
         if (autoMode) {
-            if (inRect(mouseX, mouseY, x + 8, hy + 70, 120, 16)) {
+            if (inRect(mx, my, x + 8, hy + 70, 120, 16)) {
                 clearTarget();
                 return true;
             }
         } else {
             for (int i = 0; i < 8; i++) {
-                if (inRect(mouseX, mouseY, x + 8 + (i % 4) * 40, hy + 42 + (i / 4) * 18, 38, 16)) {
+                if (inRect(mx, my, x + 8 + (i % 4) * 40, hy + 42 + (i / 4) * 18, 38, 16)) {
                     int[][] dirs = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
                     steer(dirs[i][0], headingY, dirs[i][1]);
                     return true;
                 }
             }
             for (int i = 0; i < 3; i++) {
-                if (inRect(mouseX, mouseY, x + 8 + i * 54, hy + 80, 52, 16)) {
+                if (inRect(mx, my, x + 8 + i * 54, hy + 80, 52, 16)) {
                     int[] values = {1, 0, -1};
                     if (values[i] == 0) {
                         steer(0, 0, 0);
@@ -1364,17 +1413,17 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) { double mx = designX(mouseX); double my = designY(mouseY);
         if (draggingZoom) {
-            applyZoom(mouseX);
+            applyZoom(mx);
             return true;
         }
         if (orbiting) {
-            camYaw -= (float) (mouseX - lastMouseX) * 0.008F;
-            camPitch = Mth.clamp(camPitch - (float) (mouseY - lastMouseY) * 0.008F, -1.45F, 1.45F);
-            lastMouseX = mouseX;
-            lastMouseY = mouseY;
-            if (Math.abs(mouseX - pressX) + Math.abs(mouseY - pressY) > 6) {
+            camYaw -= (float) (mx - lastMouseX) * 0.008F;
+            camPitch = Mth.clamp(camPitch - (float) (my - lastMouseY) * 0.008F, -1.45F, 1.45F);
+            lastMouseX = mx;
+            lastMouseY = my;
+            if (Math.abs(mx - pressX) + Math.abs(my - pressY) > 6) {
                 draggedFarEnough = true;
             }
             return true;
@@ -1383,10 +1432,10 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(double mouseX, double mouseY, int button) { double mx = designX(mouseX); double my = designY(mouseY);
         // 单击 = 标记目标，两种模式都生效（手动模式下点一下就切自动，省得先去点单选）
         if (orbiting && !draggedFarEnough && button == 0) {
-            markTargetAt(mouseX, mouseY);
+            markTargetAt(mx, my);
         }
         orbiting = false;
         draggingZoom = false;
@@ -1394,11 +1443,11 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) { double mx = designX(mouseX); double my = designY(mouseY);
         int cx = leftPos + SCOPE_CX;
         int cy = topPos + SCOPE_CY;
-        double ox = mouseX - cx;
-        double oy = mouseY - cy;
+        double ox = mx - cx;
+        double oy = my - cy;
         if (ox * ox + oy * oy <= (double) SCOPE_R * SCOPE_R) {
             int next = Mth.clamp(power + (delta > 0 ? 10 : -10), 10, 100);
             if (next != power) {
@@ -1469,7 +1518,17 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         double bestOffset = 4.5D;
         if (frame != null) {
             for (int point : frame.points()) {
-                if (SonarScan.type(point) != SonarScan.TYPE_TERRAIN) {
+                // 矿脉点也能当自动驾驶目标：玩家看到金色矿点并点击时，
+                // 提交的坐标必须和显示位置一致（与上方的 terrainLike 判定一致）。
+                int pointType = SonarScan.type(point);
+                if (pointType != SonarScan.TYPE_TERRAIN && pointType != SonarScan.TYPE_ORE) {
+                    continue;
+                }
+                // 与 drawCloud 的 terrainLike 判定一致：相机背后的点不会画出来，
+                // 也就不能当作可点击目标，否则点击可见矿脉会提交到被遮住的另一侧矿脉。
+                double depth = SonarScan.x(point) * fx + SonarScan.y(point) * fy
+                        + SonarScan.z(point) * fz + camDistance;
+                if (depth < camDistance) {
                     continue;
                 }
                 double px = SonarScan.x(point) - camX;
