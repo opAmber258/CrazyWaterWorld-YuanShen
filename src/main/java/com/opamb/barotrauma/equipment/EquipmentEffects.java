@@ -109,8 +109,9 @@ public final class EquipmentEffects {
         Player player = event.player;
         // 背包绑定/潜水服减速每 tick 都要检查（状态变化要及时生效）。
         BagManager.bindFromEquipment(player);
-        // 护甲渲染只需要"穿没穿"：写进原版同步数据，客户端（含其他玩家视角）直接读。
+        // 护甲渲染只需要"穿没穿/哪一套"：写进原版同步数据，客户端（含其他玩家视角）直接读。
         DivingSuitState.of(player).barotrauma$setWearingDivingSuit(EquipmentData.hasDivingSuit(player));
+        DivingSuitState.of(player).barotrauma$setWearingGlassDivingSuit(EquipmentData.hasGlassDivingSuit(player));
         updateDivingSuitSlowdown(player);
         // 报警要按原作 0.57s 的循环播放，不能塞进每秒一次的供氧更新里。
         updateDivingSuitBeep(player);

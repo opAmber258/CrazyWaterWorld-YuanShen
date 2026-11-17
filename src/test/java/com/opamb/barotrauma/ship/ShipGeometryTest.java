@@ -59,6 +59,88 @@ class ShipGeometryTest {
     }
 
     @Test
+    @DisplayName("房间里的独立接线盒不会抢走最近船体")
+    void isolatedEquipmentDoesNotStealHull() {
+        // 7×7×7 外壳；核心在中心；接线盒孤零零放在舱内 (1,0,0)，
+        // 离核心比外壳近得多。它只能算设备，不能把整艘船挤掉。
+        Set<BlockPos> ship = new HashSet<>();
+        for (int x = -3; x <= 3; x++) {
+            for (int y = -3; y <= 3; y++) {
+                for (int z = -3; z <= 3; z++) {
+                    boolean shell = Math.abs(x) == 3 || Math.abs(y) == 3 || Math.abs(z) == 3;
+                    if (shell) {
+                        ship.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        ship.add(new BlockPos(1, 0, 0));
+
+        ShipGeometry.Result result = ShipGeometry.scanShip(
+                new BlockPos(0, 0, 0), 8, ship::contains, probe(ship), 0, null,
+                pos -> pos.equals(new BlockPos(1, 0, 0)));
+        assertEquals(218, result.hull().size(), "7³ 外壳 = 343 - 5³ = 218 格，不能被单格设备截断");
+        assertTrue(result.hull().contains(new BlockPos(3, 0, 0)));
+        assertTrue(result.hull().contains(new BlockPos(-3, 0, 0)));
+        assertEquals(1, result.compartments().size(), "舱室仍是一个整体");
+        assertEquals(124, result.compartments().get(0).volume(), "5³ 舱内被接线盒占掉 1 格");
+    }
+
+    @Test
+    @DisplayName("接线盒 + 小型泵组成的设备块不会抢走船壳，但仍算这艘船的设备")
+    void equipmentComponentDoesNotStealHull() {
+        // 11³ 外壳（各轴 ±5）；核心在中心；接线盒 (2,3,3) 和小型泵 (2,3,2)
+        // 连成一个 2 格设备块：最近距离平方 17，比外壳的 25 更近。
+        // 两格都必须算设备，否则选中设备块、丢掉整艘船。
+        Set<BlockPos> ship = new HashSet<>();
+        for (int x = -5; x <= 5; x++) {
+            for (int y = -5; y <= 5; y++) {
+                for (int z = -5; z <= 5; z++) {
+                    boolean shell = Math.abs(x) == 5 || Math.abs(y) == 5 || Math.abs(z) == 5;
+                    if (shell) {
+                        ship.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+        BlockPos junction = new BlockPos(2, 3, 3);
+        BlockPos smallPump = new BlockPos(2, 3, 2);
+        ship.add(junction);
+        ship.add(smallPump);
+
+        ShipGeometry.Result result = ShipGeometry.scanShip(
+                new BlockPos(0, 0, 0), 8, ship::contains, probe(ship), 0, null,
+                pos -> pos.equals(junction) || pos.equals(smallPump));
+        assertEquals(602, result.hull().size(),
+                "11³ 外壳 = 1331 - 9³ = 602 格，不能被设备连通块截断");
+        assertFalse(result.hull().contains(junction), "设备块不能进船体");
+        assertFalse(result.hull().contains(smallPump), "设备块不能进船体");
+        // 归属校验是另一回事：船内的独立设备必须还能通过 tracksHullBlock()，
+        // 否则接线盒不上报、绑定设备断电，小型泵也不抽水。
+        assertTrue(result.equipment().contains(junction), "船内独立接线盒仍属于这艘船");
+        assertTrue(result.equipment().contains(smallPump), "船内独立小型泵仍属于这艘船");
+        assertTrue(result.owns(junction), "tracksHullBlock 必须认船内独立接线盒");
+        assertTrue(result.owns(smallPump), "tracksHullBlock 必须认船内独立小型泵");
+    }
+
+    @Test
+    @DisplayName("船壳包围盒外的设备不算这艘船")
+    void equipmentOutsideHullBoundsIsNotOwned() {
+        // 5³ 空心壳 + 壳外 3 格处一个接线盒：扫描半径内能扫到，但不属于这艘船，
+        // 否则停靠时会把哨站/邻船的接线盒也认进来。
+        Set<BlockPos> ship = new HashSet<>(hollowCube());
+        BlockPos outside = new BlockPos(5, 0, 0);
+        ship.add(outside);
+
+        ShipGeometry.Result result = ShipGeometry.scanShip(
+                BlockPos.ZERO, 6, ship::contains, probe(ship), 0, null,
+                pos -> pos.equals(outside));
+        assertEquals(98, result.hull().size(), "壳 = 5³ - 3³ = 98 格");
+        assertFalse(result.equipment().contains(outside), "壳外设备不能被认领");
+        assertFalse(result.owns(outside), "壳外设备不属于这艘船");
+    }
+
+    @Test
     @DisplayName("空心立方体 + 内部核心 -> 1 个舱室、98 格船体、密闭")
     void hollowCube_oneSealedCompartment() {
         ShipGeometry.Result r = scan(hollowCube(), BlockPos.ZERO, 4);

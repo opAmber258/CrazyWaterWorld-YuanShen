@@ -3,14 +3,14 @@
 > 每次收工都要更新这份。规则见 `AGENTS.md`；设计细节和历史见 `PLAN.md`
 > （最近两轮是 §10.42 只保留物理船、§10.43 舱内真空气 + 声纳锚点）。
 >
-> 上次更新：2026-11-16（已同步远端 main 到 83e9613；HUD 病症图标改原作位图；本地未提交的
-> 医疗 WIP 见下方 2026-11-09~10 一节——消辐灵/液态氧矿、H 键面板、倒地禁背包、2 格治疗距离）。
+> 上次更新：2026-11-17（已同步远端 main 到 1a5b2af；HUD 病症图标改原作位图 +
+> 医疗 WIP，PR #67 待合；下方 2026-11-09~10 一节记录医疗细节）。
 > 设计细节和历史见 `PLAN.md`（最近：§10.57 进水渲染与潜行卡死根因）。
 >
 > ⚠️ 2026-11-04 那条"按 Shift 不沉 = 人站在舱底，非代码问题"的定性**是错的**，
 > 已在 §10.57.1 纠正：是原版潜行边缘保护在 VS2 船上把水平位移清零。
 
-## 2026-11-16 HUD 病症状态图标改为原作位图（未提交）
+## 2026-11-16 HUD 病症状态图标改为原作位图（PR #67）
 
 用户："右下角的伤病状态栏请全部改为符合原版潜渊症的图标。比如缺氧改为 O2。
 直接搬上中文太丑了"。
@@ -56,6 +56,239 @@
 | 面板超距后仍绘制缓存旧快照，还能点药品 | `targetOutOfRange()` → 清 `iconRects` + 显"目标超出治疗范围"，`mouseClicked` 再兜一层 |
 
 **验证**：`compileJava` 通过；L1 **253 项 0 失败**（新增 5 项：辐射病/缺氧低段染色 ×2、出血按消耗占比 ×2、纳洛酮治戒断 ×1）。
+
+### PR #67 第二轮审查修复（2026-11-17）
+
+上一轮修复引入了 3 个新问题（CodeRabbit 全部指出，均属实）：
+
+| 问题 | 修法 |
+|---|---|
+| **Major**：药品栏钉在 y+144，但病症区从 y+112 起，只剩 32px ≈ 2 行——描述全被跳过、倒地时连标题都挤掉；且我写的"悬停看全部"根本没实现 | `PANEL_H` 186→214（病症区 60px ≈ 5 行）+ **真正实现悬停**：鼠标在身体图上时 `TreatmentRenderer.hoverLines` + `renderTooltip` 显示该部位完整伤情 |
+| 严重度在零消耗分界处骤降：成瘾 80（0.8）→ 80.1（~0.001）、缺氧 50（0.25）→ 50.1（~0.002），身体色从橙红闪成绿 | 取"消耗占比"与"强度/上限"的 **max**，正消耗区间行为不变（出血等仍按消耗） |
+| 纳洛酮测试无对照组：戒断自身每秒自衰 −0.1，删掉药效也能过 | 改为与未治疗容器对比，断言多降 2.0 |
+
+新增回归：分界连续性（成瘾 80/80.1、缺氧 50/50.1）+ 全病症强度扫描单调性。
+**L1 255 项 0 失败**。
+
+## 2026-11-15 哨站服务 + 关卡洞窟网络 + 电力/采矿/装备（PR 待审）
+
+> **交接摘要：新会话从这一节开始读。** 这批是工作区累积的未提交改动，已一次性提交到
+> `feat/outpost-batch-20261115` 并开 PR 等 CodeRabbit 审核；**没有合并、没有导出 jar**。
+> 本地 `main` 仍停在 `77009a7`；`origin/main` 已多 3 个美术提交（`8d4843e` 等），
+> **本地还没 pull**，PR 合并后要用户明确授权再 pull。
+
+### 1. 哨站服务（本轮重点，细节见 `docs/OUTPOST_SERVICES.md`）
+- 商人/医生/站务员三个独立 NPC（`NpcEntity` 角色 `mission/merchant/doctor`），各自独立界面，
+  不共用任务终端标签页；每站自动补齐，旧存档进站迁移。
+- 商店：`StoreCatalog` + `StationStoreSavedData` + `StorePricing`；真实库存、商人余额 5000、
+  ±5% 价格修正、每次到访补货、卖价 30%、只收主背包耐久 ≥90% 且无内容物。
+- 三个标签页（原作 `StoreTab`）：购买 / 出售 / 潜艇（`SellSub` 扫船上 `CabinetBlockEntity`，
+  排除任务货箱/装东西的箱子/耐久 <90%）。
+- 购买确认两个交付选项（原作 `Store.cs` + `CampaignMode.AllowImmediateItemDelivery`）：
+  「立即获得」进角色背包；「送至潜艇」写入 `StoreDeliverySavedData`，起航时由
+  `StoreService.deliverPending` 在 VS2 装配前送进船上钢柜/货架，放不下的留待下次起航。
+- 医疗诊所：`ClinicPricing` 按原作 `BaseHealCost + Strength × Multiplier`（出血 2.5、
+  烧伤 2.25、缺氧 0.5、失血 1.5、阿片中毒 1.25、成瘾 2.85、辐射 4.0），
+  `MedicalClinicService` 治疗并刷新 HUD。
+- NPC 皮肤：站务员按站点散列 `opamber/hanxing/tenbaku`（opamber 用 slim，另两张 classic），
+  商人/医生默认史蒂夫 classic。
+- 网络协议 13（2026-11-15 批次值；当前 16）；修复「已购买空气」
+  （`Inventory.add` 会吃掉传入 stack，先取名字再 add）。
+
+### 2. 关卡地形
+- `RoutePath` 大洞窟网络：主航道随机上下 + 左右游走，侧隧道可再挂侧隧道，洞室；
+  `distanceToNetwork` 统一影响地形/净空/矿脉。
+- `LevelType/LevelParams/LevelSelector`：tutorial/basic/advanced/maze/outpost，按目的深度 +
+  出航数选；`RoundState` 持久化 levelType/seed/difficulty/distance。
+- 洞宽 330–600、高 330–560；路线按类型 518/700/1500/1300；`SPACING` 2048；声纳 248；
+  外圈岩柱/钟乳石/浮岩岛；Voronoi 细胞壁已删。
+
+### 3. 电力 / 采矿 / 装备
+- 电力：`PowerGrid`/`PowerConsumer`/`PowerStatePacket`/`PowerBindPacket`/
+  `PowerOpenRequestPacket`/`PowerPanelState`，接线盒方块/GeckoLib 模型/GUI，螺丝刀。
+- 采矿：`MineralVeins` 沿航线生成、石英/磷氯铅矿/铀矿脉方块、等离子切割机（烧氧气瓶）、
+  采矿任务。
+- 装备：玻璃潜水服、物品浮力、潜水服状态/装备数据相关改动。
+
+### 4. 验证 / 未做
+- `./gradlew compileJava test --offline`：**293 项测试 0 失败（52 个测试类）**（2026-11-17 第十八轮后）。
+- 客户端本轮未起（用户要求等通知）；实机验收待用户。
+- 未做：船员雇佣、完整升级树、每日特价/需求物资、商店送货到“货舱航点”（当前送货柜）、
+  任务/沉船/怪物等 P0 缺口。
+
+### 5. 第四/五/六轮 CodeRabbit 修复（`6a07c48` 之后，待复审）
+- 电力面板会话：`PowerPanelState` 打开时记录（维度 + 盒子坐标 + 坐标系），`bind`/`refresh`
+  只认这份记录，不再按方块实体存在性重判坐标系；`build`/`bind` 查询前先 `hasChunkAt`，
+  客户端坐标不会触发同步区块加载；玩家退出时清会话。
+- 快捷面板：`PowerOpenRequestPacket` 同时扫描活动物理船与附近方块船，取最近的有效接线盒；
+  物理船不再全局屏蔽方块船面板。
+- 第五轮：新增 `ShipCores.coresNear`，快捷面板遍历附近每艘方块船（跳过已装配物理船），
+  不再只认最近核心；`core.state()` 为空时先 `rescan(level)`，读档后不会 NPE。
+- outside-diff 补修：`VsPilot.toWorld` 改读已加载船句柄；`PowerPanelState` 接收打开请求
+  已选中的船并记进会话（`refresh` 复用），找船半径统一 64 格；矿脉进度条不再被船壳
+  映射失败吞掉。
+- 第六轮：面板会话改存船核心坐标，`refresh` 按核心取当前 `ShipState`（rescan 出新对象
+  后不再显示旧设备表）；`fixtureCut` 按装配生命周期清空（launch/dock/dropStale/reset）；
+  靠泊吸附只搬真正在舱内的玩家和 `TAG_PINNED` 任务货（世界坐标逆变换回装配坐标查
+  `interiorCells`）。
+- full review 批次（20 条）：诊所包区分首次打开/刷新（协议 14）；接线盒文字本地化、
+  面板高度自适应 240 高窗口、宽限 setChanged、按盒高判泡水；`ShipMover` 平移保留
+  接线盒绑定；水密门/舱口遇外海连线保持关闭；三格舱口整套拆除、切割跳过 `BREACHED`；
+  全船负载跳过断开支路；门/舱口自动化按船身份换算坐标；商店行数上限统一 64；
+  快捷面板只认同维度物理船；面板绑定状态直接读 BE；物品浮力用完整干湿链；
+  `LevelSelector` 改读 `LevelParams`。
+- 第二次 full review 批次（11 条 + outside-diff + nitpick）：旧存档关卡锚点/间距
+  持久化（`RouteLevel.anchorX`、`RoundState.levelSpacing`，旧档回退 192/1024）；
+  `CampaignManager.restoreRoute` 统一三处恢复；接线盒 tick 用 `VsState.isPhysical`
+  判归属；矿脉密度改 `floorMod` 模数、邻列用邻列 `floorY`；旧焊接购买价对齐 150；
+  切割穿过打开的门/舱口并加 `player.mayBuild`；`ShipMover` 保留接线盒耐久 NBT；
+  反应堆警报用 `effectCenter`；声纳矿脉点可作自动驾驶目标。
+- 第三次 full review 批次（3 条 + nitpick）：声纳目标选择补 `depth >= camDistance`
+  （与 `drawCloud` 一致，不再把相机背后的矿脉当目标）；切割器在矿脉/舱门分支前
+  走 `ForgeHooks.onBlockBreakEvent` + `blockActionRestricted`（只在开始切时触发一次）；
+  旧存档活动槽位改按保存的 `anchorX` 认站（`siteSlot`/`siteXAt`/`inRouteZone`/
+  `inMiningZone`，含 1024 间距槽位 2/3 回归测试）；`LevelParamsTest` 删恒真断言、
+  补模数边界用例（零概率 baseline×4、极大概率 128）。
+- 第四次 full review 批次（3 条）：`onUseTick` 区分未命中/被拒绝，拒绝记录保留到换目标，
+  按住被拒目标不再每 2 tick 重发 `BreakEvent`；`inRouteZone`/`inMiningZone` 保持
+  base±1 候选并单独补查活动槽位（旧槽位 100 时不会遍历 50 个中间槽位）；
+  `siteXAt` 先认活动站点再套默认 `|z| <= 64` 过滤（南北出发站 z 可到 ±1600）。
+- 第五次 full review 批次（10 条 + outside-diff）：三格舱口水密判定取左/中/右最大水量；
+  接线盒按船体归属选核心；反应堆特效坐标先判 `isPhysical`；诊所/商店界面文字全部走
+  `zh_cn`/`en_us` 语言键；服务器启动前清空 `MissionInstance.routeLevel`；切割器只对
+  命中格真属于物理船时走 `tryCut`，舱口整套拆除只掉一个；门水量只算直接相邻水体
+  （新增 `AutomationWaterTest`）；`sellCart` 拒绝任务货箱；`ROUTER.md` 交接入口更新。
+- 第六次 full review 批次（10 条 + 10 条 minor）：泵/门/舱口/反应堆统一按
+  `isPhysical` + 船体归属解析船；泵欠压停转；舱口水密三格都查外海；接线盒面板
+  区分打开/刷新（协议 15）；诊所可见行数与零价治疗；商店出售行带物品 ID 校验、
+  提交后锁定到下一快照、减号在 0 时也消费；物理船切割补世界坐标 `BreakEvent`
+  并在拒绝时保留记录；三格舱口/两格舱门整套拆除只掉一个；`resolveShip` 改
+  `coresNear`；声纳矿脉去重只认本次可见邻居且先查区块；矿脉进度 6 tick 超时；
+  物理船实时逆变换用于潜行保护；矿脉派生种子可在旧区块全存在时补算；采矿需求
+  累加、预加载按航线长度采样；`RoutePath` 增加排除自身的父网络距离并修正测试；
+  透明潜水服改自定义配方保留氧气瓶。**跳过**：物理船靠泊的 `PowerBox` 坐标平移
+  （用户要求先不动电力）、`RoutePath.openAt` 同列分离区间（要改 SeaTerrain/
+  生成器的单区间 API，留待结构改造）。
+- 第七次 full review 批次（16 条 inline + 2 条 outside-diff）：接线盒缓存归属核心、
+  泵/反应堆坐标统一按 `isPhysical`；起航交付显式传深海维度 + 船核心；船壳血条与
+  矿脉血条分开截断；商店包加 `open` 区分首开/刷新（协议 16）、潜艇出售单行上限 64；
+  诊所治疗请求带确认价上限（协议 16）；切割器舱口逐格查类型、拒绝记录按住时续期；
+  物理船切割权限缓存区分玩家；舱口自动模式随 `ShipMover` 平移；`MissionInstance`
+  航道缓存用关卡快照、相同关卡不抢写锁；矿脉候选深度跨度修正（原公式恒为负，
+  4 个中间候选从未生成）、簇数下限按需求量；`PowerPanelState.bind` 校验设备属于
+  本船；声纳按 section Y 预剪枝。
+- 第八次 full review 批次（9 条 + 1 条 outside-diff）：门/舱口开合按 `resolveCore`
+  重扫归属核心（不再固定 16 格）；接线盒面板显示设备坐标；矿脉客户端只让本地玩家
+  写进度；接线盒归属核心按几何选；`ShipMover` 也搬舱壁门自动模式；推进改
+  `engineSupplyFactor()`；物理船熔毁走 `isPhysical`；海底矿脉要求邻接空气。
+  **跳过**：物品浮力在物理船上的 `getBlockState` 坐标映射 —— 需要实机确认 VS2
+  世界里船体方块是否仍可查询，且没有已验证的世界→装配逆变换 API，等客户端验收
+  后再定。
+- 第九次 full review 批次（13 条 + 1 条 nitpick）：文档协议号更新到 16；接线盒绑定
+  失败也回刷新包，客户端不会永久禁用；商店提交 3 秒超时解锁；潜行 mixin 只认物理船
+  舱室；声纳按声纳/玩家归属解析物理船；船体扫描排除孤立接线盒的设备连通块
+  （新增 `ShipGeometryTest` 用例）；靠泊搬人/货用完整位移（含取整差）；出售槽位
+  限主背包 0–35；`resolveItem` 拒绝 AIR；商店/诊所提示全部走语言键（补 `zh_cn`/
+  `en_us`）；`RoutePathTest` 校验中心线高度落在洞窟区间内。**跳过**：出航矿脉
+  预加载耗时（需实机 profile）、旧区块矿脉产量保证（需要产品层提示方案）。
+- 第十次 full review 批次（11 条 + 1 条 outside-diff）：商店出售列表限主背包；
+  服务器重置同时清 `routeOutposts`；切割权限检查后补发真实方块状态包（创造模式
+  不再把矿脉显示成空气）；采矿 READY 后矿物不足会退回 ACTIVE；声纳物理船判定补
+  舱室/船心距离并排除方块船；认领扫描补船壳谓词；商店货柜必须落在舱室/连海空腔
+  内；`LevelParams` 槽位注释改 1024；客户端潜行保护用同步水面盒兜底；声纳采样
+  网格向上取整覆盖射程边缘。**跳过**：`fillFromNoise` 已提交任务在关卡切换后
+  仍可能用新关卡生成 —— 要把航道快照穿透 SeaTerrain/生成器的整条调用链，属结构
+  改造，留待下一轮。
+- 第十一次 full review 批次（11 条 + 1 条 outside-diff）：舱壁门上下两格都查通海/
+  水量；接线盒面板宽度自适应窄窗口、坐标单独一行；商店提交超时保持锁定并提示
+  “结果未知”；物品浮力离开扫描范围恢复重力；切割器在船壳/设施完成前复查位置
+  权限、整套设施任一格被拒就不拆；声纳物理船归属已确认时不被附近核心改判，
+  `hullForSonar`/`coreWorld`/舱室/显示标志统一用解析结果；货柜要求
+  `tracksHullBlock`；`DockingBay.sitesNear/siteAt` 补查旧布局活动槽位 5；新增
+  `legacySlotFiveSiteLookup` 回归。**仍跳过**：矿脉批量预加载（需异步/分 tick
+  方案）、`fillFromNoise` 关卡快照穿透（结构改造）。
+- 第十二次 full review 批次（7 条）：`MissionInstance.paramsForColumn` 先按保存的
+  锚点 + 影响半径认领活动关卡，生成器矿脉密度不再因旧间距反推错槽位（新增
+  `legacyAnchorColumnParams` 回归）；`VsPilot.launch` 的切割进度/面板会话清理移到
+  “已有物理船”拒绝之后；`isEquipment` 纳入 `SMALL_PUMP`，设备连通块不再抢走船壳
+  （新增回归用例）；物理船声纳只用 `VsPilot.state()`，不再采用附近方块船核心；
+  切割器船壳分支补 `denied()` 门禁，拒绝窗口内不再扣耐久；物品浮力精确跟踪被接管
+  的掉落物（修复 `CONTROLLED` 永为空）；`HullDamageEvents` 按爆炸所属船分流，
+  物理船判定改用装配包围盒世界坐标（`VsState.isPhysicalWorld`），旁边方块船熔毁
+  仍走船壳耐久。**仍跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+- 第十三次 full review 批次（8 条）：商店分类下发稳定 id（`medical/diving/...`），
+  客户端按 `store.category.*` 双语显示；物理船切三格舱口前逐格查
+  `BreakEvent`+`blockActionRestricted`，任一格被拒整套保留；新增
+  `knownInteriorCells`（只增不减）兜底破洞后重扫清空的舱内格，靠泊吸附不再漏掉
+  房里的人/任务货；三种矿脉加进 `mineable/pickaxe`（镐子硬挖正常掉落）；
+  `isInsidePhysicalShipCompartment` 先查 `VsSupport.available()`，未装 VS2 不加载
+  `VsPilot`；物品浮力的接管标记写进掉落物持久 NBT，加载时重建跟踪；爆炸监听改为
+  物理船按空间相交独立结算，再处理方块船；商店补键盘焦点（Tab/方向键/Enter）与
+  旁白，购买确认弹窗可用左右+Enter。**仍跳过**：矿脉批量预加载、
+  `fillFromNoise` 关卡快照穿透。
+- 第十四次 full review 批次（7 条）：声纳地形点预留 512 点缓冲，复杂洞窟里矿脉
+  金点不再被 4096 上限挤掉；`MissionProgress.itemById` 改用 `getOptional`（未知
+  ID 不再解析成 AIR，配置错误会显示原 ID）；物品浮力不接管别人设置的无重力物品，
+  `release` 只还原本处理器打标的；爆炸监听去掉只含平移的包围盒粗筛（船偏航后
+  船首爆炸不再漏结算，`damageExplosion` 自己按 `shipToWorld` 判命中）；商店旁白
+  焦点行读实际已选数量；诊所补键盘焦点（Tab/方向键/Enter）与旁白；放门/舱口后
+  `ShipCores.refreshNearby` 重扫附近核心 + 物理船几何，新门格不再漏出舱室/水量。
+  **仍跳过**：矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+- 第十五次 full review 批次（8 条 + 1 条 nitpick）：商店出售列表过滤任务箱
+  （空箱也带任务标记，混进购物车会让整单被服务端拒绝）；`StoreScreen` 面板
+  宽/高/可见行按 GUI 尺寸收缩（320 宽的窄屏不再把左半边画到屏幕外），数量 −/+
+  控件改按面板右边对齐、绘制与命中共用同一组坐标；等离子切割机氧气改按成功
+  应用次数结算（每 10 次扣 1 点，MISS/暂停不清零，堵住"移开准星蹭船壳伤害"）；
+  `canBreak` 补 `level.mayInteract`（出生点保护，安全审查 Major）；客户端潜行
+  防掉边的物理船分支改读同步水盒 + 客户端船逆变换（专用服务器客户端也生效，
+  方块船显式排除）；`ShipGeometry.Result` 增加 `equipment` + `owns()`，船壳
+  选择仍排除设备块，但船内独立接线盒/小型泵仍被 `tracksHullBlock` 认领（新增
+  两条回归）；靠泊搬人/货改用船体逆变换映射（偏航非零不再把人放到错误舷侧）；
+  `MissionInstance.publishRoute` 一次写锁原子发布 RouteLevel + 两端哨站标记，
+  `DockingBay.activeSites` 用保存的槽位间距/出发距离；`RoundStateTest` 补实例
+  锚点迁移与往返。**仍跳过**：`restoreBlocks` 的 PowerBox 坐标平移（用户明确
+  先不动电力）、矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+- 第十六次 full review 批次（13 条）：接线盒放置后主动 `ShipCores.refreshNearby`
+  （新盒子不在旧几何里，`tracksHullBlock` 会一直拒绝、设备拿不到供电）；从无人
+  航路点续航时"送至潜艇"的交付锚点改取活动物理船的船坞核心（否则扫不到货柜）；
+  VS2 船查询/逆变换移到 `ship/vs/VsClientCompartments`（`client` 包不再直接引用
+  `ClientShip`/`ShipTransform`）；`StoreScreen` 窄面板隐藏分类/库存/槽位次要列并
+  截断商品名，`submitCart`/`sendLines` 统一挡 `awaitingState`（键盘连按 Enter 不会
+  重复下单）；爆炸按"命中格归属哪艘船"逐格匹配附近所有核心（A 船熔毁打到 B 船时，
+  更近的 C 船不再把 B 的船壳挤进原版删除列表）；`MissionScreen` 焊枪报价改 150
+  与服务端扣款一致；`PowerPanelState.refresh` 先核对会话维度（换维度后旧会话作废）；
+  `AutomationUtil.opensToSea` 把包围盒内的连海空腔也算外海（凹进式外门不再被水密
+  模式自动打开，新增 2 条纯逻辑测试）；物理船切割舱壁门按上下两格整套删除、只掉
+  一次；`StoreService` 消息参数改传 `Component`（专用服务器不再把物品名固定成
+  英文）；`DockingBay.anchorsNear` 按 x 去重并优先活动槽位（旧槽位 4 的 24096 与
+  新布局槽位 2 重合时不再认虚构出发站，新增回归）；`OceanEnvironment` 删掉实时
+  查询未命中后的纯平移回退（偏航后不会把舱外误判成舱内）。
+  **仍跳过**：`restoreBlocks` 的 PowerBox 坐标平移（用户明确先不动电力）、
+  矿脉批量预加载、`fillFromNoise` 关卡快照穿透。
+- 第十七次 full review 批次（2 条）：`ShipSavedData.AssembledShip` 新增
+  `knownInterior`（历史舱内格，LongArray 落盘），装配/每 5 秒同步/认领三处都
+  带上它（切掉外壁舱口后几何 interior 被裁空，存档/重启后靠泊吸附仍能认出
+  房里的人/任务货）；起航交付改 `StoreService.deliverPendingOnDeparture`，
+  按待交付订单 UUID 遍历（含离线玩家）：货柜交付不需要玩家对象，只有背包回退
+  才要在线玩家，离线剩下的继续留待下次起航。新增 4 条数据层测试
+  （`ShipSavedDataTest` 2 条、`StoreDeliverySavedDataTest` 2 条）。
+  **仍跳过**：上面三项。两条端到端回归（切舱口→重载→靠泊、A 下单退出→B 起航）
+  需要活的 ServerLevel/VS2 运行时，当前单测环境没有，待实机验收一起看。
+- 第十八次 full review 批次（6 条）：`VsPilot.rebuildGeometry` 拒绝非活动船维度
+  （主世界开关/放置门不再拿那边方块当船坞重扫、清空深海船的几何与耐久记录）；
+  诊所滚动时把焦点行夹回可视区（滚出屏幕后按 Enter 不会误治不可见的那一行）；
+  商店 `keyPressed` 在 `awaitingState` 期间只放行 Esc（等待交易响应时键盘也不能
+  改购物车）；靠泊时任务散箱搜索框改用 `toWorld(corePos)` 的当前变换中心（偏航
+  后不再整体偏出舱室）；`ShipSimulation.engineSupplyFactor` 按系数取前
+  `MAX_ENGINES=8` 台（9 台引擎额定电压不再凭空多一台推力，`VsThruster` 共用
+  同一常量，新增 3 条测试）；`paramsForColumn` 对负槽位返回 null（`BASE_X` 以西
+  的列不再误用槽位 0 的活动参数，新增回归）。**仍跳过**：上面三项 + PowerBox。
+  跨维度/靠泊搜索框两条端到端回归同样需要活的 ServerLevel/VS2，待实机验收。
+- **仍欠**：靠泊位移后 `PowerBox` 绝对坐标换算（Heavy lift，未改：`PowerBox` 存装配坐标，
+  靠泊后 yardOffset 重置，旧绑定会失配；需先统一坐标空间）。第十五轮 CodeRabbit
+  又按 `restoreBlocks` 提了一次，仍按用户"先不管电力那块"跳过。
+- 本轮修复在独立 worktree `barotrauma-pr61` 完成（并行电池任务正占用主工作区的
+  `PowerPanelState.java`/`PowerStatePacket.java`），主工作区未改动。
 
 ## 2026-11-11 装备/背包/潜水服氧气重做（已提交 8679e0c）
 

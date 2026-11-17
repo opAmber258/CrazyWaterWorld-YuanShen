@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "barotrauma:block/junction_box" },
+    "facing=east": { "model": "barotrauma:block/junction_box" },
+    "facing=south": { "model": "barotrauma:block/junction_box" },
+    "facing=west": { "model": "barotrauma:block/junction_box" }
+  }
+}

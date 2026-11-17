@@ -130,10 +130,12 @@ public class CabinetBlockEntity extends BlockEntity implements Container, MenuPr
     public boolean canPlaceItem(int slot, ItemStack stack) {
         return switch (kind()) {
             case CRATE_SHELF -> TwoHanded.is(stack);
-            case DIVING_SUIT_LOCKER -> stack.is(ModItems.DIVING_SUIT.get());
+            // 装备判定用 diving_suit 标签同时识别普通/透明潜水服，柜子保持一致。
+            case DIVING_SUIT_LOCKER -> stack.is(
+                    com.opamb.barotrauma.equipment.EquipmentTags.DIVING_SUIT);
             case OXYGEN_TANK_SHELF -> stack.is(ModItems.OXYGEN_TANK.get());
             case DIVING_SUIT_STATION -> slot == 0
-                    ? stack.is(ModItems.DIVING_SUIT.get())
+                    ? stack.is(com.opamb.barotrauma.equipment.EquipmentTags.DIVING_SUIT)
                     : stack.is(ModItems.OXYGEN_TANK.get());
             default -> true;
         };

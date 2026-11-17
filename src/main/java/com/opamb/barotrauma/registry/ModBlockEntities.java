@@ -63,6 +63,13 @@ public final class ModBlockEntities {
                     .of(com.opamb.barotrauma.blockentity.EngineBlockEntity::new, ModBlocks.ENGINE.get())
                     .build(null));
 
+    /** 接线盒：耐久/过压/泡水损坏 + 电力面板。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity>> JUNCTION_BOX =
+            BLOCK_ENTITIES.register("junction_box", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity::new,
+                            ModBlocks.JUNCTION_BOX.get())
+                    .build(null));
+
     /** 潜渊症容器：钢柜/带窗钢柜/货架/潜水服柜/氧气瓶架共用一套方块实体。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.CabinetBlockEntity>> CABINET =
             BLOCK_ENTITIES.register("cabinet", () -> BlockEntityType.Builder

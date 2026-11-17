@@ -1,11 +1,12 @@
 package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity;
+import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.registry.ModSounds;
-import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.StringRepresentable;
@@ -18,11 +19,14 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -34,6 +38,7 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * 竖向舱壁门：1 格宽 × 2 格高，薄板居中（类似栅栏门的占地），整扇向右滑入墙内。
@@ -42,7 +47,7 @@ import org.jetbrains.annotations.Nullable;
  * 观察窗是门板上的真实缺口，所以从两面都能看穿。模型由 GeckoLib 渲染，
  * 方块本身返回 {@link RenderShape#ENTITYBLOCK_ANIMATED}，不再画方块模型。</p>
  */
-public class BulkheadDoorBlock extends Block implements EntityBlock {
+public class BulkheadDoorBlock extends BaseEntityBlock {
 
     public static final BooleanProperty OPEN = BlockStateProperties.OPEN;
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
@@ -143,6 +148,10 @@ public class BulkheadDoorBlock extends Block implements EntityBlock {
             return;
         }
         level.setBlock(pos.above(), state.setValue(PART, Part.UPPER), Block.UPDATE_ALL);
+        if (!level.isClientSide) {
+            // 新门格不在旧 hull 里时，后续开合不会触发重扫；放置时主动刷新一次。
+            com.opamb.barotrauma.ship.ShipCores.refreshNearby(level, pos);
+        }
     }
 
     private static BlockPos lowerPos(Level level, BlockPos pos, BlockState state) {
@@ -163,24 +172,59 @@ public class BulkheadDoorBlock extends Block implements EntityBlock {
             if (lower == null) {
                 return InteractionResult.PASS;
             }
-            boolean open = !state.getValue(OPEN);
-            for (int offset = 0; offset < 2; offset++) {
-                BlockPos partPos = lower.above(offset);
-                BlockState partState = level.getBlockState(partPos);
-                if (partState.getBlock() instanceof BulkheadDoorBlock) {
-                    level.setBlock(partPos, partState.setValue(OPEN, open), Block.UPDATE_ALL);
-                }
+            if (player.isShiftKeyDown()
+                    && level.getBlockEntity(lower) instanceof BulkheadDoorBlockEntity door) {
+                door.cycleAutomation();
+                player.displayClientMessage(
+                        Component.translatable(door.automation().translationKey()), true);
+                return InteractionResult.CONSUME;
             }
-            // 原版门音：Door1..4 四段随机（见 sounds.json）。
-            level.playSound(null, pos, ModSounds.DOOR_TOGGLE.get(),
-                    SoundSource.BLOCKS, 1.0F, 0.95F + level.random.nextFloat() * 0.1F);
-            // 方块船：重扫世界几何；物理船：方块类型没变，必须显式重扫船坞几何。
-            ShipCores.rescanNear(level, pos, 16);
-            if (level instanceof ServerLevel server) {
-                VsState.refreshGeometry(server);
-            }
+            setOpen(level, pos, state, !state.getValue(OPEN));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /** 门的内置自动化/手动开关共用：设置整扇门并重扫几何。 */
+    public static boolean setOpen(Level level, BlockPos pos, BlockState state, boolean open) {
+        BlockPos lower = lowerPos(level, pos, state);
+        if (lower == null) {
+            return false;
+        }
+        for (int offset = 0; offset < 2; offset++) {
+            BlockPos partPos = lower.above(offset);
+            BlockState partState = level.getBlockState(partPos);
+            if (partState.getBlock() instanceof BulkheadDoorBlock) {
+                level.setBlock(partPos, partState.setValue(OPEN, open), Block.UPDATE_ALL);
+            }
+        }
+        // 原版门音：Door1..4 四段随机（见 sounds.json）。
+        level.playSound(null, pos, ModSounds.DOOR_TOGGLE.get(),
+                SoundSource.BLOCKS, 1.0F, 0.95F + level.random.nextFloat() * 0.1F);
+        // 方块船：重扫世界几何；物理船：方块类型没变，必须显式重扫船坞几何。
+        if (level instanceof ServerLevel server) {
+            // 按船体归属找核心再重扫：固定 16 格扫描会漏掉离核心更远的门。
+            if (!VsState.isPhysical(server, pos)) {
+                com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core =
+                        com.opamb.barotrauma.blockentity.DrainPumpBlockEntity
+                                .resolveCore(server, pos);
+                if (core != null) {
+                    core.rescan(server);
+                }
+            }
+            VsState.refreshGeometry(server);
+        }
+        return true;
+    }
+
+    @Nullable
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
+                                                                  BlockEntityType<T> type) {
+        if (level.isClientSide) {
+            return null;
+        }
+        return createTickerHelper(type, ModBlockEntities.BULKHEAD_DOOR.get(),
+                BulkheadDoorBlockEntity::serverTick);
     }
 
     @Override

@@ -23,11 +23,12 @@ public final class ClientSetup {
     private ClientSetup() {
     }
 
-    /** 注册模组按键：战役地图、水中自然下沉开关、H 健康面板。 */
+    /** 注册模组按键：战役地图、水中自然下沉开关、电力面板、H 健康面板。 */
     @SubscribeEvent
     public static void onRegisterKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
         event.register(CampaignClient.OPEN_MAP);
         event.register(UnderwaterMovement.TOGGLE_NATURAL_SINK);
+        event.register(PowerClient.OPEN_POWER);
         event.register(MedicalClientHooks.OPEN_HEALTH);
     }
 
@@ -87,6 +88,8 @@ public final class ClientSetup {
                 context -> new ReactorRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.ENGINE.get(),
                 context -> new EngineRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.JUNCTION_BOX.get(),
+                context -> new JunctionBoxRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.CABINET.get(),
                 context -> new CabinetRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.HATCH.get(), context -> new HatchRenderer());

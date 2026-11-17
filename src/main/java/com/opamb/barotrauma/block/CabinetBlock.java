@@ -2,6 +2,7 @@ package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.CabinetBlockEntity;
 import com.opamb.barotrauma.item.TwoHanded;
+import com.opamb.barotrauma.ship.ShipCores;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -237,6 +238,11 @@ public class CabinetBlock extends Block implements EntityBlock {
             } else if (existing.isAir() || existing.canBeReplaced()) {
                 level.setBlock(p, state.setValue(PART, i), Block.UPDATE_ALL);
             }
+        }
+        // 新钢柜要让船几何重扫一次，否则它不在 geometry.hull() 里，
+        // 商店/交付仍在用旧缓存船状态（和接线盒 setPlacedBy 同一处理）。
+        if (!level.isClientSide) {
+            ShipCores.refreshNearby(level, pos);
         }
     }
 

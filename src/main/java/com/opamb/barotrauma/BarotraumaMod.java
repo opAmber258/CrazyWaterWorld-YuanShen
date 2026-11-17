@@ -9,6 +9,7 @@ import com.opamb.barotrauma.registry.ModEntities;
 import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.registry.ModMenus;
 import com.opamb.barotrauma.registry.ModParticles;
+import com.opamb.barotrauma.registry.ModRecipes;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
@@ -46,6 +47,7 @@ public final class BarotraumaMod {
         ModShipBlocks.register(modBus);
         ModBlockEntities.register(modBus);
         ModMenus.register(modBus);
+        ModRecipes.register(modBus);
         ModEntities.register(modBus);
         modBus.addListener(ModEntities::onAttributes);
         ModParticles.register(modBus);

@@ -114,6 +114,14 @@ public final class ShipSavedData extends SavedData {
         /** 装配快照；破损对账/焊接会改它，每 5 秒随 tick 同步进来。 */
         public final Map<Long, BlockState> snapshot = new HashMap<>();
         public final HullDamage hullDamage = new HullDamage();
+        /**
+         * 历史舱内格（装配坐标，只增不减）。
+         *
+         * <p>切掉外壁舱口后几何的 {@code interiorCells} 会被外部洪泛裁空，靠泊吸附
+         * 仍要靠这份记录认出房里的人/任务货。必须随认领记录落盘，否则存档/重启后
+         * 这份知识丢失，船回到码头时乘客会被留在海里。</p>
+         */
+        public final java.util.Set<BlockPos> knownInterior = new java.util.HashSet<>();
 
         public static AssembledShip of(long shipId, BlockPos core, BlockPos proxy, Vec3 pos,
                                        Map<BlockPos, BlockState> blocks, ShipState shipState) {
@@ -162,6 +170,12 @@ public final class ShipSavedData extends SavedData {
             }
             tag.put("snapshot", snap);
             tag.put("hullDamage", hullDamage.saveNbt());
+            long[] interior = new long[knownInterior.size()];
+            int i = 0;
+            for (BlockPos pos : knownInterior) {
+                interior[i++] = pos.asLong();
+            }
+            tag.putLongArray("knownInterior", interior);
             return tag;
         }
 
@@ -188,6 +202,10 @@ public final class ShipSavedData extends SavedData {
                         NbtUtils.readBlockState(blocks, item.getCompound("state")));
             }
             ship.hullDamage.loadNbt(tag.getList("hullDamage", Tag.TAG_COMPOUND));
+            // 旧存档没有这份集合：留空，认领时按当前几何重建（和之前行为一致）。
+            for (long packed : tag.getLongArray("knownInterior")) {
+                ship.knownInterior.add(BlockPos.of(packed));
+            }
             return ship;
         }
     }

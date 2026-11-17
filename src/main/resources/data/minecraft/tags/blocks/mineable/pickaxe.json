@@ -8,6 +8,9 @@
     "barotrauma:hatch_ladder",
     "barotrauma:ballast_pump",
     "barotrauma:reactor",
-    "barotrauma:engine"
+    "barotrauma:engine",
+    "barotrauma:quartz_vein",
+    "barotrauma:pyromorphite_vein",
+    "barotrauma:uranium_vein"
   ]
 }

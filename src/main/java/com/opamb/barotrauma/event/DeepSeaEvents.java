@@ -22,6 +22,7 @@ import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.ship.vs.VsSupport;
 import com.opamb.barotrauma.ship.water.ShipVolumeGuard;
 import com.opamb.barotrauma.sonar.SonarScan;
+import com.opamb.barotrauma.world.MissionInstance;
 import com.opamb.barotrauma.world.ModDimensions;
 import com.opamb.barotrauma.world.StarterSub;
 import net.minecraft.ChatFormatting;
@@ -86,6 +87,8 @@ public final class DeepSeaEvents {
     @SubscribeEvent
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            com.opamb.barotrauma.network.PowerPanelState.clear(player);
+            com.opamb.barotrauma.item.PlasmaCutterItem.clearPlayer(player.getUUID());
             com.opamb.barotrauma.ship.vs.VsPilot.flushShipRecord(player.serverLevel());
         }
     }
@@ -968,6 +971,11 @@ public final class DeepSeaEvents {
     private static void resetShipRuntime(String phase) {
         VsState.deactivate();
         ShipVolumeGuard.deactivate();
+        // 单人退出世界后 JVM 不重启：上一世界的航道配置会残留到新世界。
+        // onServerStarted 随后会按当前存档 restoreRoute 重新写入。
+        // 站点类型标记也要一起复位（否则新世界会沿用上一轮的"是否有哨站"），
+        // 两者用一次写锁发布，避免复位期间生成线程读到混合配置。
+        MissionInstance.publishRoute(null, Integer.MIN_VALUE, true, true);
         if (VsSupport.available()) {
             VsPilot.resetForServerLifecycle();
         }
@@ -993,6 +1001,14 @@ public final class DeepSeaEvents {
         ServerLevel adoptDeep = event.getServer().getLevel(ModDimensions.THE_DEEP);
         if (adoptDeep != null && VsSupport.available()) {
             event.getServer().execute(() -> VsPilot.adoptFromSave(adoptDeep));
+        }
+        // 读档后把本轮关卡配置重放进静态桥；否则新区块会按默认地形生成。
+        if (adoptDeep != null) {
+            com.opamb.barotrauma.campaign.CampaignState campaign =
+                    com.opamb.barotrauma.campaign.CampaignState.wallet(adoptDeep);
+            // 到达站后（AT_NODE）也要恢复；没有实例时这里会清掉上一个世界的静态路线。
+            // 槽位换算/距离回退/哨站标记统一在 CampaignManager.restoreRoute 里。
+            com.opamb.barotrauma.campaign.CampaignManager.restoreRoute(campaign.round());
         }
         // P4 持久化实测（两段式）：
         //   .smoketest-persist       → 造初始潜艇 + 装配成物理船 + 损伤两格，然后正常停服存档

@@ -102,6 +102,19 @@ public final class ModBlocks {
                     .isViewBlocking((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)));
 
+    /**
+     * 接线盒：墙上分线/过压保护节点。电网耗电 0；绑在它上面的设备共享一个
+     * 全船电压，过压/泡水会掉耐久。
+     */
+    public static final RegistryObject<Block> JUNCTION_BOX = BLOCKS.register("junction_box",
+            () -> new com.opamb.barotrauma.block.JunctionBoxBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(8.0F, 300.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
     // ---- 潜渊症容器（2026-11-10） ----
     /** 中型钢柜：5×4 主格 + 3 个移动容器格。 */
     public static final RegistryObject<Block> MEDIUM_STEEL_CABINET = BLOCKS.register("medium_steel_cabinet",
@@ -187,6 +200,32 @@ public final class ModBlocks {
                     .sound(SoundType.METAL)
                     // 不是整格方块：关掉遮挡剔除，避免相邻面被误剔
                     .noOcclusion()));
+
+    // ---- 采矿任务用的岩壁矿脉（副本航线附近生成，等离子切割机切碎） ----
+
+    /** 石英矿脉。 */
+    public static final RegistryObject<Block> QUARTZ_VEIN = BLOCKS.register("quartz_vein",
+            () -> new com.opamb.barotrauma.block.MineralVeinBlock(veinProperties(),
+                    ModItems.QUARTZ));
+
+    /** 磷氯铅矿脉。 */
+    public static final RegistryObject<Block> PYROMORPHITE_VEIN = BLOCKS.register("pyromorphite_vein",
+            () -> new com.opamb.barotrauma.block.MineralVeinBlock(veinProperties(),
+                    ModItems.PYROMORPHITE));
+
+    /** 铀矿脉。 */
+    public static final RegistryObject<Block> URANIUM_VEIN = BLOCKS.register("uranium_vein",
+            () -> new com.opamb.barotrauma.block.MineralVeinBlock(veinProperties(),
+                    ModItems.URANIUM_ORE));
+
+    /** 矿脉共用属性：硬，但切割机约 4 秒一块。 */
+    private static BlockBehaviour.Properties veinProperties() {
+        return BlockBehaviour.Properties.of()
+                .mapColor(MapColor.STONE)
+                .strength(30.0F, 1200.0F)
+                .sound(SoundType.STONE)
+                .requiresCorrectToolForDrops();
+    }
 
     private ModBlocks() {
     }

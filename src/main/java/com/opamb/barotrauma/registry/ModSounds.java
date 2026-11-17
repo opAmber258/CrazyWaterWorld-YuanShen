@@ -38,6 +38,9 @@ public final class ModSounds {
     /** 氧气瓶余量报警：原作 {@code Content/Items/WarningBeepSlow.ogg}（罐子剩余 <5% 时循环）。 */
     public static final RegistryObject<SoundEvent> LOW_OXYGEN_BEEP = register("low_oxygen_beep");
 
+    /** 反应堆过热/熔毁警报：原作 {@code Content/Items/AlarmBuzzerLoop.ogg}。 */
+    public static final RegistryObject<SoundEvent> REACTOR_ALARM = register("reactor_alarm");
+
     private ModSounds() {
     }
 

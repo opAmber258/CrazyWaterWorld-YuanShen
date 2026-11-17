@@ -68,19 +68,18 @@ public final class ShipWaterStateBuilder {
             ShipGeometry.Compartment pocket = pockets.get(i);
             // 只画船壳包住的那部分水：纯船外空腔（圆角船体包围盒四角的空气）
             // 如果也画出来，客户端会在船壳外面糊一层"水壳"，看着像假水。
-            if (pocket.interiorCells().isEmpty()) {
+            java.util.Set<net.minecraft.core.BlockPos> interior = state.interiorCellsOf(pocket);
+            if (interior.isEmpty()) {
                 bodyBox[compartments.size() + i] = -1;
                 pocketBoxIndex[i] = -1;
                 pocketBoxEnd[i] = boxes.size();
                 continue;
             }
-            ShipGeometry.Compartment visible = pocket.interiorCells() == pocket.cells()
-                    ? pocket : new ShipGeometry.Compartment(pocket.interiorCells(), pocket.waterBlocks());
-            // 空腔里的水位是均匀的：只画船壳内的格子时，水量也按格数比例折算，
-            // 否则同一水位会被画高（单位水摊到了更小的体积上）。
-            double units = pocket.volume() <= 0 ? 0.0D
-                    : state.simulation().pocketWater(i) * (visible.volume() / (double) pocket.volume());
-            pocketBoxIndex[i] = appendCompartment(boxes, visible, units, pocketSources.get(i));
+            // 先按完整空腔 + 原始水量算逐列水位，再只输出船壳内格的盒子；
+            // 按面积比例缩水会改变水位（各列底高/连通关系不同）。
+            double units = state.simulation().pocketWater(i);
+            pocketBoxIndex[i] = appendCompartment(boxes, pocket, units,
+                    pocketSources.get(i), interior);
             pocketBoxEnd[i] = boxes.size();
         }
 
@@ -293,6 +292,15 @@ public final class ShipWaterStateBuilder {
      */
     private static int appendCompartment(List<float[]> boxes, ShipGeometry.Compartment compartment,
                                          double units, List<BlockPos> sources) {
+        return appendCompartment(boxes, compartment, units, sources, null);
+    }
+
+    /**
+     * @param keep 只输出这些格子对应的水盒（null = 整块）；水位仍按完整空腔算。
+     */
+    private static int appendCompartment(List<float[]> boxes, ShipGeometry.Compartment compartment,
+                                         double units, List<BlockPos> sources,
+                                         Set<BlockPos> keep) {
         int start = boxes.size();
         int[] bounds = boundsOf(compartment);
         if (bounds == null) {
@@ -307,16 +315,17 @@ public final class ShipWaterStateBuilder {
         if (sources != null && !sources.isEmpty()) {
             ShipPocketWater.Shape shape = ShipPocketWater.compute(compartment.cells(), sources, units);
             if (!shape.columns().isEmpty()) {
-                return appendByColumn(boxes, compartment.cells(), shape);
+                return appendByColumn(boxes, compartment.cells(), shape, keep);
             }
         }
         // 密闭舱室 / 没有破口记录的空腔：旧的"从舱底整层铺水"模型。
+        // 水位用完整空腔算，输出可以只保留 keep 里的格子。
         float surface = surfaceOf(compartment, units);
         if (surface <= minY + 0.01F) {
             boxes.add(new float[]{bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5], minY});
             return start;
         }
-        List<int[]> prisms = decompose(compartment.cells());
+        List<int[]> prisms = decompose(keep == null ? compartment.cells() : keep);
         if (prisms.isEmpty()) {
             return start;
         }
@@ -341,8 +350,16 @@ public final class ShipWaterStateBuilder {
      */
     private static int appendByColumn(List<float[]> boxes, Set<BlockPos> cells,
                                       ShipPocketWater.Shape shape) {
+        return appendByColumn(boxes, cells, shape, null);
+    }
+
+    private static int appendByColumn(List<float[]> boxes, Set<BlockPos> cells,
+                                      ShipPocketWater.Shape shape, Set<BlockPos> keep) {
         TreeMap<Long, List<Integer>> columns = new TreeMap<>();
         for (BlockPos cell : cells) {
+            if (keep != null && !keep.contains(cell)) {
+                continue;
+            }
             columns.computeIfAbsent(packXZ(cell.getX(), cell.getZ()), key -> new ArrayList<>())
                     .add(cell.getY());
         }

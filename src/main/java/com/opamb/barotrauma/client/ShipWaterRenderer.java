@@ -294,6 +294,17 @@ public final class ShipWaterRenderer {
     }
 
     /**
+     * 客户端：这个位置是否在某艘<b>物理船</b>的舱室里（方块船不算）。
+     *
+     * <p>VS2 的船查询与逆变换都在 {@code ship/vs/} 桥接层（项目约定 VS2 类型
+     * 只出现在那个包里）；这里只把最近的水面包传过去。</p>
+     */
+    public static boolean isInsidePhysicalCompartment(Level level, Vec3 pos) {
+        return com.opamb.barotrauma.ship.vs.VsClientCompartments
+                .isInsideCompartment(level, pos, state);
+    }
+
+    /**
      * 客户端判断某个位置是否在“未进水的船舱”里。
      *
      * <p>水面包里的盒子是装配坐标，渲染位置相对锚点的位移由 onRenderStage 每帧缓存；

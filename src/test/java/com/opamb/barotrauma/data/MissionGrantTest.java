@@ -60,7 +60,7 @@ class MissionGrantTest {
             assertFalse(first.contains(id), "同一站不会重复挂同一条");
         }
         assertEquals(3, first.size());
-        assertEquals(data.missions().size() - 3, again.size(), "只会补没挂过的");
+        assertEquals(Math.min(3, data.missions().size() - 3), again.size(), "只会补没挂过的");
     }
 
     @Test
@@ -73,11 +73,20 @@ class MissionGrantTest {
         data.finish(player, data.missions().get(completed));
 
         assertEquals(-1, data.offerDestination(0, completed), "完成的报价从站里摘掉");
-        List<Integer> regranted = data.grantBatch(1, List.of(4), MissionSavedData.GRANTS_PER_VISIT);
+        // 发放按任务类型轮换，完成的委托要等它那一类轮到时才会被重新挂出来；
+        // 连发几个站（每站起点类型轮换）保证覆盖到。
+        List<Integer> regranted = List.of();
+        int regrantNode = -1;
+        for (int node = 1; node <= 6 && !regranted.contains(completed); node++) {
+            regranted = data.grantBatch(node, List.of(4), MissionSavedData.GRANTS_PER_VISIT);
+            if (regranted.contains(completed)) {
+                regrantNode = node;
+            }
+        }
         assertTrue(regranted.contains(completed));
         Mission mission = data.missions().get(completed);
         assertEquals(Mission.State.OFFERED, mission.state());
-        assertEquals(4, data.offerDestination(1, completed));
+        assertEquals(4, data.offerDestination(regrantNode, completed));
     }
 
     @Test

@@ -48,6 +48,12 @@ public final class Mission {
     private int originNode = -1;
     /** 这条任务对应的目的地节点（-1 = 还没发放；海图按它过滤）。 */
     private int destinationNode = -1;
+    /** 采矿任务要采的矿物注册名（如 {@code barotrauma:quartz}；空 = 不是采矿）。 */
+    private String mineralItem = "";
+    /** 采矿任务要采几个。 */
+    private int mineralCount;
+    /** 原作 resourceHandoverAmount：结算时上交的比例（25%）。 */
+    private double mineralHandover;
 
     public Mission(int id, MissionType type, BlockPos target, int radius, int reward) {
         this(id, type, target, radius, reward, 0L);
@@ -151,6 +157,40 @@ public final class Mission {
 
     public boolean isCargo() {
         return cargoTotal > 0 || com.opamb.barotrauma.mission.MissionCargo.manifestFor(this) != null;
+    }
+
+    // ------------------------------------------------------------------ 采矿
+
+    /** 采矿任务定义：采什么、采几个、结算时上交多少（0..1）。 */
+    public void setMineral(String itemId, int count, double handover) {
+        this.mineralItem = itemId == null ? "" : itemId;
+        this.mineralCount = Math.max(0, count);
+        this.mineralHandover = Math.max(0.0D, Math.min(1.0D, handover));
+    }
+
+    /** 要采的矿物注册名；空 = 不是采矿任务。 */
+    public String mineralItem() {
+        return mineralItem;
+    }
+
+    public int mineralCount() {
+        return mineralCount;
+    }
+
+    public double mineralHandover() {
+        return mineralHandover;
+    }
+
+    /** 结算时要交出去几个：8 个交 25% → 2 个，4 个 → 1 个。 */
+    public int mineralHandoverCount() {
+        if (mineralCount <= 0 || mineralHandover <= 0.0D) {
+            return 0;
+        }
+        // 用十进制算：50 × 0.29 在二进制里是 14.499999999999998，
+        // Math.round 会少交一个（应为 14.5 → 15）。
+        java.math.BigDecimal exact = java.math.BigDecimal.valueOf(mineralCount)
+                .multiply(java.math.BigDecimal.valueOf(mineralHandover));
+        return Math.max(1, exact.setScale(0, java.math.RoundingMode.HALF_UP).intValue());
     }
 
     public void setClientTaken(boolean taken) {

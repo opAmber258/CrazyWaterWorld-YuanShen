@@ -1,5 +1,7 @@
 package com.opamb.barotrauma.world;
 
+import com.opamb.barotrauma.world.level.LevelParams;
+import com.opamb.barotrauma.world.level.LevelType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
@@ -22,8 +24,12 @@ public final class MissionInstance {
 
     /** 实例带起点 x，远离战役海图区域（0..960）。 */
     public static final int BASE_X = 20000;
-    /** 每轮占用的 x 间距；大于 2×{@link #SITE_RADIUS}，相邻副本站不会互相干扰。 */
-    public static final int SPACING = 1024;
+    /**
+     * 每轮占用的 x 间距。大洞窟横向半宽最大 300、侧隧道最远约 560、航道左右摆动 ±250，
+     * 1024 已经放不下，改成 2048 给"宽敞 + 大幅摆动"留空间；旧槽位仍在原位，
+     * 新一趟从新的锚点开始。
+     */
+    public static final int SPACING = 2048;
     /** 副本站/主力舰活动区半径（和 SeaTerrain 的机动净空一致）。 */
     public static final int SITE_RADIUS = 64;
 
@@ -47,15 +53,195 @@ public final class MissionInstance {
     public static final int START_DISTANCE = 192;
 
     /** 本轮关卡两端的站点类型：无人航路点不建站（原作 Location.Type.HasOutpost）。 */
-    private static int routeSlot = Integer.MIN_VALUE;
-    private static boolean routeStartOutpost = true;
-    private static boolean routeEndOutpost = true;
+    private static volatile int routeSlot = Integer.MIN_VALUE;
+    private static volatile boolean routeStartOutpost = true;
+    private static volatile boolean routeEndOutpost = true;
 
-    /** 下潜时写入本轮起点/终点是否需要哨站；世界生成按这个决定建不建站。 */
+    /**
+     * 本轮航行关卡的静态配置。世界生成在 worker 线程跑，只能读这个不可变 record；
+     * 由 {@code CampaignManager.startTravel} 在预加载新区块之前写入，
+     * {@code tick} 和服务器启动时从 {@code RoundState} 重放。
+     *
+     * <p>{@code anchorX} 是保存下来的实际锚点 x：读档时旧存档的槽位间距可能和
+     * 当前 {@link #SPACING} 不同，不能再用 slot 乘间距重新算锚点。</p>
+     *
+     * <p>{@code null} = 没有活动关卡，地形完全走原来的全局 {@link SeaTerrain}。</p>
+     */
+    public record RouteLevel(int slot, LevelType type, long seed, int difficulty,
+                             int startDistance, int anchorX) {
+    }
+
+    private static volatile RouteLevel routeLevel;
+
+    /**
+     * 关卡切换与区块生成的读写锁：区块生成任务持读锁，{@link #setRouteLevel} 持写锁。
+     * 否则生成线程可能在一个区块内先读到旧关卡、再读到新航道。
+     */
+    private static final java.util.concurrent.locks.ReentrantReadWriteLock ROUTE_LOCK =
+            new java.util.concurrent.locks.ReentrantReadWriteLock();
+
+    /** 生成任务持有的关卡读锁；关闭即释放。 */
+    public static final class RouteLock implements AutoCloseable {
+        private final java.util.concurrent.locks.Lock lock;
+
+        private RouteLock(java.util.concurrent.locks.Lock lock) {
+            this.lock = lock;
+        }
+
+        @Override
+        public void close() {
+            lock.unlock();
+        }
+    }
+
+    /** 区块生成持读锁：同一区块内不会读到切换前后的两套关卡配置。 */
+    public static RouteLock holdRouteReadLock() {
+        java.util.concurrent.locks.Lock lock = ROUTE_LOCK.readLock();
+        lock.lock();
+        return new RouteLock(lock);
+    }
+
+    /** 主航道缓存：关卡配置不变就复用同一条折线，生成器每列都会查它。 */
+    private record PathCache(RouteLevel level, RoutePath path) {
+    }
+
+    private static volatile PathCache pathCache;
+
+    /** 设置本轮关卡；{@code null} 清除（回到全局地形）。 */
+    public static void setRouteLevel(RouteLevel level) {
+        // 相同关卡不抢写锁：启动/每 tick 恢复时避免无意义的锁竞争。
+        if (java.util.Objects.equals(routeLevel, level)) {
+            return;
+        }
+        java.util.concurrent.locks.Lock lock = ROUTE_LOCK.writeLock();
+        lock.lock();
+        try {
+            routeLevel = level;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * 一次性发布关卡配置 + 两端哨站标记。
+     *
+     * <p>读档/出发时必须原子发布：生成线程持读锁跑 {@code generate()}，如果先
+     * {@link #setRouteLevel} 再 {@link #setRouteOutposts}，中间可能被它读到
+     * "新关卡 + 旧 routeSlot"，{@link #outpostExpected} 于是给无人航路点建站。</p>
+     */
+    public static void publishRoute(@org.jetbrains.annotations.Nullable RouteLevel level,
+                                    int outpostSlot,
+                                    boolean startOutpost, boolean endOutpost) {
+        // 每 tick 恢复时配置通常没变：先做一次无锁比较，避免和生成线程抢写锁。
+        if (java.util.Objects.equals(routeLevel, level)
+                && routeSlot == outpostSlot
+                && routeStartOutpost == startOutpost
+                && routeEndOutpost == endOutpost) {
+            return;
+        }
+        java.util.concurrent.locks.Lock lock = ROUTE_LOCK.writeLock();
+        lock.lock();
+        try {
+            routeLevel = level;
+            routeSlot = outpostSlot;
+            routeStartOutpost = startOutpost;
+            routeEndOutpost = endOutpost;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /** 当前活动关卡；没有返回 null。 */
+    public static RouteLevel routeLevel() {
+        return routeLevel;
+    }
+
+    /** 当前活动关卡参数；没有返回 null。 */
+    public static LevelParams activeParams() {
+        RouteLevel level = routeLevel;
+        return level == null ? null : level.type().params();
+    }
+
+    /** 某个槽位的关卡参数；不是活动槽位返回 null。 */
+    public static LevelParams paramsForSlot(int slot) {
+        RouteLevel level = routeLevel;
+        return level != null && level.slot() == slot ? level.type().params() : null;
+    }
+
+    /**
+     * 世界生成用：按 x 找这一列所属关卡的参数（活动关卡优先）。
+     *
+     * <p>旧存档的槽位间距可能不是当前 {@link #SPACING}：活动关卡槽位 5 保存的锚点是
+     * 25120，按当前间距反推会得到槽位 3，{@link #paramsForSlot(int)} 于是返回 null，
+     * 新区块会退回默认矿脉密度并漏掉关卡种子。所以先用保存的锚点和实际覆盖范围
+     * （主航道 + 侧洞环 + 边缘混合带）认领，认不到才按间距回退。</p>
+     */
+    public static LevelParams paramsForColumn(int x) {
+        RouteLevel level = routeLevel;
+        if (level != null) {
+            Anchor anchor = new Anchor(Math.max(0, level.slot()), level.anchorX(), ANCHOR_Y, 0);
+            DockingBay.Site start = startSite(anchor, level.startDistance());
+            // 和 SeaTerrain 用同一个影响半径：超出它的列是全局开阔海。
+            double influence = SeaTerrain.levelInfluence(level.type().params());
+            int minX = Math.min(anchor.x(), start.x());
+            int maxX = Math.max(anchor.x(), start.x());
+            if (x >= minX - influence && x <= maxX + influence) {
+                return level.type().params();
+            }
+        }
+        int slot = Math.round((x - BASE_X) / (float) SPACING);
+        // 负槽位不属于任何关卡：钳到 0 会让 BASE_X 以西的列误用槽位 0 的活动参数
+        // （海底高度和矿脉密度都会跟着变），按"非活动槽位"返回 null。
+        return slot < 0 ? null : paramsForSlot(slot);
+    }
+
+    /**
+     * 当前活动关卡的主航道（左右蜿蜒、上下起伏的 3D 折线）。
+     *
+     * <p>生成器在 worker 线程逐列调用，必须缓存：关卡配置（record）不变就复用同一条
+     * 折线。缓存用不可变 record 整体发布，避免读到"新关卡 + 旧航道"的半成品。</p>
+     */
+    public static RoutePath activePath() {
+        RouteLevel level = routeLevel;
+        if (level == null) {
+            return null;
+        }
+        PathCache cache = pathCache;
+        if (cache != null && cache.level().equals(level)) {
+            return cache.path();
+        }
+        // 用当前快照里的 slot/anchorX 构造锚点，不要再读静态 routeLevel（可能已被换掉）。
+        Anchor anchor = new Anchor(Math.max(0, level.slot()), level.anchorX(), ANCHOR_Y, 0);
+        DockingBay.Site start = startSite(anchor, level.startDistance());
+        RoutePath built = RoutePath.build(level.type().params(), level.seed(),
+                start.x(), start.z(), anchor.x(), anchor.z());
+        pathCache = new PathCache(level, built);
+        return built;
+    }
+
+    /** 本轮出发站到目的站的距离：活动槽位用关卡类型的路线长度，其它槽位用默认 192。 */
+    public static int startDistanceFor(Anchor anchor) {
+        RouteLevel level = routeLevel;
+        return level != null && level.slot() == anchor.slot()
+                ? level.startDistance() : START_DISTANCE;
+    }
+
+    /**
+     * 下潜时写入本轮起点/终点是否需要哨站；世界生成按这个决定建不建站。
+     *
+     * <p>和 {@link #setRouteLevel} 一起改配置时请用 {@link #publishRoute}：
+     * 分两步发布会让生成线程读到"新关卡 + 旧哨站标记"。</p>
+     */
     public static void setRouteOutposts(int slot, boolean startOutpost, boolean endOutpost) {
-        routeSlot = slot;
-        routeStartOutpost = startOutpost;
-        routeEndOutpost = endOutpost;
+        java.util.concurrent.locks.Lock lock = ROUTE_LOCK.writeLock();
+        lock.lock();
+        try {
+            routeSlot = slot;
+            routeStartOutpost = startOutpost;
+            routeEndOutpost = endOutpost;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /** 这个站点本轮要不要生成哨站（主站永远要）。 */
@@ -79,18 +265,39 @@ public final class MissionInstance {
 
     /** 从站点坐标反推轮次（出发站偏移 192 格，仍然落在同一个 slot 里）。 */
     public static int siteSlot(DockingBay.Site site) {
+        RouteLevel level = routeLevel;
+        if (level != null) {
+            // 旧存档的槽位间距可能不是当前 SPACING，活动关卡的站只能按保存的锚点认。
+            Anchor anchor = anchorForRound(level.slot());
+            if (site.equals(DockingBay.Site.forSlot(level.slot()))
+                    || site.equals(startSite(anchor))) {
+                return level.slot();
+            }
+        }
         return Math.max(0, Math.round((site.x() - BASE_X) / (float) SPACING));
     }
 
     /**
-     * 本轮的出发站：目的站 {@link #START_DISTANCE} 格外，方向按轮次轮换
+     * 本轮的出发站：目的站 {@link #startDistanceFor(Anchor)} 格外，方向按轮次轮换
      * （0 西 / 1 北 / 2 东 / 3 南）。
      *
      * <p>原作每个航行关卡同时有 {@code Level.StartOutpost} 和 {@code Level.EndOutpost}，
-     * 中间由 MainPath 隧道连接；这里的出发站就是关卡里的当前地点，目的站是要去的节点。</p>
+     * 中间由 MainPath 隧道连接；这里的出发站就是关卡里的当前地点，目的站是要去的节点。
+     * 出发距离由关卡类型决定（tutorial 207、basic 280、advanced 600、maze 520、outpost 80）。
+     * 超过 {@link LevelParams#LONG_ROUTE_THRESHOLD} 的路线强制走南北，x 与目的站相同，
+     * 这样 600/520 也能留在 1024 的 x 槽位里，不用改 {@link #SPACING}。</p>
      */
     public static DockingBay.Site startSite(Anchor anchor) {
+        return startSite(anchor, startDistanceFor(anchor));
+    }
+
+    /** 按指定距离算出发站（航道缓存用它，避免重复读可能已变化的静态关卡）。 */
+    public static DockingBay.Site startSite(Anchor anchor, int distance) {
         int dir = Math.floorMod(anchor.slot(), 4);
+        if (distance > LevelParams.LONG_ROUTE_THRESHOLD) {
+            // 南北方向：x 不变，z 拉长；槽位只在 x 方向分带。
+            dir = Math.floorMod(anchor.slot(), 2) == 0 ? 1 : 3;
+        }
         int dx = switch (dir) {
             case 0 -> -1;
             case 2 -> 1;
@@ -101,8 +308,8 @@ public final class MissionInstance {
             case 3 -> 1;
             default -> 0;
         };
-        return new DockingBay.Site(anchor.x() + dx * START_DISTANCE,
-                anchor.z() + dz * START_DISTANCE);
+        return new DockingBay.Site(anchor.x() + dx * distance,
+                anchor.z() + dz * distance);
     }
 
     /**
@@ -113,21 +320,112 @@ public final class MissionInstance {
      */
     public static boolean inRouteZone(int x, int z) {
         int base = Math.max(0, Math.round((x - BASE_X) / (float) SPACING));
-        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
-            Anchor anchor = anchorForRound(slot);
-            DockingBay.Site start = startSite(anchor);
-            if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 64.0D) {
+        int first = Math.max(0, base - 1);
+        int last = base + 1;
+        for (int slot = first; slot <= last; slot++) {
+            if (inRouteSlot(slot, x, z)) {
                 return true;
             }
-            if (Math.hypot(x - start.x(), z - start.z()) <= 64.0D) {
-                return true;
-            }
-            if (distanceToSegment(x, z, anchor.x(), anchor.z(),
-                    start.x(), start.z()) <= 48.0D) {
+        }
+        RouteLevel active = routeLevel;
+        if (active != null) {
+            // 旧存档的活动锚点不按当前 SPACING 排列：单独补查活动槽位，
+            // 但不把两个布局之间的槽位全部遍历（slot 100 时那会放大成 50 次）。
+            int slot = Math.max(0, active.slot());
+            if ((slot < first || slot > last) && inRouteSlot(slot, x, z)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** 单个槽位的航道净空判定。 */
+    private static boolean inRouteSlot(int slot, int x, int z) {
+        Anchor anchor = anchorForRound(slot);
+        DockingBay.Site start = startSite(anchor);
+        if (Math.hypot(x - anchor.x(), z - anchor.z()) <= 64.0D
+                || Math.hypot(x - start.x(), z - start.z()) <= 64.0D) {
+            return true;
+        }
+        RouteLevel level = routeLevel;
+        if (level != null && level.slot() == slot) {
+            // 活动关卡：主航道 + 侧隧道是网络，净空按到整个网络的距离算。
+            RoutePath path = activePath();
+            return path != null && path.distanceToNetwork(x, z)
+                    <= Math.max(48.0D, routeClearRadius(slot));
+        }
+        // 旧槽位没有活动关卡，保持原来的直线水道。
+        return distanceToSegment(x, z, anchor.x(), anchor.z(),
+                start.x(), start.z()) <= routeClearRadius(slot);
+    }
+
+    /** 主航道净空半径：活动槽位用大洞窟横向半宽，其它槽位用原来的 48。 */
+    public static double routeClearRadius(int slot) {
+        LevelParams params = paramsForSlot(slot);
+        return params == null ? 48.0D : Math.max(48.0D, params.cavernHalfWidth());
+    }
+
+    /** 到活动关卡隧道网络（主航道 + 侧隧道）的最近距离；没有活动关卡返回 MAX_VALUE。 */
+    public static double distanceToActiveRoute(int x, int z) {
+        RoutePath path = activePath();
+        return path == null ? Double.MAX_VALUE : path.distanceToNetwork(x, z);
+    }
+
+    /**
+     * 活动关卡的侧隧道/洞穴是否覆盖 (x,z)：侧洞挂在蜿蜒主航道上，
+     * 位置由 {@link RoutePath} 按关卡种子确定性生成。
+     */
+    public static boolean inSideBranch(int x, int z) {
+        RoutePath path = activePath();
+        return path != null && path.inChamber(x, z);
+    }
+
+    /**
+     * 采矿任务的矿脉生成区：副本航线附近（含海底），但避开两个码头正下方
+     * 24 格，免得矿脉长在站体/竖井里。
+     *
+     * <p>只在有实例轮次的 x 范围内生效，主站附近不会生成矿脉。</p>
+     */
+    public static boolean inMiningZone(int x, int z) {
+        int base = Math.max(0, Math.round((x - BASE_X) / (float) SPACING));
+        int first = Math.max(0, base - 1);
+        int last = base + 1;
+        for (int slot = first; slot <= last; slot++) {
+            if (inMiningSlot(slot, x, z)) {
+                return true;
+            }
+        }
+        RouteLevel active = routeLevel;
+        if (active != null) {
+            // 和 inRouteZone 一样：活动槽位单独补查，不遍历中间无关槽位。
+            int slot = Math.max(0, active.slot());
+            if ((slot < first || slot > last) && inMiningSlot(slot, x, z)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 单个槽位的矿区判定；码头正下方 24 格排除。 */
+    private static boolean inMiningSlot(int slot, int x, int z) {
+        Anchor anchor = anchorForRound(slot);
+        DockingBay.Site start = startSite(anchor);
+        double toAnchor = Math.hypot(x - anchor.x(), z - anchor.z());
+        double toStart = Math.hypot(x - start.x(), z - start.z());
+        if (toAnchor <= 24.0D || toStart <= 24.0D) {
+            return false;
+        }
+        if (toAnchor <= 150.0D || toStart <= 150.0D) {
+            return true;
+        }
+        RouteLevel level = routeLevel;
+        if (level != null && level.slot() == slot) {
+            RoutePath path = activePath();
+            double radius = level.type().params().cavernHalfWidth() + 80.0D;
+            return path != null && path.distanceToNetwork(x, z) <= Math.max(140.0D, radius);
+        }
+        return distanceToSegment(x, z, anchor.x(), anchor.z(),
+                start.x(), start.z()) <= 120.0D;
     }
 
     private static double distanceToSegment(double px, double pz,
@@ -149,11 +447,33 @@ public final class MissionInstance {
     /** 第 {@code roundIndex} 轮出勤的锚点；轮次从 0 开始（= 战役已完成的轮数）。 */
     public static Anchor anchorForRound(int roundIndex) {
         int slot = Math.max(0, roundIndex);
-        return new Anchor(slot, BASE_X + slot * SPACING, ANCHOR_Y, 0);
+        RouteLevel level = routeLevel;
+        // 读档恢复的关卡用保存下来的锚点：旧存档的槽位间距可能是 1024。
+        int x = level != null && level.slot() == slot ? level.anchorX() : BASE_X + slot * SPACING;
+        return new Anchor(slot, x, ANCHOR_Y, 0);
+    }
+
+    /** 从实例坐标反推槽位；{@code spacing <= 0} 时用当前布局。 */
+    public static int slotForX(int x, int spacing) {
+        int step = spacing > 0 ? spacing : SPACING;
+        return Math.max(0, Math.round((x - BASE_X) / (float) step));
     }
 
     /** 坐标附近的实例站点锚点 x（世界生成用；不在任何站净空范围内返回 null）。 */
     public static Integer siteXAt(int x, int z) {
+        RouteLevel level = routeLevel;
+        if (level != null) {
+            // 活动关卡按保存的 anchorX 认站：旧存档槽位 3 用当前间距会算出别的 x。
+            // 先认活动站点再套默认布局的 |z| 过滤：南北出发站的 z 可以到 ±1600。
+            Anchor anchor = anchorForRound(level.slot());
+            if (withinSite(x, z, anchor.x(), anchor.z())) {
+                return anchor.x();
+            }
+            DockingBay.Site start = startSite(anchor);
+            if (withinSite(x, z, start.x(), start.z())) {
+                return start.x();
+            }
+        }
         if (Math.abs(z) > SITE_RADIUS) {
             return null;
         }
@@ -163,6 +483,10 @@ public final class MissionInstance {
         }
         int ax = BASE_X + slot * SPACING;
         return Math.abs(x - ax) <= SITE_RADIUS ? ax : null;
+    }
+
+    private static boolean withinSite(int x, int z, int siteX, int siteZ) {
+        return Math.abs(x - siteX) <= SITE_RADIUS && Math.abs(z - siteZ) <= SITE_RADIUS;
     }
 
     // ------------------------------------------------------------------

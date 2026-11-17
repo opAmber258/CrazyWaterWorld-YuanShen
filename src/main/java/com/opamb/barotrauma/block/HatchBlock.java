@@ -1,11 +1,12 @@
 package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.HatchBlockEntity;
+import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.registry.ModSounds;
-import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.StringRepresentable;
@@ -19,11 +20,14 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -45,7 +49,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>三段共享 open/facing，只有中间段挂 GeckoLib 方块实体渲染整块 3 格模型。</p>
  */
-public class HatchBlock extends Block implements EntityBlock {
+public class HatchBlock extends BaseEntityBlock {
 
     public static final BooleanProperty OPEN = BlockStateProperties.OPEN;
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
@@ -140,6 +144,10 @@ public class HatchBlock extends Block implements EntityBlock {
                 state.setValue(PART, Part.LEFT), Block.UPDATE_ALL);
         level.setBlock(pos.relative(longAxis),
                 state.setValue(PART, Part.RIGHT), Block.UPDATE_ALL);
+        if (!level.isClientSide) {
+            // 新舱口格不在旧 hull 里时，后续开合不会触发重扫；放置时主动刷新一次。
+            com.opamb.barotrauma.ship.ShipCores.refreshNearby(level, pos);
+        }
     }
 
     private static BlockPos middlePos(Level level, BlockPos pos, BlockState state) {
@@ -162,24 +170,59 @@ public class HatchBlock extends Block implements EntityBlock {
             if (middle == null) {
                 return InteractionResult.PASS;
             }
-            Direction longAxis = state.getValue(FACING).getClockWise();
-            boolean open = !state.getValue(OPEN);
-            for (int offset = -1; offset <= 1; offset++) {
-                BlockPos partPos = middle.relative(longAxis, offset);
-                BlockState partState = level.getBlockState(partPos);
-                if (partState.getBlock() instanceof HatchBlock) {
-                    level.setBlock(partPos, partState.setValue(OPEN, open), Block.UPDATE_ALL);
-                }
+            if (player.isShiftKeyDown()
+                    && level.getBlockEntity(middle) instanceof HatchBlockEntity hatch) {
+                hatch.cycleAutomation();
+                player.displayClientMessage(
+                        Component.translatable(hatch.automation().translationKey()), true);
+                return InteractionResult.CONSUME;
             }
-            // 原版门音：Door1..4 四段随机（见 sounds.json）。
-            level.playSound(null, pos, ModSounds.DOOR_TOGGLE.get(),
-                    SoundSource.BLOCKS, 1.0F, 0.95F + level.random.nextFloat() * 0.1F);
-            ShipCores.rescanNear(level, pos, 16);
-            if (level instanceof ServerLevel server) {
-                VsState.refreshGeometry(server);
-            }
+            setOpen(level, pos, state, !state.getValue(OPEN));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    /** 舱口的内置自动化/手动开关共用：设置整扇舱口并重扫几何。 */
+    public static boolean setOpen(Level level, BlockPos pos, BlockState state, boolean open) {
+        BlockPos middle = middlePos(level, pos, state);
+        if (middle == null) {
+            return false;
+        }
+        Direction longAxis = state.getValue(FACING).getClockWise();
+        for (int offset = -1; offset <= 1; offset++) {
+            BlockPos partPos = middle.relative(longAxis, offset);
+            BlockState partState = level.getBlockState(partPos);
+            if (partState.getBlock() instanceof HatchBlock) {
+                level.setBlock(partPos, partState.setValue(OPEN, open), Block.UPDATE_ALL);
+            }
+        }
+        // 原版门音：Door1..4 四段随机（见 sounds.json）。
+        level.playSound(null, pos, ModSounds.DOOR_TOGGLE.get(),
+                SoundSource.BLOCKS, 1.0F, 0.95F + level.random.nextFloat() * 0.1F);
+        if (level instanceof ServerLevel server) {
+            // 按船体归属找核心再重扫：固定 16 格扫描会漏掉离核心更远的舱口。
+            if (!VsState.isPhysical(server, middle)) {
+                com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core =
+                        com.opamb.barotrauma.blockentity.DrainPumpBlockEntity
+                                .resolveCore(server, middle);
+                if (core != null) {
+                    core.rescan(server);
+                }
+            }
+            VsState.refreshGeometry(server);
+        }
+        return true;
+    }
+
+    @Nullable
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
+                                                                  BlockEntityType<T> type) {
+        if (level.isClientSide) {
+            return null;
+        }
+        return createTickerHelper(type, ModBlockEntities.HATCH.get(),
+                HatchBlockEntity::serverTick);
     }
 
     @Override

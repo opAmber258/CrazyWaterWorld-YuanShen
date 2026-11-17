@@ -16,6 +16,20 @@ public final class RoundState {
     /** 本轮起点/终点有没有哨站（原作 Location.Type.HasOutpost；无人航路点两端都不建站）。 */
     private boolean startHasOutpost = true;
     private boolean endHasOutpost = true;
+    /** 本轮航行关卡类型/种子/难度；旧存档没有就是 basic/0。 */
+    private String levelType = "coldcavernsbasic";
+    private long levelSeed;
+    private int levelDifficulty;
+    /**
+     * 本轮出发站到目的站的实际距离。存下来是为了读档/改代码后不会把已经生成的
+     * 航道端点挪走；旧存档没有这个字段（0）时回退到关卡参数的 routeLength。
+     */
+    private int levelDistance;
+    /**
+     * 写这轮实例时用的槽位间距。旧存档没有（0）：按 1024 的旧布局还原，
+     * 否则 instanceX 会被新间距算到别的槽位，航道和已生成的站点错开。
+     */
+    private int levelSpacing;
 
     public RoundPhase phase() {
         return phase;
@@ -61,6 +75,45 @@ public final class RoundState {
         return endHasOutpost;
     }
 
+    public String levelType() {
+        return levelType;
+    }
+
+    public long levelSeed() {
+        return levelSeed;
+    }
+
+    public int levelDifficulty() {
+        return levelDifficulty;
+    }
+
+    public int levelDistance() {
+        return levelDistance;
+    }
+
+    public int levelSpacing() {
+        return levelSpacing;
+    }
+
+    /** 记录本轮关卡类型/种子/难度（在 beginTravel 之后调用，失败回滚会恢复上一轮）。 */
+    public void setLevel(String typeId, long seed, int difficulty) {
+        setLevel(typeId, seed, difficulty, 0);
+    }
+
+    /** 记录本轮关卡类型/种子/难度/实际路线距离。 */
+    public void setLevel(String typeId, long seed, int difficulty, int distance) {
+        setLevel(typeId, seed, difficulty, distance, 0);
+    }
+
+    /** 记录本轮关卡类型/种子/难度/实际路线距离/槽位间距。 */
+    public void setLevel(String typeId, long seed, int difficulty, int distance, int spacing) {
+        this.levelType = typeId == null || typeId.isBlank() ? "coldcavernsbasic" : typeId;
+        this.levelSeed = seed;
+        this.levelDifficulty = Math.max(0, difficulty);
+        this.levelDistance = Math.max(0, distance);
+        this.levelSpacing = Math.max(0, spacing);
+    }
+
     /** 记录本轮任务海域实例锚点（同一轮内不变）。 */
     public void setInstance(int x, int y, int z) {
         instanceX = x;
@@ -82,14 +135,12 @@ public final class RoundState {
         endHasOutpost = endOutpost;
     }
 
-    /** 抵达：回到节点状态，终点清空。 */
+    /** 抵达：回到节点状态，终点清空。保留本轮的哨站标记，供重启后恢复关卡配置。 */
     public void arrive(int node) {
         phase = RoundPhase.AT_NODE;
         origin = node;
         destination = -1;
         startedAtGameTime = 0L;
-        startHasOutpost = true;
-        endHasOutpost = true;
     }
 
     public void fail() {
@@ -114,6 +165,11 @@ public final class RoundState {
         tag.putInt("instanceZ", instanceZ);
         tag.putBoolean("startHasOutpost", startHasOutpost);
         tag.putBoolean("endHasOutpost", endHasOutpost);
+        tag.putString("levelType", levelType);
+        tag.putLong("levelSeed", levelSeed);
+        tag.putInt("levelDifficulty", levelDifficulty);
+        tag.putInt("levelDistance", levelDistance);
+        tag.putInt("levelSpacing", levelSpacing);
         return tag;
     }
 
@@ -137,6 +193,26 @@ public final class RoundState {
         }
         startHasOutpost = !tag.contains("startHasOutpost") || tag.getBoolean("startHasOutpost");
         endHasOutpost = !tag.contains("endHasOutpost") || tag.getBoolean("endHasOutpost");
+        levelType = com.opamb.barotrauma.world.level.LevelType
+                .fromId(tag.contains("levelType") ? tag.getString("levelType") : null).id();
+        levelSeed = tag.contains("levelSeed") ? tag.getLong("levelSeed") : 0L;
+        levelDifficulty = tag.contains("levelDifficulty")
+                ? Math.max(0, tag.getInt("levelDifficulty")) : 0;
+        boolean hadDistance = tag.contains("levelDistance");
+        boolean hadSpacing = tag.contains("levelSpacing");
+        levelDistance = hadDistance ? Math.max(0, tag.getInt("levelDistance")) : 0;
+        levelSpacing = hadSpacing ? Math.max(0, tag.getInt("levelSpacing")) : 0;
+        if (hasInstance()) {
+            // 旧存档没有字段：当时固定出发距离 192、槽位间距 1024。
+            // 只迁移“字段缺失”；显式写入的 0 表示“按关卡默认值恢复”，
+            // 不能在这里被改成旧布局，否则保存/加载往返会改变槽位和出发站。
+            if (!hadDistance) {
+                levelDistance = 192;
+            }
+            if (!hadSpacing) {
+                levelSpacing = 1024;
+            }
+        }
         if (!CampaignMap.isValid(origin)) {
             origin = CampaignMap.START_NODE;
         }

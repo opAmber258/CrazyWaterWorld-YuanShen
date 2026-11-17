@@ -56,6 +56,9 @@ public class ShipCoreBlockEntity extends BlockEntity {
     private Float pendingMultiplier;
     @Nullable
     private Float pendingEngineMultiplier;
+    /** 世界加载时从 NBT 恢复的历史舱内格（切破外壁后水面/进水比例兜底用）。 */
+    @Nullable
+    private long[] pendingKnownInterior;
     private long lastTickGameTime = Long.MIN_VALUE;
     /** 方块船的水面同步计时。 */
     private long lastWaterSyncGameTime = Long.MIN_VALUE;
@@ -417,7 +420,8 @@ public class ShipCoreBlockEntity extends BlockEntity {
                     }
                     BlockState shell = level.getBlockState(pos);
                     return ModShipBlocks.isRepairableHull(shell) || ModShipBlocks.isDoorway(shell);
-                });
+                },
+                pos -> ModShipBlocks.isEquipment(level.getBlockState(pos)));
 
         int sonar = 0;
         if (geometry.hullBlocks() > 0) {
@@ -440,9 +444,14 @@ public class ShipCoreBlockEntity extends BlockEntity {
             // 重扫会换一个新的 ShipState 对象；不迁走引擎倍率的话，
             // 开关一次门或拆一次船，买过的引擎升级就回到 1.0。
             state.setEngineMultiplier(previous.engineMultiplier());
+            // 航行控制（油门、功率、自动驾驶）同样属于旧实例，重扫不能重置。
+            state.inheritControlFrom(previous);
             state.hullDamage().retain(pos -> ModShipBlocks.isRepairableHull(level.getBlockState(pos)));
             // 开合门也会重扫：水量必须按格子搬过来，否则一关门水就全跑到漏水侧。
             state.inheritWaterFrom(previous);
+            // 切掉外壁舱口后空腔 interior 会变空：把历史确认过的舱内格带过来，
+            // 进水体积/水面才有分母。
+            state.inheritInteriorFrom(previous);
         } else if (pendingDamage != null) {
             // 世界重开后的第一次重扫：把区块 NBT 里存下来的耐久接回来，
             // 否则 10%~90% 的部分损伤会全部凭空满血。
@@ -450,10 +459,13 @@ public class ShipCoreBlockEntity extends BlockEntity {
             state.setHullHealthMultiplier(pendingMultiplier != null ? pendingMultiplier : 1.0F);
             state.setEngineMultiplier(pendingEngineMultiplier != null ? pendingEngineMultiplier : 1.0F);
             state.hullDamage().retain(pos -> ModShipBlocks.isRepairableHull(level.getBlockState(pos)));
+            // 世界重开后第一次重扫没有 previous：历史舱内格从 NBT 恢复。
+            state.restoreKnownInterior(pendingKnownInterior);
         }
         pendingDamage = null;
         pendingMultiplier = null;
         pendingEngineMultiplier = null;
+        pendingKnownInterior = null;
         // breached 方块仍然是 ship block（hull 集合里有它），但不再实心；
         // 重新加载后耐久表是空的，必须按 blockstate 补回 0%，否则焊不回去。
         List<BlockPos> breached = new ArrayList<>();
@@ -497,6 +509,7 @@ public class ShipCoreBlockEntity extends BlockEntity {
             tag.put("BarotraumaHullDamage", state.hullDamage().saveNbt());
             tag.putFloat("BarotraumaHullMultiplier", state.hullHealthMultiplier());
             tag.putFloat("BarotraumaEngineMultiplier", state.engineMultiplier());
+            tag.putLongArray("BarotraumaKnownInterior", state.knownInteriorArray());
         }
     }
 
@@ -512,5 +525,7 @@ public class ShipCoreBlockEntity extends BlockEntity {
                 ? tag.getFloat("BarotraumaHullMultiplier") : null;
         pendingEngineMultiplier = tag.contains("BarotraumaEngineMultiplier")
                 ? tag.getFloat("BarotraumaEngineMultiplier") : null;
+        pendingKnownInterior = tag.contains("BarotraumaKnownInterior", Tag.TAG_LONG_ARRAY)
+                ? tag.getLongArray("BarotraumaKnownInterior") : null;
     }
 }

@@ -31,6 +31,13 @@ public final class MissionCatalog {
             "cargochemicals", "cargomeditems", "cargoconstructionminerals",
             "cargovolatilecompoundn");
 
+    /**
+     * 当前终端实际发布的采矿条目：原版寒冷深穴起始集（mainpath）的 3 条。
+     * 其余矿物任务仍在目录里登记，等矿脉贴图/地形齐了再打开。
+     */
+    private static final Set<String> MINERAL_OFFERS = Set.of(
+            "quartzcollection", "pyromorphitecollection", "uraniumcollection_small");
+
     private static final List<MissionSpec> SPECS = load();
     private static final List<MissionSpec> OFFERS = buildOffers();
 
@@ -55,6 +62,7 @@ public final class MissionCatalog {
 
     private static List<MissionSpec> buildOffers() {
         List<MissionSpec> out = new ArrayList<>();
+        List<MissionSpec> minerals = new ArrayList<>();
         for (MissionSpec spec : SPECS) {
             if (!spec.implemented()) {
                 continue;
@@ -66,8 +74,17 @@ public final class MissionCatalog {
             if (spec.kind() == MissionKind.CARGO && !CARGO_OFFERS.contains(spec.id())) {
                 continue;
             }
+            if (spec.kind() == MissionKind.MINERAL) {
+                if (MINERAL_OFFERS.contains(spec.id())) {
+                    // 采矿报价追加到列表末尾：PoiNetwork 按列表顺序发数字 id，
+                    // 插在中间会让旧存档已有任务的 id 整体后移、绑定到错误模板。
+                    minerals.add(spec);
+                }
+                continue;
+            }
             out.add(spec);
         }
+        out.addAll(minerals);
         return List.copyOf(out);
     }
 
@@ -94,7 +111,9 @@ public final class MissionCatalog {
                         string(obj, "nameZh"), string(obj, "nameEn"),
                         integer(obj, "reward"), integer(obj, "difficulty"),
                         integer(obj, "minLevelDifficulty"), integer(obj, "maxLevelDifficulty"),
-                        string(obj, "spawnType"), string(obj, "fromType"), string(obj, "toType")));
+                        string(obj, "spawnType"), string(obj, "fromType"), string(obj, "toType"),
+                        string(obj, "mineralItem"), integer(obj, "mineralCount"),
+                        decimal(obj, "handover")));
             }
             return List.copyOf(list);
         } catch (Exception e) {
@@ -106,6 +125,11 @@ public final class MissionCatalog {
     private static String string(JsonObject obj, String key) {
         JsonElement el = obj.get(key);
         return el == null || el.isJsonNull() ? "" : el.getAsString();
+    }
+
+    private static double decimal(JsonObject obj, String key) {
+        JsonElement el = obj.get(key);
+        return el == null || el.isJsonNull() ? 0.0D : el.getAsDouble();
     }
 
     private static int integer(JsonObject obj, String key) {
