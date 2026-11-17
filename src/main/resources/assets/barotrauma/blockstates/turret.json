@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "barotrauma:block/turret",
+      "y": 180
+    },
+    "facing=east": {
+      "model": "barotrauma:block/turret",
+      "y": 270
+    },
+    "facing=south": {
+      "model": "barotrauma:block/turret"
+    },
+    "facing=west": {
+      "model": "barotrauma:block/turret",
+      "y": 90
+    }
+  }
+}

@@ -36,7 +36,10 @@
     "MultiPlayerGameModeMixin",
     "PlayerFovMixin",
     "PlayerSwimRotationMixin",
-    "ShaderUniformMixin"
+    "ShaderUniformMixin",
+    "TurretCameraMixin",
+    "TurretInteractionMixin",
+    "TurretMouseMixin"
   ],
   "injectors": {
     "defaultRequire": 1

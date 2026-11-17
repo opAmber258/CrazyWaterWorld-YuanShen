@@ -71,6 +71,7 @@ public final class ClientSetup {
     public static void onRegisterParticleProviders(RegisterParticleProvidersEvent event) {
         event.registerSpriteSet(ModParticles.SHIP_BUBBLE.get(), ShipBubbleParticle.Provider::new);
         event.registerSpriteSet(ModParticles.SHIP_SPRAY.get(), ShipSprayParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.TURRET_TRACER.get(), TurretTracerParticle.Provider::new);
     }
 
 
@@ -91,8 +92,17 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.HATCH.get(), context -> new HatchRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.BULKHEAD_DOOR.get(),
                 context -> new BulkheadDoorRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.TURRET.get(), TurretRenderer::new);
         event.registerEntityRenderer(com.opamb.barotrauma.registry.ModEntities.VESSEL.get(), VesselRenderer::new);
         event.registerEntityRenderer(com.opamb.barotrauma.registry.ModEntities.NPC.get(), NpcRenderer::new);
+    }
+
+    /** 炮塔 HUD：只在进入炮塔视角时绘制，叠在热键栏之上。 */
+    @SubscribeEvent
+    public static void onRegisterOverlays(
+            net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
+        event.registerAbove(net.minecraftforge.client.gui.overlay.VanillaGuiOverlay.HOTBAR.id(),
+                "turret_hud", new TurretHud());
     }
 
     /**

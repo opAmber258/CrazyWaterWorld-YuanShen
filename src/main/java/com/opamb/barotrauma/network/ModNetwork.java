@@ -10,8 +10,8 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class ModNetwork {
 
-    // 8：站务员改成对话发任务（C2S 提问 + S2C 对话），报价按站点各自刷新。
-    private static final String PROTOCOL = "8";
+    // 9：新增舰载炮塔原型的瞄准/开火/退出/状态同步包。
+    private static final String PROTOCOL = "9";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -86,6 +86,19 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(CrateSlotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(CrateSlotPacket::encode).decoder(CrateSlotPacket::decode)
                 .consumerNetworkThread(CrateSlotPacket::handle).add();
+        // 炮塔原型：进入后客户端每 tick 发绝对角度，服务端限速并广播状态。
+        CHANNEL.messageBuilder(TurretAimPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TurretAimPacket::encode).decoder(TurretAimPacket::decode)
+                .consumerNetworkThread(TurretAimPacket::handle).add();
+        CHANNEL.messageBuilder(TurretFirePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TurretFirePacket::encode).decoder(TurretFirePacket::decode)
+                .consumerNetworkThread(TurretFirePacket::handle).add();
+        CHANNEL.messageBuilder(TurretExitPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TurretExitPacket::encode).decoder(TurretExitPacket::decode)
+                .consumerNetworkThread(TurretExitPacket::handle).add();
+        CHANNEL.messageBuilder(TurretStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(TurretStatePacket::encode).decoder(TurretStatePacket::decode)
+                .consumerNetworkThread(TurretStatePacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {
