@@ -102,6 +102,23 @@ public final class ShipCores {
     }
 
     /**
+     * 找 {@code center} 附近的船，船状态还没扫出来就先扫一次。
+     *
+     * <p>方块船的 {@link ShipState} 不存档，世界重开后是 null；以前只有打开电力
+     * 面板/声纳时才会 rescan。于是船上的机器在"没人打开过面板"之前一直以为身边
+     * 没有船，表现为加工台/解构仪明明有电却点不动、去面板绑定一次之后又莫名恢复。</p>
+     */
+    @Nullable
+    public static ShipState stateNear(Level level, BlockPos center, double maxDistance) {
+        ShipCoreBlockEntity core = nearestCore(level, center, maxDistance);
+        if (core == null) {
+            return null;
+        }
+        ShipState state = core.state();
+        return state != null ? state : core.rescan(level);
+    }
+
+    /**
      * 解析"我所在的船"：先看提示坐标上是不是真有核心（船没动时最准），
      * 船正在开、核心已经挪走时退回"离玩家最近的核心"。
      */

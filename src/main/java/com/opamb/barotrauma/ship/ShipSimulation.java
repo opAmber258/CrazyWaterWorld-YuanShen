@@ -132,12 +132,44 @@ public final class ShipSimulation {
     private double lastVoltage;
     /** 上一次 tick 的全船供电（kW）。 */
     private double lastSupply;
+    /** 上一次 tick 电池总共放出的功率（kW）。 */
+    private double lastBatteryOutput;
+    /** 上一次 tick 电池总共吸收的充电功率（kW，未计效率）。 */
+    private double lastBatteryCharge;
+    /** 上一次 tick 结束后全船电池总存电量/总容量（kW·min）。 */
+    private double lastStoredKwm;
+    private double lastStorageCapacityKwm;
 
     private record ConsumerReport(double demandKw, double minVoltage,
                                   net.minecraft.core.BlockPos box, long lastSeen) {
     }
 
     private record BoxReport(double condition, long lastSeen) {
+    }
+
+    /**
+     * 电池上报表：格子 → (存电量 kW·min, 容量 kW·min, 最大输出 kW, 最大充电 kW,
+     * 绑定的接线盒, 耐久 0..100, 最后上报 tick)。
+     *
+     * <p>对应原作 {@code PowerContainer}。充放电由 {@link #tick(double)} 统一结算，
+     * 方块实体每 tick 把结算后的电量读回去存档。</p>
+     */
+    private final java.util.Map<net.minecraft.core.BlockPos, StorageReport> storages =
+            new java.util.HashMap<>();
+    private long storageTick;
+    private static final int STORAGE_STALE_TICKS = 40;
+    /** 原作电池充电效率 0.95：充进去 100 kW 只有 95 kW 存下来。 */
+    private static final double BATTERY_EFFICIENCY = 0.95D;
+
+    private record StorageReport(double chargeKwm, double capacityKwm, double maxOutputKw,
+                                 double maxRechargeKw, net.minecraft.core.BlockPos box,
+                                 double condition, long lastSeen) {
+    }
+
+    /** 电池快照，给电力面板/诊断用。 */
+    public record StorageInfo(net.minecraft.core.BlockPos pos, double chargeKwm,
+                              double capacityKwm, double maxOutputKw, double maxRechargeKw,
+                              net.minecraft.core.BlockPos box, double condition) {
     }
 
     /** 供电设备快照，给电力面板用。 */
@@ -390,20 +422,131 @@ public final class ShipSimulation {
             consumerDemand += report.demandKw();
         }
 
+        // 电池上报：超过 40 tick 没上报视为拆掉。电量在下面的充放电结算里更新。
+        storageTick++;
+        var storageIterator = storages.entrySet().iterator();
+        while (storageIterator.hasNext()) {
+            var entry = storageIterator.next();
+            if (storageTick - entry.getValue().lastSeen() > STORAGE_STALE_TICKS) {
+                storageIterator.remove();
+            }
+        }
+
         // 还没改造完的设备走旧的全船统计；全部改造后 consumers 非空，用设备上报值。
         double legacyDemand = activePumps * PUMP_POWER + engineDemand;
-        double demand = (consumers.isEmpty() ? legacyDemand : consumerDemand)
+        double deviceDemand = (consumers.isEmpty() ? legacyDemand : consumerDemand)
                 // 声纳/导航台是船核心，没有独立设备实体上报，按数量固定计 100 kW。
                 + machines.sonar() * SONAR_POWER
                 + machines.oxygen() * O2_POWER
                 + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER);
-        // 硬核：没堆 / 没开机 / 输出为 0 → 全船没电，推进和泵都停。
+
+        // 供电不足时电池补差。每块电池的可用输出按原版 PowerContainer 算
+        // （低于 10% 时线性降额，并受本步可用能量限制）。
+        double batteryOutput = 0.0D;
+        java.util.Map<net.minecraft.core.BlockPos, Double> storageOut = java.util.Map.of();
+        if (deviceDemand > reactorOutput + 1.0E-9D && !storages.isEmpty()) {
+            storageOut = new java.util.HashMap<>();
+            double deficit = deviceDemand - reactorOutput;
+            for (var entry : storages.entrySet()) {
+                StorageReport report = entry.getValue();
+                if (!storageUsable(report)) {
+                    continue;
+                }
+                double available = PowerGrid.batteryOutputAvailable(
+                        report.chargeKwm(), report.capacityKwm(), report.maxOutputKw(), dt);
+                double take = Math.min(deficit, available);
+                if (take > 1.0E-9D) {
+                    storageOut.put(entry.getKey(), take);
+                    batteryOutput += take;
+                    deficit -= take;
+                    if (deficit <= 1.0E-9D) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 供电富余时按最大充电功率吸收。只有电池没在放电时才充，避免自充自放。
+        double rechargeInput = 0.0D;
+        // 电池“请求”的充电功率：即使当前没有富余也要报给反应堆，让自动控堆
+        // 把目标负载抬到 设备负载+充电请求，否则堆永远只发刚好够设备的电，
+        // 电池永远等不到富余（用户实测“电池不会充电”）。
+        double rechargeRequest = 0.0D;
+        java.util.Map<net.minecraft.core.BlockPos, Double> storageIn = java.util.Map.of();
+        if (batteryOutput <= 1.0E-9D && !storages.isEmpty()) {
+            double step = Math.max(dt, 1.0E-9D);
+            for (var entry : storages.entrySet()) {
+                StorageReport report = entry.getValue();
+                if (!storageUsable(report)) {
+                    continue;
+                }
+                double room = report.capacityKwm() - report.chargeKwm();
+                if (room <= 1.0E-9D) {
+                    continue;
+                }
+                // room 是 kW·min，换成本步充满所需的平均功率，再和额定充电功率取小。
+                double demand = Math.min(report.maxRechargeKw(), room * 60.0D / step);
+                rechargeRequest += demand;
+                if (reactorOutput > deviceDemand + 1.0E-9D) {
+                    if (storageIn.isEmpty()) {
+                        storageIn = new java.util.HashMap<>();
+                    }
+                    double surplus = reactorOutput - deviceDemand - rechargeInput;
+                    double take = Math.min(surplus, demand);
+                    if (take > 1.0E-9D) {
+                        storageIn.put(entry.getKey(), take);
+                        rechargeInput += take;
+                    }
+                }
+            }
+        }
+
+        // 结算电池电量（正=充，负=放）；充电乘效率。
+        if (!storageOut.isEmpty() || !storageIn.isEmpty()) {
+            for (var entry : storages.entrySet()) {
+                double delta = 0.0D;
+                Double out = storageOut.get(entry.getKey());
+                if (out != null) {
+                    delta -= PowerGrid.batteryChargeDeltaKwm(out, dt, 1.0D);
+                }
+                Double in = storageIn.get(entry.getKey());
+                if (in != null) {
+                    delta += PowerGrid.batteryChargeDeltaKwm(in, dt, BATTERY_EFFICIENCY);
+                }
+                if (Math.abs(delta) <= 1.0E-9D) {
+                    continue;
+                }
+                StorageReport report = entry.getValue();
+                double charge = Mth.clamp(report.chargeKwm() + delta, 0.0D,
+                        report.capacityKwm());
+                entry.setValue(new StorageReport(charge, report.capacityKwm(),
+                        report.maxOutputKw(), report.maxRechargeKw(), report.box(),
+                        report.condition(), report.lastSeen()));
+            }
+        }
+
+        double storedKwm = 0.0D;
+        double storageCapacityKwm = 0.0D;
+        for (StorageReport report : storages.values()) {
+            storedKwm += report.chargeKwm();
+            storageCapacityKwm += report.capacityKwm();
+        }
+
+        double supply = reactorOutput + batteryOutput;
+        double demand = deviceDemand + rechargeInput;
+        // 硬核：没堆 / 没开机 / 总供电为 0 → 全船没电；电池有电也算供电。
         boolean hasReactor = reactorCapacity > 0.0D;
-        lastSupply = reactorOutput;
-        lastVoltage = hasReactor || reactorOutput > 0.0D
-                ? PowerGrid.voltage(reactorOutput, demand) : 0.0D;
+        lastSupply = supply;
+        lastVoltage = hasReactor || supply > 0.0D
+                ? PowerGrid.voltage(supply, demand) : 0.0D;
         lastOutput = reactorOutput;
-        lastDemand = demand;
+        // 给反应堆自动控制看的“目标负载”要含电池充电请求，否则堆只追设备负载，
+        // 电池永远没有富余可充。电压仍按实际吸收的充电功率算（见上面的 demand）。
+        lastDemand = deviceDemand + rechargeRequest;
+        lastBatteryOutput = batteryOutput;
+        lastBatteryCharge = rechargeInput;
+        lastStoredKwm = storedKwm;
+        lastStorageCapacityKwm = storageCapacityKwm;
         // 兼容旧代码：0..1 的“够不够电”，过压部分由 lastVoltage 单独表达。
         lastRatio = Math.min(1.0D, lastVoltage);
         double ratio = lastRatio;
@@ -1190,7 +1333,7 @@ public final class ShipSimulation {
         java.util.List<Double> powered = new java.util.ArrayList<>(engines.size());
         for (var entry : engines.entrySet()) {
             EngineReport report = entry.getValue();
-            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS) {
+            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS || report.force() <= 0.1D) {
                 continue;
             }
             double voltage = consumerVoltage(entry.getKey());
@@ -1250,6 +1393,81 @@ public final class ShipSimulation {
         }
         boxes.put(cell.immutable(), new BoxReport(
                 Math.max(0.0D, Math.min(100.0D, condition)), boxTick));
+    }
+
+    /**
+     * 电池每 tick 上报存电量和额定参数；充放电由 {@link #tick(double)} 统一结算。
+     *
+     * <p>方块实体在 tick 开头应先用 {@link #storageCharge(BlockPos)} 读回模拟里的
+     * 电量再上报，避免把上一 tick 的旧值写回去。</p>
+     */
+    public void reportStorage(net.minecraft.core.BlockPos cell, double chargeKwm,
+                              double capacityKwm, double maxOutputKw, double maxRechargeKw,
+                              net.minecraft.core.BlockPos box, double condition) {
+        if (cell == null) {
+            return;
+        }
+        double capacity = Math.max(1.0D, capacityKwm);
+        storages.put(cell.immutable(), new StorageReport(
+                Math.max(0.0D, Math.min(chargeKwm, capacity)),
+                capacity,
+                Math.max(0.0D, maxOutputKw),
+                Math.max(0.0D, maxRechargeKw),
+                box == null ? null : box.immutable(),
+                Math.max(0.0D, Math.min(100.0D, condition)),
+                storageTick));
+    }
+
+    /** 模拟里某块电池当前的电量（kW·min）；没上报返回 null。 */
+    public Double storageCharge(net.minecraft.core.BlockPos cell) {
+        StorageReport report = cell == null ? null : storages.get(cell);
+        return report == null ? null : report.chargeKwm();
+    }
+
+    /** 电池是否在电网里可用：耐久 > 0 且绑定的接线盒没坏。 */
+    private boolean storageUsable(StorageReport report) {
+        return report.condition() > 0.0D && boxHealthy(report.box());
+    }
+
+    /** 接线盒是否有效；null 表示默认总线，视为有效。 */
+    private boolean boxHealthy(net.minecraft.core.BlockPos box) {
+        if (box == null) {
+            return true;
+        }
+        BoxReport report = boxes.get(box);
+        return report != null && report.condition() > 0.0D;
+    }
+
+    /** 上一 tick 电池总输出（kW）。 */
+    public double batteryOutputKw() {
+        return lastBatteryOutput;
+    }
+
+    /** 上一 tick 电池总充电功率（kW，未计效率）。 */
+    public double batteryChargeKw() {
+        return lastBatteryCharge;
+    }
+
+    /** 全船电池总存电量（kW·min）。 */
+    public double storedKwm() {
+        return lastStoredKwm;
+    }
+
+    /** 全船电池总容量（kW·min）。 */
+    public double storageCapacityKwm() {
+        return lastStorageCapacityKwm;
+    }
+
+    /** 当前登记的所有电池（电力面板用）。 */
+    public java.util.List<StorageInfo> storageInfos() {
+        java.util.List<StorageInfo> result = new java.util.ArrayList<>(storages.size());
+        for (var entry : storages.entrySet()) {
+            StorageReport report = entry.getValue();
+            result.add(new StorageInfo(entry.getKey(), report.chargeKwm(),
+                    report.capacityKwm(), report.maxOutputKw(), report.maxRechargeKw(),
+                    report.box(), report.condition()));
+        }
+        return result;
     }
 
     /**

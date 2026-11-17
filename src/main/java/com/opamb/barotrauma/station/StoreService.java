@@ -5,6 +5,7 @@ import com.opamb.barotrauma.blockentity.CabinetBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.campaign.CampaignState;
 import com.opamb.barotrauma.entity.NpcEntity;
+import com.opamb.barotrauma.equipment.BagManager;
 import com.opamb.barotrauma.equipment.CrateContainer;
 import com.opamb.barotrauma.equipment.ItemSubSlot;
 import com.opamb.barotrauma.item.CrateItem;
@@ -27,11 +28,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.Container;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkStatus;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 
@@ -170,7 +175,7 @@ public final class StoreService {
                 Component name = unit.getHoverName();
                 boolean placed;
                 if (deliverImmediately) {
-                    placed = player.getInventory().add(unit);
+                    placed = giveToCharacter(player, unit);
                 } else {
                     delivery.add(player.getUUID(), line.itemId(), 1);
                     placed = true;
@@ -209,8 +214,12 @@ public final class StoreService {
     }
 
     /**
-     * 起航时把"送至潜艇"的订购货送进潜艇货柜；货柜/背包都放不下的留在待交付里，
-     * 下次起航再试（原作在起航时生成到潜艇货舱）。
+     * 起航时把"送至潜艇"的订购货送进潜艇货舱。
+     *
+     * <p>照原作 {@code CargoManager.DeliverItemsToSub}：只认货舱里的<b>箱子</b>
+     * （货架上的箱子 + 船上地上躺着的箱子），钢柜/衣柜/潜水服柜都不算货舱；
+     * 一件箱子都没有时就地生成一个金属箱来装，实在装不下（箱子类大件、箱满）
+     * 的散落在货舱地上。物品都已生成成功，所以不再留到下次起航。</p>
      */
     public static void deliverPending(ServerPlayer player) {
         deliverPending(player, player.serverLevel(), player.blockPosition());
@@ -225,9 +234,9 @@ public final class StoreService {
         if (pending.isEmpty()) {
             return;
         }
-        List<ContainerSlot> containers = shipContainers(level, shipAnchor);
-        Map<String, Integer> remaining = deliverPendingFor(player.getUUID(), pending, player,
-                containers);
+        List<ContainerSlot> containers = cargoContainers(level);
+        Map<String, Integer> remaining = deliverPendingFor(level, player.getUUID(), pending,
+                player, containers);
         if (!remaining.isEmpty()) {
             data.restore(player.getUUID(), remaining);
         }
@@ -236,11 +245,11 @@ public final class StoreService {
     /**
      * 起航交付（全体）：按待交付订单的 UUID 遍历，包括已经离线的玩家。
      *
-     * <p>离线玩家没有 {@code ServerPlayer}，但“送进货柜”不需要玩家对象；
-     * 只有货柜放不下、回退到个人背包时才需要在线玩家。离线玩家送不出去的
-     * 货物继续留在待交付列表，下次起航再试。</p>
+     * <p>离线玩家没有 {@code ServerPlayer}，但“送进货舱的箱子”不需要玩家对象；
+     * 只有“没有箱子时生成金属箱 / 放不下时丢到货舱地上”需要在线玩家。离线玩家
+     * 送不出去的货物继续留在待交付列表，下次起航再试。</p>
      *
-     * @param online 当前在线玩家：用来匹配订单主人（背包回退 + 聊天提示）
+     * @param online 当前在线玩家：用来匹配订单主人（生成箱子/落地 + 聊天提示）
      */
     public static void deliverPendingOnDeparture(ServerLevel level, BlockPos shipAnchor,
                                                  List<ServerPlayer> online) {
@@ -249,7 +258,7 @@ public final class StoreService {
         if (pending.isEmpty()) {
             return;
         }
-        List<ContainerSlot> containers = shipContainers(level, shipAnchor);
+        List<ContainerSlot> containers = cargoContainers(level);
         Map<UUID, ServerPlayer> onlineById = new LinkedHashMap<>();
         for (ServerPlayer player : online) {
             onlineById.put(player.getUUID(), player);
@@ -257,8 +266,8 @@ public final class StoreService {
         for (Map.Entry<UUID, Map<String, Integer>> entry : pending.entrySet()) {
             UUID owner = entry.getKey();
             ServerPlayer player = onlineById.get(owner);
-            Map<String, Integer> remaining = deliverPendingFor(owner, entry.getValue(), player,
-                    containers);
+            Map<String, Integer> remaining = deliverPendingFor(level, owner, entry.getValue(),
+                    player, containers);
             if (!remaining.isEmpty()) {
                 data.restore(owner, remaining);
             }
@@ -266,12 +275,14 @@ public final class StoreService {
     }
 
     /**
-     * 把一名玩家的待交付货物送进货柜；放不下时回退到在线玩家背包。
+     * 把一名玩家的待交付货物送进货舱：货架上的箱子 → 生成金属箱 → 货舱地上。
      *
-     * @param player 订单主人在线时的玩家对象；离线传 {@code null}（不碰背包）
+     * @param player 订单主人在线时的玩家对象；离线传 {@code null}（没有落点，
+     *               装不下的留在待交付列表，下次起航再试）
      * @return 送不出去的剩余（调用方负责 {@link StoreDeliverySavedData#restore}）
      */
-    private static Map<String, Integer> deliverPendingFor(UUID owner, Map<String, Integer> items,
+    private static Map<String, Integer> deliverPendingFor(ServerLevel level, UUID owner,
+                                                          Map<String, Integer> items,
                                                           @Nullable ServerPlayer player,
                                                           List<ContainerSlot> containers) {
         Map<String, Integer> remaining = new LinkedHashMap<>();
@@ -289,9 +300,15 @@ public final class StoreService {
                     ItemSubSlot.set(unit, new ItemStack(ModItems.WELDING_FUEL_TANK.get()));
                 }
                 Component name = unit.getHoverName();
-                boolean placed = !containers.isEmpty() && deliverToShip(containers, unit);
+                boolean placed = deliverToShip(containers, unit);
+                if (!placed && player != null && !isBulkyCargo(unit)) {
+                    // 原作有 cargocontaineridentifier 的小件：没有/放不下箱子时就生成一个金属箱。
+                    placed = spawnCargoCrate(player, unit, containers);
+                }
                 if (!placed && player != null) {
-                    placed = player.getInventory().add(unit);
+                    // 原作：箱子放不下就留在潜艇货舱地上。离线交付没有落点，留待下次起航。
+                    dropInShip(player, unit);
+                    placed = true;
                 }
                 if (!placed) {
                     remaining.merge(entry.getKey(), 1, Integer::sum);
@@ -303,6 +320,10 @@ public final class StoreService {
                 }
             }
         }
+        // 货架上的箱子内容改了：刷新方块实体，客户端列表才会更新。
+        for (CabinetBlockEntity shelf : MissionCargo.shelves(level)) {
+            shelf.setChanged();
+        }
         if (player != null) {
             if (delivered > 0) {
                 player.getInventory().setChanged();
@@ -313,11 +334,162 @@ public final class StoreService {
                 message(player, "store.delivery_remaining", ChatFormatting.GRAY, count);
             }
         } else {
-            BarotraumaMod.LOGGER.info("[store] 离线玩家 {} 的待交付货物：送进船柜 {} 件，剩余 {} 件",
+            BarotraumaMod.LOGGER.info("[store] 离线玩家 {} 的待交付货物：送进货舱 {} 件，剩余 {} 件",
                     owner, delivered,
                     remaining.values().stream().mapToInt(Integer::intValue).sum());
         }
         return remaining;
+    }
+
+    /**
+     * 「立即获得」入包顺序，照原作 {@code Character.Inventory.TryPutItem}：
+     * 先手持位（我们的热键栏 0..8），再装备背包（工具带/背包）。
+     */
+    private static boolean giveToCharacter(ServerPlayer player, ItemStack stack) {
+        if (tryPutInRange(player.getInventory(), 0, 9, stack)) {
+            return true;
+        }
+        int capacity = BagManager.capacity(player);
+        return capacity > 0 && tryPutInRange(BagManager.container(player), 0, capacity, stack);
+    }
+
+    /** 在容器的 [start, end) 里放东西：先合并同类堆，再找空槽。放完返回 true。 */
+    private static boolean tryPutInRange(Container container, int start, int end, ItemStack stack) {
+        for (int i = start; i < end; i++) {
+            ItemStack existing = container.getItem(i);
+            if (existing.isEmpty() || !ItemStack.isSameItemSameTags(existing, stack)) {
+                continue;
+            }
+            int max = Math.min(existing.getMaxStackSize(), container.getMaxStackSize());
+            int move = Math.min(stack.getCount(), max - existing.getCount());
+            if (move <= 0) {
+                continue;
+            }
+            existing.grow(move);
+            stack.shrink(move);
+            container.setChanged();
+            if (stack.isEmpty()) {
+                return true;
+            }
+        }
+        for (int i = start; i < end; i++) {
+            if (!container.getItem(i).isEmpty()) {
+                continue;
+            }
+            container.setItem(i, stack.copy());
+            container.setChanged();
+            stack.setCount(0);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 货舱里的箱子：货架上的箱子 + 船上地上躺着的箱子。
+     *
+     * <p>原作 {@code FindReusableCargoContainers} 只收 {@code Tags.Crate} 的容器，
+     * 所以钢柜/衣柜这些不算——之前的实现把全船钢柜都当货舱，买的东西直接塞柜子里，
+     * 和原作行为不一致。</p>
+     */
+    private static List<ContainerSlot> cargoContainers(ServerLevel level) {
+        List<ContainerSlot> out = new ArrayList<>();
+        // 1) 货架上摆着的箱子。
+        for (CabinetBlockEntity shelf : MissionCargo.shelves(level)) {
+            for (int i = 0; i < shelf.getContainerSize(); i++) {
+                addCrateSlots(out, shelf.getItem(i));
+            }
+        }
+        // 2) 货舱地上躺着的箱子（物理船的箱子跟着船在世界坐标里）。
+        Vec3 center = MissionCargo.coreWorld(level);
+        if (center != null) {
+            double radius = 48.0D;
+            AABB area = new AABB(center.x - radius, center.y - radius, center.z - radius,
+                    center.x + radius, center.y + radius, center.z + radius);
+            for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, area)) {
+                addCrateSlots(out, entity.getItem());
+            }
+        }
+        return out;
+    }
+
+    /** 这件物品是不是能装货的箱子（货运任务的箱子不算）。 */
+    private static boolean isCargoCrate(ItemStack stack) {
+        return !stack.isEmpty() && stack.getItem() instanceof CrateItem crate
+                && crate.capacity() > 0 && !MissionCargo.isMissionCrate(stack);
+    }
+
+    private static void addCrateSlots(List<ContainerSlot> out, ItemStack crate) {
+        if (!isCargoCrate(crate)) {
+            return;
+        }
+        int capacity = ((CrateItem) crate.getItem()).capacity();
+        CrateContainer container = new CrateContainer(crate, capacity);
+        for (int i = 0; i < capacity; i++) {
+            out.add(new ContainerSlot(container, i));
+        }
+    }
+
+    /** 潜水服这类大件原作不进箱子，直接放货舱地上。 */
+    private static boolean isBulkyCargo(ItemStack stack) {
+        return stack.is(ModItems.DIVING_SUIT.get()) || stack.is(ModItems.GLASS_DIVING_SUIT.get());
+    }
+
+    /**
+     * 货舱里没有能装的箱子时，照原作 {@code GetOrCreateCargoContainerFor} 生成一个金属箱，
+     * 把货装进去后再丢到货舱地上；一个都没装下（箱子类大件）就不生成空箱。
+     */
+    private static boolean spawnCargoCrate(ServerPlayer player, ItemStack stack,
+                                           List<ContainerSlot> slots) {
+        ItemStack crateStack = new ItemStack(ModItems.METAL_CRATE.get());
+        CrateContainer container = new CrateContainer(crateStack,
+                ((CrateItem) crateStack.getItem()).capacity());
+        if (!tryPutInRange(container, 0, container.getContainerSize(), stack)) {
+            return false;
+        }
+        Vec3 drop = cargoDropPoint(player);
+        ItemEntity entity = new ItemEntity(player.serverLevel(), drop.x, drop.y, drop.z, crateStack);
+        entity.setDefaultPickUpDelay();
+        pinToShip(entity);
+        player.serverLevel().addFreshEntity(entity);
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            slots.add(new ContainerSlot(container, i));
+        }
+        return true;
+    }
+
+    /** 货舱落点：物理船掉玩家脚边，普通船掉货架顶/船核心上。 */
+    private static Vec3 cargoDropPoint(ServerPlayer player) {
+        ServerLevel level = player.serverLevel();
+        if (VsState.active()) {
+            // 物理船货架方块在船坞坐标系里，世界坐标不能用；直接掉在玩家脚边。
+            return player.position().add(0.0D, 0.2D, 0.0D);
+        }
+        for (CabinetBlockEntity shelf : MissionCargo.shelves(level, player)) {
+            BlockPos pos = shelf.getBlockPos();
+            return new Vec3(pos.getX() + 0.5D, pos.getY() + 1.05D, pos.getZ() + 0.5D);
+        }
+        Vec3 core = MissionCargo.coreWorld(level, player);
+        return core != null ? core : player.position().add(0.0D, 0.2D, 0.0D);
+    }
+
+    /** 货舱容器都满了：把货丢在货舱地上（原作也是留在货舱地上）。 */
+    private static void dropInShip(ServerPlayer player, ItemStack stack) {
+        Vec3 drop = cargoDropPoint(player);
+        ItemEntity entity = new ItemEntity(player.serverLevel(), drop.x, drop.y, drop.z, stack.copy());
+        entity.setDefaultPickUpDelay();
+        pinToShip(entity);
+        player.serverLevel().addFreshEntity(entity);
+    }
+
+    /**
+     * 让散在货舱地上的订购货跟着潜艇走。
+     *
+     * <p>交付发生在装配之前，普通掉落物在船变成 VS2 物理船并开走后会留在原地；
+     * 复用货运散箱那套"按核心偏移钉住"的标记（{@code CargoFollowEvents}），
+     * 和原作"货物是潜艇的子物体"等价。</p>
+     */
+    private static void pinToShip(ItemEntity entity) {
+        entity.getPersistentData().putBoolean(MissionCargo.TAG_PINNED, true);
     }
 
     /**
@@ -562,7 +734,8 @@ public final class StoreService {
     private record SubSale(String itemId, int quantity, int unitPrice) {
     }
 
-    private record ContainerSlot(CabinetBlockEntity container, int slot) {
+    /** 一个可写入的容器格：钢柜/货架方块实体，或箱子物品内部的 {@link CrateContainer}。 */
+    private record ContainerSlot(Container container, int slot) {
     }
 
     /** 玩家所在潜艇上的所有钢柜/货架槽位；找不到船核心时返回空表。 */

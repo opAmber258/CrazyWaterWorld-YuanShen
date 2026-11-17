@@ -30,6 +30,7 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.WELDING_TOOL.get());
                         output.accept(ModItems.WELDING_FUEL_TANK.get());
                         output.accept(ModItems.SCREWDRIVER.get());
+                        output.accept(ModItems.WRENCH.get());
                         output.accept(ModItems.PLASMA_CUTTER.get());
                         output.accept(ModItems.QUARTZ_VEIN.get());
                         output.accept(ModItems.PYROMORPHITE_VEIN.get());
@@ -49,6 +50,10 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.REACTOR.get());
                         output.accept(ModItems.ENGINE.get());
                         output.accept(ModItems.JUNCTION_BOX.get());
+                        output.accept(ModItems.BATTERY.get());
+                        output.accept(ModItems.BATTERY_CELL.get());
+                        output.accept(ModItems.FABRICATOR.get());
+                        output.accept(ModItems.DECONSTRUCTOR.get());
                         output.accept(ModItems.MEDIUM_STEEL_CABINET.get());
                         output.accept(ModItems.MEDIUM_WINDOWED_STEEL_CABINET.get());
                         output.accept(ModItems.CRATE_SHELF.get());
@@ -104,6 +109,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.CPU_6700X3D.get());
                         // 克苏鲁的注视：只有一个触发器，预设与弱/中/强档位在面板里选
                         output.accept(ModItems.CTHULHU_TRIGGER.get());
+                        // 耐久调节器：直接推设备耐久，验收修理窗口/损坏状态用
+                        output.accept(ModItems.CONDITION_TOOL.get());
                     })
                     .build());
 

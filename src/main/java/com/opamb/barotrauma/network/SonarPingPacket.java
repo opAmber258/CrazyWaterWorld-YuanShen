@@ -120,6 +120,15 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             }
             Set<BlockPos> hull = ship == null ? null : hullForSonar(ship, physical);
 
+            // 导航/声纳核心耐久归零：终端离线，扫描结果为空。
+            boolean terminalBroken = core != null && core.condition() <= 0.0D;
+            if (!terminalBroken && physical) {
+                var physicalCore = com.opamb.barotrauma.ship.vs.VsPilot.sonarCoreBlockEntity(level);
+                if (physicalCore != null) {
+                    terminalBroken = physicalCore.condition() <= 0.0D;
+                }
+            }
+
             SonarScan.Mode scanMode = SonarScan.Mode.byOrdinal(mode);
             // 被动模式没有回波，射程由船有多吵决定：反应堆出力 + 引擎在不在推
             int effectiveRange = scanMode == SonarScan.Mode.PASSIVE
@@ -139,7 +148,8 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                 }
             }
 
-            SonarScan.Frame frame = ship == null || ship.simulation().voltage() >= 0.5D
+            SonarScan.Frame frame = !terminalBroken
+                    && (ship == null || ship.simulation().voltage() >= 0.5D)
                     ? SonarScan.scan(level, center, effectiveRange, hull, player,
                             scanMode, dirX, dirY, dirZ)
                     : new SonarScan.Frame(effectiveRange, new int[0]);

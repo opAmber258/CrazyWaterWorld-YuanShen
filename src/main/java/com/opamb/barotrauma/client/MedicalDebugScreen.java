@@ -6,7 +6,7 @@ import com.opamb.barotrauma.network.MedicalDebugPacket;
 import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -18,7 +18,7 @@ import java.util.List;
  * 所有编辑发 {@link MedicalDebugPacket} 由服务端校验并回发快照。
  * 布局仿任务终端：深色面板 + 左侧部位页签 + 右侧病症行。</p>
  */
-public final class MedicalDebugScreen extends Screen {
+public final class MedicalDebugScreen extends ScaledScreen {
 
     private static final int PANEL_W = 360;
     private static final int PANEL_H = 236;
@@ -61,7 +61,7 @@ public final class MedicalDebugScreen extends Screen {
     private int tab = 1;
 
     public MedicalDebugScreen() {
-        super(Component.literal("医疗调试器"));
+        super(Component.literal("医疗调试器"), PANEL_W, PANEL_H);
     }
 
     public static void open() {
@@ -78,10 +78,9 @@ public final class MedicalDebugScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g);
-        int x = (width - PANEL_W) / 2;
-        int y = (height - PANEL_H) / 2;
+    protected void renderDesign(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        int x = 0;
+        int y = 0;
 
         g.fill(x, y, x + PANEL_W, y + PANEL_H, BG);
         g.fill(x, y, x + PANEL_W, y + 1, EDGE);
@@ -101,7 +100,6 @@ public final class MedicalDebugScreen extends Screen {
         g.drawString(font, "点击立即写入服务端；活力覆盖可用「跟随」取消",
                 x + 8, y + PANEL_H - 14, DIM, false);
 
-        super.render(g, mouseX, mouseY, partialTick);
     }
 
     /** 顶部活力行：当前值 + 覆盖状态 + 六档增减 + 跟随病症。 */
@@ -183,12 +181,14 @@ public final class MedicalDebugScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double screenX, double screenY, int button) {
         if (button != 0) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(screenX, screenY, button);
         }
-        int x = (width - PANEL_W) / 2;
-        int y = (height - PANEL_H) / 2;
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
+        int x = 0;
+        int y = 0;
 
         // 活力增减 / 跟随
         int bx = x + PANEL_W - 8 - (STEPS.length * 30 + 34);
@@ -241,7 +241,7 @@ public final class MedicalDebugScreen extends Screen {
             send(MedicalDebugPacket.CLEAR_ALL, "", "-", 0.0);
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
 
     // ------------------------------------------------------------------

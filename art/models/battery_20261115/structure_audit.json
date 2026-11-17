@@ -1,0 +1,26 @@
+{
+  "asset": "battery",
+  "date": "2026-11-15",
+  "source": "battery.bbmodel (Blockbench 5.0, model_format java_block, java_block_version 26.3)",
+  "counts": {
+    "cubes": 17,
+    "faces": 102,
+    "groups": 6,
+    "bones": 0,
+    "loose_cubes": 0,
+    "hidden_elements": 0,
+    "hidden_groups": 0,
+    "animations": 0,
+    "rotated_cubes": 5
+  },
+  "groups": ["电池", "面板", "插口组", "插口1", "插口2", "插口3"],
+  "findings": [
+    { "level": "info", "code": "NO_BONES", "detail": "java_block 格式无骨骼，6 个分组仅作层级组织。" },
+    { "level": "info", "code": "NO_LOOSE_CUBES", "detail": "17 个 cube 全部在分组下，无游离元素。" },
+    { "level": "info", "code": "NO_ANIMATION", "detail": "0 条动画，静态交付。" },
+    { "level": "info", "code": "TEXTURE_LAYERS", "detail": "工程含 4 个贴图图层（电量屏 4 状态：满/半/低/空）；主贴图为可见的满电状态，3 个备用状态已提取至 reference/screen_states/。" },
+    { "level": "warn", "code": "ROTATION_OVER_LIMIT", "detail": "5/17 个 cube 带旋转：3 个插口端子 [67.5,0,0] 超出 1.20.1 原版 Java 模型 JSON 角度限制（±22.5°/±45°）；肩/左肩 ±45° 合法。接入前需集成侧确认目标格式。" },
+    { "level": "warn", "code": "ZERO_THICKNESS_PLANE", "detail": "电量屏为零厚度面片（2×3×0，悬浮于主体前表面 0.001 单位）。" },
+    { "level": "info", "code": "INFORMAL_NAMES", "detail": "元素命名含随意中文名与一个长备注名（!!!屏幕…），均为参与几何的正式对象，不影响导出。" }
+  ]
+}

@@ -70,6 +70,27 @@ public final class ModBlockEntities {
                             ModBlocks.JUNCTION_BOX.get())
                     .build(null));
 
+    /** 电池（设备）：存电量、充放电、四档电量屏。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.BatteryBlockEntity>> BATTERY =
+            BLOCK_ENTITIES.register("battery", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.BatteryBlockEntity::new,
+                            ModBlocks.BATTERY.get())
+                    .build(null));
+
+    /** 加工台：18 格多块（3×3×2），主方块在前层下排中列。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.FabricatorBlockEntity>> FABRICATOR =
+            BLOCK_ENTITIES.register("fabricator", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.FabricatorBlockEntity::new,
+                            ModBlocks.FABRICATOR.get())
+                    .build(null));
+
+    /** 解构仪：12 格多块（2×3×2），主方块在前层下排左列。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.DeconstructorBlockEntity>> DECONSTRUCTOR =
+            BLOCK_ENTITIES.register("deconstructor", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.DeconstructorBlockEntity::new,
+                            ModBlocks.DECONSTRUCTOR.get())
+                    .build(null));
+
     /** 潜渊症容器：钢柜/带窗钢柜/货架/潜水服柜/氧气瓶架共用一套方块实体。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.CabinetBlockEntity>> CABINET =
             BLOCK_ENTITIES.register("cabinet", () -> BlockEntityType.Builder

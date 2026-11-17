@@ -41,6 +41,20 @@ public abstract class AbstractContainerScreenMixin {
                 return;
             }
         }
+        // 缩放界面在面板左边留了一条放双手格的空白：那一整条都算面板内，
+        // 否则点歪 1px 就会把手上拿着的东西丢到地上。
+        if ((Object) this instanceof com.opamb.barotrauma.client.gui.ScaledContainerScreen<?> scaled) {
+            // 双手格箱子的内容弹窗也一样：点格子松手时不能算"面板外点击"。
+            if (com.opamb.barotrauma.client.equipment.CratePreviewOverlay.isOverPopup(mouseX, mouseY)) {
+                cir.setReturnValue(false);
+                return;
+            }
+            int gutter = scaled.leftGutter();
+            if (gutter > 0 && mouseX < guiLeft && mouseX >= guiLeft - gutter
+                    && mouseY >= guiTop && mouseY <= guiTop + scaled.getYSize()) {
+                cir.setReturnValue(false);
+            }
+        }
     }
 
     /**

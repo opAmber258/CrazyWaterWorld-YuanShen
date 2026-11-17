@@ -214,6 +214,10 @@ public final class ModShipBlocks {
         if (state.getBlock() == ModBlocks.JUNCTION_BOX.get()) {
             return false;
         }
+        // 电池也是墙挂小盒（0.625×0.97×0.375），同样不占整格。
+        if (state.getBlock() == ModBlocks.BATTERY.get()) {
+            return false;
+        }
         // 门/舱口永远算"水密"：门板只有 1px 厚，但按格子算隔断。开着的门不靠
         // 洪水填充连通两侧（那样一开门水就瞬间均摊），而是由 ShipGeometry.DoorLink
         // 按限速流量慢慢补平。
@@ -273,6 +277,9 @@ public final class ModShipBlocks {
                 || block == ModBlocks.REACTOR.get()
                 || block == ModBlocks.ENGINE.get()
                 || block == ModBlocks.JUNCTION_BOX.get()
+                || block == ModBlocks.BATTERY.get()
+                || block == ModBlocks.FABRICATOR.get()
+                || block == ModBlocks.DECONSTRUCTOR.get()
                 // 容器家具也要跟船走，否则装配后钢柜/货架留在码头原地。
                 || block == ModBlocks.MEDIUM_STEEL_CABINET.get()
                 || block == ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get()

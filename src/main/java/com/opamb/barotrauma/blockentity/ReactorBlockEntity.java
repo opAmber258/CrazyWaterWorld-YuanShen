@@ -9,6 +9,8 @@ import com.opamb.barotrauma.reactor.ReactorFuel;
 import com.opamb.barotrauma.reactor.ReactorState;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.registry.ModSounds;
+import com.opamb.barotrauma.ship.ConditionComponent;
+import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -53,7 +55,7 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * <p>供电是"硬核"的：船上没有反应堆或反应堆没开机，ShipSimulation 的
  * powerRatio 就是 0，推进器和泵都不会动。</p>
  */
-public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlockEntity {
+public class ReactorBlockEntity extends BlockEntity implements Container, RepairTarget, GeoBlockEntity {
 
     public static final int FUEL_SLOTS = 4;
     private static final double SECONDS_PER_TICK = 1.0D / 20.0D;
@@ -68,6 +70,9 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
     private double smokeTimer;
     /** 过热/熔毁警报的节流计时（秒）。 */
     private double alarmTimer;
+    /** 耐久：原作 reactor deteriorationspeed=0.125，延迟 120–720s，阈值 50%。 */
+    private final ConditionComponent condition =
+            new ConditionComponent(100.0D, 0.125D, 120, 720, 10.0D, 50.0D);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public ReactorBlockEntity(BlockPos pos, BlockState state) {
@@ -76,6 +81,38 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
 
     protected ReactorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+    }
+
+    @Override
+    public double condition() {
+        return condition.condition();
+    }
+
+    @Override
+    public double maxCondition() {
+        return condition.maxCondition();
+    }
+
+    @Override
+    public boolean canRepair() {
+        return condition.canRepair();
+    }
+
+    @Override
+    public double repairThreshold() {
+        return condition.repairThreshold();
+    }
+
+    @Override
+    public void applyRepair(double points) {
+        condition.repair(points);
+        setChanged();
+    }
+
+    @Override
+    public void damage(double points) {
+        condition.damage(points);
+        setChanged();
     }
 
     // ------------------------------------------------------------------ tick
@@ -96,6 +133,18 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
             }
         }
         be.lastLoadKw = load;
+
+        // 耐久：反应堆开机时自然劣化；耐久归零直接停机，不再发电。
+        be.condition.tick(server, be.state.powerOn());
+        if (be.condition.broken()) {
+            be.state.setPowerOn(false);
+            be.lastRatio = 0.0D;
+            if (ship != null && cell != null) {
+                ship.simulation().reportReactor(cell, 0.0D, be.state.capacityKw(),
+                        be.state.temperature(), false, false);
+            }
+            return;
+        }
 
         double available = be.availableFuel();
         int events = be.state.tick(SECONDS_PER_TICK, available, load);
@@ -448,6 +497,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         super.saveAdditional(tag);
         tag.put("ReactorState", doubleList(state.snapshot()));
         tag.put("ReactorBurn", doubleList(burnCarry));
+        condition.save(tag, "Condition");
         ContainerHelper.saveAllItems(tag, fuel);
     }
 
@@ -459,6 +509,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         for (int i = 0; i < Math.min(FUEL_SLOTS, burn.length); i++) {
             burnCarry[i] = Math.max(0.0D, burn[i]);
         }
+        condition.load(tag, "Condition");
         ContainerHelper.loadAllItems(tag, fuel);
     }
 

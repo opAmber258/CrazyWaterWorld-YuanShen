@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SSS",
+    "CFC",
+    "SSS"
+  ],
+  "key": {
+    "S": {
+      "item": "barotrauma:steel"
+    },
+    "C": {
+      "item": "barotrauma:copper"
+    },
+    "F": {
+      "item": "minecraft:furnace"
+    }
+  },
+  "result": {
+    "item": "barotrauma:fabricator"
+  }
+}

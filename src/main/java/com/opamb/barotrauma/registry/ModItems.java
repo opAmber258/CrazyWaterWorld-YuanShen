@@ -47,6 +47,20 @@ public final class ModItems {
     public static final RegistryObject<Item> SCREWDRIVER = ITEMS.register("screwdriver",
             () -> new Item(new Item.Properties().stacksTo(1)));
 
+    /** 扳手：机械维修（泵/引擎/门/舱口；原作 wrench）。 */
+    public static final RegistryObject<Item> WRENCH = ITEMS.register("wrench",
+            () -> new Item(new Item.Properties().stacksTo(1)));
+
+    /** 耐久调节器：调试工具，右键设备把耐久推到下一个档位（验收修理窗口用）。 */
+    public static final RegistryObject<Item> CONDITION_TOOL = ITEMS.register("condition_tool",
+            () -> new com.opamb.barotrauma.item.ConditionToolItem(
+                    new Item.Properties().stacksTo(1)));
+
+    /** 电池 cell：耐久就是电量，放进电池台面的三个槽充电（原作 batterycell）。 */
+    public static final RegistryObject<Item> BATTERY_CELL = ITEMS.register("battery_cell",
+            () -> new com.opamb.barotrauma.item.BatteryCellItem(
+                    new Item.Properties().stacksTo(8).durability(100)));
+
     /**
      * 等离子切割机：切矿脉、切船壳/舱门；燃料同样来自子格里的焊接油箱
      * （原作 plasmacutter 也是 RepairTool，负修复会打坏结构）。
@@ -98,6 +112,16 @@ public final class ModItems {
 
     /** 接线盒方块物品。 */
     public static final RegistryObject<Item> JUNCTION_BOX = blockItem("junction_box", ModBlocks.JUNCTION_BOX);
+
+    /** 电池（设备）方块物品。 */
+    public static final RegistryObject<Item> BATTERY = blockItem("battery", ModBlocks.BATTERY);
+
+    /** 加工台方块物品（3×3×2 多块）。 */
+    public static final RegistryObject<Item> FABRICATOR = blockItem("fabricator", ModBlocks.FABRICATOR);
+
+    /** 解构仪方块物品（2×3×2 多块）。 */
+    public static final RegistryObject<Item> DECONSTRUCTOR =
+            blockItem("deconstructor", ModBlocks.DECONSTRUCTOR);
 
     // ---- 潜渊症容器 ----
     public static final RegistryObject<Item> MEDIUM_STEEL_CABINET =

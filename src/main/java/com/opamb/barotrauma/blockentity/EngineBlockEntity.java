@@ -1,7 +1,9 @@
 package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.ConditionComponent;
 import com.opamb.barotrauma.ship.PowerConsumer;
+import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -27,7 +29,8 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * {@code 目标力/100 的 1.5 次方 × 2000 kW} 上报耗电。多台引擎相加，
  * {@code VsThruster} 按引擎数量放大推力，并受全船供电比例限制。</p>
  */
-public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity, PowerConsumer {
+public class EngineBlockEntity extends BlockEntity
+        implements GeoBlockEntity, PowerConsumer, RepairTarget {
 
     /** 单台标准引擎的额定耗电（原作 engine powerconsumption=2000）。 */
     public static final double MAX_POWER_KW = 2000.0D;
@@ -40,6 +43,9 @@ public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity, Po
     private int lastEngineCount;
     /** 绑定的接线盒；null = 默认总线。 */
     private BlockPos boundBox;
+    /** 耐久：原作 engine 0.125/s，延迟 120–300s，阈值 80%。 */
+    private final ConditionComponent condition =
+            new ConditionComponent(100.0D, 0.125D, 120, 300, 0.0D, 80.0D);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public EngineBlockEntity(BlockPos pos, BlockState state) {
@@ -60,8 +66,8 @@ public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity, Po
             ship = VsState.activeState();
         } else {
             // 引擎常在船尾，离船核心可能超过水泵用的 32 格；引擎放宽到 64。
-            ShipCoreBlockEntity core = com.opamb.barotrauma.ship.ShipCores.nearestCore(server, pos, 64.0D);
-            ship = core == null ? null : core.state();
+            // 船状态不存档：世界重开后第一次 tick 靠自己补扫，不能等玩家去开电力面板。
+            ship = com.opamb.barotrauma.ship.ShipCores.stateNear(server, pos, 64.0D);
         }
         if (ship == null) {
             be.lastForce = 0.0D;
@@ -81,7 +87,17 @@ public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity, Po
 
         // 油门停车时目标力 0；有油门时用声纳面板的推力百分比（5..100）。
         double force = ship.throttled() ? ship.power() : 0.0D;
-        double demand = MAX_POWER_KW * Math.pow(Math.max(0.0D, force) / 100.0D, 1.5D);
+        double demand = MAX_POWER_KW * Math.pow(Math.max(0.0D, force) / 100.0D, 1.5D)
+                * be.condition.powerPenalty();
+        be.condition.tick(server, force > 0.1D);
+        if (be.condition.broken()) {
+            be.lastForce = 0.0D;
+            be.lastDemandKw = 0.0D;
+            be.lastSupply = 0.0D;
+            ship.simulation().reportEngine(cell, 0.0D, 0.0D, MAX_FORCE);
+            ship.simulation().reportConsumer(cell, 0.0D, be.minVoltage(), be.boundBox);
+            return;
+        }
         be.lastForce = force;
         be.lastDemandKw = demand;
         ship.simulation().reportEngine(cell, force, demand, MAX_FORCE);
@@ -109,6 +125,33 @@ public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity, Po
     public void setPowerBox(BlockPos box) {
         this.boundBox = box == null ? null : box.immutable();
         setChanged();
+    }
+
+    @Override
+    public double condition() {
+        return condition.condition();
+    }
+
+    @Override
+    public double maxCondition() {
+        return condition.maxCondition();
+    }
+
+    @Override
+    public void applyRepair(double points) {
+        condition.repair(points);
+        setChanged();
+    }
+
+    @Override
+    public void damage(double points) {
+        condition.damage(points);
+        setChanged();
+    }
+
+    @Override
+    public RepairTarget.Tool requiredTool() {
+        return RepairTarget.Tool.WRENCH;
     }
 
     public double lastForce() {
@@ -141,12 +184,14 @@ public class EngineBlockEntity extends BlockEntity implements GeoBlockEntity, Po
         if (boundBox != null) {
             tag.putLong("PowerBox", boundBox.asLong());
         }
+        condition.save(tag, "Condition");
     }
 
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
         boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
+        condition.load(tag, "Condition");
     }
 
     @Override

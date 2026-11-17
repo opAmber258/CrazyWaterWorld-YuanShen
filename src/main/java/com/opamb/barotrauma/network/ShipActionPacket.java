@@ -96,6 +96,19 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
             if (ship == null) {
                 return;
             }
+            // 导航/声纳核心耐久归零：终端离线，舵令不再生效。
+            ShipCoreBlockEntity terminal = core;
+            if (terminal == null && com.opamb.barotrauma.ship.vs.VsState.active()) {
+                terminal = com.opamb.barotrauma.ship.vs.VsPilot.sonarCoreBlockEntity(level);
+            }
+            if (terminal != null && terminal.condition() <= 0.0D) {
+                return;
+            }
+            // 原作 Powered.HasPower：电压低于 MinVoltage 0.5 时导航台完全不能用，
+            // 舵令/泵/气闸这些终端操作一律不生效。
+            if (ship.simulation().voltage() < ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE) {
+                return;
+            }
             switch (action) {
                 case PUMP_OUT -> ship.simulation().setPumpOut(true);
                 case PUMP_IN -> ship.simulation().setPumpOut(false);

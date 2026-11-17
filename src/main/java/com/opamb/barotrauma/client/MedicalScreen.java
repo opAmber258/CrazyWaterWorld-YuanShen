@@ -10,7 +10,7 @@ import com.opamb.barotrauma.network.MedicalRequestPacket;
 import com.opamb.barotrauma.network.MedicalTreatPacket;
 import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -29,7 +29,7 @@ import java.util.function.Supplier;
  * 右=悬停部位的伤情明细 + **对症药品图标（按原作 SuitableTreatment 排序，单击即用，
  * 从背包取药）**；用药后面板保持打开（用户指令）。点击身体部位 = 用主手药品。</p>
  */
-public final class MedicalScreen extends Screen {
+public final class MedicalScreen extends ScaledScreen {
 
     private static final int PANEL_W = 200;
     private static final int PANEL_H = 186;
@@ -60,13 +60,14 @@ public final class MedicalScreen extends Screen {
     private int refreshTicks;
 
     public MedicalScreen(UUID target, String targetName) {
-        super(Component.literal("医疗"));
+        super(Component.literal("医疗"), PANEL_W, PANEL_H);
         this.target = target;
         this.targetName = targetName;
     }
 
     @Override
     protected void init() {
+        super.init();
         ModNetwork.sendToServer(new MedicalRequestPacket(target));
     }
 
@@ -86,10 +87,9 @@ public final class MedicalScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g);
-        int x = (this.width - PANEL_W) / 2;
-        int y = (this.height - PANEL_H) / 2;
+    protected void renderDesign(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        int x = 0;
+        int y = 0;
         g.fill(x - 1, y - 1, x + PANEL_W + 1, y + PANEL_H + 1, 0xFF4A4A5A);
         g.fill(x, y, x + PANEL_W, y + PANEL_H, 0xE012121A);
 
@@ -248,7 +248,9 @@ public final class MedicalScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (button == 0) {
             // 1) 对症药品图标 = 用该药（作用于当前选中部位）
             for (IconRect rect : iconRects) {
@@ -270,7 +272,7 @@ public final class MedicalScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
 
     private static Limb findHoveredLimb(List<Zone> zones, double mouseX, double mouseY) {

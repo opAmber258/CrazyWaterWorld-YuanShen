@@ -6,6 +6,8 @@ import com.opamb.barotrauma.network.ShipHullDamagePacket;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.HullDamage;
+import com.opamb.barotrauma.ship.ConditionComponent;
+import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.MachineCount;
 import com.opamb.barotrauma.ship.ShipGeometry;
 import com.opamb.barotrauma.ship.ShipState;
@@ -42,13 +44,25 @@ import java.util.List;
  *
  * <p>扫描半径 24 格——比常见潜艇尺寸（24×20×40）略大，能把整艘船包住。</p>
  */
-public class ShipCoreBlockEntity extends BlockEntity {
+public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
+        com.opamb.barotrauma.ship.PowerConsumer {
 
     /** 扫描半径（格）。 */
     public static final int RADIUS = 24;
 
+    /** 原作 command.xml：Steering 10 kW + Sonar 100 kW（两颗指示灯各 5 kW 没算）。 */
+    public static final double TERMINAL_POWER_KW = 110.0D;
+    /** 原作 Powered 默认 MinVoltage（导航台低于它就完全不能用）。 */
+    public static final double TERMINAL_MIN_VOLTAGE = 0.5D;
+
     @Nullable
     private ShipState state;
+    /** 导航终端/声纳台的耐久：原作 command 0.125/s，延迟 180–720s，阈值 80%。 */
+    private final ConditionComponent condition =
+            new ConditionComponent(100.0D, 0.125D, 180, 720, 0.0D, 80.0D);
+    /** 绑定的接线盒；null = 默认总线。 */
+    @Nullable
+    private BlockPos boundBox;
     /** 世界加载时从 NBT 恢复的耐久；重扫时并入（previous 为空的那条路径）。 */
     @Nullable
     private HullDamage pendingDamage;
@@ -77,6 +91,59 @@ public class ShipCoreBlockEntity extends BlockEntity {
         super(type, pos, blockState);
     }
 
+    @Override
+    public double condition() {
+        return condition.condition();
+    }
+
+    @Override
+    public double maxCondition() {
+        return condition.maxCondition();
+    }
+
+    @Override
+    public void applyRepair(double points) {
+        condition.repair(points);
+        setChanged();
+    }
+
+    @Override
+    public void damage(double points) {
+        condition.damage(points);
+        setChanged();
+    }
+
+    /* ------------------------------------------------------------ 终端耗电 */
+
+    @Override
+    public double powerDemandKw() {
+        return TERMINAL_POWER_KW;
+    }
+
+    @Override
+    public double minVoltage() {
+        return TERMINAL_MIN_VOLTAGE;
+    }
+
+    @Override
+    public BlockPos powerBox() {
+        return boundBox;
+    }
+
+    @Override
+    public void setPowerBox(BlockPos box) {
+        this.boundBox = box == null ? null : box.immutable();
+        setChanged();
+    }
+
+    /** 物理船上由 {@code VsPilot.tick} 调：终端是耗电设备，方块级 tick 停了也得报。 */
+    public void reportTerminalPower(BlockPos cell) {
+        if (state == null) {
+            return;
+        }
+        state.simulation().reportConsumer(cell, TERMINAL_POWER_KW, TERMINAL_MIN_VOLTAGE, boundBox);
+    }
+
     /** 服务端 tick：每 2 tick 推进一次模拟（0.1 s，即 10 Hz）。 */
     public static void serverTick(net.minecraft.world.level.Level level, BlockPos pos, BlockState blockState,
                                   ShipCoreBlockEntity be) {
@@ -88,6 +155,8 @@ public class ShipCoreBlockEntity extends BlockEntity {
             return;
         }
         be.lastTickGameTime = now;
+        // 导航/声纳核心耐久：船在运行时缓慢劣化；0 时只影响终端，不阻断船体模拟。
+        be.condition.tick(level, be.state != null, 0.1D);
         // 这艘船的方块是不是已经被收进 VS2 刚体了。方块进刚体之后并没有消失，
         // 而是被搬到船坞区块里、**仍然在 tick**——所以这里必须显式停手，否则：
         //   · tickMovement 会把船坞里的方块自己搬来搬去，和物理那套叠在一起
@@ -107,6 +176,9 @@ public class ShipCoreBlockEntity extends BlockEntity {
                     be.state, -pos.getY())) {
                 be.setChanged();
             }
+            // 导航台/声纳终端耗电 110 kW（原作 Steering 10 + Sonar 100），
+            // 低于 MinVoltage 0.5 时终端完全不能用。
+            be.reportTerminalPower(pos);
             be.state.simulation().tick(0.1D);
             // 破口进水：连海空腔（船体破洞）按速率缓慢灌水，而不是瞬间满
             be.state.simulation().tickSeaFlood(0.1D, -pos.getY());
@@ -511,6 +583,10 @@ public class ShipCoreBlockEntity extends BlockEntity {
             tag.putFloat("BarotraumaEngineMultiplier", state.engineMultiplier());
             tag.putLongArray("BarotraumaKnownInterior", state.knownInteriorArray());
         }
+        condition.save(tag, "Condition");
+        if (boundBox != null) {
+            tag.putLong("PowerBox", boundBox.asLong());
+        }
     }
 
     @Override
@@ -527,5 +603,7 @@ public class ShipCoreBlockEntity extends BlockEntity {
                 ? tag.getFloat("BarotraumaEngineMultiplier") : null;
         pendingKnownInterior = tag.contains("BarotraumaKnownInterior", Tag.TAG_LONG_ARRAY)
                 ? tag.getLongArray("BarotraumaKnownInterior") : null;
+        condition.load(tag, "Condition");
+        boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
     }
 }

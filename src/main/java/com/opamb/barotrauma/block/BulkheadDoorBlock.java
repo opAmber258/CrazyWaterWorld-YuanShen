@@ -2,12 +2,14 @@ package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.registry.ModSounds;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.InteractionHand;
@@ -172,12 +174,26 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
             if (lower == null) {
                 return InteractionResult.PASS;
             }
-            if (player.isShiftKeyDown()
-                    && level.getBlockEntity(lower) instanceof BulkheadDoorBlockEntity door) {
-                door.cycleAutomation();
-                player.displayClientMessage(
-                        Component.translatable(door.automation().translationKey()), true);
-                return InteractionResult.CONSUME;
+            if (level.getBlockEntity(lower) instanceof BulkheadDoorBlockEntity door) {
+                boolean wrench = player.getMainHandItem().is(ModItems.WRENCH.get())
+                        || player.getOffhandItem().is(ModItems.WRENCH.get());
+                // 原作门也带 Repairable 的 GUI 帧：手里有扳手就开修理窗口（满耐久
+                // 显示“无需修理”），空手右键才是开关门。
+                if (wrench && player instanceof ServerPlayer serverPlayer
+                        && com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
+                                serverPlayer, lower, door, true)) {
+                    return InteractionResult.CONSUME;
+                }
+                if (door.condition() <= 0.0D) {
+                    player.displayClientMessage(Component.literal("门已损坏，需要扳手修理"), true);
+                    return InteractionResult.CONSUME;
+                }
+                if (player.isShiftKeyDown()) {
+                    door.cycleAutomation();
+                    player.displayClientMessage(
+                            Component.translatable(door.automation().translationKey()), true);
+                    return InteractionResult.CONSUME;
+                }
             }
             setOpen(level, pos, state, !state.getValue(OPEN));
         }
@@ -188,6 +204,10 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
     public static boolean setOpen(Level level, BlockPos pos, BlockState state, boolean open) {
         BlockPos lower = lowerPos(level, pos, state);
         if (lower == null) {
+            return false;
+        }
+        if (level.getBlockEntity(lower) instanceof BulkheadDoorBlockEntity door
+                && door.condition() <= 0.0D) {
             return false;
         }
         for (int offset = 0; offset < 2; offset++) {

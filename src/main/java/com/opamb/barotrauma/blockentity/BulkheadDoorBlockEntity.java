@@ -4,6 +4,8 @@ import com.opamb.barotrauma.block.BulkheadDoorBlock;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.ship.AutomationMode;
 import com.opamb.barotrauma.ship.AutomationUtil;
+import com.opamb.barotrauma.ship.ConditionComponent;
+import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -28,13 +30,16 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * <p>和舱口一样，状态只读 blockstate 的 {@code open}；打开/关闭各一个动画，
  * 由控制器做过渡。模型本身是 3 格高，渲染器挂在最下面一段，向上覆盖两格。</p>
  */
-public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEntity {
+public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEntity, RepairTarget {
 
     private static final RawAnimation OPEN = RawAnimation.begin().thenPlayAndHold("open");
     private static final RawAnimation CLOSED = RawAnimation.begin().thenPlayAndHold("closed");
 
     private AutomationMode automation = AutomationMode.MANUAL;
     private int motionHold;
+    /** 门不自然劣化（原作 Repairable 默认 0/s），只被外力打坏后修理。 */
+    private final ConditionComponent condition =
+            new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 80.0D);
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
@@ -103,9 +108,37 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
     }
 
     @Override
+    public double condition() {
+        return condition.condition();
+    }
+
+    @Override
+    public double maxCondition() {
+        return condition.maxCondition();
+    }
+
+    @Override
+    public void applyRepair(double points) {
+        condition.repair(points);
+        setChanged();
+    }
+
+    @Override
+    public void damage(double points) {
+        condition.damage(points);
+        setChanged();
+    }
+
+    @Override
+    public RepairTarget.Tool requiredTool() {
+        return RepairTarget.Tool.WRENCH;
+    }
+
+    @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
         tag.putString("Automation", automation.name());
+        condition.save(tag, "Condition");
     }
 
     @Override
@@ -116,6 +149,7 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
         } catch (IllegalArgumentException ignored) {
             automation = AutomationMode.MANUAL;
         }
+        condition.load(tag, "Condition");
     }
 
     @Override

@@ -115,6 +115,43 @@ public final class ModBlocks {
                     .isViewBlocking((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)));
 
+    /**
+     * 电池（设备）：墙挂蓄电设备。原版 2000 kW·min / 最大输出 1000 kW /
+     * 最大充电 500 kW；供电不足时补差，富余时充电。
+     */
+    public static final RegistryObject<Block> BATTERY = BLOCKS.register("battery",
+            () -> new com.opamb.barotrauma.block.BatteryBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(8.0F, 300.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    // ---- 加工台 / 解构仪（2026-11-16） ----
+    /**
+     * 加工台：3×3×2 落地多方块。原作 500 kW、MinVoltage 0.5，
+     * 材料来自台面 5 格或玩家背包，成品进 1 格输出槽。
+     */
+    public static final RegistryObject<Block> FABRICATOR = BLOCKS.register("fabricator",
+            () -> new com.opamb.barotrauma.block.FabricatorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(20.0F, 1200.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /** 解构仪：2×3×2 落地多方块。原作 500 kW，3 进 5 出，工作时播双刀轴动画。 */
+    public static final RegistryObject<Block> DECONSTRUCTOR = BLOCKS.register("deconstructor",
+            () -> new com.opamb.barotrauma.block.DeconstructorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(20.0F, 1200.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
     // ---- 潜渊症容器（2026-11-10） ----
     /** 中型钢柜：5×4 主格 + 3 个移动容器格。 */
     public static final RegistryObject<Block> MEDIUM_STEEL_CABINET = BLOCKS.register("medium_steel_cabinet",

@@ -64,6 +64,11 @@ public class SonarBlock extends BaseEntityBlock {
             if (core != null && core.state() == null) {
                 core.rescan(level);
             }
+            // 手持螺丝刀且核心耐久低：开独立修理窗口。
+            if (com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
+                    serverPlayer, pos, false)) {
+                return InteractionResult.CONSUME;
+            }
             NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inventory, p) -> new SonarMenu(id, inventory, pos, SonarScan.DEFAULT_RANGE),

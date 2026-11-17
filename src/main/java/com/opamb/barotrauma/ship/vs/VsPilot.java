@@ -785,6 +785,15 @@ public final class VsPilot {
         // 只在那边调 tickSeaFlood 的话，物理船砸出洞后水永远不涨。
         if (++simTickCounter % 2L == 0L && state != null) {
             try {
+                // 导航台/声纳终端也吃电（原作 Steering 10 + Sonar 100 = 110 kW），
+                // 物理船上方块级 tick 停了，由这里补报终端负载。
+                if (level != null) {
+                    com.opamb.barotrauma.blockentity.ShipCoreBlockEntity terminal =
+                            sonarCoreBlockEntity(level);
+                    if (terminal != null) {
+                        terminal.reportTerminalPower(toAssembly(terminal.getBlockPos()));
+                    }
+                }
                 state.simulation().tick(0.1D);
                 if (now != null) {
                     state.simulation().tickSeaFlood(0.1D, Math.max(0.0D, -now.y));
@@ -1266,6 +1275,17 @@ public final class VsPilot {
         }
         return level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.ReactorBlockEntity reactor
                 ? reactor : null;
+    }
+
+    /** 物理船导航/声纳核心（修理面板走它）。 */
+    @Nullable
+    public static com.opamb.barotrauma.blockentity.ShipCoreBlockEntity sonarCoreBlockEntity(ServerLevel level) {
+        if (sonarAnchor == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        BlockPos yard = sonarAnchor.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+        return level.getBlockEntity(yard) instanceof com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core
+                ? core : null;
     }
 
     /** 物理船引擎在船坞里的坐标。 */

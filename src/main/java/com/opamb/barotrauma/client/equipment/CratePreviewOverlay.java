@@ -55,6 +55,23 @@ public final class CratePreviewOverlay {
 
     public static void render(GuiGraphics graphics, AbstractContainerMenu menu, int left, int top,
                               int mouseX, int mouseY) {
+        render(graphics, menu, left, top, mouseX, mouseY, -1,
+                0, 0,
+                Minecraft.getInstance().getWindow().getGuiScaledWidth(),
+                Minecraft.getInstance().getWindow().getGuiScaledHeight());
+    }
+
+    /**
+     * @param dir    弹窗展开方向：{@code -1} 向上、{@code 1} 向下（原作
+     *               {@code VisualSlot.SubInventoryDir}：槽位在屏幕下半边就向上弹）。
+     * @param boundX 坐标空间里"屏幕"左上角的 x（缩放界面是设计坐标下的屏幕范围）。
+     * @param boundY 同上，y。
+     * @param boundW 坐标空间里"屏幕"的宽度，用来像原作一样把弹窗夹在画面内。
+     * @param boundH 同上，高度。
+     */
+    public static void render(GuiGraphics graphics, AbstractContainerMenu menu, int left, int top,
+                              int mouseX, int mouseY, int dir,
+                              int boundX, int boundY, int boundW, int boundH) {
         long now = Util.getMillis();
         float dt = lastFrameMillis < 0L ? 0.0F : Math.min(0.1F, (now - lastFrameMillis) / 1000.0F);
         lastFrameMillis = now;
@@ -85,9 +102,7 @@ public final class CratePreviewOverlay {
         int height = rows * CELL + PAD * 2;
         int sx = left + slot.x;
         int sy = top + slot.y;
-        int screenW = Minecraft.getInstance().getWindow().getGuiScaledWidth();
-        int screenH = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-        int[] open = place(sx, sy, width, height, screenW, screenH);
+        int[] open = place(sx, sy, width, height, dir, boundX, boundY, boundW, boundH);
 
         // 保持判定用"展开后的目标位置"，不用动画中的当前位置：否则弹窗滑动时
         // 命中区域每帧变化，鼠标在边角会来回闪。
@@ -135,6 +150,11 @@ public final class CratePreviewOverlay {
                 graphics.renderItemDecorations(Minecraft.getInstance().font, stack, cx, cy);
             }
         }
+    }
+
+    /** 弹窗当前是否展开（超过一点点进度）。 */
+    public static boolean isOpen() {
+        return progress > 0.05F;
     }
 
     /**
@@ -199,6 +219,11 @@ public final class CratePreviewOverlay {
             if (!(slot.getItem().getItem() instanceof CrateItem crate) || crate.capacity() <= 0) {
                 continue;
             }
+            // 箱子界面里的双手格是只读展示（点它会把界面绑定的容器搬走），不弹窗。
+            net.minecraft.world.entity.player.Player player = Minecraft.getInstance().player;
+            if (player != null && !slot.mayPickup(player)) {
+                continue;
+            }
             int x = left + slot.x;
             int y = top + slot.y;
             if (mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16) {
@@ -216,20 +241,27 @@ public final class CratePreviewOverlay {
         return Math.max(1, Math.min(SLOTS_PER_ROW, (int) Math.floor(Math.sqrt(capacity))));
     }
 
-    /** 弹窗位置：默认在手上那格正上方，水平以格子中心对齐；放不下就翻到下方/贴边。 */
-    private static int[] place(int sx, int sy, int width, int height, int screenW, int screenH) {
+    /**
+     * 弹窗位置：照原作 {@code Inventory.UpdateSubInventory}——水平以宿主格中心对齐，
+     * 垂直按 {@code dir} 朝上/朝下展开；超出"屏幕"就翻到另一侧/贴边。
+     */
+    private static int[] place(int sx, int sy, int width, int height, int dir,
+                               int boundX, int boundY, int boundW, int boundH) {
         int x = sx + 8 - width / 2;
-        int y = sy - height - 4;
-        if (y < 2) {
+        int y = dir < 0 ? sy - height - 4 : sy + 18 + 4;
+        // 上方放不下（或请求向下）时翻到另一侧。
+        if (y < boundY + 2 && dir < 0) {
             int below = sy + 18 + 2;
-            if (below + height <= screenH - 2) {
+            if (below + height <= boundY + boundH - 2) {
                 y = below;
             } else {
-                y = Math.max(2, Math.min(sy, screenH - height - 2));
+                y = Math.max(boundY + 2, Math.min(sy, boundY + boundH - height - 2));
             }
+        } else if (y + height > boundY + boundH - 2 && dir > 0 && sy - height - 4 >= boundY + 2) {
+            y = sy - height - 4;
         }
-        x = Math.max(2, Math.min(x, screenW - width - 2));
-        y = Math.max(2, Math.min(y, screenH - height - 2));
+        x = Math.max(boundX + 2, Math.min(x, boundX + boundW - width - 2));
+        y = Math.max(boundY + 2, Math.min(y, boundY + boundH - height - 2));
         return new int[]{x, y};
     }
 

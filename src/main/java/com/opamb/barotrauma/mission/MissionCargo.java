@@ -324,7 +324,8 @@ public final class MissionCargo {
 
     private static List<CabinetBlockEntity> shelvesOf(ServerLevel level, ShipCoreBlockEntity core,
                                                       BlockPos translate) {
-        ShipState state = core.state();
+        // 船状态不存档：世界重开后没扫过就是 null，这里补一次，否则货架会"凭空消失"。
+        ShipState state = core.state() != null ? core.state() : core.rescan(level);
         if (state == null) {
             return List.of();
         }

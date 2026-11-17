@@ -1,8 +1,10 @@
 package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.ConditionComponent;
 import com.opamb.barotrauma.ship.PowerConsumer;
 import com.opamb.barotrauma.ship.PowerGrid;
+import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -30,7 +32,7 @@ import org.jetbrains.annotations.Nullable;
  * <p>船状态解析：物理船激活时用 {@link VsState#activeState()}（方块在船坞里，
  * 找不到正常的核心）；方块船只找 32 格内的船核心。找不到船就空转。</p>
  */
-public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
+public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, RepairTarget {
 
     /**
      * 普通泵满流量（单位/秒）：1 格 = 100 单位。
@@ -62,6 +64,8 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
     /** 绑定的接线盒（装配/世界坐标）；null = 直接挂全船默认总线。 */
     @Nullable
     private BlockPos boundBox;
+    /** 耐久：普通泵 0.125/s、小泵 0.2/s，宽限 60–270/240 秒（原作 pump.xml）。 */
+    private final ConditionComponent condition;
 
     public DrainPumpBlockEntity(BlockPos pos, BlockState state) {
         this(ModBlockEntities.DRAIN_PUMP.get(), pos, state);
@@ -69,6 +73,9 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
 
     protected DrainPumpBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+        boolean small = state.is(com.opamb.barotrauma.registry.ModBlocks.SMALL_PUMP.get());
+        this.condition = new ConditionComponent(100.0D,
+                small ? 0.2D : 0.125D, 60, small ? 240 : 270, 0.0D, 80.0D);
     }
 
     /** 不同泵的满流量。 */
@@ -122,8 +129,9 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
 
     @Override
     public double powerDemandKw() {
-        // 原作 Pump.GetCurrentPowerConsumption：按流量百分比缩放，停机不吃电。
-        return powerKw() * Math.abs(effectiveFlow()) / 100.0D;
+        // 原作 Pump.GetCurrentPowerConsumption：按流量百分比缩放，停机不吃电；
+        // 低耐久时按 Repairable 的规则更费电。
+        return powerKw() * Math.abs(effectiveFlow()) / 100.0D * condition.powerPenalty();
     }
 
     @Override
@@ -141,6 +149,33 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
     public void setPowerBox(@Nullable BlockPos box) {
         this.boundBox = box == null ? null : box.immutable();
         setChanged();
+    }
+
+    @Override
+    public double condition() {
+        return condition.condition();
+    }
+
+    @Override
+    public double maxCondition() {
+        return condition.maxCondition();
+    }
+
+    @Override
+    public void applyRepair(double points) {
+        condition.repair(points);
+        setChanged();
+    }
+
+    @Override
+    public void damage(double points) {
+        condition.damage(points);
+        setChanged();
+    }
+
+    @Override
+    public RepairTarget.Tool requiredTool() {
+        return RepairTarget.Tool.WRENCH;
     }
 
     public void setAuto(boolean auto) {
@@ -174,6 +209,14 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
         }
         // 子类钩子：压载泵在这里读舵台垂直指令（下潜泵入 / 上浮泵出）。
         be.beforeReport(ship);
+        // 耐久：只有泵在真正抽/注水时才自然劣化。
+        be.condition.tick(server, Math.abs(be.signedRate(state)) > 0.1D);
+        if (be.condition.broken()) {
+            ship.simulation().reportConsumer(cell, 0.0D, be.minVoltage(), be.boundBox);
+            ship.simulation().reportPump(cell, 0.0D, be.ballast(), 0.0D,
+                    be.keepBelowDoor(), be.ballastTarget());
+            return;
+        }
         if (be.auto) {
             // 泵格子本身是实心方块，要用邻格解析出它服务的舱室（水传感器语义）。
             int body = ship.simulation().pumpBody(cell);
@@ -239,7 +282,12 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
         return core.state() != null ? core.state() : core.rescan(level);
     }
 
-    /** 按船体几何归属找这个方块所属的核心；门/舱口开合后要直接 rescan 它。 */
+    /**
+     * 按船体几何归属找这个方块所属的核心；门/舱口开合后要直接 rescan 它。
+     *
+     * <p>同时负责"世界重开后第一次 tick 自动补扫"：船状态不存档，
+     * {@code core.state()} 为空时这里会先 {@code rescan}，不用等玩家开电力面板。</p>
+     */
     @Nullable
     public static ShipCoreBlockEntity resolveCore(ServerLevel level, BlockPos pos) {
         for (ShipCoreBlockEntity core : ShipCores.coresNear(level, pos, 64.0D)) {
@@ -257,6 +305,7 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
         super.saveAdditional(tag);
         tag.putBoolean("PumpAuto", auto);
         tag.putInt("PumpFlow", flow);
+        condition.save(tag, "Condition");
         if (boundBox != null) {
             tag.putLong("PowerBox", boundBox.asLong());
         }
@@ -273,6 +322,7 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer {
                 maxFlow(getBlockState()));
         auto = migrated[0] != 0;
         flow = migrated[1];
+        condition.load(tag, "Condition");
         boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
     }
 
