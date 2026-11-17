@@ -52,6 +52,21 @@ public final class VsState {
     public interface CompartmentQuery {
         Boolean isPlayerInDryCompartment(net.minecraft.world.level.Level level,
                                           net.minecraft.world.phys.Vec3 pos);
+
+        /**
+         * 位置是否真的在舱室几何内（不看水位）。
+         *
+         * @return null = 没有物理船/无法判定
+         */
+        default Boolean isInsideCompartmentGeometry(net.minecraft.world.level.Level level,
+                                                    net.minecraft.world.phys.Vec3 pos) {
+            return null;
+        }
+    }
+
+    /** 物理船上新放方块：写进靠港还原快照。由 {@link VsPilot} 提供。 */
+    public interface BlockRecorder {
+        void record(ServerLevel level, BlockPos pos);
     }
 
     /** 物理船上砸方块：把玩家看到的世界坐标映射成船坞方块并扣耐久。由 {@link VsPilot} 提供。 */
@@ -62,6 +77,14 @@ public final class VsState {
     /** 物理船上焊接：沿玩家视线找到船壳格并回耐久。由 {@link VsPilot} 提供。 */
     public interface Repairer {
         boolean tryRepair(ServerLevel level, ServerPlayer player, float amount);
+    }
+
+    /**
+     * 物理船上切割（等离子切割机）：沿视线扣船壳耐久，或把舱门/舱口切烂。
+     * 由 {@link VsPilot} 提供。
+     */
+    public interface Cutter {
+        boolean tryCut(ServerLevel level, ServerPlayer player, float amount);
     }
 
     /** 物理船爆炸：按世界坐标对装配快照里的格子扣耐久。由 {@link VsPilot} 提供。 */
@@ -83,6 +106,19 @@ public final class VsState {
 
     public static void installBoardingResolver(BoardingResolver resolver) { boardingResolver = resolver; }
 
+    private static volatile BlockRecorder blockRecorder;
+
+    public static void installBlockRecorder(BlockRecorder recorder) { blockRecorder = recorder; }
+
+    /** 物理船上新放方块时调用；没有物理船/未装 VS2 时静默忽略。 */
+    public static void recordPlacedBlock(ServerLevel level, BlockPos pos) {
+        BlockRecorder recorder = blockRecorder;
+        if (!active || recorder == null) {
+            return;
+        }
+        recorder.record(level, pos);
+    }
+
     public static java.util.List<net.minecraft.world.phys.Vec3> boardingPositions(ServerLevel level, int count) {
         BoardingResolver resolver = boardingResolver;
         if (!active || resolver == null) return java.util.List.of();
@@ -95,6 +131,7 @@ public final class VsState {
     private static volatile CoreObserver coreObserver;
     private static volatile Damager damager;
     private static volatile Repairer repairer;
+    private static volatile Cutter cutter;
     private static volatile ExplosionDamager explosionDamager;
     private static volatile GeometryRefresh geometryRefresh;
     private static volatile BlockPos corePos;
@@ -116,6 +153,17 @@ public final class VsState {
                                                       net.minecraft.world.phys.Vec3 pos) {
         CompartmentQuery query = compartmentQuery;
         return query == null ? null : query.isPlayerInDryCompartment(level, pos);
+    }
+
+    /**
+     * 位置是否真的在物理船舱室几何内（不看水位）。
+     *
+     * @return null = 没有物理船/无法判定
+     */
+    public static Boolean queryInsideCompartment(net.minecraft.world.level.Level level,
+                                                 net.minecraft.world.phys.Vec3 pos) {
+        CompartmentQuery query = compartmentQuery;
+        return query == null ? null : query.isInsideCompartmentGeometry(level, pos);
     }
 
     private static volatile int offsetX;
@@ -152,6 +200,7 @@ public final class VsState {
         }
     }
 
+
     /** 把船状态同步给物理推进器（没装 VS2 / 没有物理船时是空操作）。 */
     public static void syncControl(@Nullable ShipState ship) {
         if (!active || ship == null) {
@@ -175,10 +224,12 @@ public final class VsState {
      * 方块实体和 mixin 走到这里都是空操作，不会触发 VS2 类加载。</p>
      */
     public static void install(CoreObserver observer, Damager newDamager,
-                               Repairer newRepairer, ExplosionDamager newExplosionDamager) {
+                               Repairer newRepairer, Cutter newCutter,
+                               ExplosionDamager newExplosionDamager) {
         coreObserver = observer;
         damager = newDamager;
         repairer = newRepairer;
+        cutter = newCutter;
         explosionDamager = newExplosionDamager;
     }
 
@@ -238,6 +289,19 @@ public final class VsState {
         }
         try {
             return current.tryRepair(level, player, amount);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** 等离子切割机每 0.1 s 调一次；返回 true 表示切到了船壳或舱门。 */
+    public static boolean tryCut(ServerLevel level, ServerPlayer player, float amount) {
+        Cutter current = cutter;
+        if (!active || current == null || level == null || player == null) {
+            return false;
+        }
+        try {
+            return current.tryCut(level, player, amount);
         } catch (Throwable ignored) {
             return false;
         }

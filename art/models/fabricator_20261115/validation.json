@@ -1,0 +1,160 @@
+{
+  "display_name_zh": "加工台",
+  "display_name_en": "Fabricator",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex / Blockbench 5.2.2",
+        "role": "初版几何、像素材质与发布导出"
+      },
+      {
+        "name": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+        "tool": "Blockbench 5.2.2 + CDP 原生会话 / Python",
+        "role": "在手改稿上做整体 X 归零、重出原生几何与四向预览、验证记录迁移"
+      }
+    ],
+    "division": "GPT-6 制作初版几何与像素材质；TakaraMiyuki 手动调整尺寸、比例与贴图后保存工程；ZCode Agent 在人工保存的工程上把整体 X 偏移 -7 BB 归零，并重出 geo.json、四向预览与验证记录，未改动任何方块、UV 或像素。"
+  },
+  "asset_id": "fabricator",
+  "sources": {
+    "zh": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml 的 entityname.fabricator = 加工台",
+    "en": "Content/Texts/English/EnglishVanilla.xml 的 entityname.fabricator = Fabricator"
+  },
+  "schema_version": 2,
+  "creation_source": "人工 + AI（TakaraMiyuki + GPT-6 + ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)）",
+  "acceptance": {
+    "editor_reopen": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + CDP 原生会话",
+      "note": "用 Blockbench 5.2.2 在独立用户目录与调试端口 19479 重新打开交付目录内的 fabricator.bbmodel：读到 151 cubes / 9 groups / 1 张 512×512 内嵌贴图（逻辑 UV 256×256），无载入报错。工程 save_path 指向交付目录，贴图为内嵌 PNG 而非外链，内嵌纹理与 fabricator_tex.png 逐字节相同。重开后对全部方块与骨骼 pivot 施加 -7 BB 的 X 平移使柜体中心归零，再保存工程。",
+      "at": "2026-11-16T11:01:56.656807+00:00",
+      "inputs": {
+        "geometry": "22e6a12ee196dea9ae0a7b9e84168526d97ab7fde4b00cd3c61711d8dd9d4e92",
+        "textures": "9e007fcf0b07f737a107a2ad0adf21e5a77e6e661c4812b4d7940d5a924c3683"
+      }
+    },
+    "native_reexport": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + CDP 原生会话",
+      "note": "在同一 Blockbench 5.2.2 会话用原生 Codecs.bedrock.compile 重出几何，与交付的 fabricator.geo.json 逐字段相同（geometry_roundtrip=true）。geo 声明 9 bones / 151 cubes / 906 面，identifier geometry.fabricator，format_version 1.12.0。包围盒由原生世界矩阵实测 X -16.38..15.6、Y 0..35.65、Z -10.725..8.892。",
+      "at": "2026-11-16T11:02:01.371389+00:00",
+      "inputs": {
+        "geometry": "22e6a12ee196dea9ae0a7b9e84168526d97ab7fde4b00cd3c61711d8dd9d4e92"
+      },
+      "details": {
+        "comparison": "equal",
+        "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+        "at": "2026-11-16",
+        "tool": "Blockbench 5.2.2 + CDP 原生会话",
+        "note": "Codecs.bedrock.compile() 原生重导后的 JSON 与交付的 fabricator.geo.json 逐字段相同（geometry_roundtrip=true）。151 cubes / 9 bones / 906 面，identifier geometry.fabricator，format_version 1.12.0。包围盒由 Blockbench 原生场景世界矩阵实测。",
+        "bounds": {
+          "min": [
+            -16.38,
+            0,
+            -10.725
+          ],
+          "max": [
+            15.6,
+            35.65,
+            8.892
+          ],
+          "unit": "bb_unit"
+        },
+        "dimensions_blocks": [
+          1.99875,
+          2.228125,
+          1.226062
+        ],
+        "recenter_dx": -7.0
+      }
+    },
+    "visual_preview": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + CDP 原生会话",
+      "note": "四向预览由 reference/blockbench_views.py 从同一工程的 Blockbench 场景重出：正/背/侧为正交（OrthographicCamera），斜视为透视（PerspectiveCamera 30°），均为 1200×900 RGBA 透明底、无网格无 UI。已逐张核对与当前几何一致：机头轮系、夹头台面、双门柜与左探出的接线骨在四视图中的朝向与遮挡关系正确，正/背/侧深度方向统一为越近越小，顶面法线向上未被剔除。",
+      "at": "2026-11-16T11:02:06.697398+00:00",
+      "inputs": {
+        "geometry": "22e6a12ee196dea9ae0a7b9e84168526d97ab7fde4b00cd3c61711d8dd9d4e92",
+        "textures": "9e007fcf0b07f737a107a2ad0adf21e5a77e6e661c4812b4d7940d5a924c3683",
+        "previews": "8e49b787319f9caae9306cae404994ff242ecb82827c6898d84b2f918f74f5c4"
+      }
+    }
+  },
+  "inputs": {
+    "geometry": "22e6a12ee196dea9ae0a7b9e84168526d97ab7fde4b00cd3c61711d8dd9d4e92",
+    "textures": "9e007fcf0b07f737a107a2ad0adf21e5a77e6e661c4812b4d7940d5a924c3683",
+    "previews": "8e49b787319f9caae9306cae404994ff242ecb82827c6898d84b2f918f74f5c4"
+  },
+  "measurements": {
+    "projects": [
+      {
+        "path": "fabricator.bbmodel",
+        "format": "bedrock",
+        "cubes": 151,
+        "meshes": 0,
+        "groups": 9
+      }
+    ],
+    "exports": [
+      {
+        "path": "fabricator.geo.json",
+        "identifier": "geometry.fabricator",
+        "bones": 9,
+        "cubes": 151
+      }
+    ],
+    "java_exports": [],
+    "textures": [
+      {
+        "path": "fabricator_tex.png",
+        "width": 512,
+        "height": 512,
+        "mode": "RGBA"
+      }
+    ],
+    "previews": [
+      {
+        "path": "preview_back.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_front.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_oblique.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_side.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      }
+    ]
+  },
+  "checks": {
+    "editor_reopen": "passed",
+    "native_reexport": "passed",
+    "visual_preview": "passed"
+  },
+  "status": "complete",
+  "unresolved": [],
+  "validator": {
+    "version": 2,
+    "sha256": "030083f30e86fbde97f34f8f7892ba535c1af436d39fe93a1454dee4ff8b7206"
+  }
+}

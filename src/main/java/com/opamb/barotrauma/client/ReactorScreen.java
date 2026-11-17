@@ -6,7 +6,7 @@ import com.opamb.barotrauma.network.ReactorActionPacket;
 import com.opamb.barotrauma.reactor.ReactorFuel;
 import com.opamb.barotrauma.reactor.ReactorState;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
@@ -28,7 +28,7 @@ import net.minecraft.world.item.ItemStack;
  * <p>红按钮只负责开关，旁边的指示灯才显示能源状态；自动控制是拉杆，
  * 右侧黄灯显示自动控制是否生效，拉杆本身不变黄。</p>
  */
-public class ReactorScreen extends AbstractContainerScreen<ReactorMenu> {
+public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
 
     private static final int W = 400;
     private static final int H = 300;
@@ -98,11 +98,6 @@ public class ReactorScreen extends AbstractContainerScreen<ReactorMenu> {
         loadHistory[0] = data(ReactorMenu.DATA_LOAD);
     }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
-        super.render(graphics, mouseX, mouseY, partialTick);
-    }
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -255,10 +250,24 @@ public class ReactorScreen extends AbstractContainerScreen<ReactorMenu> {
             graphics.drawString(font, "已熔毁", x + 292, y + 158, RED, false);
         }
 
-        // 玩家物品栏槽位背景
-        for (int i = ReactorMenu.FUEL_SLOTS; i < menu.slots.size(); i++) {
-            Slot slot = menu.getSlot(i);
-            slotBg(graphics, x + slot.x, y + slot.y);
+        // 耐久条只在独立修理窗口里；这里仅提示损坏状态。
+        if (data(ReactorMenu.DATA_CONDITION) <= 0) {
+            graphics.drawString(font, "已损坏，需要螺丝刀", x + 10, y + 200, RED, false);
+        }
+
+        // 快捷栏格子底；上面那 27 格是装备背包区，由 BagOverlay 整块画。
+        for (int col = 0; col < 9; col++) {
+            slotBg(graphics, x + ReactorMenu.INV_AREA_X + col * 18 - 1,
+                    y + ReactorMenu.INV_AREA_Y + 58 - 1);
+        }
+        if (minecraft != null && minecraft.player != null) {
+            com.opamb.barotrauma.equipment.BagSlots.rebuildClientAt(menu, minecraft.player,
+                    ReactorMenu.INV_START, ReactorMenu.INV_AREA_X, ReactorMenu.INV_AREA_Y,
+                    ReactorMenu.INV_AREA_W, ReactorMenu.INV_AREA_H);
+            com.opamb.barotrauma.client.equipment.BagOverlay.renderIn(graphics, x, y,
+                    minecraft.player, ReactorMenu.INV_AREA_X, ReactorMenu.INV_AREA_Y,
+                    ReactorMenu.INV_AREA_W, ReactorMenu.INV_AREA_H);
+            com.opamb.barotrauma.client.equipment.HandsSlotOverlay.renderIn(graphics, menu, x, y);
         }
     }
 
@@ -270,7 +279,9 @@ public class ReactorScreen extends AbstractContainerScreen<ReactorMenu> {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (button == 0) {
             boolean powerOn = data(ReactorMenu.DATA_POWER_ON) != 0;
             boolean auto = data(ReactorMenu.DATA_AUTO) != 0;
@@ -305,11 +316,13 @@ public class ReactorScreen extends AbstractContainerScreen<ReactorMenu> {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(double screenX, double screenY, int button, double dragX, double dragY) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (draggingFission) {
             send(ReactorActionPacket.SET_FISSION, sliderValue(mouseX, SLIDER1_X));
             return true;
@@ -318,14 +331,16 @@ public class ReactorScreen extends AbstractContainerScreen<ReactorMenu> {
             send(ReactorActionPacket.SET_TURBINE, sliderValue(mouseX, SLIDER2_X));
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(screenX, screenY, button, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         draggingFission = false;
         draggingTurbine = false;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(screenX, screenY, button);
     }
 
     private int sliderValue(double mouseX, int sliderX) {

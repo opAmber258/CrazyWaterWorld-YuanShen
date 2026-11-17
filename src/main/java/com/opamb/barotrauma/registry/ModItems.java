@@ -4,6 +4,7 @@ import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.item.CthulhuTriggerItem;
 import com.opamb.barotrauma.item.DivingKnifeItem;
 import com.opamb.barotrauma.item.DivingSuitItem;
+import com.opamb.barotrauma.item.GlassDivingSuitItem;
 import com.opamb.barotrauma.item.GuitarItem;
 import com.opamb.barotrauma.item.InstrumentItem;
 import com.opamb.barotrauma.item.MedicalDebuggerItem;
@@ -42,6 +43,40 @@ public final class ModItems {
     public static final RegistryObject<Item> WELDING_FUEL_TANK = ITEMS.register("welding_fuel_tank",
             () -> new Item(new Item.Properties().stacksTo(1).durability(200)));
 
+    /** 螺丝刀：电气维修/打开接线盒面板（原作 screwdriver）。 */
+    public static final RegistryObject<Item> SCREWDRIVER = ITEMS.register("screwdriver",
+            () -> new Item(new Item.Properties().stacksTo(1)));
+
+    /** 扳手：机械维修（泵/引擎/门/舱口；原作 wrench）。 */
+    public static final RegistryObject<Item> WRENCH = ITEMS.register("wrench",
+            () -> new Item(new Item.Properties().stacksTo(1)));
+
+    /** 耐久调节器：调试工具，右键设备把耐久推到下一个档位（验收修理窗口用）。 */
+    public static final RegistryObject<Item> CONDITION_TOOL = ITEMS.register("condition_tool",
+            () -> new com.opamb.barotrauma.item.ConditionToolItem(
+                    new Item.Properties().stacksTo(1)));
+
+    /** 电池 cell：耐久就是电量，放进电池台面的三个槽充电（原作 batterycell）。 */
+    public static final RegistryObject<Item> BATTERY_CELL = ITEMS.register("battery_cell",
+            () -> new com.opamb.barotrauma.item.BatteryCellItem(
+                    new Item.Properties().stacksTo(8).durability(100)));
+
+    /**
+     * 等离子切割机：切矿脉、切船壳/舱门；燃料同样来自子格里的焊接油箱
+     * （原作 plasmacutter 也是 RepairTool，负修复会打坏结构）。
+     */
+    public static final RegistryObject<Item> PLASMA_CUTTER = ITEMS.register("plasma_cutter",
+            () -> new com.opamb.barotrauma.item.PlasmaCutterItem(
+                    new Item.Properties().stacksTo(1)));
+
+    /** 岩壁矿脉方块物品（采矿任务用；创造模式里可以摆）。 */
+    public static final RegistryObject<Item> QUARTZ_VEIN =
+            blockItem("quartz_vein", ModBlocks.QUARTZ_VEIN);
+    public static final RegistryObject<Item> PYROMORPHITE_VEIN =
+            blockItem("pyromorphite_vein", ModBlocks.PYROMORPHITE_VEIN);
+    public static final RegistryObject<Item> URANIUM_VEIN =
+            blockItem("uranium_vein", ModBlocks.URANIUM_VEIN);
+
     /** 潜艇装甲板的方块物品。 */
     public static final RegistryObject<Item> SUBMARINE_PLATING =
             blockItem("submarine_plating", ModBlocks.SUBMARINE_PLATING);
@@ -74,6 +109,19 @@ public final class ModItems {
 
     /** 引擎方块物品（18 格多块，放的时候自动铺满 3×2×3）。 */
     public static final RegistryObject<Item> ENGINE = blockItem("engine", ModBlocks.ENGINE);
+
+    /** 接线盒方块物品。 */
+    public static final RegistryObject<Item> JUNCTION_BOX = blockItem("junction_box", ModBlocks.JUNCTION_BOX);
+
+    /** 电池（设备）方块物品。 */
+    public static final RegistryObject<Item> BATTERY = blockItem("battery", ModBlocks.BATTERY);
+
+    /** 加工台方块物品（3×3×2 多块）。 */
+    public static final RegistryObject<Item> FABRICATOR = blockItem("fabricator", ModBlocks.FABRICATOR);
+
+    /** 解构仪方块物品（2×3×2 多块）。 */
+    public static final RegistryObject<Item> DECONSTRUCTOR =
+            blockItem("deconstructor", ModBlocks.DECONSTRUCTOR);
 
     // ---- 潜渊症容器 ----
     public static final RegistryObject<Item> MEDIUM_STEEL_CABINET =
@@ -158,6 +206,9 @@ public final class ModItems {
     /** 潜水服（潜水服槽）：穿戴后出舱安全深度 300→400m；原作 fireproof，不可堆叠。 */
     public static final RegistryObject<Item> DIVING_SUIT = ITEMS.register("diving_suit",
             () -> new DivingSuitItem(new Item.Properties().stacksTo(1).fireResistant()));
+    /** 透明潜水服：v2 半透明面罩美术资产；属性与普通潜水服一致，只是模型不同。 */
+    public static final RegistryObject<Item> GLASS_DIVING_SUIT = ITEMS.register("glass_diving_suit",
+            () -> new GlassDivingSuitItem(new Item.Properties().stacksTo(1).fireResistant()));
     /** 深潜许可：解锁 320m 以深任务的接取（商店有售，不消耗）。 */
     public static final RegistryObject<Item> DEEP_PERMIT = ITEMS.register("deep_permit",
             () -> new Item(new Item.Properties()));

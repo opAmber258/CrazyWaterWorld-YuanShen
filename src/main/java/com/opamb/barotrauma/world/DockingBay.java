@@ -98,10 +98,7 @@ public final class DockingBay {
         sites.add(Site.MAIN);
         int centerX = pos.getMiddleBlockX();
         int centerZ = pos.getMiddleBlockZ();
-        int base = Math.max(0, Math.round((centerX - MissionInstance.BASE_X)
-                / (float) MissionInstance.SPACING));
-        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
-            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+        for (MissionInstance.Anchor anchor : anchorsNear(centerX)) {
             Site destination = new Site(anchor.x(), anchor.z());
             if (Math.abs(centerX - destination.x()) <= SITE_RADIUS
                     && Math.abs(centerZ - destination.z()) <= SITE_RADIUS) {
@@ -117,6 +114,39 @@ public final class DockingBay {
     }
 
     /**
+     * 当前 x 附近要检查的槽位：活动槽位 + base±1。
+     *
+     * <p>旧存档锚点不按当前 {@link MissionInstance#SPACING}（例如旧槽位 5 的锚点
+     * 25120 会落在 base=3 的 base±1 之外），所以活动槽位要单独加。反过来，
+     * 旧锚点也可能正好等于某个默认槽位的锚点（旧槽位 4 的 24096 = 新布局槽位 2），
+     * 那个默认槽位的出发站是虚构的（24288）——按 x 去重，只保留活动槽位，
+     * 否则 {@code siteAt} 会认出不存在的站并给它建哨站。</p>
+     */
+    private static java.util.List<MissionInstance.Anchor> anchorsNear(int x) {
+        int base = Math.max(0, Math.round((x - MissionInstance.BASE_X)
+                / (float) MissionInstance.SPACING));
+        int first = Math.max(0, base - 1);
+        int last = base + 1;
+        java.util.List<MissionInstance.Anchor> out = new java.util.ArrayList<>(4);
+        java.util.Set<Integer> seenX = new java.util.HashSet<>();
+        MissionInstance.RouteLevel level = MissionInstance.routeLevel();
+        if (level != null) {
+            // 活动槽位优先：它的锚点才是真实存在的那个。
+            MissionInstance.Anchor active = MissionInstance.anchorForRound(
+                    Math.max(0, level.slot()));
+            out.add(active);
+            seenX.add(active.x());
+        }
+        for (int slot = first; slot <= last; slot++) {
+            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+            if (seenX.add(anchor.x())) {
+                out.add(anchor);
+            }
+        }
+        return out;
+    }
+
+    /**
      * 找出包含 (x,z) 的哨站；不在任何站范围就返回 null。
      * 副本关卡里同时有出发站和目的站，两个都要能认出来。
      */
@@ -124,10 +154,7 @@ public final class DockingBay {
         if (Math.abs(x) <= SITE_RADIUS && Math.abs(z) <= SITE_RADIUS) {
             return Site.MAIN;
         }
-        int base = Math.max(0, Math.round((x - MissionInstance.BASE_X)
-                / (float) MissionInstance.SPACING));
-        for (int slot = Math.max(0, base - 1); slot <= base + 1; slot++) {
-            MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+        for (MissionInstance.Anchor anchor : anchorsNear(x)) {
             Site destination = new Site(anchor.x(), anchor.z());
             if (Math.abs(x - destination.x()) <= SITE_RADIUS
                     && Math.abs(z - destination.z()) <= SITE_RADIUS) {
@@ -417,9 +444,14 @@ public final class DockingBay {
                 if (!instance.equals(Site.MAIN)) {
                     sites.add(instance);
                 }
-                int slot = Math.max(0, Math.round((round.instanceX() - MissionInstance.BASE_X)
-                        / (float) MissionInstance.SPACING));
-                Site start = MissionInstance.startSite(MissionInstance.anchorForRound(slot));
+                // 旧存档的槽位间距/出发距离以保存值为准：按当前 SPACING 反推会把
+                // 槽位 5（锚点 25120）算成槽位 3，列出一个实际不存在的出发站，
+                // ensureStationHatch/open/close 于是漏掉真正的出发站。
+                int slot = MissionInstance.slotForX(round.instanceX(), round.levelSpacing());
+                MissionInstance.Anchor anchor = MissionInstance.anchorForRound(slot);
+                int distance = round.levelDistance() > 0
+                        ? round.levelDistance() : MissionInstance.startDistanceFor(anchor);
+                Site start = MissionInstance.startSite(anchor, distance);
                 if (!sites.contains(start)) {
                     sites.add(start);
                 }

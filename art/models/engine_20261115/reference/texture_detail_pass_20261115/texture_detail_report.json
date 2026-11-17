@@ -1,0 +1,670 @@
+{
+  "model_baseline_sha256": "91b20227ba0f237807695c62c316653d2ee51bf90bdde78b8acdff58edb792ea",
+  "texture_baseline_sha256": "8d9240d1fb008533cc11b4f7b96ccf2eee0fa25fa6b4fe3866a823800274fd57",
+  "logical_uv_size": {
+    "width": 256,
+    "height": 256
+  },
+  "physical_texture_size": [
+    512,
+    512
+  ],
+  "cubes": 180,
+  "bones": 18,
+  "all_geometry_uv_groups_animations_unchanged": true,
+  "targets": [
+    {
+      "uuid": "130405f8-46ff-5c6a-8758-4eaa93d313c6",
+      "name": "crown",
+      "face": "up",
+      "kind": "roof",
+      "uv": [
+        61,
+        76,
+        116,
+        100
+      ],
+      "pixel_rect": [
+        122,
+        152,
+        232,
+        200
+      ],
+      "base_color": [
+        139,
+        145,
+        129,
+        255
+      ],
+      "changed_pixels": 489,
+      "protected_existing_detail_pixels": 844
+    },
+    {
+      "uuid": "3c0c265d-3fa0-5469-9e53-a3d7d645cc31",
+      "name": "rounded_end",
+      "face": "east",
+      "kind": "end_access",
+      "uv": [
+        113,
+        100,
+        141.5,
+        124
+      ],
+      "pixel_rect": [
+        226,
+        200,
+        283,
+        248
+      ],
+      "base_color": [
+        121,
+        128,
+        115,
+        255
+      ],
+      "changed_pixels": 196,
+      "protected_existing_detail_pixels": 659
+    },
+    {
+      "uuid": "877d26f6-cffe-5fae-8721-2ed083f3013b",
+      "name": "end_continuous_bevel",
+      "face": "up",
+      "kind": "inclined_access",
+      "uv": [
+        135,
+        124,
+        146.5,
+        153.5
+      ],
+      "pixel_rect": [
+        270,
+        248,
+        293,
+        307
+      ],
+      "base_color": [
+        139,
+        145,
+        129,
+        255
+      ],
+      "changed_pixels": 168,
+      "protected_existing_detail_pixels": 84
+    },
+    {
+      "uuid": "b2d067a6-ed3f-c148-6e3e-0bdcba13a994",
+      "name": "end_continuous_bevel",
+      "face": "up",
+      "kind": "inclined_access",
+      "uv": [
+        55,
+        148,
+        61.5,
+        172
+      ],
+      "pixel_rect": [
+        110,
+        296,
+        123,
+        344
+      ],
+      "base_color": [
+        139,
+        145,
+        129,
+        255
+      ],
+      "changed_pixels": 19,
+      "protected_existing_detail_pixels": 39
+    },
+    {
+      "uuid": "e68f41f2-48dd-535e-bc7a-5b3a1f473467",
+      "name": "left_bulkhead",
+      "face": "west",
+      "kind": "motor_backplate",
+      "uv": [
+        27,
+        110,
+        53.5,
+        140
+      ],
+      "pixel_rect": [
+        54,
+        220,
+        107,
+        280
+      ],
+      "base_color": [
+        72,
+        83,
+        77,
+        255
+      ],
+      "changed_pixels": 286,
+      "protected_existing_detail_pixels": 0
+    },
+    {
+      "uuid": "fcab2ad6-80f1-597d-9e17-ee67b7175abb",
+      "name": "lower_casing",
+      "face": "down",
+      "kind": "belly_access",
+      "uv": [
+        61,
+        52,
+        121,
+        76
+      ],
+      "pixel_rect": [
+        122,
+        104,
+        242,
+        152
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 452,
+      "protected_existing_detail_pixels": 0
+    },
+    {
+      "uuid": "f2c5c096-cbb2-5d2e-ac5c-4706ed03f23a",
+      "name": "shroud_side_panel",
+      "face": "south",
+      "kind": "shroud_lower",
+      "uv": [
+        147,
+        143,
+        157.5,
+        164
+      ],
+      "pixel_rect": [
+        294,
+        286,
+        315,
+        328
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 71,
+      "protected_existing_detail_pixels": 84
+    },
+    {
+      "uuid": "da428269-66c6-5756-ac64-0cdedd7fce4d",
+      "name": "front_apron",
+      "face": "south",
+      "kind": "apron",
+      "uv": [
+        143,
+        32,
+        201,
+        36
+      ],
+      "pixel_rect": [
+        286,
+        64,
+        402,
+        72
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 22,
+      "protected_existing_detail_pixels": 464
+    },
+    {
+      "uuid": "d2190e69-40de-5efb-be12-2692bac36bd4",
+      "name": "socket_bay",
+      "face": "south",
+      "kind": "pump_backplate",
+      "uv": [
+        154,
+        36,
+        169,
+        49
+      ],
+      "pixel_rect": [
+        308,
+        72,
+        338,
+        98
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 23,
+      "protected_existing_detail_pixels": 176
+    },
+    {
+      "uuid": "8d57789c-35fe-5c30-bd46-4ba5de12777b",
+      "name": "flared_shroud_0",
+      "face": "up",
+      "kind": "flare_plate",
+      "uv": [
+        77,
+        158,
+        86,
+        170.5
+      ],
+      "pixel_rect": [
+        154,
+        316,
+        172,
+        341
+      ],
+      "base_color": [
+        104,
+        118,
+        111,
+        255
+      ],
+      "changed_pixels": 83,
+      "protected_existing_detail_pixels": 54
+    },
+    {
+      "uuid": "5ba4b10e-69e9-5dc0-a0de-4ef83f351ccf",
+      "name": "mouth_rim_0",
+      "face": "up",
+      "kind": "rim_fasteners",
+      "uv": [
+        55,
+        86,
+        61,
+        100
+      ],
+      "pixel_rect": [
+        110,
+        172,
+        122,
+        200
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 7,
+      "protected_existing_detail_pixels": 138
+    },
+    {
+      "uuid": "be642482-a660-546f-be3a-2636c7c3e597",
+      "name": "flared_shroud_1",
+      "face": "up",
+      "kind": "flare_plate",
+      "uv": [
+        158,
+        122,
+        167,
+        134.5
+      ],
+      "pixel_rect": [
+        316,
+        244,
+        334,
+        269
+      ],
+      "base_color": [
+        104,
+        118,
+        111,
+        255
+      ],
+      "changed_pixels": 83,
+      "protected_existing_detail_pixels": 54
+    },
+    {
+      "uuid": "30aff88d-4d28-542f-a00f-c837c8bd269d",
+      "name": "mouth_rim_1",
+      "face": "up",
+      "kind": "rim_fasteners",
+      "uv": [
+        86,
+        171,
+        92,
+        185
+      ],
+      "pixel_rect": [
+        172,
+        342,
+        184,
+        370
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 7,
+      "protected_existing_detail_pixels": 138
+    },
+    {
+      "uuid": "8b968eac-8230-58ab-947f-eeed9c5af067",
+      "name": "flared_shroud_2",
+      "face": "up",
+      "kind": "flare_plate",
+      "uv": [
+        158,
+        148,
+        167,
+        160.5
+      ],
+      "pixel_rect": [
+        316,
+        296,
+        334,
+        321
+      ],
+      "base_color": [
+        104,
+        118,
+        111,
+        255
+      ],
+      "changed_pixels": 83,
+      "protected_existing_detail_pixels": 54
+    },
+    {
+      "uuid": "736d349d-d13b-5dcb-b403-1506dfb5540a",
+      "name": "mouth_rim_2",
+      "face": "up",
+      "kind": "rim_fasteners",
+      "uv": [
+        53,
+        172,
+        59,
+        186
+      ],
+      "pixel_rect": [
+        106,
+        344,
+        118,
+        372
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 7,
+      "protected_existing_detail_pixels": 138
+    },
+    {
+      "uuid": "e4e8b3bd-0762-53fb-8a31-2e43527cc351",
+      "name": "flared_shroud_3",
+      "face": "up",
+      "kind": "flare_plate",
+      "uv": [
+        158,
+        161,
+        167,
+        173.5
+      ],
+      "pixel_rect": [
+        316,
+        322,
+        334,
+        347
+      ],
+      "base_color": [
+        104,
+        118,
+        111,
+        255
+      ],
+      "changed_pixels": 83,
+      "protected_existing_detail_pixels": 54
+    },
+    {
+      "uuid": "9324f749-d4e8-5eaf-a4f8-730d3200bdf1",
+      "name": "mouth_rim_3",
+      "face": "up",
+      "kind": "rim_fasteners",
+      "uv": [
+        174,
+        148,
+        180,
+        162
+      ],
+      "pixel_rect": [
+        348,
+        296,
+        360,
+        324
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 7,
+      "protected_existing_detail_pixels": 138
+    },
+    {
+      "uuid": "0701dbcd-5cc0-5ce5-93c8-9289452bea87",
+      "name": "flared_shroud_4",
+      "face": "up",
+      "kind": "flare_plate",
+      "uv": [
+        21,
+        162,
+        30,
+        174.5
+      ],
+      "pixel_rect": [
+        42,
+        324,
+        60,
+        349
+      ],
+      "base_color": [
+        104,
+        118,
+        111,
+        255
+      ],
+      "changed_pixels": 83,
+      "protected_existing_detail_pixels": 54
+    },
+    {
+      "uuid": "4d562191-db69-589b-bf02-9a0f07f3e8f1",
+      "name": "mouth_rim_4",
+      "face": "up",
+      "kind": "rim_fasteners",
+      "uv": [
+        174,
+        162,
+        180,
+        176
+      ],
+      "pixel_rect": [
+        348,
+        324,
+        360,
+        352
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 7,
+      "protected_existing_detail_pixels": 138
+    },
+    {
+      "uuid": "d4f40899-a4ac-5fff-8940-b407647f47db",
+      "name": "flared_shroud_5",
+      "face": "up",
+      "kind": "flare_plate",
+      "uv": [
+        95,
+        163,
+        104,
+        175.5
+      ],
+      "pixel_rect": [
+        190,
+        326,
+        208,
+        351
+      ],
+      "base_color": [
+        104,
+        118,
+        111,
+        255
+      ],
+      "changed_pixels": 83,
+      "protected_existing_detail_pixels": 54
+    },
+    {
+      "uuid": "2c8ea232-91e1-592e-aa4f-d7334032419b",
+      "name": "mouth_rim_5",
+      "face": "up",
+      "kind": "rim_fasteners",
+      "uv": [
+        17,
+        175,
+        23,
+        189
+      ],
+      "pixel_rect": [
+        34,
+        350,
+        46,
+        378
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 7,
+      "protected_existing_detail_pixels": 138
+    },
+    {
+      "uuid": "c0b63f1a-61dd-5c67-81f2-f59f0fcc6ca4",
+      "name": "flared_shroud_6",
+      "face": "up",
+      "kind": "flare_plate",
+      "uv": [
+        104,
+        167,
+        113,
+        179.5
+      ],
+      "pixel_rect": [
+        208,
+        334,
+        226,
+        359
+      ],
+      "base_color": [
+        104,
+        118,
+        111,
+        255
+      ],
+      "changed_pixels": 83,
+      "protected_existing_detail_pixels": 54
+    },
+    {
+      "uuid": "ae9b7925-1c7b-509c-b77f-602150ff51a1",
+      "name": "mouth_rim_6",
+      "face": "up",
+      "kind": "rim_fasteners",
+      "uv": [
+        29,
+        175,
+        35,
+        189
+      ],
+      "pixel_rect": [
+        58,
+        350,
+        70,
+        378
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 7,
+      "protected_existing_detail_pixels": 138
+    },
+    {
+      "uuid": "404f9ae7-e56c-5ae8-97a5-84a5a65b2ed3",
+      "name": "flared_shroud_7",
+      "face": "up",
+      "kind": "flare_plate",
+      "uv": [
+        167,
+        122,
+        176,
+        134.5
+      ],
+      "pixel_rect": [
+        334,
+        244,
+        352,
+        269
+      ],
+      "base_color": [
+        104,
+        118,
+        111,
+        255
+      ],
+      "changed_pixels": 83,
+      "protected_existing_detail_pixels": 54
+    },
+    {
+      "uuid": "5685acc5-73a5-5e93-9eb7-09294bdebe09",
+      "name": "mouth_rim_7",
+      "face": "up",
+      "kind": "rim_fasteners",
+      "uv": [
+        92,
+        176,
+        98,
+        190
+      ],
+      "pixel_rect": [
+        184,
+        352,
+        196,
+        380
+      ],
+      "base_color": [
+        96,
+        107,
+        97,
+        255
+      ],
+      "changed_pixels": 7,
+      "protected_existing_detail_pixels": 138
+    }
+  ],
+  "modified_faces": 25,
+  "changed_pixels": 2446,
+  "original_non_base_pixels_preserved": true
+}

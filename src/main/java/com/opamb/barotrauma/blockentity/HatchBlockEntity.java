@@ -2,7 +2,18 @@ package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.block.HatchBlock;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.AutomationMode;
+import com.opamb.barotrauma.ship.AutomationUtil;
+import com.opamb.barotrauma.ship.ConditionComponent;
+import com.opamb.barotrauma.ship.RepairTarget;
+import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.ship.vs.VsPilot;
+import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -21,15 +32,133 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * <p>动画完全由 blockstate 的 {@code open} 驱动：打开播 {@code open} 并停在最后一帧，
  * 关闭切到 {@code closed}；控制器自带 4 tick 过渡，所以关门不会瞬移。</p>
  */
-public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity {
+public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, RepairTarget {
 
     private static final RawAnimation OPEN = RawAnimation.begin().thenPlayAndHold("open");
     private static final RawAnimation CLOSED = RawAnimation.begin().thenPlayAndHold("closed");
+
+    private AutomationMode automation = AutomationMode.MANUAL;
+    private int motionHold;
+    /** 舱口不自然劣化（原作 Repairable 默认 0/s），只被外力打坏后修理。 */
+    private final ConditionComponent condition =
+            new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 0.8D);
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public HatchBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.HATCH.get(), pos, state);
+    }
+
+    public static void serverTick(Level level, BlockPos pos, BlockState state,
+                                  HatchBlockEntity be) {
+        if (!(level instanceof ServerLevel server) || be.isRemoved()) {
+            return;
+        }
+        if (be.automation == AutomationMode.MANUAL) {
+            be.motionHold = 0;
+            return;
+        }
+        ShipState ship = DrainPumpBlockEntity.resolveShip(server, pos);
+        if (ship == null) {
+            return;
+        }
+        boolean physical = AutomationUtil.isPhysicalShip(ship);
+        BlockPos cell = physical ? VsPilot.toAssembly(pos) : pos;
+        if (!ship.tracksHullBlock(cell)) {
+            return;
+        }
+        boolean open = state.getValue(HatchBlock.OPEN);
+        boolean want = open;
+        if (be.automation == AutomationMode.MOTION) {
+            boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
+            if (near) {
+                be.motionHold = 40;
+            } else if (be.motionHold > 0) {
+                be.motionHold--;
+            }
+            want = near || be.motionHold > 0;
+        } else if (be.automation == AutomationMode.WATERTIGHT) {
+            Direction longAxis = state.getValue(HatchBlock.FACING).getClockWise();
+            boolean toSea = false;
+            for (int offset = -1; offset <= 1; offset++) {
+                toSea |= AutomationUtil.opensToSea(ship, cell.relative(longAxis, offset));
+            }
+            if (toSea) {
+                // 任意一段开在海里：水密模式不能自动打开。
+                want = false;
+            } else {
+                // 三格宽的舱口下面可能是两个舱：取左/中/右三段的最大水量，
+                // 只查中间格会漏掉左右段下方的湿舱。
+                double water = 0.0D;
+                for (int offset = -1; offset <= 1; offset++) {
+                    water = Math.max(water, AutomationUtil.maxWaterFraction(
+                            ship, cell.relative(longAxis, offset)));
+                }
+                if (water > 0.3D) {
+                    want = false;
+                } else if (water < 0.1D) {
+                    want = true;
+                }
+            }
+        }
+        if (want != open) {
+            HatchBlock.setOpen(level, pos, state, want);
+        }
+    }
+
+    public AutomationMode automation() {
+        return automation;
+    }
+
+    public void cycleAutomation() {
+        automation = automation.next();
+        motionHold = 0;
+        setChanged();
+    }
+
+    @Override
+    public double condition() {
+        return condition.condition();
+    }
+
+    @Override
+    public double maxCondition() {
+        return condition.maxCondition();
+    }
+
+    @Override
+    public void applyRepair(double points) {
+        condition.repair(points);
+        setChanged();
+    }
+
+    @Override
+    public void damage(double points) {
+        condition.damage(points);
+        setChanged();
+    }
+
+    @Override
+    public RepairTarget.Tool requiredTool() {
+        return RepairTarget.Tool.WRENCH;
+    }
+
+    @Override
+    protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
+        tag.putString("Automation", automation.name());
+        condition.save(tag, "Condition");
+    }
+
+    @Override
+    public void load(CompoundTag tag) {
+        super.load(tag);
+        try {
+            automation = AutomationMode.valueOf(tag.getString("Automation"));
+        } catch (IllegalArgumentException ignored) {
+            automation = AutomationMode.MANUAL;
+        }
+        condition.load(tag, "Condition");
     }
 
     @Override

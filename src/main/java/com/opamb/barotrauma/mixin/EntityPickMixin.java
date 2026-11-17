@@ -11,8 +11,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 让掉落物能被准星选中（右键拾取的前提）。
  *
  * <p>原版 {@code Entity#isPickable()} 默认 false，{@code ItemEntity} 没重写，
- * 所以玩家根本瞄不到地上的物品；这里对 ItemEntity 放开，并把拾取判定半径
- * 从 0 放大到 0.5，右键更好点。</p>
+ * 所以玩家根本瞄不到地上的物品；这里对 ItemEntity 放开。</p>
+ *
+ * <p>拾取判定半径保持原版的 0：之前放大到 0.5 会让地上物品抢走旁边机器/舱门的
+ * 右键（物品比方块面更近，准星先命中它），实际体验是"点机器却捡起东西"。</p>
  */
 @Mixin(Entity.class)
 public abstract class EntityPickMixin {
@@ -21,13 +23,6 @@ public abstract class EntityPickMixin {
     private void barotrauma$itemsPickable(CallbackInfoReturnable<Boolean> cir) {
         if ((Object) this instanceof ItemEntity) {
             cir.setReturnValue(true);
-        }
-    }
-
-    @Inject(method = "getPickRadius", at = @At("HEAD"), cancellable = true)
-    private void barotrauma$itemPickRadius(CallbackInfoReturnable<Float> cir) {
-        if ((Object) this instanceof ItemEntity) {
-            cir.setReturnValue(0.5F);
         }
     }
 }

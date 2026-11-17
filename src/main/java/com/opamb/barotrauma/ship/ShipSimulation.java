@@ -38,7 +38,7 @@ public final class ShipSimulation {
     private static final double PUMP_POWER = 300.0D;
     private static final double O2_POWER = 300.0D;
     /** 声纳台耗电：wiki 的 Navigation Terminal / Sonar Monitor 都是 100。 */
-    private static final double SONAR_POWER = 100.0D;
+
     /** 驾驶台（Nav Terminal 本体）也吃 100；我们把它和声纳合在一台机器上，所以只算一份。 */
     private static final double BALLAST_PER_TANK = 600.0D;
 
@@ -47,7 +47,8 @@ public final class ShipSimulation {
     private final double[] oxygen;
     private final MachineCount machines;
     /** 船体几何（破口空腔、舱室体积都从这里读）。 */
-    private final ShipGeometry.Result geometry;
+    /** 整船平移时会被替换成新坐标的几何（水量/温度数组保留）。 */
+    private ShipGeometry.Result geometry;
     /** 连海空腔（破口舱室）里的水量，按 openPockets 的顺序。 */
     private final double[] pocketWater;
     /**
@@ -78,6 +79,8 @@ public final class ShipSimulation {
     /** 引擎上报表：格子 → (目标力%, 耗电 kW, 最大推力, 最后上报 tick)。 */
     private final java.util.Map<net.minecraft.core.BlockPos, EngineReport> engines =
             new java.util.HashMap<>();
+    /** 推进最多吃几台引擎的推力：超出部分不叠加（和 {@code VsThruster} 的上限一致）。 */
+    public static final int MAX_ENGINES = 8;
     private long engineTick;
     private static final int ENGINE_STALE_TICKS = 40;
     private int lastEngineCount;
@@ -103,6 +106,78 @@ public final class ShipSimulation {
 
     private record PumpReport(double rate, double requestedRate, long lastSeen, boolean ballast,
                               boolean keepBelowDoor, double ballastTarget) {
+    }
+
+    /**
+     * 用电设备上报表：设备格 → (耗电 kW, 最低电压, 绑定的接线盒, 最后上报 tick)。
+     *
+     * <p>对应原作 {@code Powered}。设备每 tick 上报自己的需求；接线盒只是把设备
+     * 归组，电压仍按全船 {@code 总供电 / 总负载} 算。</p>
+     */
+    private final java.util.Map<net.minecraft.core.BlockPos, ConsumerReport> consumers =
+            new java.util.HashMap<>();
+    private long consumerTick;
+    private static final int CONSUMER_STALE_TICKS = 40;
+    /** 终端（船核心）上一次作为消费者上报的 tick；没上报时退回旧的固定声纳负载。 */
+    private long lastTerminalTick = Long.MIN_VALUE;
+    private static final double SONAR_POWER = 100.0D;
+
+    /** 接线盒上报表：格子 → (耐久 0..100, 最后上报 tick)。 */
+    private final java.util.Map<net.minecraft.core.BlockPos, BoxReport> boxes =
+            new java.util.HashMap<>();
+    private long boxTick;
+    private static final int BOX_STALE_TICKS = 40;
+
+    /** 原版 vanilla 潜艇接线盒的过压阈值（Dugong.sub 里是 1.7；代码默认 2.0）。 */
+    public static final double JUNCTION_BOX_OVERVOLTAGE = 1.7D;
+
+    /** 上一次 tick 的全船电压（供电/负载，不封顶）。 */
+    private double lastVoltage;
+    /** 上一次 tick 的全船供电（kW）。 */
+    private double lastSupply;
+    /** 上一次 tick 电池总共放出的功率（kW）。 */
+    private double lastBatteryOutput;
+    /** 上一次 tick 电池总共吸收的充电功率（kW，未计效率）。 */
+    private double lastBatteryCharge;
+    /** 上一次 tick 结束后全船电池总存电量/总容量（kW·min）。 */
+    private double lastStoredKwm;
+    private double lastStorageCapacityKwm;
+
+    private record ConsumerReport(double demandKw, double minVoltage,
+                                  net.minecraft.core.BlockPos box, long lastSeen) {
+    }
+
+    private record BoxReport(double condition, long lastSeen) {
+    }
+
+    /**
+     * 电池上报表：格子 → (存电量 kW·min, 容量 kW·min, 最大输出 kW, 最大充电 kW,
+     * 绑定的接线盒, 耐久 0..100, 最后上报 tick)。
+     *
+     * <p>对应原作 {@code PowerContainer}。充放电由 {@link #tick(double)} 统一结算，
+     * 方块实体每 tick 把结算后的电量读回去存档。</p>
+     */
+    private final java.util.Map<net.minecraft.core.BlockPos, StorageReport> storages =
+            new java.util.HashMap<>();
+    private long storageTick;
+    private static final int STORAGE_STALE_TICKS = 40;
+    /** 原作电池充电效率 0.95：充进去 100 kW 只有 95 kW 存下来。 */
+    private static final double BATTERY_EFFICIENCY = 0.95D;
+
+    private record StorageReport(double chargeKwm, double capacityKwm, double maxOutputKw,
+                                 double maxRechargeKw, net.minecraft.core.BlockPos box,
+                                 double condition, long lastSeen) {
+    }
+
+    /** 电池快照，给电力面板/诊断用。 */
+    public record StorageInfo(net.minecraft.core.BlockPos pos, double chargeKwm,
+                              double capacityKwm, double maxOutputKw, double maxRechargeKw,
+                              net.minecraft.core.BlockPos box, double condition) {
+    }
+
+    /** 供电设备快照，给电力面板用。 */
+    public record ConsumerInfo(net.minecraft.core.BlockPos pos, double demandKw,
+                               double minVoltage, net.minecraft.core.BlockPos box) {
     }
 
     /** 上一 tick 由压载泵登记为压载舱的水体下标（用于浮力/进水比例）。 */
@@ -317,18 +392,170 @@ public final class ShipSimulation {
                 activePumps++;
             }
         }
-        double demand = activePumps * PUMP_POWER
+
+        // 接线盒上报（耐久）：超过 40 tick 没上报视为拆掉。先清理，再算负载。
+        boxTick++;
+        var boxIterator = boxes.entrySet().iterator();
+        while (boxIterator.hasNext()) {
+            var entry = boxIterator.next();
+            if (boxTick - entry.getValue().lastSeen() > BOX_STALE_TICKS) {
+                boxIterator.remove();
+            }
+        }
+
+        // 设备上报的电网负载（原作 Powered）：每台设备有自己的功率和最低电压。
+        consumerTick++;
+        double consumerDemand = 0.0D;
+        var consumerIterator = consumers.entrySet().iterator();
+        while (consumerIterator.hasNext()) {
+            var entry = consumerIterator.next();
+            ConsumerReport report = entry.getValue();
+            if (consumerTick - report.lastSeen() > CONSUMER_STALE_TICKS) {
+                consumerIterator.remove();
+                continue;
+            }
+            // 支路断开（接线盒拆掉/耐久 0）的设备不再吃全船供电：
+            // 把它的需求算进来会把正常支路也拖到欠压停机。
+            if (report.box() != null) {
+                BoxReport box = boxes.get(report.box());
+                if (box == null || box.condition() <= 0.0D) {
+                    continue;
+                }
+            }
+            consumerDemand += report.demandKw();
+        }
+
+        // 电池上报：超过 40 tick 没上报视为拆掉。电量在下面的充放电结算里更新。
+        storageTick++;
+        var storageIterator = storages.entrySet().iterator();
+        while (storageIterator.hasNext()) {
+            var entry = storageIterator.next();
+            if (storageTick - entry.getValue().lastSeen() > STORAGE_STALE_TICKS) {
+                storageIterator.remove();
+            }
+        }
+
+        // 还没改造完的设备走旧的全船统计；全部改造后 consumers 非空，用设备上报值。
+        double legacyDemand = activePumps * PUMP_POWER + engineDemand;
+        // 终端（船核心）已经作为消费者上报 110 kW 时不能再按 machines.sonar()
+        // 计一遍（会变成 210 kW）；还没接入上报的旧船才用固定负载兜底。
+        boolean terminalReporting = lastTerminalTick != Long.MIN_VALUE
+                && consumerTick - lastTerminalTick <= CONSUMER_STALE_TICKS;
+        double deviceDemand = (consumers.isEmpty() ? legacyDemand : consumerDemand)
+                + (terminalReporting ? 0.0D : machines.sonar() * SONAR_POWER)
                 + machines.oxygen() * O2_POWER
-                + machines.sonar() * SONAR_POWER
-                + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER)
-                + engineDemand;
-        // 硬核：没堆 / 没开机 / 输出为 0 → 全船没电，推进和泵都停。
+                + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER);
+
+        // 供电不足时电池补差。每块电池的可用输出按原版 PowerContainer 算
+        // （低于 10% 时线性降额，并受本步可用能量限制）。
+        double batteryOutput = 0.0D;
+        java.util.Map<net.minecraft.core.BlockPos, Double> storageOut = java.util.Map.of();
+        if (deviceDemand > reactorOutput + 1.0E-9D && !storages.isEmpty()) {
+            storageOut = new java.util.HashMap<>();
+            double deficit = deviceDemand - reactorOutput;
+            for (var entry : storages.entrySet()) {
+                StorageReport report = entry.getValue();
+                if (!storageUsable(report)) {
+                    continue;
+                }
+                double available = PowerGrid.batteryOutputAvailable(
+                        report.chargeKwm(), report.capacityKwm(), report.maxOutputKw(), dt);
+                double take = Math.min(deficit, available);
+                if (take > 1.0E-9D) {
+                    storageOut.put(entry.getKey(), take);
+                    batteryOutput += take;
+                    deficit -= take;
+                    if (deficit <= 1.0E-9D) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 供电富余时按最大充电功率吸收。只有电池没在放电时才充，避免自充自放。
+        double rechargeInput = 0.0D;
+        // 电池“请求”的充电功率：即使当前没有富余也要报给反应堆，让自动控堆
+        // 把目标负载抬到 设备负载+充电请求，否则堆永远只发刚好够设备的电，
+        // 电池永远等不到富余（用户实测“电池不会充电”）。
+        double rechargeRequest = 0.0D;
+        java.util.Map<net.minecraft.core.BlockPos, Double> storageIn = java.util.Map.of();
+        if (batteryOutput <= 1.0E-9D && !storages.isEmpty()) {
+            double step = Math.max(dt, 1.0E-9D);
+            for (var entry : storages.entrySet()) {
+                StorageReport report = entry.getValue();
+                if (!storageUsable(report)) {
+                    continue;
+                }
+                double room = report.capacityKwm() - report.chargeKwm();
+                if (room <= 1.0E-9D) {
+                    continue;
+                }
+                // room 是 kW·min，换成本步充满所需的平均功率，再和额定充电功率取小。
+                double demand = Math.min(report.maxRechargeKw(), room * 60.0D / step);
+                rechargeRequest += demand;
+                if (reactorOutput > deviceDemand + 1.0E-9D) {
+                    if (storageIn.isEmpty()) {
+                        storageIn = new java.util.HashMap<>();
+                    }
+                    double surplus = reactorOutput - deviceDemand - rechargeInput;
+                    double take = Math.min(surplus, demand);
+                    if (take > 1.0E-9D) {
+                        storageIn.put(entry.getKey(), take);
+                        rechargeInput += take;
+                    }
+                }
+            }
+        }
+
+        // 结算电池电量（正=充，负=放）；充电乘效率。
+        if (!storageOut.isEmpty() || !storageIn.isEmpty()) {
+            for (var entry : storages.entrySet()) {
+                double delta = 0.0D;
+                Double out = storageOut.get(entry.getKey());
+                if (out != null) {
+                    delta -= PowerGrid.batteryChargeDeltaKwm(out, dt, 1.0D);
+                }
+                Double in = storageIn.get(entry.getKey());
+                if (in != null) {
+                    delta += PowerGrid.batteryChargeDeltaKwm(in, dt, BATTERY_EFFICIENCY);
+                }
+                if (Math.abs(delta) <= 1.0E-9D) {
+                    continue;
+                }
+                StorageReport report = entry.getValue();
+                double charge = Mth.clamp(report.chargeKwm() + delta, 0.0D,
+                        report.capacityKwm());
+                entry.setValue(new StorageReport(charge, report.capacityKwm(),
+                        report.maxOutputKw(), report.maxRechargeKw(), report.box(),
+                        report.condition(), report.lastSeen()));
+            }
+        }
+
+        double storedKwm = 0.0D;
+        double storageCapacityKwm = 0.0D;
+        for (StorageReport report : storages.values()) {
+            storedKwm += report.chargeKwm();
+            storageCapacityKwm += report.capacityKwm();
+        }
+
+        double supply = reactorOutput + batteryOutput;
+        double demand = deviceDemand + rechargeInput;
+        // 硬核：没堆 / 没开机 / 总供电为 0 → 全船没电；电池有电也算供电。
         boolean hasReactor = reactorCapacity > 0.0D;
-        double ratio = !hasReactor || reactorOutput <= 0.0D ? 0.0D
-                : demand <= 0.0D ? 1.0D : Math.min(1.0D, reactorOutput / demand);
+        lastSupply = supply;
+        lastVoltage = hasReactor || supply > 0.0D
+                ? PowerGrid.voltage(supply, demand) : 0.0D;
         lastOutput = reactorOutput;
-        lastDemand = demand;
-        lastRatio = ratio;
+        // 给反应堆自动控制看的“目标负载”要含电池充电请求，否则堆只追设备负载，
+        // 电池永远没有富余可充。电压仍按实际吸收的充电功率算（见上面的 demand）。
+        lastDemand = deviceDemand + rechargeRequest;
+        lastBatteryOutput = batteryOutput;
+        lastBatteryCharge = rechargeInput;
+        lastStoredKwm = storedKwm;
+        lastStorageCapacityKwm = storageCapacityKwm;
+        // 兼容旧代码：0..1 的“够不够电”，过压部分由 lastVoltage 单独表达。
+        lastRatio = Math.min(1.0D, lastVoltage);
+        double ratio = lastRatio;
 
         // 制氧：按舱室体积分配
         int totalVolume = 0;
@@ -568,6 +795,47 @@ public final class ShipSimulation {
         return 0.0D;
     }
 
+    /**
+     * 连海空腔里船壳格的实际水量（单位）：按逐列水位累加。
+     *
+     * <p>不能按“壳内格数 / 空腔总格数”折算：各列底高不同，同一水面下水量不同，
+     * 按格数平均会让进水比例偏高/偏低，直接影响下沉判断。</p>
+     */
+    public double interiorWater(int pocketIndex, java.util.Set<net.minecraft.core.BlockPos> interior,
+                                java.util.Collection<net.minecraft.core.BlockPos> breachSources) {
+        List<ShipGeometry.Compartment> pockets = geometry.openPockets();
+        if (pocketIndex < 0 || pocketIndex >= pockets.size()
+                || pocketIndex >= pocketWater.length || interior == null || interior.isEmpty()) {
+            return 0.0D;
+        }
+        double units = pocketWater[pocketIndex];
+        if (units <= 0.0D) {
+            return 0.0D;
+        }
+        java.util.List<net.minecraft.core.BlockPos> sources = breachSources == null
+                ? java.util.List.of() : java.util.List.copyOf(breachSources);
+        PocketLevelCache cache = pocketLevelCache.get(pocketIndex);
+        if (cache == null || cache.units() != units || !cache.sources().equals(sources)) {
+            ShipPocketWater.Shape shape = ShipPocketWater.compute(pockets.get(pocketIndex).cells(),
+                    sources, units);
+            cache = new PocketLevelCache(units, sources, shape);
+            pocketLevelCache.put(pocketIndex, cache);
+        }
+        // 没有破口记录时 compute 找不到种子列，返回空列映射：这时和
+        // waterLevelAt 一样退回整块均匀水位，不能把水按 0 算。
+        double uniform = bodyLevel(geometry.compartments().size() + pocketIndex);
+        double water = 0.0D;
+        for (net.minecraft.core.BlockPos cell : interior) {
+            float level = cache.shape().levelAt(cell.getX(), cell.getZ());
+            if (Float.isNaN(level)) {
+                level = (float) uniform;
+            }
+            double fill = Math.max(0.0D, Math.min(1.0D, level - cell.getY()));
+            water += fill * UNITS_PER_BLOCK;
+        }
+        return water;
+    }
+
     /** 第 body 个水体的格子数。 */
     public int bodyVolume(int body) {
         List<ShipGeometry.Compartment> sealed = geometry.compartments();
@@ -580,6 +848,146 @@ public final class ShipSimulation {
             return pockets.get(pocket).volume();
         }
         return 0;
+    }
+
+    /** 连海空腔列水位缓存：空腔下标 → (水量, 破口入口, 计算结果)。 */
+    private final java.util.Map<Integer, PocketLevelCache> pocketLevelCache =
+            new java.util.HashMap<>();
+
+    private record PocketLevelCache(double units,
+                                    java.util.List<net.minecraft.core.BlockPos> sources,
+                                    ShipPocketWater.Shape shape) {
+    }
+
+    /**
+     * 某一格的实际水位（格）：密闭舱室用整块水位；连海空腔按列水位
+     * （和渲染同一套 {@link ShipPocketWater}），避免把空腔统一水位当成该列水位。
+     *
+     * <p>两个低洼区只靠高处孔洞连通时，破口侧进水、另一侧仍干燥；
+     * 接线盒泡水判定必须按自己所在列，否则干燥侧的盒子也会持续掉耐久。</p>
+     *
+     * @param breachSources 连海空腔的破口位置（水的入口），和渲染用同一份
+     */
+    public double waterLevelAt(net.minecraft.core.BlockPos cell,
+                               java.util.Collection<net.minecraft.core.BlockPos> breachSources) {
+        int body = bodyOf(cell);
+        if (body < 0) {
+            return 0.0D;
+        }
+        List<ShipGeometry.Compartment> sealed = geometry.compartments();
+        if (body < sealed.size()) {
+            return bodyLevel(body);
+        }
+        int pocket = body - sealed.size();
+        List<ShipGeometry.Compartment> pockets = geometry.openPockets();
+        if (pocket < 0 || pocket >= pockets.size() || pocketWater[pocket] <= 0.0D) {
+            return 0.0D;
+        }
+        java.util.List<net.minecraft.core.BlockPos> sources = breachSources == null
+                ? java.util.List.of() : java.util.List.copyOf(breachSources);
+        // 同一空腔里 20 个接线盒会每 tick 重复算 20 次；水量/破口入口不变时直接复用。
+        // 几何在本实例里是 final（整船平移不会重建 simulation），不需要额外版本号。
+        PocketLevelCache cache = pocketLevelCache.get(pocket);
+        if (cache == null || cache.units() != pocketWater[pocket]
+                || !cache.sources().equals(sources)) {
+            ShipPocketWater.Shape shape = ShipPocketWater.compute(pockets.get(pocket).cells(),
+                    sources, pocketWater[pocket]);
+            cache = new PocketLevelCache(pocketWater[pocket], sources, shape);
+            pocketLevelCache.put(pocket, cache);
+        }
+        float level = cache.shape().levelAt(cell.getX(), cell.getZ());
+        return Float.isNaN(level) ? bodyLevel(body) : level;
+    }
+
+    /**
+     * 整船平移：几何换成新坐标，水量/温度数组保留（舱室数量/体积不变）。
+     *
+     * <p>不换几何的话 {@code bodyOf()}/{@code waterLevelAt()} 还按旧坐标查，
+     * 平移后接线盒会被判成不在任何舱室、泡水判定也拿不到列水位。</p>
+     */
+    public void shiftGeometry(int dx, int dy, int dz) {
+        if (dx == 0 && dy == 0 && dz == 0) {
+            return;
+        }
+        this.geometry = geometry.shifted(dx, dy, dz);
+        this.bodyIndexOfCell = null;
+        this.pocketLevelCache.clear();
+    }
+
+    /**
+     * 整船平移后迁移上报表：键和绑定的接线盒都加上偏移，上报 tick 保持不变。
+     *
+     * <p>模拟实例在 {@code ShipState.shifted()} 里原样复用；不迁移的话旧坐标的
+     * 记录会和设备按新坐标上报的记录同时存在，同一台泵在 40 tick 内被计两份需求。</p>
+     */
+    public void shiftReports(int dx, int dy, int dz) {
+        if (dx == 0 && dy == 0 && dz == 0) {
+            return;
+        }
+        java.util.Map<net.minecraft.core.BlockPos, ConsumerReport> movedConsumers =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, ConsumerReport> entry
+                : consumers.entrySet()) {
+            ConsumerReport report = entry.getValue();
+            net.minecraft.core.BlockPos box = report.box() == null ? null
+                    : report.box().offset(dx, dy, dz);
+            movedConsumers.put(entry.getKey().offset(dx, dy, dz),
+                    new ConsumerReport(report.demandKw(), report.minVoltage(), box,
+                            report.lastSeen()));
+        }
+        consumers.clear();
+        consumers.putAll(movedConsumers);
+        java.util.Map<net.minecraft.core.BlockPos, BoxReport> movedBoxes =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, BoxReport> entry
+                : boxes.entrySet()) {
+            movedBoxes.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        boxes.clear();
+        boxes.putAll(movedBoxes);
+        // 引擎/反应堆报告也要跟着走：engineSupplyFactor 用引擎格子去查消费者，
+        // 旧格子查不到已迁移的消费者会回退到默认总线电压，损坏支路因此产生推力。
+        java.util.Map<net.minecraft.core.BlockPos, EngineReport> movedEngines =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, EngineReport> entry
+                : engines.entrySet()) {
+            movedEngines.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        engines.clear();
+        engines.putAll(movedEngines);
+        java.util.Map<net.minecraft.core.BlockPos, ReactorReport> movedReactors =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, ReactorReport> entry
+                : reactors.entrySet()) {
+            movedReactors.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        reactors.clear();
+        reactors.putAll(movedReactors);
+        // 泵上报表也要平移：旧位置的泵记录会继续按旧舱室抽水，和新位置记录叠加。
+        java.util.Map<net.minecraft.core.BlockPos, PumpReport> movedPumps =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, PumpReport> entry
+                : pumps.entrySet()) {
+            movedPumps.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        pumps.clear();
+        pumps.putAll(movedPumps);
+        // 电池上报表也要跟着走：旧位置的电池会继续充放电 40 tick，
+        // 同一块电池被重复计入容量/供电。
+        java.util.Map<net.minecraft.core.BlockPos, StorageReport> movedStorages =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, StorageReport> entry
+                : storages.entrySet()) {
+            StorageReport report = entry.getValue();
+            net.minecraft.core.BlockPos box = report.box() == null ? null
+                    : report.box().offset(dx, dy, dz);
+            movedStorages.put(entry.getKey().offset(dx, dy, dz),
+                    new StorageReport(report.chargeKwm(), report.capacityKwm(),
+                            report.maxOutputKw(), report.maxRechargeKw(), box,
+                            report.condition(), report.lastSeen()));
+        }
+        storages.clear();
+        storages.putAll(movedStorages);
     }
 
     /**
@@ -642,6 +1050,12 @@ public final class ShipSimulation {
      */
     public boolean bodyIsWet(int body) {
         return body >= 0 && bodyWater(body) >= UNITS_PER_BLOCK * 0.05D;
+    }
+
+    /** 水体当前进水比例（0..1）：自动化门/泵用。 */
+    public double bodyWaterFraction(int body) {
+        double capacity = bodyCapacity(body);
+        return capacity <= 0.0D ? 0.0D : Math.min(1.0D, bodyWater(body) / capacity);
     }
 
     /**
@@ -857,6 +1271,51 @@ public final class ShipSimulation {
         return -1;
     }
 
+    /**
+     * 实心机器格用：找相邻的舱室格（机器自己不在水体里，bodyOf(自己) 恒为 -1）。
+     *
+     * @return 相邻的舱室格；四周都不在舱室里返回 null
+     */
+    public net.minecraft.core.BlockPos bodyCellNear(net.minecraft.core.BlockPos cell) {
+        if (cell == null) {
+            return null;
+        }
+        for (net.minecraft.core.BlockPos next : new net.minecraft.core.BlockPos[]{
+                cell.above(), cell.below(), cell.north(), cell.south(),
+                cell.east(), cell.west()}) {
+            if (bodyOf(next) >= 0) {
+                return next;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 实心机器格是否泡水：任一相邻舱室格的水位达到机器格就算。
+     *
+     * <p>只看第一个相邻格会漏：北侧干舱、南侧积水舱时机器南面已经淹了。</p>
+     */
+    public boolean submergedAt(net.minecraft.core.BlockPos cell,
+                               java.util.Collection<net.minecraft.core.BlockPos> breachSources) {
+        if (cell == null) {
+            return false;
+        }
+        for (net.minecraft.core.BlockPos next : new net.minecraft.core.BlockPos[]{
+                cell.above(), cell.below(), cell.north(), cell.south(),
+                cell.east(), cell.west()}) {
+            int body = bodyOf(next);
+            if (body < 0 || !bodyIsWet(body)) {
+                continue;
+            }
+            // 水位要跟机器自己的底面比：相邻格在机器下方时，水位没过邻居
+            // 不代表淹到机器。
+            if (cell.getY() < waterLevelAt(next, breachSources)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** 这一格在第几个水体里（0..n-1 密闭舱室，n.. 连海空腔）；不在任何舱里返回 -1。 */
     public int bodyOf(net.minecraft.core.BlockPos cell) {
         if (cell == null) {
@@ -927,6 +1386,37 @@ public final class ShipSimulation {
         return lastEngineCount;
     }
 
+    /**
+     * 逐引擎有效供电系数之和：每台引擎按它实际拿到的电压算
+     * {@code min(Voltage,2)^(2/3)}，低于 MinVoltage 0.5 记 0。
+     *
+     * <p>物理推进不能直接用"全船电压 × 引擎数"：某台引擎绑的接线盒坏了/缺失时
+     * 它实际拿不到电，必须单独扣掉。</p>
+     *
+     * <p>最多只算 {@link #MAX_ENGINES} 台：9 台引擎在额定电压下加起来是 9，
+     * 远低于系数上限（8×2^(2/3)≈12.7），不按台数截断就会凭空多出一台推力。</p>
+     */
+    public double engineSupplyFactor() {
+        java.util.List<Double> powered = new java.util.ArrayList<>(engines.size());
+        for (var entry : engines.entrySet()) {
+            EngineReport report = entry.getValue();
+            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS || report.force() <= 0.1D) {
+                continue;
+            }
+            double voltage = consumerVoltage(entry.getKey());
+            if (voltage >= 0.5D) {
+                powered.add(Math.pow(Math.min(voltage, 2.0D), 2.0D / 3.0D));
+            }
+        }
+        // 按系数从大到小取前 8 台：结果和 HashMap 遍历顺序无关。
+        powered.sort(java.util.Comparator.reverseOrder());
+        double sum = 0.0D;
+        for (int i = 0; i < powered.size() && i < MAX_ENGINES; i++) {
+            sum += powered.get(i);
+        }
+        return sum;
+    }
+
     /** 上一 tick 的引擎总耗电（kW）。 */
     public double engineDemandKw() {
         return lastEngineDemand;
@@ -941,6 +1431,172 @@ public final class ShipSimulation {
     public double powerRatio() {
         return lastRatio;
     }
+
+    /** 原版电压：总供电 / 总负载，不封顶 1；0 = 没电，>1 = 富余，>1.7 = 过压。 */
+    public double voltage() {
+        return lastVoltage;
+    }
+
+    /** 上一 tick 的全船供电（kW）。 */
+    public double supplyKw() {
+        return lastSupply;
+    }
+
+    /** 设备每 tick 上报自己的电网需求；{@code box == null} 表示挂在默认总线上。 */
+    /** 终端（船核心）上报：和普通消费者一样登记，同时标记旧声纳负载不用再补。 */
+    public void reportTerminal(net.minecraft.core.BlockPos cell, double demandKw,
+                               double minVoltage, net.minecraft.core.BlockPos box) {
+        reportConsumer(cell, demandKw, minVoltage, box);
+        lastTerminalTick = consumerTick;
+    }
+
+    public void reportConsumer(net.minecraft.core.BlockPos cell, double demandKw,
+                               double minVoltage, net.minecraft.core.BlockPos box) {
+        if (cell == null) {
+            return;
+        }
+        consumers.put(cell.immutable(), new ConsumerReport(
+                Math.max(0.0D, demandKw), Math.max(0.0D, minVoltage),
+                box == null ? null : box.immutable(), consumerTick));
+    }
+
+    /** 接线盒每 tick 上报耐久。 */
+    public void reportJunctionBox(net.minecraft.core.BlockPos cell, double condition) {
+        if (cell == null) {
+            return;
+        }
+        boxes.put(cell.immutable(), new BoxReport(
+                Math.max(0.0D, Math.min(100.0D, condition)), boxTick));
+    }
+
+    /**
+     * 电池每 tick 上报存电量和额定参数；充放电由 {@link #tick(double)} 统一结算。
+     *
+     * <p>方块实体在 tick 开头应先用 {@link #storageCharge(BlockPos)} 读回模拟里的
+     * 电量再上报，避免把上一 tick 的旧值写回去。</p>
+     */
+    public void reportStorage(net.minecraft.core.BlockPos cell, double chargeKwm,
+                              double capacityKwm, double maxOutputKw, double maxRechargeKw,
+                              net.minecraft.core.BlockPos box, double condition) {
+        if (cell == null) {
+            return;
+        }
+        double capacity = Math.max(1.0D, capacityKwm);
+        storages.put(cell.immutable(), new StorageReport(
+                Math.max(0.0D, Math.min(chargeKwm, capacity)),
+                capacity,
+                Math.max(0.0D, maxOutputKw),
+                Math.max(0.0D, maxRechargeKw),
+                box == null ? null : box.immutable(),
+                Math.max(0.0D, Math.min(100.0D, condition)),
+                storageTick));
+    }
+
+    /** 模拟里某块电池当前的电量（kW·min）；没上报返回 null。 */
+    public Double storageCharge(net.minecraft.core.BlockPos cell) {
+        StorageReport report = cell == null ? null : storages.get(cell);
+        return report == null ? null : report.chargeKwm();
+    }
+
+    /** 电池是否在电网里可用：耐久 > 0 且绑定的接线盒没坏。 */
+    private boolean storageUsable(StorageReport report) {
+        return report.condition() > 0.0D && boxHealthy(report.box());
+    }
+
+    /** 接线盒是否有效；null 表示默认总线，视为有效。 */
+    private boolean boxHealthy(net.minecraft.core.BlockPos box) {
+        if (box == null) {
+            return true;
+        }
+        BoxReport report = boxes.get(box);
+        return report != null && report.condition() > 0.0D;
+    }
+
+    /** 上一 tick 电池总输出（kW）。 */
+    public double batteryOutputKw() {
+        return lastBatteryOutput;
+    }
+
+    /** 上一 tick 电池总充电功率（kW，未计效率）。 */
+    public double batteryChargeKw() {
+        return lastBatteryCharge;
+    }
+
+    /** 全船电池总存电量（kW·min）。 */
+    public double storedKwm() {
+        return lastStoredKwm;
+    }
+
+    /** 全船电池总容量（kW·min）。 */
+    public double storageCapacityKwm() {
+        return lastStorageCapacityKwm;
+    }
+
+    /** 当前登记的所有电池（电力面板用）。 */
+    public java.util.List<StorageInfo> storageInfos() {
+        java.util.List<StorageInfo> result = new java.util.ArrayList<>(storages.size());
+        for (var entry : storages.entrySet()) {
+            StorageReport report = entry.getValue();
+            result.add(new StorageInfo(entry.getKey(), report.chargeKwm(),
+                    report.capacityKwm(), report.maxOutputKw(), report.maxRechargeKw(),
+                    report.box(), report.condition()));
+        }
+        return result;
+    }
+
+    /**
+     * 某个设备实际拿到的电压。
+     *
+     * <p>绑定的接线盒坏了（耐久 0 / 没上报）→ 0；否则用全船电压。没绑盒子（旧船）
+     * 也走全船默认总线，保证现有存档能继续开。</p>
+     */
+    public double consumerVoltage(net.minecraft.core.BlockPos cell) {
+        ConsumerReport report = cell == null ? null : consumers.get(cell);
+        if (report != null && report.box() != null) {
+            BoxReport box = boxes.get(report.box());
+            if (box == null || box.condition() <= 0.0D) {
+                return 0.0D;
+            }
+        }
+        return lastVoltage;
+    }
+
+    /** 某个接线盒上绑定的设备总负载（kW）。 */
+    public double boxLoad(net.minecraft.core.BlockPos box) {
+        if (box == null) {
+            return 0.0D;
+        }
+        double load = 0.0D;
+        for (ConsumerReport report : consumers.values()) {
+            if (box.equals(report.box())) {
+                load += report.demandKw();
+            }
+        }
+        return load;
+    }
+
+    /** 某个接线盒当前耐久（0..100）；没上报返回 0。 */
+    public double boxCondition(net.minecraft.core.BlockPos box) {
+        BoxReport report = box == null ? null : boxes.get(box);
+        return report == null ? 0.0D : report.condition();
+    }
+
+    /** 当前登记的所有用电设备（电力面板用）。 */
+    public java.util.List<ConsumerInfo> consumerInfos() {
+        java.util.List<ConsumerInfo> result = new java.util.ArrayList<>(consumers.size());
+        for (var entry : consumers.entrySet()) {
+            ConsumerReport report = entry.getValue();
+            result.add(new ConsumerInfo(entry.getKey(), report.demandKw(),
+                    report.minVoltage(), report.box()));
+        }
+        return result;
+    }
+
+    /** 当前登记的所有接线盒位置（电力面板用）。 */
+    public java.util.Set<net.minecraft.core.BlockPos> junctionBoxes() {
+        return java.util.Set.copyOf(boxes.keySet());
+    }
+
 
     /** 当前登记的反应堆数量（诊断/测试用）。 */
     public int reactorCount() {

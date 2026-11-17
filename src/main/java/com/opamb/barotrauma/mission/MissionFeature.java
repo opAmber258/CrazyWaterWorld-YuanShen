@@ -12,7 +12,7 @@ public enum MissionFeature {
     /** 信标方块与激活交互。 */
     BEACON(false),
     /** 可在世界里采到的矿物（矿脉/矿点）。 */
-    MINERALS(false),
+    MINERALS(true),
     /** 生物实体与击杀判定。 */
     CREATURES(false),
     /** 巢穴地形与巢穴目标。 */

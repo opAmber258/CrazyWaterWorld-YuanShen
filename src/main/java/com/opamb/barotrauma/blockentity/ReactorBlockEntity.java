@@ -8,6 +8,9 @@ import com.opamb.barotrauma.medical.affliction.Limb;
 import com.opamb.barotrauma.reactor.ReactorFuel;
 import com.opamb.barotrauma.reactor.ReactorState;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.registry.ModSounds;
+import com.opamb.barotrauma.ship.ConditionComponent;
+import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -52,7 +55,7 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * <p>供电是"硬核"的：船上没有反应堆或反应堆没开机，ShipSimulation 的
  * powerRatio 就是 0，推进器和泵都不会动。</p>
  */
-public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlockEntity {
+public class ReactorBlockEntity extends BlockEntity implements Container, RepairTarget, GeoBlockEntity {
 
     public static final int FUEL_SLOTS = 4;
     private static final double SECONDS_PER_TICK = 1.0D / 20.0D;
@@ -65,6 +68,11 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
     private double lastRatio;
     /** 过热冒烟的节流计时（秒）。 */
     private double smokeTimer;
+    /** 过热/熔毁警报的节流计时（秒）。 */
+    private double alarmTimer;
+    /** 耐久：原作 reactor deteriorationspeed=0.125，延迟 120–720s，阈值 50%。 */
+    private final ConditionComponent condition =
+            new ConditionComponent(100.0D, 0.125D, 120, 720, 10.0D, 0.5D);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public ReactorBlockEntity(BlockPos pos, BlockState state) {
@@ -73,6 +81,38 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
 
     protected ReactorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+    }
+
+    @Override
+    public double condition() {
+        return condition.condition();
+    }
+
+    @Override
+    public double maxCondition() {
+        return condition.maxCondition();
+    }
+
+    @Override
+    public boolean canRepair() {
+        return condition.canRepair();
+    }
+
+    @Override
+    public double repairThreshold() {
+        return condition.repairThreshold();
+    }
+
+    @Override
+    public void applyRepair(double points) {
+        condition.repair(points);
+        setChanged();
+    }
+
+    @Override
+    public void damage(double points) {
+        condition.damage(points);
+        setChanged();
     }
 
     // ------------------------------------------------------------------ tick
@@ -86,13 +126,41 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         BlockPos cell = null;
         double load = 0.0D;
         if (ship != null) {
-            BlockPos assembly = VsState.active() ? VsPilot.toAssembly(pos) : pos;
+            BlockPos assembly = VsState.isPhysical(server, pos) ? VsPilot.toAssembly(pos) : pos;
             if (ship.tracksHullBlock(assembly)) {
                 cell = assembly;
                 load = ship.simulation().report().powerDemand();
             }
         }
         be.lastLoadKw = load;
+
+        // 耐久：反应堆开机时自然劣化；耐久归零直接停机，不再发电。
+        if (be.condition.tick(server, be.state.powerOn())) {
+            be.setChanged();
+        }
+        if (be.condition.broken()) {
+            be.state.setPowerOn(false);
+            be.lastRatio = 0.0D;
+            // 停机冷却仍要推进：不调 tick 的话温度/裂变/涡轮永远停在损坏前的值。
+            // 输出单独上报 0，避免损坏的反应堆继续发电；但残余热仍可能起火/熔毁，
+            // 事件不能丢。
+            int events = be.state.tick(SECONDS_PER_TICK, be.availableFuel(), 0.0D);
+            // 温度/裂变/危险计时器在损坏后仍会变：必须标脏，否则读档回到旧热状态。
+            be.setChanged();
+            if (ship != null && cell != null) {
+                ship.simulation().reportReactor(cell, 0.0D, be.state.capacityKw(),
+                        be.state.temperature(), be.state.overheated(), be.state.meltedDown());
+            }
+            if ((events & ReactorState.EVENT_FIRE) != 0) {
+                be.spawnFire(server);
+            }
+            if ((events & ReactorState.EVENT_MELTDOWN) != 0) {
+                be.meltdown(server);
+            }
+            // 损坏不等于安全：过热警报/烟雾要继续，和正常分支共用。
+            dangerEffects(server, be);
+            return;
+        }
 
         double available = be.availableFuel();
         int events = be.state.tick(SECONDS_PER_TICK, available, load);
@@ -111,6 +179,25 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         }
         if ((events & ReactorState.EVENT_MELTDOWN) != 0) {
             be.meltdown(server);
+        }
+
+        dangerEffects(server, be);
+    }
+
+    /** 过热/熔毁警报 + 过热白烟；损坏停机后也要继续跑。 */
+    private static void dangerEffects(ServerLevel server, ReactorBlockEntity be) {
+        // 过热/熔毁警报：每 2 秒响一次原版 AlarmBuzzerLoop（不需要独立警报方块）。
+        if (be.state.overheated() || be.state.meltedDown()) {
+            be.alarmTimer += SECONDS_PER_TICK;
+            if (be.alarmTimer >= 2.0D) {
+                be.alarmTimer = 0.0D;
+                // 物理船的 pos 是船坞坐标，警报要在船体当前世界位置播放。
+                net.minecraft.world.phys.Vec3 center = be.effectCenter(server);
+                server.playSound(null, center.x, center.y, center.z,
+                        ModSounds.REACTOR_ALARM.get(), SoundSource.BLOCKS, 1.2F, 1.0F);
+            }
+        } else {
+            be.alarmTimer = 0.0D;
         }
 
         // 起火之前：温度超过最佳区就持续往外喷白烟，越热越密。
@@ -238,7 +325,9 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
 
     /** 玩家/物理船所在的世界坐标；物理船的方块实体在船坞里，要用船体变换换算。 */
     private Vec3 effectCenter(ServerLevel level) {
-        if (VsState.active()) {
+        // 只有本反应堆属于物理船时才换算坐标：另一艘物理船活动时，
+        // 普通方块船反应堆不能套用它的船坞偏移。
+        if (VsState.isPhysical(level, worldPosition)) {
             Vec3 mapped = VsPilot.assemblyToWorld(VsPilot.toAssembly(worldPosition));
             if (mapped != null) {
                 return mapped;
@@ -336,7 +425,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         level.sendParticles(ParticleTypes.LARGE_SMOKE, center.x, center.y + 1.0D, center.z,
                 60, 3.0D, 2.0D, 3.0D, 0.05D);
 
-        if (VsState.active()) {
+        if (VsState.isPhysical(level, worldPosition)) {
             // 物理船：按世界坐标对装配快照扣船体耐久，别把爆炸砸在船坞里。
             VsState.damageExplosion(level, center, 7.0D, 300.0F);
         } else {
@@ -429,6 +518,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         super.saveAdditional(tag);
         tag.put("ReactorState", doubleList(state.snapshot()));
         tag.put("ReactorBurn", doubleList(burnCarry));
+        condition.save(tag, "Condition");
         ContainerHelper.saveAllItems(tag, fuel);
     }
 
@@ -440,6 +530,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, GeoBlo
         for (int i = 0; i < Math.min(FUEL_SLOTS, burn.length); i++) {
             burnCarry[i] = Math.max(0.0D, burn[i]);
         }
+        condition.load(tag, "Condition");
         ContainerHelper.loadAllItems(tag, fuel);
     }
 

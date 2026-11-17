@@ -1,0 +1,478 @@
+{
+  "editor": "Blockbench 5.2.2",
+  "density": 32,
+  "faces_checked": 36,
+  "pass": true,
+  "checks": [
+    {
+      "name": "screen",
+      "face": "north",
+      "native": [
+        46.0,
+        28.0
+      ],
+      "programmatic": [
+        46,
+        28
+      ],
+      "equal": true
+    },
+    {
+      "name": "screen",
+      "face": "east",
+      "native": [
+        1.0,
+        28.0
+      ],
+      "programmatic": [
+        1,
+        28
+      ],
+      "equal": true
+    },
+    {
+      "name": "screen",
+      "face": "south",
+      "native": [
+        46.0,
+        28.0
+      ],
+      "programmatic": [
+        46,
+        28
+      ],
+      "equal": true
+    },
+    {
+      "name": "screen",
+      "face": "west",
+      "native": [
+        1.0,
+        28.0
+      ],
+      "programmatic": [
+        1,
+        28
+      ],
+      "equal": true
+    },
+    {
+      "name": "screen",
+      "face": "up",
+      "native": [
+        46.0,
+        1.0
+      ],
+      "programmatic": [
+        46,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "screen",
+      "face": "down",
+      "native": [
+        46.0,
+        1.0
+      ],
+      "programmatic": [
+        46,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "rounded_corner",
+      "face": "north",
+      "native": [
+        1.0,
+        1.0
+      ],
+      "programmatic": [
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "rounded_corner",
+      "face": "east",
+      "native": [
+        1.0,
+        1.0
+      ],
+      "programmatic": [
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "rounded_corner",
+      "face": "south",
+      "native": [
+        1.0,
+        1.0
+      ],
+      "programmatic": [
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "rounded_corner",
+      "face": "west",
+      "native": [
+        1.0,
+        1.0
+      ],
+      "programmatic": [
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "rounded_corner",
+      "face": "up",
+      "native": [
+        1.0,
+        1.0
+      ],
+      "programmatic": [
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "rounded_corner",
+      "face": "down",
+      "native": [
+        1.0,
+        1.0
+      ],
+      "programmatic": [
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "header_corner",
+      "face": "north",
+      "native": [
+        2.0,
+        2.0
+      ],
+      "programmatic": [
+        2,
+        2
+      ],
+      "equal": true
+    },
+    {
+      "name": "header_corner",
+      "face": "east",
+      "native": [
+        13.0,
+        2.0
+      ],
+      "programmatic": [
+        13,
+        2
+      ],
+      "equal": true
+    },
+    {
+      "name": "header_corner",
+      "face": "south",
+      "native": [
+        2.0,
+        2.0
+      ],
+      "programmatic": [
+        2,
+        2
+      ],
+      "equal": true
+    },
+    {
+      "name": "header_corner",
+      "face": "west",
+      "native": [
+        13.0,
+        2.0
+      ],
+      "programmatic": [
+        13,
+        2
+      ],
+      "equal": true
+    },
+    {
+      "name": "header_corner",
+      "face": "up",
+      "native": [
+        2.0,
+        13.0
+      ],
+      "programmatic": [
+        2,
+        13
+      ],
+      "equal": true
+    },
+    {
+      "name": "header_corner",
+      "face": "down",
+      "native": [
+        2.0,
+        13.0
+      ],
+      "programmatic": [
+        2,
+        13
+      ],
+      "equal": true
+    },
+    {
+      "name": "thin_wire",
+      "face": "north",
+      "native": [
+        1.0,
+        6.0
+      ],
+      "programmatic": [
+        1,
+        6
+      ],
+      "equal": true
+    },
+    {
+      "name": "thin_wire",
+      "face": "east",
+      "native": [
+        1.0,
+        6.0
+      ],
+      "programmatic": [
+        1,
+        6
+      ],
+      "equal": true
+    },
+    {
+      "name": "thin_wire",
+      "face": "south",
+      "native": [
+        1.0,
+        6.0
+      ],
+      "programmatic": [
+        1,
+        6
+      ],
+      "equal": true
+    },
+    {
+      "name": "thin_wire",
+      "face": "west",
+      "native": [
+        1.0,
+        6.0
+      ],
+      "programmatic": [
+        1,
+        6
+      ],
+      "equal": true
+    },
+    {
+      "name": "thin_wire",
+      "face": "up",
+      "native": [
+        1.0,
+        1.0
+      ],
+      "programmatic": [
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "thin_wire",
+      "face": "down",
+      "native": [
+        1.0,
+        1.0
+      ],
+      "programmatic": [
+        1,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "keys",
+      "face": "north",
+      "native": [
+        20.0,
+        1.0
+      ],
+      "programmatic": [
+        20,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "keys",
+      "face": "east",
+      "native": [
+        12.0,
+        1.0
+      ],
+      "programmatic": [
+        12,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "keys",
+      "face": "south",
+      "native": [
+        20.0,
+        1.0
+      ],
+      "programmatic": [
+        20,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "keys",
+      "face": "west",
+      "native": [
+        12.0,
+        1.0
+      ],
+      "programmatic": [
+        12,
+        1
+      ],
+      "equal": true
+    },
+    {
+      "name": "keys",
+      "face": "up",
+      "native": [
+        20.0,
+        12.0
+      ],
+      "programmatic": [
+        20,
+        12
+      ],
+      "equal": true
+    },
+    {
+      "name": "keys",
+      "face": "down",
+      "native": [
+        20.0,
+        12.0
+      ],
+      "programmatic": [
+        20,
+        12
+      ],
+      "equal": true
+    },
+    {
+      "name": "aux_rim",
+      "face": "north",
+      "native": [
+        19.0,
+        11.0
+      ],
+      "programmatic": [
+        19,
+        11
+      ],
+      "equal": true
+    },
+    {
+      "name": "aux_rim",
+      "face": "east",
+      "native": [
+        2.0,
+        11.0
+      ],
+      "programmatic": [
+        2,
+        11
+      ],
+      "equal": true
+    },
+    {
+      "name": "aux_rim",
+      "face": "south",
+      "native": [
+        19.0,
+        11.0
+      ],
+      "programmatic": [
+        19,
+        11
+      ],
+      "equal": true
+    },
+    {
+      "name": "aux_rim",
+      "face": "west",
+      "native": [
+        2.0,
+        11.0
+      ],
+      "programmatic": [
+        2,
+        11
+      ],
+      "equal": true
+    },
+    {
+      "name": "aux_rim",
+      "face": "up",
+      "native": [
+        19.0,
+        2.0
+      ],
+      "programmatic": [
+        19,
+        2
+      ],
+      "equal": true
+    },
+    {
+      "name": "aux_rim",
+      "face": "down",
+      "native": [
+        19.0,
+        2.0
+      ],
+      "programmatic": [
+        19,
+        2
+      ],
+      "equal": true
+    }
+  ],
+  "full_native_repack": "not completed; full template operation cancelled after background timer slowdown",
+  "production_layout": "independent custom atlas packing with native face pixel dimensions, 1 pixel gutters"
+}

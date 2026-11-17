@@ -1,0 +1,148 @@
+{
+  "source_sha256": "0944077ee6c4be2e3435bae455b0417bb8466050a32ba0768164218c47687ca7",
+  "project_sha256": "11e565eeabbb8c542340ac1cd90e9fd7dd8f8b8dd75a45f972cfbb09f1745d1b",
+  "recenter_dx": -7.0,
+  "blockbench_version": "5.2.2",
+  "geometry_and_animation_reexport_equal": true,
+  "all_source_cube_group_outliner_uv_values_identical": true,
+  "identical_embedded_texture": true,
+  "rest_bounds_BB": [
+    [
+      -16.0,
+      -0.048285,
+      -14.104
+    ],
+    [
+      16.0,
+      40.25,
+      11.000756
+    ]
+  ],
+  "dimensions_blocks_WHD": [
+    2.0,
+    2.518643,
+    1.569047
+  ],
+  "cubes": 170,
+  "bones": 10,
+  "image_pixels": [
+    512,
+    512
+  ],
+  "logical_uv": [
+    256,
+    256
+  ],
+  "clip": "animation.deconstructor.work",
+  "animated_groups": [
+    "left_cutters",
+    "right_cutters"
+  ],
+  "duration_seconds": 1,
+  "rotations_per_second": 1,
+  "verified_native_poses": 49,
+  "preview_frames": 50,
+  "native_first_last_frame_pixel_identical": true,
+  "clearance": {
+    "sampling_step_degrees": 1,
+    "scope": "each rotor versus all feed_hopper cubes; pairs use oriented-box separating axes",
+    "intersections": {
+      "left_cutters": {
+        "baffle": {
+          "max_penetration_BB": 1.75068,
+          "parts": [
+            "shaft"
+          ],
+          "angle_degrees": 0
+        },
+        "apron_course_7": {
+          "max_penetration_BB": 0.00888,
+          "parts": [
+            "shaft"
+          ],
+          "angle_degrees": 0
+        },
+        "rolled_front_lip": {
+          "max_penetration_BB": 0.06795,
+          "parts": [
+            "shaft"
+          ],
+          "angle_degrees": 180
+        },
+        "trough_floor": {
+          "max_penetration_BB": 0.65894,
+          "parts": [
+            "cutter",
+            "tooth"
+          ],
+          "angle_degrees": 191
+        },
+        "cheek_-1": {
+          "max_penetration_BB": 0.9744,
+          "parts": [
+            "cutter",
+            "tooth"
+          ],
+          "angle_degrees": 268
+        },
+        "lip_return_-1": {
+          "max_penetration_BB": 0.28991,
+          "parts": [
+            "cutter",
+            "tooth"
+          ],
+          "angle_degrees": 113
+        }
+      },
+      "right_cutters": {
+        "baffle": {
+          "max_penetration_BB": 1.75068,
+          "parts": [
+            "shaft"
+          ],
+          "angle_degrees": 0
+        },
+        "apron_course_7": {
+          "max_penetration_BB": 0.00888,
+          "parts": [
+            "shaft"
+          ],
+          "angle_degrees": 0
+        },
+        "rolled_front_lip": {
+          "max_penetration_BB": 0.06795,
+          "parts": [
+            "shaft"
+          ],
+          "angle_degrees": 180
+        },
+        "trough_floor": {
+          "max_penetration_BB": 0.65706,
+          "parts": [
+            "cutter",
+            "tooth"
+          ],
+          "angle_degrees": 166
+        },
+        "cheek_1": {
+          "max_penetration_BB": 0.97222,
+          "parts": [
+            "cutter",
+            "tooth"
+          ],
+          "angle_degrees": 244
+        },
+        "lip_return_1": {
+          "max_penetration_BB": 0.29551,
+          "parts": [
+            "cutter",
+            "tooth"
+          ],
+          "angle_degrees": 88
+        }
+      }
+    },
+    "rotor_to_rotor_envelope_gap_BB": 0.61225
+  },
+  "minecraft_runtime_tested": false
+}

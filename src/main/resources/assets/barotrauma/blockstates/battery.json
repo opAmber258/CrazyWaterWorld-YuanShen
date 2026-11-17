@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north,charge=0": { "model": "barotrauma:block/battery" },
+    "facing=north,charge=1": { "model": "barotrauma:block/battery" },
+    "facing=north,charge=2": { "model": "barotrauma:block/battery" },
+    "facing=north,charge=3": { "model": "barotrauma:block/battery" },
+    "facing=east,charge=0": { "model": "barotrauma:block/battery" },
+    "facing=east,charge=1": { "model": "barotrauma:block/battery" },
+    "facing=east,charge=2": { "model": "barotrauma:block/battery" },
+    "facing=east,charge=3": { "model": "barotrauma:block/battery" },
+    "facing=south,charge=0": { "model": "barotrauma:block/battery" },
+    "facing=south,charge=1": { "model": "barotrauma:block/battery" },
+    "facing=south,charge=2": { "model": "barotrauma:block/battery" },
+    "facing=south,charge=3": { "model": "barotrauma:block/battery" },
+    "facing=west,charge=0": { "model": "barotrauma:block/battery" },
+    "facing=west,charge=1": { "model": "barotrauma:block/battery" },
+    "facing=west,charge=2": { "model": "barotrauma:block/battery" },
+    "facing=west,charge=3": { "model": "barotrauma:block/battery" }
+  }
+}

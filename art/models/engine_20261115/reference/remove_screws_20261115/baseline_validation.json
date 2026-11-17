@@ -1,0 +1,214 @@
+{
+  "asset": "引擎 Engine",
+  "identifier": "geometry.engine",
+  "date": "2026-11-15",
+  "creation_source": "人工 + AI（TakaraMiyuki + Codex / GPT-6）",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6 (Codex)",
+        "tool": "Blockbench 5.2.2 / MCP / Python / Pillow",
+        "role": "实体检修板、独立垫片与开槽螺钉，纹理清理和原生导出检查"
+      }
+    ],
+    "division": "保留人工调整后的180个cube、原骨骼、UV和动画；本轮增补248个cube和19个静态分组。"
+  },
+  "status": "complete local revision; awaiting user visual review",
+  "baseline": {
+    "directory": "reference/physical_panels_20261115",
+    "model_sha256": "438b36c931e0bbf4237721d97e7919af68530c7a31ab0581e4e172757a29dc9b"
+  },
+  "metrics": {
+    "cubes": 428,
+    "bones": 37,
+    "declared_faces": 2568,
+    "transformed_bbox": {
+      "min": [
+        -43.30000002384186,
+        0,
+        -17.549999237060547
+      ],
+      "max": [
+        43.150000000596044,
+        43.99999995231629,
+        18.599999952316285
+      ],
+      "size": [
+        86.45000002443791,
+        43.99999995231629,
+        36.14999918937683
+      ]
+    },
+    "size_blocks": [
+      5.4031250015273695,
+      2.749999997019768,
+      2.2593749493360518
+    ],
+    "logical_uv_size": [
+      256,
+      256
+    ],
+    "physical_png_size": [
+      512,
+      512
+    ],
+    "new_cover_assemblies": 17,
+    "new_cover_cubes": 20,
+    "independent_fasteners": 76
+  },
+  "checks": {
+    "original_cube_uv_bone_and_animation_preserved": true,
+    "embedded_external_texture_match": true,
+    "original_texture_preserved_outside_cleanup": true,
+    "native_roundtrip": {
+      "blockbench_version": "5.2.2",
+      "reopened_project_geometry_match": true,
+      "reopened_project_animation_match": true,
+      "geo_import_reexport_match": true,
+      "animation_import_reexport_match": true,
+      "imported_cubes": 428,
+      "imported_bones": 37,
+      "imported_clips": [
+        "animation.engine.rotor_spin",
+        "animation.engine.pistons",
+        "animation.engine.running"
+      ],
+      "bbox": {
+        "min": [
+          -43.30000002384186,
+          0,
+          -17.549999237060547
+        ],
+        "max": [
+          43.150000000596044,
+          43.99999995231629,
+          18.599999952316285
+        ],
+        "size": [
+          86.45000002443791,
+          43.99999995231629,
+          36.14999918937683
+        ]
+      }
+    },
+    "sampled_added_part_motion_clearance": {
+      "method": "Native mesh OBB separating-axis tests; 60 samples across the 2.4 second combined loop",
+      "added_static_cubes": 248,
+      "moving_original_cubes": 37,
+      "tested_pairs": 527496,
+      "intersections": [],
+      "limitation": "Sampled mesh check, not continuous collision or Minecraft validation"
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "previews": {
+    "front": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        191,
+        1109,
+        709
+      ]
+    },
+    "back": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        91,
+        191,
+        1109,
+        709
+      ]
+    },
+    "side": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        286,
+        68,
+        914,
+        832
+      ]
+    },
+    "oblique": {
+      "size": [
+        1200,
+        900
+      ],
+      "alpha_bbox": [
+        120,
+        195,
+        975,
+        780
+      ]
+    },
+    "running": {
+      "size": [
+        960,
+        720
+      ],
+      "frames": 60,
+      "loop": true
+    },
+    "rotor": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 20,
+      "loop": true
+    },
+    "pistons": {
+      "size": [
+        600,
+        600
+      ],
+      "frames": 30,
+      "loop": true
+    }
+  },
+  "notes": [
+    "Original 180 cubes, 18 bone definitions, face UVs, memberships and all three animation clips are unchanged.",
+    "17 new cover assemblies use 20 cubes, including four strips around the shaft opening; two existing rear covers are reused.",
+    "76 fasteners each have one washer and two head halves separated by a real 0.12-BB slot.",
+    "New skin UVs intentionally reuse host face subregions; fasteners share constant-color patches. These overlaps are intentional.",
+    "The user-authored 256 logical UV / 512 physical PNG relationship is preserved."
+  ],
+  "runtime_verified": false,
+  "not_tested": [
+    "Minecraft runtime rendering, animation controllers, placement/collision, propulsion/interactions and performance"
+  ],
+  "publishing": {
+    "committed": false,
+    "pushed": false,
+    "discussion_updated": false
+  },
+  "files_sha256": {
+    "engine.animation.json": "87d0312846254d0ff795108c4e7aa82a01d575e20d387a19a48447064566be1c",
+    "engine.bbmodel": "98a353a7d4ee2bb05258e5d8f978723ca64b5b6cb0e81eb4773db18e9d0dc8c8",
+    "engine.geo.json": "1e353ec4e4bea19113ff51be854d25c0002b7ebd3cec542fcf4b7f5f0ec9422d",
+    "engine_tex.png": "087aa8e171037aa7d24783c7d63c085be257d6a8a77f574a802a3a79aaa6a454",
+    "preview_back.png": "aa54654a5c324713e79354bc8645a3e8dd3dcd9d1f92a18918c8ed6ba686e24e",
+    "preview_front.png": "4b607ebb159f226801a1ea35c2104e01fe5e677fdace1a04702b6932daae5faf",
+    "preview_oblique.png": "587de7767d9bc3e4747983b3191f66eec289c34c7245fb1edd402c2a35819617",
+    "preview_pistons.gif": "4846b4ac74aab030d638b75623d1f99b65154dfdc3bb5af7a427ff628cf4b746",
+    "preview_rotor.gif": "0b4a3b0e40d937b893e97bf731a71e3aff1dc56335ee7ecec2fdf73710dc3071",
+    "preview_running.gif": "f35ff3cb65fd44feab733b71ff293835e20612e593a2cee4f600bbdec33dac9d",
+    "preview_side.png": "96a80ef23290a8abf790ca57cd286db65fd2d5f7fd76d5c99a17af3a63ae1991",
+    "README.md": "ef433b0ac0cae5bf5eff0171fd3b9b8c28a1b0a154376398450accf805291320",
+    "structure_audit.json": "ab94de47df85882ab87c69fab84bf616a6c3d54d46c3b103ceedf0f57275a7b6"
+  },
+  "boundary": "已在 Blockbench 原生渲染并导出核验，未进入 Minecraft 验证。"
+}

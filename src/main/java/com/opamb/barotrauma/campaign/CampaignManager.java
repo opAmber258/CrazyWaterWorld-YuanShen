@@ -62,6 +62,26 @@ public final class CampaignManager {
         // 1) 出发站 = 船现在停靠的站（第一次是主站，之后是本轮站立在副本顶部）。
         //    离站前把对接口舱口都关上，否则装成物理船后艇顶是个洞。
         com.opamb.barotrauma.world.DockingBay.Site originSite = currentSite(deep, state);
+        // 商店"送至潜艇"的订购货：离港装配前送进潜艇货柜（原作在起航时交付）。
+        // 显式传深海维度 + 这艘船的核心，不能靠乘员当前所在的位置猜。
+        BlockPos originCore = starterCorePos(deep, originSite);
+        BlockPos deliveryAnchor = originCore != null ? originCore
+                : new BlockPos(originSite.x(), MissionInstance.ANCHOR_Y, originSite.z());
+        // 从无人航路点直接续航时船还是物理船，世界里没有方块核心：用船坞里的
+        // 核心坐标，shipContainers 才会按物理船几何扫货柜；否则货柜扫不到，
+        // "送至潜艇"的货会一直留在待交付列表（背包满时尤其明显）。
+        if (VsState.active() && com.opamb.barotrauma.ship.vs.VsPilot.activeLevel() == deep) {
+            BlockPos assemblyCore = com.opamb.barotrauma.ship.vs.VsPilot.corePos();
+            BlockPos yardCore = assemblyCore == null ? null
+                    : com.opamb.barotrauma.ship.vs.VsPilot.toYard(assemblyCore);
+            if (yardCore != null) {
+                deliveryAnchor = yardCore;
+            }
+        }
+        // 按待交付订单的 UUID 遍历（含已下线的玩家）：下单后退出的人也要把货送进船柜，
+        // 只有背包回退需要在线玩家对象。
+        com.opamb.barotrauma.station.StoreService.deliverPendingOnDeparture(
+                deep, deliveryAnchor, players);
         com.opamb.barotrauma.world.DockingBay.close(deep);
 
         // 2) 船还是方块就先在出发站装配成 VS2 刚体；已经物理化就跳过。
@@ -82,12 +102,38 @@ public final class CampaignManager {
         MissionInstance.Anchor anchor = MissionInstance.anchorForRound(state.takeInstanceSlot());
         com.opamb.barotrauma.world.DockingBay.Site destSite =
                 new com.opamb.barotrauma.world.DockingBay.Site(anchor.x(), anchor.z());
-        com.opamb.barotrauma.world.DockingBay.Site startSite = MissionInstance.startSite(anchor);
         MapNode originNode = CampaignMap.node(state.currentNode());
         MapNode destNode = CampaignMap.node(destination);
+        // 关卡类型：第一趟 tutorial；之后按目的节点深度 + 已完成出航数选 basic/advanced/maze。
+        // 必须在 startSite / stationExists / preload 之前写入静态配置，否则新区块会按旧地形生成。
+        int levelDifficulty = com.opamb.barotrauma.world.level.LevelSelector.difficulty(
+                destNode == null ? -62 : destNode.anchor().getY(), state.roundsCompleted());
+        long levelSeed = com.opamb.barotrauma.world.level.LevelSelector.levelSeed(
+                deep.getSeed(), anchor.slot());
+        com.opamb.barotrauma.world.level.LevelType levelType =
+                com.opamb.barotrauma.world.level.LevelSelector.connectionType(
+                        state.roundsCompleted() == 0, levelDifficulty, levelSeed);
+        com.opamb.barotrauma.world.level.LevelParams levelParams = levelType.params();
+        MissionInstance.RouteLevel routeLevel = new MissionInstance.RouteLevel(
+                anchor.slot(), levelType, levelSeed, levelDifficulty,
+                levelParams.routeLength(), anchor.x());
+        com.opamb.barotrauma.world.DockingBay.Site startSite =
+                MissionInstance.startSite(anchor, levelParams.routeLength());
         boolean startHasOutpost = originNode != null && originNode.type() == NodeType.OUTPOST;
         boolean endHasOutpost = destNode != null && destNode.type() == NodeType.OUTPOST;
-        MissionInstance.setRouteOutposts(anchor.slot(), startHasOutpost, endHasOutpost);
+        // 关卡配置和哨站标记必须原子发布：新区块可能在下一 tick 就开始生成。
+        MissionInstance.publishRoute(routeLevel, anchor.slot(), startHasOutpost, endHasOutpost);
+        BarotraumaMod.LOGGER.info("[level] slot={} type={} difficulty={} route={} start=({},{})",
+                anchor.slot(), levelType.id(), levelDifficulty, levelParams.routeLength(),
+                startSite.x(), startSite.z());
+        com.opamb.barotrauma.world.RoutePath path = MissionInstance.activePath();
+        if (path != null) {
+            com.opamb.barotrauma.world.RoutePath.Point mid = path.pointAt(0.5D);
+            BarotraumaMod.LOGGER.info("[level] 主航道中段=({},{},{}) 洞窟半宽={} 半高={} 侧洞环={} 洞室={}",
+                    Math.round(mid.x()), Math.round(mid.y()), Math.round(mid.z()),
+                    Math.round(mid.halfWidth()), Math.round(mid.halfHeight()),
+                    path.branches().size(), path.chambers().size());
+        }
 
         // 旧存档里出发站那片区块已经生成过，不会再有世界生成的站：退回旧行为
         // （目的站正下方），至少不会把船塞进岩石。新世界才会是完整的关卡。
@@ -95,9 +141,8 @@ public final class CampaignManager {
         if (startHasOutpost && !hasStartStation) {
             BarotraumaMod.LOGGER.warn("[campaign] 出发站未生成（旧存档）：退回目的站正下方");
         }
-        // 船放在出发站正下方的水里；无人航路点出发时这里就是开阔水域。
-        // 注意：目的也是无人航路点时不能落在目的坐标上，否则靠近判定会立刻结算，
-        // 玩家不用航行就完成本轮（审查意见）。这种组合仍放在出发位置。
+        // 出发站有哨站但未生成时（旧存档），退回目的站正下方，避免把船放进岩石。
+        // 目的站无哨站时仍放在出发站正下方。
         Vec3 start;
         if (hasStartStation || !endHasOutpost) {
             start = new Vec3(startSite.x() + 0.5D, anchor.y(), startSite.z() + 0.5D);
@@ -145,6 +190,8 @@ public final class CampaignManager {
         com.opamb.barotrauma.data.MissionSavedData.get(deep).endVisit(origin);
         state.beginTravel(destination, deep.getGameTime(), startHasOutpost, endHasOutpost);
         state.setInstance(anchor.x(), anchor.y(), anchor.z());
+        state.round().setLevel(levelType.id(), levelSeed, levelDifficulty,
+                levelParams.routeLength(), MissionInstance.SPACING);
         for (int i = 0; i < players.size(); i++) {
             ServerPlayer online = players.get(i);
             Vec3 pos = positions.get(i);
@@ -159,6 +206,9 @@ public final class CampaignManager {
         // 早于传送会把箱子落在出发站（用户实测“三箱货不知道放哪去了”）。
         if (!booked.isEmpty()) {
             com.opamb.barotrauma.mission.MissionNpc.accept(player, origin, destination, booked);
+            // 采矿任务：照原作在下潜时沿主航道岩壁放矿脉（旧存档的区块不会重生成，
+            // 只靠世界生成会出现"地图上没有矿点"）。
+            com.opamb.barotrauma.world.MineralVeins.spawnForTravel(deep, anchor, startSite, booked);
         }
         syncAll(player.server);
         return true;
@@ -285,6 +335,33 @@ public final class CampaignManager {
     }
 
     /**
+     * 把 RoundState 里的关卡配置重放回 {@code MissionInstance} 静态桥。
+     *
+     * <p>读档、每 tick、服务器启动都走这里：槽位换算/距离回退/哨站标记只有一份规则。
+     * 旧存档的槽位间距和锚点以保存值为准。</p>
+     */
+    public static void restoreRoute(RoundState round) {
+        if (!round.hasInstance()) {
+            MissionInstance.publishRoute(null, Integer.MIN_VALUE, true, true);
+            return;
+        }
+        int slot = MissionInstance.slotForX(round.instanceX(), round.levelSpacing());
+        MissionInstance.RouteLevel level = MissionInstance.routeLevel();
+        if (level == null || level.slot() != slot || level.anchorX() != round.instanceX()) {
+            com.opamb.barotrauma.world.level.LevelType type =
+                    com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
+            com.opamb.barotrauma.world.level.LevelParams params = type.params();
+            int distance = round.levelDistance() > 0 ? round.levelDistance() : params.routeLength();
+            level = new MissionInstance.RouteLevel(
+                    slot, type, round.levelSeed(), round.levelDifficulty(), distance,
+                    round.instanceX());
+        }
+        // AT_NODE 也恢复哨站标记：routeSlot 不随存档保存，重启后默认 true 会在无人航路点建站。
+        // 关卡配置与标记一次写锁发布，生成线程不会读到"新关卡 + 旧 routeSlot"。
+        MissionInstance.publishRoute(level, slot, round.startHasOutpost(), round.endHasOutpost());
+    }
+
+    /**
      * 每 server tick：无人航路点目的地没有站，靠近目的坐标就算抵达
      * （原作无人地点的 AtEndExit 近似）。有目的站时仍由靠泊触发。
      */
@@ -295,13 +372,15 @@ public final class CampaignManager {
         }
         CampaignState state = CampaignState.wallet(deep);
         var round = state.round();
-        if (round.phase() != RoundPhase.DIVING || !round.hasInstance()) {
+        // 读档后静态关卡配置可能没设上：从 RoundState 重放（必须在新区块生成前）。
+        // 到达站后（AT_NODE）也要恢复：站体和码头竖井依赖关卡剖面，不能退回全局地形。
+        restoreRoute(round);
+        if (!round.hasInstance()) {
             return;
         }
-        // 中途生成的新区块也要按本轮站点类型来（读档后静态标记可能没设上）
-        int slot = Math.max(0, Math.round((round.instanceX() - MissionInstance.BASE_X)
-                / (float) MissionInstance.SPACING));
-        MissionInstance.setRouteOutposts(slot, round.startHasOutpost(), round.endHasOutpost());
+        if (round.phase() != RoundPhase.DIVING) {
+            return;
+        }
         if (round.endHasOutpost()) {
             return; // 有目的站：靠泊由 VsPilot.dock → onDocked 触发
         }
@@ -435,6 +514,19 @@ public final class CampaignManager {
                     ok = consumeBlackBox(player);
                     payout = mission.reward;
                     detail = "黑匣子";
+                } else if (mission.type == com.opamb.barotrauma.mission.MissionType.MINERAL) {
+                    int have = com.opamb.barotrauma.mission.MissionProgress.countMineral(
+                            player, mission.mineralItem());
+                    int need = mission.mineralCount();
+                    ok = need > 0 && have >= need;
+                    payout = mission.reward;
+                    detail = com.opamb.barotrauma.mission.MissionProgress.mineralName(
+                            mission.mineralItem()) + " " + have + "/" + need;
+                    if (ok) {
+                        // 原作 resourceHandoverAmount：只上交 25%，剩下的自己留着。
+                        com.opamb.barotrauma.mission.MissionProgress.consumeMineral(
+                                player, mission.mineralItem(), mission.mineralHandoverCount());
+                    }
                 } else {
                     // 侦察：途中到过目标点就是 READY。
                     ok = mission.state() == com.opamb.barotrauma.mission.Mission.State.READY;
@@ -445,7 +537,7 @@ public final class CampaignManager {
                     wallet.addCredits(payout);
                     data.finish(player.getUUID(), mission);
                     player.sendSystemMessage(Component.literal(
-                            "任务 #" + mission.id + " 完成！" + detail + " · +" + payout + " mk")
+                            "任务 #" + mission.id + " 完成！" + detail + " · +" + payout + " 马克")
                             .withStyle(net.minecraft.ChatFormatting.GREEN));
                 } else {
                     data.failMission(mission);
@@ -482,6 +574,11 @@ public final class CampaignManager {
             ok = false;
             payout = 0;
             detail = "黑匣子（持有者离线，无法核对）";
+        } else if (mission.type == com.opamb.barotrauma.mission.MissionType.MINERAL) {
+            ok = false;
+            payout = 0;
+            detail = com.opamb.barotrauma.mission.MissionProgress.mineralName(
+                    mission.mineralItem()) + "（持有者离线，无法核对）";
         } else {
             ok = mission.state() == com.opamb.barotrauma.mission.Mission.State.READY;
             payout = mission.reward;

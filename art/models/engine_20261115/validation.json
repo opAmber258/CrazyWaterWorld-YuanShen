@@ -1,0 +1,156 @@
+{
+  "asset_id": "engine",
+  "display_name_zh": "引擎",
+  "display_name_en": "Engine",
+  "contributors": {
+    "human": [
+      "TakaraMiyuki"
+    ],
+    "ai": [
+      {
+        "name": "GPT-6",
+        "tool": "Codex / Blockbench 5.2.2 / Python / Pillow",
+        "role": "表面细化与实体检修板、双活塞与转子动画轨道、播放顺序修订、原生导出与预览重出"
+      }
+    ],
+    "division": "TakaraMiyuki 完成主体模型、UV 重排、贴图微调，并在 2026-11-15 手改候选 C 作为本版基线；AI 在人工基线上补充表面细节、实体检修板与双活塞，生成三条动画，并在删除螺钉修订后重出导出、预览与动图。"
+  },
+  "sources": {
+    "zh": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml 的 entityname.engine = 引擎",
+    "en": "Content/Texts/English/EnglishVanilla.xml 的 entityname.engine = Engine"
+  },
+  "schema_version": 2,
+  "creation_source": "人工 + AI（TakaraMiyuki + GPT-6）",
+  "acceptance": {
+    "native_reexport": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + Blockbench MCP 1.10.1",
+      "note": "在 Blockbench 5.2.2 中重新打开 art/models/engine_20261115/engine.bbmodel，读到 200 cubes / 35 groups / 3 条动画 / 1 张 512² 内嵌贴图；用原生 Codecs.bedrock.compile 重出 engine.geo.json，与仓库文件逐字节相同（69522 B）；原生 compileBedrockAnimation 重出的 engine.animation.json 与仓库文件 JSON 语义一致。包围盒由 Blockbench 原生世界变换测得。",
+      "at": "2026-11-15T16:27:13.356858+00:00",
+      "inputs": {
+        "geometry": "3393f6e4c2f7e4d461844943e468d8a4832fb46df1499b1d9448c485fab482e1"
+      },
+      "details": {
+        "comparison": "equal",
+        "bounds": {
+          "min": [
+            -43.30000002384186,
+            0.0,
+            -17.549999237060547
+          ],
+          "max": [
+            42.735,
+            43.99999995231629,
+            18.599999952316285
+          ],
+          "unit": "bb_unit"
+        },
+        "blockbench_version": "5.2.2",
+        "reopened_cubes": 200,
+        "reopened_groups": 35,
+        "reexported_geo_bytes": 69522,
+        "reexported_geo_byte_identical": true,
+        "reexported_animation_json_equal": true,
+        "clips": [
+          "animation.engine.running",
+          "animation.engine.rotor_spin",
+          "animation.engine.pistons"
+        ]
+      }
+    },
+    "editor_reopen": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + Blockbench MCP 1.10.1",
+      "note": "已用 Blockbench 5.2.2 实际重新打开该 .bbmodel：读到 200 cubes / 35 groups、3 条动画（running 2.4s / rotor_spin 0.8s / pistons 1.2s）、1 张 512×512 内嵌贴图（逻辑 UV 256×256），无载入报错；工程 save_path 指向本目录，贴图 source 为内嵌 PNG。",
+      "at": "2026-11-15T16:27:18.806603+00:00",
+      "inputs": {
+        "geometry": "3393f6e4c2f7e4d461844943e468d8a4832fb46df1499b1d9448c485fab482e1",
+        "textures": "fca6357c051366702fa9cf2748947a865f498be9f418d064c262e5f6749f0153"
+      }
+    },
+    "visual_preview": {
+      "result": "passed",
+      "by": "ZCode Agent (workbuddy-wbk / deepseek-v4.1-flash)",
+      "tool": "Blockbench 5.2.2 + Blockbench MCP 1.10.1",
+      "note": "逐张核对四向预览与当前几何：正视为三联百叶+三块仪表+电控面板，背视为双检修板与侧置设备舱，侧视为八角推进罩+四叶转子，斜视为整体透视；均为 1200×900 RGBA 透明底、无网格无 UI，投影方式应为前三者正交、斜视透视。几何自 23:41 出预览后未变（engine.geo.json 与冻结基线 sha256 相同）。",
+      "at": "2026-11-15T16:27:23.545225+00:00",
+      "inputs": {
+        "geometry": "3393f6e4c2f7e4d461844943e468d8a4832fb46df1499b1d9448c485fab482e1",
+        "textures": "fca6357c051366702fa9cf2748947a865f498be9f418d064c262e5f6749f0153",
+        "previews": "69d2c322edc0bcbab8bd612100ec6b154429416648c058852ecdbe10f210d41d"
+      }
+    }
+  },
+  "inputs": {
+    "geometry": "3393f6e4c2f7e4d461844943e468d8a4832fb46df1499b1d9448c485fab482e1",
+    "textures": "fca6357c051366702fa9cf2748947a865f498be9f418d064c262e5f6749f0153",
+    "previews": "69d2c322edc0bcbab8bd612100ec6b154429416648c058852ecdbe10f210d41d"
+  },
+  "measurements": {
+    "projects": [
+      {
+        "path": "engine.bbmodel",
+        "format": "bedrock",
+        "cubes": 200,
+        "meshes": 0,
+        "groups": 35
+      }
+    ],
+    "exports": [
+      {
+        "path": "engine.geo.json",
+        "identifier": "geometry.engine",
+        "bones": 35,
+        "cubes": 200
+      }
+    ],
+    "java_exports": [],
+    "textures": [
+      {
+        "path": "engine_tex.png",
+        "width": 512,
+        "height": 512,
+        "mode": "RGBA"
+      }
+    ],
+    "previews": [
+      {
+        "path": "preview_back.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_front.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_oblique.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_side.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      }
+    ]
+  },
+  "checks": {
+    "editor_reopen": "passed",
+    "native_reexport": "passed",
+    "visual_preview": "passed"
+  },
+  "status": "complete",
+  "unresolved": [],
+  "validator": {
+    "version": 2,
+    "sha256": "030083f30e86fbde97f34f8f7892ba535c1af436d39fe93a1454dee4ff8b7206"
+  }
+}

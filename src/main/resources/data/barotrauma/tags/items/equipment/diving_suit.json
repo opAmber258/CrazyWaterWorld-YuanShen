@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "barotrauma:diving_suit"
+    "barotrauma:diving_suit",
+    "barotrauma:glass_diving_suit"
   ]
 }

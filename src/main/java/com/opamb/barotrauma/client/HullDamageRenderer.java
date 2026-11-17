@@ -172,22 +172,36 @@ public final class HullDamageRenderer {
         Camera camera = event.getCamera();
         Vec3 cameraPos = camera.getPosition();
         ShipMapping mapping = resolveMapping(level, data);
+        // 矿脉的切割进度条和船壳血条共用同一套 billboard 渲染，但不依赖船壳映射：
+        // 映射失败时船壳血条/裂痕画不了，矿脉进度条仍要照常显示。
+        List<Target> veinBars = MineralVeinClient.bars(cameraPos);
         if (mapping == null) {
+            if (!veinBars.isEmpty()) {
+                PoseStack pose = event.getPoseStack();
+                drawBars(mc, camera, pose.last().pose(), veinBars, cameraPos);
+            }
             return;
         }
         List<Target> targets = targets(cameraPos, mapping.toWorld());
-        if (targets.isEmpty()) {
-            return;
-        }
+        // 裂痕/漏水每帧都要处理，先单独按距离截断；血条再和矿脉进度条合并后二次截断。
         if (targets.size() > MAX_BARS) {
             targets.sort(Comparator.comparingDouble(Target::distance));
             targets = targets.subList(0, MAX_BARS);
+        }
+        if (targets.isEmpty() && veinBars.isEmpty()) {
+            return;
+        }
+        List<Target> bars = new ArrayList<>(targets);
+        bars.addAll(veinBars);
+        if (bars.size() > MAX_BARS) {
+            bars.sort(Comparator.comparingDouble(Target::distance));
+            bars = bars.subList(0, MAX_BARS);
         }
         PoseStack pose = event.getPoseStack();
         Matrix4f matrix = pose.last().pose();
 
         drawCracks(mc, level, matrix, targets, mapping, cameraPos);
-        drawBars(mc, camera, matrix, targets, cameraPos);
+        drawBars(mc, camera, matrix, bars, cameraPos);
         spawnLeakParticles(level, targets, cameraPos, mapping);
     }
 

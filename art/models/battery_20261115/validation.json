@@ -1,0 +1,195 @@
+{
+  "asset": "battery",
+  "identifier": "battery",
+  "date": "2026-11-15",
+  "status": "complete",
+  "status_reason": "美术侧交付齐备（java_block 口径：bbmodel + 贴图 + 四向预览 + 说明文件，另附电量屏四状态贴图）。Java 方块模型 JSON 因 67.5° 旋转超出 1.20.1 原版限制而未随附，见 limitations。",
+  "creation_source": "人工（Han-xing-official）",
+  "contributors": {
+    "human": [
+      "Han-xing-official"
+    ],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线渲染校验、贴图状态提取、文档与登记起草；未参与几何、UV、贴图、预览制作"
+      }
+    ],
+    "division": "几何、UV、贴图绘制（含四个电量状态）、预览截图全部人工完成；AI 仅做交付打包、图层提取与离线校验。"
+  },
+  "display_name_zh": "电池（设备）",
+  "display_name_en": "Battery",
+  "prototyping_note": "原型为原版墙体蓄电设备，官方简中名以「（设备）」与手持电池消歧义（灰机 wiki 引用官方描述）；与手持电池（battery cell）、充电坞站（Charging Dock）明确区分。本机无游戏目录，未直接核验 entityname.battery XML，评选前可复核。",
+  "production": {
+    "model_format": "java_block",
+    "bbmodel_format_version": "5.0",
+    "blockbench": "5.x（作者 2026-11-15 在 5.x 中重开编辑并保存）",
+    "textures_embedded": true,
+    "registered_type": "方块（java 方块模型路线）"
+  },
+  "counts": {
+    "cubes": 17,
+    "declared_faces": 102,
+    "groups": 6,
+    "bones": 0,
+    "animations": 0,
+    "hidden_elements": 0,
+    "rotated_cubes": 5
+  },
+  "bounds_blockbench_units": {
+    "min": [
+      3,
+      0,
+      9.999
+    ],
+    "max": [
+      13,
+      15.5,
+      16
+    ],
+    "size": [
+      10.0,
+      15.5,
+      6.001
+    ]
+  },
+  "dimensions_blocks_at_16_units_per_block": [
+    0.625,
+    0.969,
+    0.375
+  ],
+  "cost": {
+    "texture": "64x64 RGBA",
+    "texture_pixels": 4096,
+    "transparent_pixels": 3144,
+    "texture_states": 4
+  },
+  "checks": [
+    {
+      "name": "naming_convention",
+      "pass": true,
+      "detail": "battery = 电池（设备）Battery；标识 battery；目录 battery_20261115。"
+    },
+    {
+      "name": "deliverable_set",
+      "pass": true,
+      "detail": "java_block 口径：bbmodel + _tex.png + 四向预览 + README/validation/structure_audit + reference（校验脚本 + 四状态贴图）。"
+    },
+    {
+      "name": "preview_geometry_consistency",
+      "pass": true,
+      "detail": "离线渲染器（ZYX 欧拉序）复算包围盒并渲染比对预览轮廓；主贴图为满电状态，与预览一致。"
+    },
+    {
+      "name": "texture_power_of_two",
+      "pass": true,
+      "detail": "64×64，2 的幂。"
+    },
+    {
+      "name": "texture_true_transparency",
+      "pass": true,
+      "detail": "RGBA8，透明像素 alpha=0（3144/4096）。"
+    },
+    {
+      "name": "texture_matches_embedded",
+      "pass": true,
+      "detail": "battery_tex.png 与 bbmodel 内嵌贴图逐字节一致（= 满电图层）。"
+    },
+    {
+      "name": "texture_states_extracted",
+      "pass": true,
+      "detail": "工程 4 个贴图图层对应电量屏 4 状态（满/半/低/空）；3 个备用状态提取至 reference/screen_states/ 为完整 64×64 贴图；与主贴图的实际像素差异仅屏面 UV 区 6 px（其余 ≤8 px 为图层合成舍入噪声 Δ≤7）。"
+    },
+    {
+      "name": "preview_dimensions",
+      "pass": true,
+      "detail": "4 张预览均 1200×900，纯黑底、无网格无 UI。"
+    },
+    {
+      "name": "no_hidden_geometry",
+      "pass": true,
+      "detail": "0 个隐藏元素、0 个隐藏分组。"
+    },
+    {
+      "name": "no_unused_cubes",
+      "pass": true,
+      "detail": "17 个 cube 全部参与几何。"
+    },
+    {
+      "name": "bbmodel_reopens",
+      "pass": true,
+      "detail": "作者于 2026-11-15 在 Blockbench 5.x 中重开编辑并保存。"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    {
+      "code": "ROTATION_OVER_LIMIT",
+      "detail": "3 个插口端子为 [67.5,0,0] 单轴旋转，超出 1.20.1 原版 Java 模型 JSON 角度限制（±22.5°/±45°）；另 2 个 ±45° 旋转合法。接入前需集成侧确认目标格式。"
+    },
+    {
+      "code": "ZERO_THICKNESS_PLANE",
+      "detail": "电量屏为零厚度面片（2×3×0，位于主体前表面外 0.001 单位）。"
+    },
+    {
+      "code": "TEXTURE_STATE_NOISE",
+      "detail": "四状态贴图在屏面 UV 区外存在 ≤8 px 的图层合成舍入差异（Δ≤7，不可见）。"
+    },
+    {
+      "code": "INFORMAL_NAMES",
+      "detail": "元素/分组命名含随意中文名与一个长备注名（!!!屏幕…），均为参与几何的正式对象，不影响导出。"
+    }
+  ],
+  "previews": {
+    "method": "作者在 Blockbench 视口手动截图导出（约定 3.3 交互环境例外）；reference/ 内脚本为交付后自建校验工具，不用于产出预览",
+    "files": [
+      {
+        "file": "preview_front.png",
+        "view": "正视（屏幕面，−Z 北向）",
+        "size": [
+          1200,
+          900
+        ]
+      },
+      {
+        "file": "preview_back.png",
+        "view": "背视（+Z 南向）",
+        "size": [
+          1200,
+          900
+        ]
+      },
+      {
+        "file": "preview_side.png",
+        "view": "侧视（正交）",
+        "size": [
+          1200,
+          900
+        ]
+      },
+      {
+        "file": "preview_oblique.png",
+        "view": "斜视（透视）",
+        "size": [
+          1200,
+          900
+        ]
+      }
+    ]
+  },
+  "runtime": {
+    "integrated": true,
+    "in_game_verified": false,
+    "note": "已生成 battery.geo.json 并注册 barotrauma:battery（按方块电量切换四段贴图）；游戏内验收状态单独保留，尚未登记通过。"
+  },
+  "limitations": [
+    "Java 方块模型 JSON 未随附：3 个插口端子 67.5° 旋转超出 1.20.1 原版 JSON 表达范围，待集成侧确认目标格式后用 Blockbench 原生导出。",
+    "电量屏四状态的切换方式（blockstate 方案）由集成侧实现；美术侧已备齐全部状态贴图。",
+    "无动画；无 display 设置（方块渲染不需要）。"
+  ],
+  "manual_acceptance": {
+    "bbmodel_reopens": "pass — 作者当晚在 Blockbench 5.x 重开、编辑并保存工程",
+    "notes": "离线渲染器比对结论与作者预览一致；如需人工复核可运行 reference/ 内脚本。"
+  }
+}

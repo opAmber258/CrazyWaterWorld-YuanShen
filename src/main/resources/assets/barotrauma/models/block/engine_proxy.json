@@ -1,6 +1,6 @@
 {
   "textures": {
-    "particle": "minecraft:block/glass"
+    "particle": "barotrauma:block/proxy_invisible"
   },
   "elements": []
 }

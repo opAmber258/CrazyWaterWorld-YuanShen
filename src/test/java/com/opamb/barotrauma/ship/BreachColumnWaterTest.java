@@ -49,7 +49,7 @@ class BreachColumnWaterTest {
         ShipGeometry.Result geometry = new ShipGeometry.Result(
                 List.of(), List.of(pocket), 0, cells.size(),
                 new ShipGeometry.Bounds(-3, -71, 17, 4, -69, 29),
-                Set.of(), List.of());
+                Set.of(), List.of(), Set.of());
         ShipState state = new ShipState(geometry, MachineCount.EMPTY);
         state.addBreaches(breaches);
         return state;
@@ -183,7 +183,7 @@ class BreachColumnWaterTest {
         ShipGeometry.Result geometry = new ShipGeometry.Result(
                 List.of(dryRoom), List.of(pocket), 0, pocketCells.size(),
                 new ShipGeometry.Bounds(-3, -71, 17, 4, -69, 29),
-                Set.of(), List.of());
+                Set.of(), List.of(), Set.of());
         ShipState state = new ShipState(geometry, MachineCount.EMPTY);
         state.addBreaches(List.of(hole));
         fill(state, 1.0D);

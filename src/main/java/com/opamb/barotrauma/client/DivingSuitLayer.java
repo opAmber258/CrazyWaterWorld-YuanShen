@@ -28,7 +28,9 @@ public final class DivingSuitLayer extends RenderLayer<AbstractClientPlayer, Pla
 
     private static DivingSuitArmorRenderer renderer;
     private static DivingSuitItem item;
+    private static DivingSuitItem glassItem;
     private static ItemStack displayStack;
+    private static ItemStack glassDisplayStack;
 
     public DivingSuitLayer(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> parent) {
         super(parent);
@@ -41,17 +43,29 @@ public final class DivingSuitLayer extends RenderLayer<AbstractClientPlayer, Pla
         if (!DivingSuitState.of(player).barotrauma$wearingDivingSuit()) {
             return;
         }
+        boolean glass = DivingSuitState.of(player).barotrauma$wearingGlassDivingSuit();
+        DivingSuitItem worn = glass ? glassItem() : item();
         DivingSuitArmorRenderer armor = renderer();
         net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
         armor.setHeadHidden(minecraft.screen == null
                 && !BaroHud.renderingPortrait()
                 && player == minecraft.player
                 && minecraft.options.getCameraType().isFirstPerson());
-        armor.prepForRender(player, displayStack(), EquipmentSlot.CHEST, getParentModel());
+        armor.prepForRender(player, glass ? glassDisplayStack() : displayStack(),
+                EquipmentSlot.CHEST, getParentModel());
         // 传 null 让 GeckoLib 自己按模型贴图取 RenderType 和顶点缓冲；
         // 整件连体服与槽位无关，骨骼可见性已在渲染器里固定为全开。
         // 参数顺序照 GeckoLib 内部调用：0F、partialTick、packedLight。
-        armor.defaultRender(poseStack, item(), buffer, null, null, 0.0F, partialTick, packedLight);
+        if (glass) {
+            // 透明潜水服：先画壳体（cutout no-cull），再单独画面罩（半透明）。
+            armor.setVisorOnly(false);
+            armor.defaultRender(poseStack, worn, buffer, null, null, 0.0F, partialTick, packedLight);
+            armor.setVisorOnly(true);
+            armor.defaultRender(poseStack, worn, buffer, null, null, 0.0F, partialTick, packedLight);
+            armor.setVisorOnly(false);
+        } else {
+            armor.defaultRender(poseStack, worn, buffer, null, null, 0.0F, partialTick, packedLight);
+        }
     }
 
     /** 首次渲染时才创建：构造器要读客户端的 EntityModelSet，不能在客户端初始化前调用。 */
@@ -69,11 +83,25 @@ public final class DivingSuitLayer extends RenderLayer<AbstractClientPlayer, Pla
         return item;
     }
 
+    private static DivingSuitItem glassItem() {
+        if (glassItem == null) {
+            glassItem = (DivingSuitItem) ModItems.GLASS_DIVING_SUIT.get();
+        }
+        return glassItem;
+    }
+
     /** 几何和贴图与 NBT 无关，一个干净实例就够（内部槽里的氧气瓶不参与渲染）。 */
     private static ItemStack displayStack() {
         if (displayStack == null) {
             displayStack = new ItemStack(item());
         }
         return displayStack;
+    }
+
+    private static ItemStack glassDisplayStack() {
+        if (glassDisplayStack == null) {
+            glassDisplayStack = new ItemStack(glassItem());
+        }
+        return glassDisplayStack;
     }
 }

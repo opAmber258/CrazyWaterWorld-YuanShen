@@ -24,10 +24,17 @@ public final class ModCreativeTabs {
                     .displayItems((params, output) -> {
                         output.accept(ModItems.OXYGEN_TANK.get());
                         output.accept(ModItems.DIVING_SUIT.get());
+                        output.accept(ModItems.GLASS_DIVING_SUIT.get());
                         output.accept(ModItems.DEEP_PERMIT.get());
                         output.accept(ModItems.DIVING_KNIFE.get());
                         output.accept(ModItems.WELDING_TOOL.get());
                         output.accept(ModItems.WELDING_FUEL_TANK.get());
+                        output.accept(ModItems.SCREWDRIVER.get());
+                        output.accept(ModItems.WRENCH.get());
+                        output.accept(ModItems.PLASMA_CUTTER.get());
+                        output.accept(ModItems.QUARTZ_VEIN.get());
+                        output.accept(ModItems.PYROMORPHITE_VEIN.get());
+                        output.accept(ModItems.URANIUM_VEIN.get());
                         output.accept(ModItems.SUBMARINE_PLATING.get());
                         output.accept(ModItems.HULL_GLASS.get());
                         output.accept(ModItems.TEST_HULL.get());
@@ -42,6 +49,11 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.BALLAST_PUMP.get());
                         output.accept(ModItems.REACTOR.get());
                         output.accept(ModItems.ENGINE.get());
+                        output.accept(ModItems.JUNCTION_BOX.get());
+                        output.accept(ModItems.BATTERY.get());
+                        output.accept(ModItems.BATTERY_CELL.get());
+                        output.accept(ModItems.FABRICATOR.get());
+                        output.accept(ModItems.DECONSTRUCTOR.get());
                         output.accept(ModItems.MEDIUM_STEEL_CABINET.get());
                         output.accept(ModItems.MEDIUM_WINDOWED_STEEL_CABINET.get());
                         output.accept(ModItems.CRATE_SHELF.get());
@@ -97,12 +109,14 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.CPU_6700X3D.get());
                         // 克苏鲁的注视：只有一个触发器，预设与弱/中/强档位在面板里选
                         output.accept(ModItems.CTHULHU_TRIGGER.get());
-                        // 舰载炮塔原型：右键进入炮塔视角
+// 舰载炮塔原型：右键进入炮塔视角
                         output.accept(ModItems.TURRET.get());
                         // 自由瞄准炮塔原型：拖动准心引导视角
                         output.accept(ModItems.FREE_AIM_TURRET.get());
                         // 跟随炮塔原型：视角自由，炮塔准心追视角
                         output.accept(ModItems.TRACKING_TURRET.get());
+                        // 耐久调节器：直接推设备耐久，验收修理窗口/损坏状态用
+                        output.accept(ModItems.CONDITION_TOOL.get());
                     })
                     .build());
 

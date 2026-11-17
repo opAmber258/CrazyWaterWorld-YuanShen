@@ -1,0 +1,10 @@
+{
+  "faces": 750,
+  "atlas_overlaps": [],
+  "changed_faces": [
+    "4141f30a-d4b9-4e56-34f0-465ae3f55a0d:south"
+  ],
+  "expected_face": "4141f30a-d4b9-4e56-34f0-465ae3f55a0d:south",
+  "only_one_face_changed": true,
+  "undo_restored_all_face_pixels": true
+}

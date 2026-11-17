@@ -22,10 +22,17 @@ public interface DivingSuitState {
 
     EntityDataAccessor<Boolean> DATA_WEARING =
             SynchedEntityData.defineId(Player.class, EntityDataSerializers.BOOLEAN);
+    /** 穿的是不是透明潜水服（决定客户端用哪套 geo/贴图/渲染类型）。 */
+    EntityDataAccessor<Boolean> DATA_WEARING_GLASS =
+            SynchedEntityData.defineId(Player.class, EntityDataSerializers.BOOLEAN);
 
     boolean barotrauma$wearingDivingSuit();
 
     void barotrauma$setWearingDivingSuit(boolean wearing);
+
+    boolean barotrauma$wearingGlassDivingSuit();
+
+    void barotrauma$setWearingGlassDivingSuit(boolean wearing);
 
     static DivingSuitState of(Player player) {
         return (DivingSuitState) player;

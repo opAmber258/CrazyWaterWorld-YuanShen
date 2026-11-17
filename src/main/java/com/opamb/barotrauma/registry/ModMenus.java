@@ -43,6 +43,32 @@ public final class ModMenus {
                     (id, inv, buf) -> new com.opamb.barotrauma.menu.EngineMenu(id, inv,
                             buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
 
+    /** 电池面板：电量条 + 充电速率滑条 + 耐久。 */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.BatteryMenu>> BATTERY =
+            MENUS.register("battery", () -> IForgeMenuType.create(
+                    com.opamb.barotrauma.menu.BatteryMenu::new));
+
+    /** 加工台：5 进 1 出 + 配方列表。 */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.FabricatorMenu>> FABRICATOR =
+            MENUS.register("fabricator", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> new com.opamb.barotrauma.menu.FabricatorMenu(id, inv,
+                            buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
+
+    /** 解构仪：3 进 5 出 + 拆解进度。 */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.DeconstructorMenu>> DECONSTRUCTOR =
+            MENUS.register("deconstructor", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> new com.opamb.barotrauma.menu.DeconstructorMenu(id, inv,
+                            buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
+
+    /**
+     * 修理窗口（原作 {@code Repairable} 的独立 GUI 帧）：手持工具右键设备时打开，
+     * 和泵/反应堆/引擎/电池/接线盒/声纳/门舱口共用。
+     */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.RepairMenu>> REPAIR =
+            MENUS.register("repair", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> new com.opamb.barotrauma.menu.RepairMenu(id, inv,
+                            buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
+
     /** 潜渊症容器：钢柜/货架/潜水服柜/氧气瓶架共用。 */
     public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.CabinetMenu>> CABINET =
             MENUS.register("cabinet", () -> IForgeMenuType.create(

@@ -1,0 +1,823 @@
+{
+  "errors": [],
+  "default_clip": "animation.engine.running",
+  "playback_speed_percent": 100,
+  "rotor_period_seconds": 0.8,
+  "piston_period_seconds": 1.2,
+  "piston_stroke_bb": 3,
+  "pistons_phase_difference_degrees": 180,
+  "rotor_tolerance_degrees": 0.05,
+  "note": "Near-keyframe samples can snap to the native keyframe within 0.0001 seconds.",
+  "samples": [
+    {
+      "clip": "animation.engine.running",
+      "time": 0,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            12,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 0.15,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 1.1780972450961722
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            11.560660171779821,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9.439339828220179,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 0.3,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 2.356194490192345
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 0.45,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 3.5342917352885173
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            9.439339828220179,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            11.560660171779821,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 0.6,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 4.71238898038469
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            9,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            12,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 0.7999,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 6.283185307179586
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            9.749319928077869,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            11.250680071922131,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 0.8,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 6.283185307179586
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            9.75,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            11.25,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 1.1999,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 9.42477796076938
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            11.999999794383246,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9.000000205616754,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 1.2,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 9.42477796076938
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            12,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 2.3999,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 18.84955592153876
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            11.999999794383246,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9.000000205616754,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.running",
+      "time": 2.4,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 18.84955592153876
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            12,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.rotor_spin",
+      "time": 0,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.rotor_spin",
+      "time": 0.15,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 1.1780972450961722
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.rotor_spin",
+      "time": 0.3,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 2.356194490192345
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.rotor_spin",
+      "time": 0.45,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 3.5342917352885173
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.rotor_spin",
+      "time": 0.6,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 4.71238898038469
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.rotor_spin",
+      "time": 0.7999,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 6.283185307179586
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.rotor_spin",
+      "time": 0.8,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 6.283185307179586
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 0,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            12,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 0.15,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            11.560660171779821,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9.439339828220179,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 0.3,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            10.5,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 0.45,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            9.439339828220179,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            11.560660171779821,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 0.6,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            9,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            12,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 0.7999,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            9.749319928077869,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            11.250680071922131,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 0.8,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            9.75,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            11.25,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 1.1999,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            11.999999794383246,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9.000000205616754,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    },
+    {
+      "clip": "animation.engine.pistons",
+      "time": 1.2,
+      "values": {
+        "rotor": {
+          "world": [
+            -39.6,
+            21,
+            0
+          ],
+          "rotation": 0
+        },
+        "piston_left_moving": {
+          "world": [
+            19.8,
+            12,
+            16.5
+          ],
+          "rotation": 0
+        },
+        "piston_right_moving": {
+          "world": [
+            28.3,
+            9,
+            16.5
+          ],
+          "rotation": 0
+        }
+      }
+    }
+  ]
+}

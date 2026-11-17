@@ -119,16 +119,32 @@ public final class ShipGeometry {
         }
     }
 
-    /** 扫描结果。{@code openPockets} 是连到外海的空腔。 */
+    /**
+     * 扫描结果。{@code openPockets} 是连到外海的空腔。
+     *
+     * @param hull      选中的船壳连通块
+     * @param equipment 船壳包围盒内的独立设备格（接线盒/小型泵等）：它们不参与船壳
+     *                  选择，但仍属于这艘船，见 {@link #owns(BlockPos)}
+     */
     public record Result(List<Compartment> compartments, List<Compartment> openPockets,
                          int hullBlocks, int scannedCells, Bounds bounds, Set<BlockPos> hull,
-                         List<DoorLink> doorLinks) {
+                         List<DoorLink> doorLinks, Set<BlockPos> equipment) {
         public int totalVolume() {
             return compartments.stream().mapToInt(Compartment::volume).sum();
         }
 
         public boolean sealed() {
             return openPockets.isEmpty();
+        }
+
+        /**
+         * 这一格是否属于这艘船：船壳，或船内的独立设备。
+         *
+         * <p>{@code tracksHullBlock()} 用它：独立接线盒/小型泵不和船壳连通，
+         * 不能因此被判成"不是我的船"，否则接线盒不上报、绑定设备断电。</p>
+         */
+        public boolean owns(BlockPos pos) {
+            return hull.contains(pos) || equipment.contains(pos);
         }
 
         /**
@@ -143,13 +159,18 @@ public final class ShipGeometry {
             for (BlockPos pos : hull) {
                 movedHull.add(pos.offset(dx, dy, dz));
             }
+            Set<BlockPos> movedEquipment = new HashSet<>(Math.max(4, equipment.size() * 2));
+            for (BlockPos pos : equipment) {
+                movedEquipment.add(pos.offset(dx, dy, dz));
+            }
             List<DoorLink> movedDoors = new ArrayList<>(doorLinks.size());
             for (DoorLink link : doorLinks) {
                 movedDoors.add(new DoorLink(link.cell().offset(dx, dy, dz),
                         link.body(), link.other(), link.open()));
             }
             return new Result(shift(compartments, dx, dy, dz), shift(openPockets, dx, dy, dz),
-                    hullBlocks, scannedCells, bounds.shifted(dx, dy, dz), movedHull, movedDoors);
+                    hullBlocks, scannedCells, bounds.shifted(dx, dy, dz), movedHull, movedDoors,
+                    movedEquipment);
         }
 
         private static List<Compartment> shift(List<Compartment> source, int dx, int dy, int dz) {
@@ -204,10 +225,21 @@ public final class ShipGeometry {
      */
     public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock,
                                   Probe probe, int padUp, @Nullable Predicate<BlockPos> isShell) {
-        Set<BlockPos> hull = collectHull(core, radius, isShipBlock);
+        return scanShip(core, radius, isShipBlock, probe, padUp, isShell, pos -> false);
+    }
+
+    /**
+     * @param isEquipment 纯设备格：单独成块时不参与"最近船体"选择（接线盒等），
+     *                    但落在船壳包围盒内时仍记进 {@link Result#equipment()}。
+     */
+    public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock,
+                                  Probe probe, int padUp, @Nullable Predicate<BlockPos> isShell,
+                                  Predicate<BlockPos> isEquipment) {
+        HullPick pick = collectHullWithEquipment(core, radius, isShipBlock, isEquipment);
+        Set<BlockPos> hull = pick.hull();
         if (hull.isEmpty()) {
             return new Result(List.of(), List.of(), 0, 0, new Bounds(core.getX(), core.getY(), core.getZ(),
-                    core.getX(), core.getY(), core.getZ()), Set.of(), List.of());
+                    core.getX(), core.getY(), core.getZ()), Set.of(), List.of(), Set.of());
         }
 
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
@@ -276,7 +308,7 @@ public final class ShipGeometry {
         List<DoorLink> doorLinks = collectDoorLinks(doorways, compartments, openPockets, probe,
                 minX, minY, minZ, maxX, maxY, maxZ);
         return new Result(compartments, openPockets, hull.size(), scanned,
-                new Bounds(minX, minY, minZ, maxX, maxY, maxZ), hull, doorLinks);
+                new Bounds(minX, minY, minZ, maxX, maxY, maxZ), hull, doorLinks, pick.equipment());
     }
 
     /** 把被连海空腔占走的门格挪给相邻的密闭舱室（先按邻居找，找不到就留着）。 */
@@ -386,6 +418,34 @@ public final class ShipGeometry {
      * 排除核心自身之后，选中的才是外面那层真正的船壳。</p>
      */
     public static Set<BlockPos> collectHull(BlockPos core, int radius, Predicate<BlockPos> isShipBlock) {
+        return collectHull(core, radius, isShipBlock, pos -> false);
+    }
+
+    /**
+     * @param isEquipment 纯设备格（接线盒等）：自己单独成块时不能抢走"最近船体"的身份；
+     *                    接在船体上时仍然算船体的一部分。
+     */
+    public static Set<BlockPos> collectHull(BlockPos core, int radius,
+                                            Predicate<BlockPos> isShipBlock,
+                                            Predicate<BlockPos> isEquipment) {
+        return collectHullWithEquipment(core, radius, isShipBlock, isEquipment).hull();
+    }
+
+    /** 船壳连通块 + 船内独立设备格（见 {@link Result#owns(BlockPos)}）。 */
+    private record HullPick(Set<BlockPos> hull, Set<BlockPos> equipment) {
+    }
+
+    /**
+     * 选船壳连通块，并把"船内的独立设备"单独收出来。
+     *
+     * <p>设备块（接线盒、小型泵）单独成块时不参与船壳选择，否则离核心更近的
+     * 设备会抢走整艘船的身份；但它们仍然属于这艘船，所以船壳选完之后，把
+     * 落在船壳包围盒内的设备连通块记进 {@code equipment}。只认包围盒内是为了
+     * 排除 24 格扫描半径扫到的站上设备。</p>
+     */
+    private static HullPick collectHullWithEquipment(BlockPos core, int radius,
+                                                     Predicate<BlockPos> isShipBlock,
+                                                     Predicate<BlockPos> isEquipment) {
         Set<BlockPos> shipBlocks = new HashSet<>();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         for (int x = core.getX() - radius; x <= core.getX() + radius; x++) {
@@ -403,10 +463,14 @@ public final class ShipGeometry {
             }
         }
         if (shipBlocks.isEmpty()) {
-            return Set.of();
+            return new HullPick(Set.of(), Set.of());
         }
         Set<BlockPos> best = Set.of();
         double bestDistance = Double.MAX_VALUE;
+        // 全是设备的最小连通块：正常船体一个都没有时才退回它。
+        Set<BlockPos> equipmentOnly = Set.of();
+        double equipmentDistance = Double.MAX_VALUE;
+        List<Set<BlockPos>> equipmentComponents = new ArrayList<>();
         Set<BlockPos> seen = new HashSet<>();
         for (BlockPos start : shipBlocks) {
             if (!seen.add(start)) {
@@ -426,12 +490,51 @@ public final class ShipGeometry {
                     }
                 }
             }
+            boolean onlyEquipment = true;
+            for (BlockPos pos : component) {
+                if (!isEquipment.test(pos)) {
+                    onlyEquipment = false;
+                    break;
+                }
+            }
+            if (onlyEquipment) {
+                equipmentComponents.add(component);
+                if (nearest < equipmentDistance) {
+                    equipmentDistance = nearest;
+                    equipmentOnly = component;
+                }
+                continue;
+            }
             if (nearest < bestDistance) {
                 bestDistance = nearest;
                 best = component;
             }
         }
-        return best;
+        if (best.isEmpty()) {
+            // 只有设备、没有船壳：保持旧行为，把最近的设备块当成这艘船。
+            return new HullPick(equipmentOnly, Set.of());
+        }
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        for (BlockPos pos : best) {
+            minX = Math.min(minX, pos.getX());
+            minY = Math.min(minY, pos.getY());
+            minZ = Math.min(minZ, pos.getZ());
+            maxX = Math.max(maxX, pos.getX());
+            maxY = Math.max(maxY, pos.getY());
+            maxZ = Math.max(maxZ, pos.getZ());
+        }
+        Set<BlockPos> equipment = new HashSet<>();
+        for (Set<BlockPos> component : equipmentComponents) {
+            for (BlockPos pos : component) {
+                if (pos.getX() >= minX && pos.getX() <= maxX
+                        && pos.getY() >= minY && pos.getY() <= maxY
+                        && pos.getZ() >= minZ && pos.getZ() <= maxZ) {
+                    equipment.add(pos);
+                }
+            }
+        }
+        return new HullPick(best, equipment);
     }
 
     private static Set<BlockPos> largestComponent(Set<BlockPos> blocks) {

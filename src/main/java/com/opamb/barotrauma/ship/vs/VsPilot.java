@@ -75,6 +75,15 @@ public final class VsPilot {
     /** 装配时的舱室格子（世界坐标）——船移动/拆船时把舱内积水清成空气。 */
     private static java.util.List<BlockPos> interiorCells = java.util.List.of();
     /**
+     * 船壳以内、曾经确认过的舱内格（只增不减）。
+     *
+     * <p>切掉外壁舱口后重扫几何，洞口不再是 {@code isShell}，{@code exteriorCells}
+     * 会从洞口灌进整个房间，连海空腔的 {@code interiorCells} 变成空集。靠泊吸附
+     * 若只认最新几何，仍站在房间里的玩家/任务货会被排除、留在大海里。这里保留
+     * 破洞前确认的舱内格，专门用于乘客归属判断（不包含包围盒四角的外海空气）。</p>
+     */
+    private static java.util.Set<BlockPos> knownInteriorCells = java.util.Set.of();
+    /**
      * 流体拦截格 = 舱室格向外扩 1 圈（船壳层）。
      *
      * <p>船是连续坐标渲染的，拦截只能按整数格。只护舱室时，船 y 不是整数，
@@ -130,12 +139,52 @@ public final class VsPilot {
     /** 船坞偏移扫描失败后的冷却，避免每 20 tick 全盒扫一遍。 */
     private static long nextYardScanGameTime = Long.MIN_VALUE;
 
+    /** 舱门/舱口被等离子切割机累计切掉的进度（装配坐标）。 */
+    private static final java.util.Map<BlockPos, Float> fixtureCut = new java.util.HashMap<>();
+    /** fixtureCut 属于哪一次装配；换船/重新装配时清空进度。 */
+    private static Vec3 fixtureCutAnchor;
+    /** 舱门/舱口要切多少点才烂（每次 2 tick 调 1.5 点，约 6 秒）。 */
+    private static final float FIXTURE_CUT_HEALTH = 90.0F;
+    /** 物理船切割的位置级权限检查：同一目标 4 tick 内不重复发 BreakEvent。 */
+    private static BlockPos protectCheckedPos;
+    private static long protectCheckedTick = Long.MIN_VALUE;
+    private static boolean protectDenied;
+    /** 上次权限检查的玩家；换人必须重查，不能复用别人的授权结果。 */
+    private static java.util.UUID protectPlayer;
+
+    /**
+     * 清空构件切割进度。
+     *
+     * <p>{@code assembledPos} 相同不代表同一次装配：原地拆了再装、或换世界时
+     * 位置可能一样，必须按装配生命周期显式清掉，否则新船第一次切就可能直接切烂。</p>
+     */
+    private static void clearFixtureCut() {
+        fixtureCut.clear();
+        fixtureCutAnchor = null;
+        protectCheckedPos = null;
+        protectCheckedTick = Long.MIN_VALUE;
+        protectDenied = false;
+        protectPlayer = null;
+    }
+
     static {
         VsState.install(VsPilot::observeCore, VsPilot::tryDamage,
-                VsPilot::tryRepair, VsPilot::damageExplosion);
+                VsPilot::tryRepair, VsPilot::tryCut, VsPilot::damageExplosion);
         VsState.installBoardingResolver(VsPilot::boardingPositions);
         VsState.installGeometryRefresh(VsPilot::refreshPhysicalGeometry);
-        VsState.installCompartmentQuery(VsPilot::isPlayerInDryCompartment);
+        VsState.installCompartmentQuery(new VsState.CompartmentQuery() {
+            @Override
+            public Boolean isPlayerInDryCompartment(Level level, Vec3 pos) {
+                return VsPilot.isPlayerInDryCompartment(level, pos);
+            }
+
+            @Override
+            public Boolean isInsideCompartmentGeometry(Level level, Vec3 pos) {
+                // 用实时逆变换 + interiorCells（含破洞后的历史兜底），不看水位。
+                return isInsideInterior(level, pos);
+            }
+        });
+        VsState.installBlockRecorder(VsPilot::recordPlacedBlock);
         // 只注册服务端干燥区：单人存档里客户端和集成服务端同进程，
         // 客户端渲染用的 ShipWaterRenderer 不能被这里覆盖（否则方块船舱内会漏滤镜）。
         OceanEnvironment.setServerDryZone(new OceanEnvironment.DryZone() {
@@ -342,6 +391,7 @@ public final class VsPilot {
         snapshot = Map.of();
         initialShipBlocks = 0;
         interiorCells = java.util.List.of();
+        knownInteriorCells = java.util.Set.of();
         guardCells = java.util.List.of();
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
@@ -356,6 +406,8 @@ public final class VsPilot {
         yardOffsetZ = Integer.MIN_VALUE;
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
+        clearFixtureCut();
+        com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         VsState.deactivate();
     }
 
@@ -378,6 +430,7 @@ public final class VsPilot {
         snapshot = Map.of();
         initialShipBlocks = 0;
         interiorCells = java.util.List.of();
+        knownInteriorCells = java.util.Set.of();
         guardCells = java.util.List.of();
         waterSyncTimer = 0;
         interiorOffsetX = Integer.MIN_VALUE;
@@ -406,6 +459,8 @@ public final class VsPilot {
         waterStateLogCounter = 0;
         lastRecordFlushGameTime = Long.MIN_VALUE;
         lastWaterPacket = ShipWaterStatePacket.empty();
+        clearFixtureCut();
+        com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         VsState.deactivate();
         if (hadShip) {
             LOGGER.info("[vs] 服务器生命周期切换：已清理上一世界的物理船静态状态");
@@ -429,6 +484,7 @@ public final class VsPilot {
         return managing != null && managing.getId() == ship.getId();
     }
 
+
     /** 这个位置是不是在某个物理船舱的盒子里（不管进没进水）。 */
     public static boolean isInsideCompartment(Level level, Vec3 pos) {
         if (ship == null || state == null || level == null || pos == null) {
@@ -449,6 +505,90 @@ public final class VsPilot {
             }
         }
         return false;
+    }
+
+    /**
+     * 物理船上新放的方块写进还原快照（装配坐标）。
+     *
+     * <p>靠港时 {@code restoreBlocks} 只遍历快照：不记录的话，航行中放的接线盒/
+     * 舱门会留在船坞区块里，不会回到站侧船上，绑定数据也会丢。</p>
+     */
+    public static void recordPlacedBlock(ServerLevel level, BlockPos pos) {
+        if (ship == null || state == null || lastLevel != level || pos == null
+                || yardOffsetX == Integer.MIN_VALUE || !isYardBlock(pos)) {
+            return;
+        }
+        BlockPos cell = toAssembly(pos);
+        if (cell == null) {
+            return;
+        }
+        if (!(snapshot instanceof java.util.HashMap)) {
+            // 快照可能还是 Map.of() 或不可变副本：换成可变表再写。
+            snapshot = new java.util.HashMap<>(snapshot);
+        }
+        snapshot.put(cell.immutable(), level.getBlockState(pos));
+    }
+
+    /** 这个世界坐标是否真的在这艘船的舱内（装配坐标落进舱室/连海空腔格）。
+     *
+     * <p>靠泊吸附会整体平移船，只有真在舱里的玩家/货物才跟着搬：站在哨站平台上、
+     * 或者船外漂浮的箱子不能一起瞬移。</p>
+     */
+    private static boolean isInsideInterior(Level level, Vec3 pos) {
+        if (ship == null || state == null || pos == null
+                || !(level instanceof ServerLevel server)) {
+            return false;
+        }
+        org.valkyrienskies.core.api.ships.ServerShip live = view(server);
+        org.valkyrienskies.core.api.ships.ServerShip target = live != null ? live : ship;
+        if (target == null) {
+            return false;
+        }
+        var transform = target.getTransform();
+        var origin = new org.joml.Vector3d(
+                transform.getPositionInShip().x() - assembledPos.x,
+                transform.getPositionInShip().y() - assembledPos.y,
+                transform.getPositionInShip().z() - assembledPos.z);
+        org.joml.Vector3d shipSpace;
+        try {
+            shipSpace = transform.getShipToWorld().invert(new org.joml.Matrix4d())
+                    .transformPosition(new org.joml.Vector3d(pos.x, pos.y, pos.z),
+                            new org.joml.Vector3d());
+        } catch (Throwable error) {
+            return false;
+        }
+        BlockPos cell = BlockPos.containing(shipSpace.x - origin.x,
+                shipSpace.y - origin.y, shipSpace.z - origin.z);
+        // 用 interiorCells（船壳以内）而不是 pocket.cells()：圆角船体包围盒里的
+        // 船外空气也属于连海空腔，但不该把站台上的玩家算进乘客。
+        for (var compartment : state.compartments()) {
+            if (compartment.interiorCells().contains(cell)) {
+                return true;
+            }
+        }
+        for (var pocket : state.geometry().openPockets()) {
+            if (pocket.interiorCells().contains(cell)) {
+                return true;
+            }
+        }
+        // 破洞后重扫可能把整间房的 interior 清空：用过切破洞前确认过的舱内格兜底，
+        // 否则靠泊吸附会把仍站在房间里的玩家/任务货留在大海里。
+        return knownInteriorCells.contains(cell);
+    }
+
+    /** 把当前几何里确认的舱内格并入"已知舱内"集合（只增不减）。 */
+    private static void rememberInterior(ShipGeometry.Result geometry) {
+        if (geometry == null) {
+            return;
+        }
+        java.util.Set<BlockPos> merged = new java.util.HashSet<>(knownInteriorCells);
+        for (ShipGeometry.Compartment compartment : geometry.compartments()) {
+            merged.addAll(compartment.interiorCells());
+        }
+        for (ShipGeometry.Compartment pocket : geometry.openPockets()) {
+            merged.addAll(pocket.interiorCells());
+        }
+        knownInteriorCells = java.util.Set.copyOf(merged);
     }
 
     /**
@@ -577,8 +717,10 @@ public final class VsPilot {
         }
         target.setThrottle(control.throttleX(), control.throttleY(), control.throttleZ());
         target.setPower(control.power());
-        target.setSupply(control.simulation().powerRatio());
+        target.setSupply(control.simulation().voltage());
         target.setEngineCount(control.simulation().engineCount());
+        // 逐引擎电压：某个引擎的接线盒坏了就不能继续按全船电压出力。
+        target.setEngineSupplyFactor(control.simulation().engineSupplyFactor());
         target.setEngineMultiplier(control.engineMultiplier());
         // 原版浮力只认全船水量占比（含压载水），不再按"压载百分比"另算一份力。
         target.setWaterRatio(control.buoyancyWaterRatio());
@@ -643,6 +785,20 @@ public final class VsPilot {
         // 只在那边调 tickSeaFlood 的话，物理船砸出洞后水永远不涨。
         if (++simTickCounter % 2L == 0L && state != null) {
             try {
+                // 导航台/声纳终端也吃电（原作 Steering 10 + Sonar 100 = 110 kW），
+                // 物理船上方块级 tick 停了，由这里补报终端负载。
+                if (level != null) {
+                    com.opamb.barotrauma.blockentity.ShipCoreBlockEntity terminal =
+                            sonarCoreBlockEntity(level);
+                    if (terminal != null) {
+                        // 世界重开 + adopt() 之后 BE 的 state 可能还是 null，
+                        // reportTerminalPower 会直接返回，110 kW 终端负载一直不进模拟。
+                        if (terminal.state() == null) {
+                            terminal.setState(state);
+                        }
+                        terminal.reportTerminalPower(toAssembly(terminal.getBlockPos()));
+                    }
+                }
                 state.simulation().tick(0.1D);
                 if (now != null) {
                     state.simulation().tickSeaFlood(0.1D, Math.max(0.0D, -now.y));
@@ -979,6 +1135,32 @@ public final class VsPilot {
     }
 
     /**
+     * 装配坐标 → 船坞坐标。物理船上的方块实体在船坞里，读写它们之前要用这个换算。
+     * 船坞偏移还没对账时返回 {@code null}（调用方应放弃本次读写）。
+     */
+    @Nullable
+    public static BlockPos toYard(BlockPos assemblyPos) {
+        if (assemblyPos == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        return assemblyPos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+    }
+
+    /** 这个方块坐标是不是当前物理船在船坞里的方块（落在船坞包围盒内）。 */
+    public static boolean isYardBlock(BlockPos pos) {
+        if (pos == null || state == null || yardOffsetX == Integer.MIN_VALUE) {
+            return false;
+        }
+        var bounds = state.geometry().bounds();
+        return pos.getX() >= bounds.minX() + yardOffsetX
+                && pos.getX() <= bounds.maxX() + yardOffsetX
+                && pos.getY() >= bounds.minY() + yardOffsetY
+                && pos.getY() <= bounds.maxY() + yardOffsetY
+                && pos.getZ() >= bounds.minZ() + yardOffsetZ
+                && pos.getZ() <= bounds.maxZ() + yardOffsetZ;
+    }
+
+    /**
      * 装配快照里所有泵的锚点：压载泵只取六格机器的主方块，普通泵/小型泵各占一格。
      *
      * <p>物理船收进刚体后方块右键不到，每台泵都要有自己的交互代理；
@@ -1100,6 +1282,17 @@ public final class VsPilot {
                 ? reactor : null;
     }
 
+    /** 物理船导航/声纳核心（修理面板走它）。 */
+    @Nullable
+    public static com.opamb.barotrauma.blockentity.ShipCoreBlockEntity sonarCoreBlockEntity(ServerLevel level) {
+        if (sonarAnchor == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        BlockPos yard = sonarAnchor.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+        return level.getBlockEntity(yard) instanceof com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core
+                ? core : null;
+    }
+
     /** 物理船引擎在船坞里的坐标。 */
     @Nullable
     public static BlockPos engineYardPos() {
@@ -1158,6 +1351,12 @@ public final class VsPilot {
         if (current == null || core == null || yardOffsetX == Integer.MIN_VALUE) {
             return;
         }
+        if (lastLevel != null && lastLevel != level) {
+            // 活动物理船在另一个维度：那边开关门/放门时也会走到这个刷新入口，
+            // 但船坞坐标只在活动船自己的维度里有效。拿别的维度去读会把活动船的
+            // 几何清空，replaceGeometry 还会顺手清掉船壳耐久记录。
+            return;
+        }
         final int ox = yardOffsetX;
         final int oy = yardOffsetY;
         final int oz = yardOffsetZ;
@@ -1197,8 +1396,10 @@ public final class VsPilot {
                     }
                     BlockState shell = level.getBlockState(pos.offset(ox, oy, oz));
                     return ModShipBlocks.isRepairableHull(shell) || ModShipBlocks.isDoorway(shell);
-                });
+                },
+                pos -> ModShipBlocks.isEquipment(level.getBlockState(pos.offset(ox, oy, oz))));
         current.replaceGeometry(geometry);
+        rememberInterior(geometry);
         // breached 方块仍是 ship block，重新装配/重扫后耐久表可能是空的：按 blockstate 补 0%。
         List<BlockPos> breached = new ArrayList<>();
         for (Map.Entry<BlockPos, BlockState> entry : snapshot.entrySet()) {
@@ -1261,6 +1462,37 @@ public final class VsPilot {
      */
     @Nullable
     private static BlockPos pickHullBlock(ServerLevel level, ServerPlayer player) {
+        return pickHullBlock(level, player, false);
+    }
+
+    /**
+     * 船坞里这个格子当前是不是开着的舱门/舱口。
+     *
+     * <p>要读船坞当前方块状态而不是快照里的 {@code OPEN}：快照可能已经过期。</p>
+     */
+    private static boolean isOpenDoorway(ServerLevel level, BlockPos assemblyPos) {
+        if (yardOffsetX == Integer.MIN_VALUE) {
+            return false;
+        }
+        BlockState at = level.getBlockState(
+                assemblyPos.offset(yardOffsetX, yardOffsetY, yardOffsetZ));
+        if (at.getBlock() instanceof com.opamb.barotrauma.block.BulkheadDoorBlock
+                && at.hasProperty(com.opamb.barotrauma.block.BulkheadDoorBlock.OPEN)) {
+            return at.getValue(com.opamb.barotrauma.block.BulkheadDoorBlock.OPEN);
+        }
+        if (at.getBlock() instanceof com.opamb.barotrauma.block.HatchBlock
+                && at.hasProperty(com.opamb.barotrauma.block.HatchBlock.OPEN)) {
+            return at.getValue(com.opamb.barotrauma.block.HatchBlock.OPEN);
+        }
+        return false;
+    }
+
+    /**
+     * @param skipBreached 切割用：0% 的破口船壳无碰撞但仍留在快照里，
+     *                     不能挡住后方舱门/舱口的切割射线；焊接仍要能命中破口。
+     */
+    @Nullable
+    private static BlockPos pickHullBlock(ServerLevel level, ServerPlayer player, boolean skipBreached) {
         if (ship == null || state == null || snapshot.isEmpty()) {
             return null;
         }
@@ -1293,6 +1525,17 @@ public final class VsPilot {
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
         for (BlockPos pos : snapshot.keySet()) {
+            if (skipBreached) {
+                BlockState at = snapshot.get(pos);
+                if (at != null && at.hasProperty(HullBlock.BREACHED)
+                        && at.getValue(HullBlock.BREACHED)) {
+                    continue;
+                }
+                // 开着的舱门/舱口没有实体阻挡：切割射线要穿过去打后方目标。
+                if (isOpenDoorway(level, pos)) {
+                    continue;
+                }
+            }
             java.util.Optional<Vec3> hit = new AABB(pos).clip(from, to);
             if (hit.isEmpty()) {
                 continue;
@@ -1423,6 +1666,192 @@ public final class VsPilot {
         return true;
     }
 
+    /**
+     * 等离子切割机：沿视线切船壳（扣耐久，0% 走破口），或把舱门/舱口切烂。
+     *
+     * <p>舱门没有船壳耐久表，单独按格累计切割量；切穿后从船坞方块、快照和
+     * 舱室几何里一起摘掉，并在切口位置掉回门/舱口物品。</p>
+     */
+    private static boolean tryCut(ServerLevel level, ServerPlayer player, float amount) {
+        if (ship == null || state == null || lastLevel != level || snapshot.isEmpty()
+                || player.isSpectator()) {
+            return false;
+        }
+        if (yardOffsetX == Integer.MIN_VALUE) {
+            discoverYardOffset(level);
+        }
+        if (yardOffsetX == Integer.MIN_VALUE) {
+            return false;
+        }
+        // 切割射线跳过 0% 的破口船壳：它无碰撞，不能挡住后方舱门/舱口。
+        BlockPos best = pickHullBlock(level, player, true);
+        if (best == null) {
+            return false;
+        }
+        BlockState block = snapshot.get(best);
+        if (block == null || isConsolePart(block)) {
+            return false;
+        }
+        // 位置级破坏权限：物理船的方块在世界里是空气，保护监听器要的是映射后的
+        // 世界坐标；同一目标 4 tick 内只发一次事件，避免按住时刷屏。
+        Vec3 hit = toWorld(best);
+        if (hit == null) {
+            return false;
+        }
+        BlockPos worldPos = BlockPos.containing(hit);
+        long now = level.getGameTime();
+        if (!worldPos.equals(protectCheckedPos)
+                || !player.getUUID().equals(protectPlayer)
+                || now - protectCheckedTick > 4L) {
+            net.minecraft.world.level.GameType mode = player.gameMode.getGameModeForPlayer();
+            protectDenied = net.minecraftforge.common.ForgeHooks
+                    .onBlockBreakEvent(level, mode, player, worldPos) == -1
+                    || player.blockActionRestricted(level, worldPos, mode);
+            protectCheckedPos = worldPos.immutable();
+            protectCheckedTick = now;
+            protectPlayer = player.getUUID();
+        }
+        if (protectDenied) {
+            return false;
+        }
+        float max = state.hullMaxHealth(block);
+        if (max > 0.0F) {
+            float health = state.hullDamage().applyDamage(best, amount, max);
+            if (health <= 0.0F) {
+                breachSnapshotBlock(level, player, best, block);
+            } else {
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
+                        hit.x, hit.y, hit.z, 4, 0.2D, 0.2D, 0.2D, 0.01D);
+                if (level.getGameTime() % 10L == 0L) {
+                    level.playSound(null, BlockPos.containing(hit),
+                            net.minecraft.sounds.SoundEvents.FIRE_AMBIENT,
+                            net.minecraft.sounds.SoundSource.PLAYERS, 0.35F, 1.9F);
+                }
+                sendHullDamageState(state);
+            }
+            return true;
+        }
+        if (!isCuttableFixture(block)) {
+            return false;
+        }
+        if (fixtureCutAnchor == null || !fixtureCutAnchor.equals(assembledPos)) {
+            fixtureCut.clear();
+            fixtureCutAnchor = assembledPos;
+        }
+        float progress = fixtureCut.merge(best.immutable(), amount, Float::sum);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
+                hit.x, hit.y, hit.z, 4, 0.25D, 0.25D, 0.25D, 0.02D);
+        if (level.getGameTime() % 10L == 0L) {
+            level.playSound(null, BlockPos.containing(hit),
+                    net.minecraft.sounds.SoundEvents.FIRE_AMBIENT,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 0.3F, 1.6F);
+        }
+        if (progress >= FIXTURE_CUT_HEALTH && removeFixture(level, player, best, block)) {
+            fixtureCut.remove(best);
+        }
+        return true;
+    }
+
+    /** 等离子切割机能把哪些船内构件切烂（舱门/舱口；船壳走耐久）。 */
+    private static boolean isCuttableFixture(BlockState block) {
+        net.minecraft.world.level.block.Block b = block.getBlock();
+        return b == com.opamb.barotrauma.registry.ModShipBlocks.BULKHEAD_DOOR.get()
+                || b == com.opamb.barotrauma.registry.ModShipBlocks.HATCH.get()
+                || b == com.opamb.barotrauma.registry.ModShipBlocks.HATCH_LADDER.get();
+    }
+
+    /** 切穿舱门/舱口：清船坞方块、移出快照、重扫几何，并在切口掉回物品。 */
+    private static boolean removeFixture(ServerLevel level, ServerPlayer player,
+                                         BlockPos original, BlockState block) {
+        // 舱口是三格构件（LEFT/MIDDLE/RIGHT）；只拆命中格会留下两半，
+        // 两边再各切一次又能刷出完整物品。这里按整套删除、只掉一次。
+        List<BlockPos> cells = new ArrayList<>();
+        if (block.getBlock() instanceof com.opamb.barotrauma.block.HatchBlock
+                && block.hasProperty(com.opamb.barotrauma.block.HatchBlock.PART)
+                && block.hasProperty(com.opamb.barotrauma.block.HatchBlock.FACING)) {
+            net.minecraft.core.Direction facing =
+                    block.getValue(com.opamb.barotrauma.block.HatchBlock.FACING);
+            net.minecraft.core.Direction longAxis = facing.getClockWise();
+            int offset = block.getValue(com.opamb.barotrauma.block.HatchBlock.PART).ordinal() - 1;
+            BlockPos middle = original.relative(longAxis, -offset);
+            BlockState middleState = snapshot.get(middle);
+            if (middleState != null
+                    && middleState.getBlock() instanceof com.opamb.barotrauma.block.HatchBlock
+                    && middleState.hasProperty(com.opamb.barotrauma.block.HatchBlock.PART)
+                    && middleState.getValue(com.opamb.barotrauma.block.HatchBlock.PART)
+                    == com.opamb.barotrauma.block.HatchBlock.Part.MIDDLE
+                    && middleState.getValue(com.opamb.barotrauma.block.HatchBlock.FACING) == facing) {
+                cells.add(middle);
+                cells.add(middle.relative(longAxis));
+                cells.add(middle.relative(longAxis.getOpposite()));
+            } else {
+                cells.add(original);
+            }
+        } else if (block.getBlock() instanceof com.opamb.barotrauma.block.BulkheadDoorBlock
+                && block.hasProperty(com.opamb.barotrauma.block.BulkheadDoorBlock.PART)) {
+            // 舱壁门占上下两格：只拆命中格会留下半扇，再切一次又掉一个完整门。
+            // 和方块船路径（PlasmaCutterItem.breakFixture）保持一致，整套只掉一次。
+            BlockPos lower = block.getValue(com.opamb.barotrauma.block.BulkheadDoorBlock.PART)
+                    == com.opamb.barotrauma.block.BulkheadDoorBlock.Part.UPPER
+                    ? original.below() : original;
+            for (BlockPos cell : new BlockPos[]{lower, lower.above()}) {
+                BlockState part = snapshot.get(cell);
+                if (part != null && part.getBlock()
+                        instanceof com.opamb.barotrauma.block.BulkheadDoorBlock) {
+                    cells.add(cell);
+                }
+            }
+            if (cells.isEmpty()) {
+                cells.add(original);
+            }
+        } else {
+            cells.add(original);
+        }
+        Vec3 world = toWorld(original);
+        if (world == null) {
+            return false;
+        }
+        // 三格舱口会一次删三格：每格都要过位置级破坏权限。Forge 的
+        // setBlock 不触发 BreakEvent，不能只查命中格，否则跨保护区边界时
+        // 能借放行的一格删掉受保护的两格。
+        for (BlockPos cell : cells) {
+            if (!snapshot.containsKey(cell)) {
+                continue;
+            }
+            Vec3 cellHit = toWorld(cell);
+            if (cellHit == null) {
+                return false;
+            }
+            BlockPos cellWorld = BlockPos.containing(cellHit);
+            net.minecraft.world.level.GameType mode = player.gameMode.getGameModeForPlayer();
+            if (net.minecraftforge.common.ForgeHooks
+                    .onBlockBreakEvent(level, mode, player, cellWorld) == -1
+                    || player.blockActionRestricted(level, cellWorld, mode)) {
+                return false;
+            }
+        }
+        for (BlockPos cell : cells) {
+            if (!snapshot.containsKey(cell)) {
+                continue;
+            }
+            level.setBlock(cell.offset(yardOffsetX, yardOffsetY, yardOffsetZ),
+                    Blocks.AIR.defaultBlockState(), 3);
+            snapshot.remove(cell);
+            fixtureCut.remove(cell);
+        }
+        rebuildGeometry(level, cells);
+        net.minecraft.world.item.ItemStack drop =
+                new net.minecraft.world.item.ItemStack(block.getBlock().asItem());
+        if (!drop.isEmpty()) {
+            net.minecraft.world.level.block.Block.popResource(level,
+                    BlockPos.containing(world), drop);
+        }
+        level.playSound(null, BlockPos.containing(world),
+                net.minecraft.sounds.SoundEvents.NETHERITE_BLOCK_BREAK,
+                net.minecraft.sounds.SoundSource.PLAYERS, 0.8F, 0.8F);
+        return true;
+    }
+
     /** 服务端预检全部登船位置：真实船坞碰撞 + 舱室 + 当前完整刚体变换（含旋转）。 */
     private static List<Vec3> boardingPositions(ServerLevel level, int count) {
         if (ship == null || state == null || lastLevel != level || count < 1) return List.of();
@@ -1469,12 +1898,15 @@ public final class VsPilot {
         if (ship == null) {
             return Vec3.atCenterOf(original);
         }
-        org.joml.Vector3dc positionInShip = ship.getTransform().getPositionInShip();
+        // 和 view 一样读“已加载”句柄：装配时拿到的 ServerShip 快照 transform
+        // 不随物理更新，船开走后会一直返回装配那一刻的旧坐标。
+        ServerShip live = lastLevel == null ? ship : view(lastLevel);
+        org.joml.Vector3dc positionInShip = live.getTransform().getPositionInShip();
         org.joml.Vector3d shipSpace = new org.joml.Vector3d(
                 original.getX() + 0.5D + positionInShip.x() - assembledPos.x,
                 original.getY() + 0.5D + positionInShip.y() - assembledPos.y,
                 original.getZ() + 0.5D + positionInShip.z() - assembledPos.z);
-        org.joml.Vector3d world = ship.getTransform().getShipToWorld()
+        org.joml.Vector3d world = live.getTransform().getShipToWorld()
                 .transformPosition(shipSpace, new org.joml.Vector3d());
         return new Vec3(world.x, world.y, world.z);
     }
@@ -1563,7 +1995,15 @@ public final class VsPilot {
                 continue;
             }
             float max = state.hullMaxHealth(block);
-            if (max <= 0.0F) {
+            // 设备（泵/反应堆/引擎/门/柜子等）没有船壳耐久，但爆炸同样要伤到
+            // 耐久组件；物理船方块在世界里是空气，RepairDamageEvents 拿不到它们。
+            BlockPos deviceYard = pos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+            net.minecraft.world.level.block.entity.BlockEntity deviceBe =
+                    level.getBlockEntity(deviceYard);
+            com.opamb.barotrauma.ship.RepairTarget device =
+                    deviceBe instanceof com.opamb.barotrauma.ship.RepairTarget target
+                            ? target : null;
+            if (max <= 0.0F && device == null) {
                 continue;
             }
             org.joml.Vector3d shipSpace = new org.joml.Vector3d(
@@ -1580,7 +2020,11 @@ public final class VsPilot {
                 continue;
             }
             hit++;
-            if (state.hullDamage().applyDamage(pos, amount, max) <= 0.0F) {
+            if (device != null) {
+                device.damage(com.opamb.barotrauma.event.RepairDamageEvents.EXPLOSION_DAMAGE);
+                deviceBe.setChanged();
+            }
+            if (max > 0.0F && state.hullDamage().applyDamage(pos, amount, max) <= 0.0F) {
                 broken.add(pos);
             }
         }
@@ -1682,8 +2126,15 @@ public final class VsPilot {
         if (!pumpSame) {
             nextPumpProxies = new java.util.HashMap<>();
             for (BlockPos anchor : pumpAnchors) {
+                // 泵型从装配快照读：读档/adopt() 后 pumpProxyByAnchor 可能还没建立，
+                // 不能依赖旧代理上抄下来的标记。
+                BlockState pumpState = snapshot.get(anchor);
+                boolean smallPump = pumpState != null
+                        && pumpState.is(ModBlocks.SMALL_PUMP.get());
                 BlockPos placed = placeProxy(level, anchor.offset(dx, dy, dz),
-                        ModShipBlocks.PUMP_PROXY.get());
+                        ModShipBlocks.PUMP_PROXY.get().defaultBlockState()
+                                .setValue(com.opamb.barotrauma.block.PumpProxyBlock.SMALL,
+                                        smallPump));
                 if (placed != null) {
                     nextPumpProxies.put(anchor, placed);
                 }
@@ -1704,15 +2155,20 @@ public final class VsPilot {
 
     /** 放置代理；目标被别的方块占着时返回 null，不把该格记成当前位置。 */
     private static BlockPos placeProxy(ServerLevel level, BlockPos target, Block proxy) {
+        return placeProxy(level, target, proxy.defaultBlockState());
+    }
+
+    /** 带状态放置代理（泵代理要区分小泵/大泵的拾取形状）。 */
+    private static BlockPos placeProxy(ServerLevel level, BlockPos target, BlockState state) {
         if (target == null) {
             return null;
         }
         BlockState existing = level.getBlockState(target);
-        if (existing.is(proxy)) {
+        if (existing.is(state.getBlock())) {
             return target;
         }
         if (existing.isAir() || existing.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) {
-            level.setBlock(target, proxy.defaultBlockState(), 2);
+            level.setBlock(target, state, 2);
             return target;
         }
         return null;
@@ -1816,15 +2272,22 @@ public final class VsPilot {
 
     public static String launch(ServerLevel level, Collection<BlockPos> blocks,
                                 @Nullable ShipState shipState, @Nullable BlockPos core) {
-        lastLevel = level;
+        // 存在性检查必须用船真正所在的维度（lastLevel），不能用请求所在维度；
+        // 否则在另一维度 /launch 被拒绝时，lastLevel 已经被改错，活动船的面板/
+        // 几何刷新都会指向错误维度。
         // 离站：先把对接口舱口都关上，免得装成物理船后艇顶还开着洞。
         com.opamb.barotrauma.world.DockingBay.close(level);
-        if (ship != null && !stillExists(level)) {
+        if (ship != null && !stillExists(lastLevel)) {
             dropStale();
         }
         if (ship != null) {
             return "已经有一艘物理船了，先 /barotrauma ship vs dock 拆掉";
         }
+        lastLevel = level;
+        // 新一次装配：丢掉上一艘船残留的构件切割进度和电力面板会话。
+        // 必须放在"已有物理船"的拒绝之后：这次装配没有发生，别把别人开着的面板会话清掉。
+        clearFixtureCut();
+        com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         if (blocks.isEmpty()) {
             return "没有船体方块可收";
         }
@@ -1935,6 +2398,10 @@ public final class VsPilot {
                 interiorCells.addAll(pocket.cells());
             }
         }
+        knownInteriorCells = java.util.Set.of();
+        if (shipState != null) {
+            rememberInterior(shipState.geometry());
+        }
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
         interiorOffsetZ = Integer.MIN_VALUE;
@@ -1982,7 +2449,13 @@ public final class VsPilot {
         pumpAnchors = findPumpAnchors(captured);
         java.util.Map<BlockPos, BlockPos> pumpProxies = new java.util.HashMap<>();
         for (BlockPos pumpAnchor : pumpAnchors) {
-            level.setBlock(pumpAnchor, ModShipBlocks.PUMP_PROXY.get().defaultBlockState(), 3);
+            // 代理的拾取形状要跟泵型号一致：小泵模型只有 6/16 高，
+            // 排水泵/压载泵更高，必须用整格范围才点得到。
+            BlockState pumpState = captured.get(pumpAnchor);
+            boolean smallPump = pumpState != null
+                    && pumpState.is(ModBlocks.SMALL_PUMP.get());
+            level.setBlock(pumpAnchor, ModShipBlocks.PUMP_PROXY.get().defaultBlockState()
+                    .setValue(com.opamb.barotrauma.block.PumpProxyBlock.SMALL, smallPump), 3);
             pumpProxies.put(pumpAnchor, pumpAnchor);
         }
         pumpProxyByAnchor = pumpProxies;
@@ -2079,7 +2552,11 @@ public final class VsPilot {
                 net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(target);
                 if (tag != null && be != null) {
                     try {
-                        be.load(tag.copy());
+                        // 方块整体平移了 (dx,dy,dz)：接线盒绑定坐标也要跟着迁移，
+                        // 否则靠泊后设备还去旧位置找接线盒，consumerVoltage() 一直是 0。
+                        net.minecraft.nbt.CompoundTag copy = tag.copy();
+                        migratePowerBox(copy, dx, dy, dz);
+                        be.load(copy);
                         be.setChanged();
                     } catch (Throwable ignored) {
                         // 单个 BE 读不回来不能让整艘船的还原失败
@@ -2089,6 +2566,22 @@ public final class VsPilot {
             placed++;
         }
         return placed;
+    }
+
+    /**
+     * 靠泊平移后迁移设备 NBT 里的接线盒绑定坐标。
+     *
+     * <p>泵/引擎存的是接线盒的绝对坐标；方块铺回时整体位移 (dx,dy,dz)，
+     * 绑定也要加同一个位移。零位移（装配失败回滚）保持原值。</p>
+     */
+    private static void migratePowerBox(net.minecraft.nbt.CompoundTag tag,
+                                        int dx, int dy, int dz) {
+        if (tag == null || !tag.contains("PowerBox")
+                || (dx == 0 && dy == 0 && dz == 0)) {
+            return;
+        }
+        tag.putLong("PowerBox",
+                BlockPos.of(tag.getLong("PowerBox")).offset(dx, dy, dz).asLong());
     }
 
     /** 捕获一组方块位置上的方块实体 NBT（装配前/靠泊前调用）。 */
@@ -2157,11 +2650,33 @@ public final class VsPilot {
      * 拆回方块。
      *
      * <p>用装配时的方块快照铺回世界，位置 = 原坐标 + 船自装配以来的整数位移。
-     * 因为姿态是锁死的（永远平行于海平面，见 {@link VsThruster}），
-     * 这里不需要做旋转变换，位移就是纯平移。</p>
+     * 俯仰/横滚是锁死的（永远平行于海平面，见 {@link VsThruster}），但<b>偏航角
+     * 不锁</b>：船可以转向，铺回的方块却还是装配时未旋转的快照。所以船上的
+     * 乘客/货物要按船体逆变换映射回快照坐标，不能只加平移。</p>
      */
     public static String dock(ServerLevel level) {
         return dock(level, false);
+    }
+
+    /**
+     * 拆船后乘客/任务散箱的落点：世界坐标 → 快照船体坐标 → 铺回后的方块坐标。
+     *
+     * <p>{@code toWorld()} 的逆运算：世界点先乘 {@code shipToWorld⁻¹}，减去
+     * {@code positionInShip}、加回装配锚点就得到快照坐标（方块格原点 + 0.5），
+     * 再叠加铺回位移 {@code (dx,dy,dz)}。取不到变换时退回纯平移，与旧行为一致。</p>
+     */
+    private static org.joml.Vector3d dockRestorePoint(
+            @Nullable org.joml.Matrix4dc worldToShip, @Nullable org.joml.Vector3dc shipOrigin,
+            double x, double y, double z, int dx, int dy, int dz,
+            double shiftX, double shiftY, double shiftZ) {
+        if (worldToShip == null || shipOrigin == null) {
+            return new org.joml.Vector3d(x + shiftX, y + shiftY, z + shiftZ);
+        }
+        org.joml.Vector3d local = worldToShip.transformPosition(
+                new org.joml.Vector3d(x, y, z), new org.joml.Vector3d());
+        return local.sub(shipOrigin)
+                .add(assembledPos.x, assembledPos.y, assembledPos.z)
+                .add(dx, dy, dz);
     }
 
     /**
@@ -2183,33 +2698,81 @@ public final class VsPilot {
         int dx = (int) Math.round(now.x - assembledPos.x);
         int dy = (int) Math.round(now.y - assembledPos.y);
         int dz = (int) Math.round(now.z - assembledPos.z);
+        // 拆船前记下船体逆变换：航行中偏航角可能非零，而铺回的方块是未旋转的快照。
+        // 乘客/货物的相对船体位置必须按船体坐标映射回去，只加平移会把人放错舷侧。
+        org.joml.Matrix4dc worldToShip = null;
+        org.joml.Vector3dc shipOrigin = null;
+        try {
+            var transform = live.getTransform();
+            worldToShip = new org.joml.Matrix4d(transform.getShipToWorld()).invert();
+            shipOrigin = new org.joml.Vector3d(transform.getPositionInShip());
+        } catch (Throwable ignored) {
+            // 取不到变换就退回纯平移（与旧行为一致）
+        }
         Map<BlockPos, BlockState> restore = snapshot;
         BlockPos oldCore = corePos;
+        // 靠泊吸附会整体平移船；先把"在船上"的玩家和任务散箱记下来，拆完一起搬。
+        // 核心世界位置用当前船体变换算：只加平移的话，偏航后核心相对旋转中心的偏移
+        // 会算错（180° 时差 2·cu），任务散箱搜索框可能整体偏出舱室。
+        Vec3 oldCoreWorld = oldCore == null ? null : toWorld(oldCore);
+        if (oldCoreWorld == null && oldCore != null) {
+            oldCoreWorld = new Vec3(oldCore.getX() + dx + 0.5D, oldCore.getY() + dy + 0.5D,
+                    oldCore.getZ() + dz + 0.5D);
+        }
+        List<ServerPlayer> riders = new ArrayList<>();
+        List<net.minecraft.world.entity.item.ItemEntity> pinnedCargo = new ArrayList<>();
+        if (oldCoreWorld != null) {
+            // 不再用固定 32 格球预先排除：核心扫描是每轴 24 格的立方体，
+            // 斜角舱室里的玩家距离可能超过 32。直接按“是否真在舱内”判断。
+            for (ServerPlayer candidate : level.players()) {
+                if (candidate.level() == level && isInsideInterior(level, candidate.position())) {
+                    riders.add(candidate);
+                }
+            }
+            net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(
+                    oldCoreWorld.x - 48.0D, oldCoreWorld.y - 48.0D, oldCoreWorld.z - 48.0D,
+                    oldCoreWorld.x + 48.0D, oldCoreWorld.y + 48.0D, oldCoreWorld.z + 48.0D);
+            for (net.minecraft.world.entity.item.ItemEntity item
+                    : level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area)) {
+                if (item.getPersistentData().getBoolean(
+                        com.opamb.barotrauma.mission.MissionCargo.TAG_PINNED)
+                        && isInsideInterior(level, item.position())) {
+                    pinnedCargo.add(item);
+                }
+            }
+        }
+        int snapX = 0;
+        int snapY = 0;
+        int snapZ = 0;
 
         // 0) 靠泊判定：必须把船开到某个哨站对接口附近；靠泊时吸附到码头标准位。
         com.opamb.barotrauma.world.DockingBay.Site dockSite = null;
         if (!force) {
             BlockPos currentCore = oldCore == null ? null : oldCore.offset(dx, dy, dz);
-            if (currentCore == null) {
+            if (currentCore == null || oldCoreWorld == null) {
                 return "不知道船核心在哪，无法判断靠泊位置";
             }
-            dockSite = com.opamb.barotrauma.world.DockingBay.siteAt(currentCore.getX(), currentCore.getZ());
+            // 站点查找/距离检查必须用旋转后的真实核心位置：偏航 180° 时
+            // “未旋转核心 + 平移”与真实位置能差 2·cu，实际已经贴到对接口也会被判太远。
+            BlockPos checkCore = BlockPos.containing(oldCoreWorld);
+            dockSite = com.opamb.barotrauma.world.DockingBay.siteAt(checkCore.getX(), checkCore.getZ());
             if (dockSite == null) {
                 return "离哨站太远：把船开到哨站对接口附近再靠泊";
             }
             boolean newLayout = StarterSub.newLayout(level);
             BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(dockSite, newLayout);
-            double horizontal = Math.hypot(currentCore.getX() - dockCore.getX(),
-                    currentCore.getZ() - dockCore.getZ());
-            if (horizontal > 16.0D || Math.abs(currentCore.getY() - dockCore.getY()) > 6) {
+            double horizontal = Math.hypot(checkCore.getX() - dockCore.getX(),
+                    checkCore.getZ() - dockCore.getZ());
+            if (horizontal > 16.0D || Math.abs(checkCore.getY() - dockCore.getY()) > 6) {
                 return String.format(Locale.ROOT,
                         "离对接口太远（水平 %.1f 格 / 高度差 %d 格），开到对接口 16 格内再靠泊",
-                        horizontal, Math.abs(currentCore.getY() - dockCore.getY()));
+                        horizontal, Math.abs(checkCore.getY() - dockCore.getY()));
             }
-            // 吸附：把核心拉到该站的标准码头核心位
-            int snapX = dockCore.getX() - currentCore.getX();
-            int snapY = dockCore.getY() - currentCore.getY();
-            int snapZ = dockCore.getZ() - currentCore.getZ();
+            // 吸附位移仍按“未旋转的旧核心 + 位移 = 码头核心”算：铺回的方块是
+            // 装配快照、偏航不参与，这样拆完方块才正好落在 dockCore。
+            snapX = dockCore.getX() - currentCore.getX();
+            snapY = dockCore.getY() - currentCore.getY();
+            snapZ = dockCore.getZ() - currentCore.getZ();
             dx += snapX;
             dy += snapY;
             dz += snapZ;
@@ -2250,6 +2813,32 @@ public final class VsPilot {
         if (state != null) {
             state.clearWater(level, dx, dy, dz);
         }
+        // 靠泊吸附把船整体搬走时，船上的玩家和任务散箱要一起搬：否则船瞬移到码头、
+        // 人还留在海里，散箱也会被落下导致货运结算 0 箱（用户实测）。
+        // 偏航非零时，光加平移会把"船头的人"放到恢复后船体的侧舷：先按船体逆变换
+        // 把位置换回快照坐标（original + 0.5），再映射到铺回后的方块布局。
+        double shiftX = dx - (now.x - assembledPos.x);
+        double shiftY = dy - (now.y - assembledPos.y);
+        double shiftZ = dz - (now.z - assembledPos.z);
+        boolean rotated = worldToShip != null && shipOrigin != null;
+        if (rotated || Math.abs(shiftX) > 1.0E-6D || Math.abs(shiftY) > 1.0E-6D
+                || Math.abs(shiftZ) > 1.0E-6D) {
+            for (ServerPlayer rider : riders) {
+                org.joml.Vector3d dest = dockRestorePoint(worldToShip, shipOrigin,
+                        rider.getX(), rider.getY(), rider.getZ(), dx, dy, dz,
+                        shiftX, shiftY, shiftZ);
+                rider.teleportTo(level, dest.x, dest.y, dest.z, rider.getYRot(), rider.getXRot());
+                rider.setDeltaMovement(Vec3.ZERO);
+                rider.fallDistance = 0.0F;
+            }
+            for (net.minecraft.world.entity.item.ItemEntity item : pinnedCargo) {
+                org.joml.Vector3d dest = dockRestorePoint(worldToShip, shipOrigin,
+                        item.getX(), item.getY(), item.getZ(), dx, dy, dz,
+                        shiftX, shiftY, shiftZ);
+                item.setPos(dest.x, dest.y, dest.z);
+                item.setDeltaMovement(Vec3.ZERO);
+            }
+        }
         int skipped = restore.size() - placed;
         // 4) 新的声纳台重新扫描
         BlockPos newCore = oldCore == null ? null : oldCore.offset(dx, dy, dz);
@@ -2281,6 +2870,7 @@ public final class VsPilot {
         snapshot = Map.of();
         initialShipBlocks = 0;
         interiorCells = java.util.List.of();
+        knownInteriorCells = java.util.Set.of();
         guardCells = java.util.List.of();
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
@@ -2295,6 +2885,8 @@ public final class VsPilot {
         yardOffsetZ = Integer.MIN_VALUE;
         nextYardScanGameTime = Long.MIN_VALUE;
         hullCheckStartGameTime = Long.MIN_VALUE;
+        clearFixtureCut();
+        com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         VsState.deactivate();
         // 5) 靠泊成功：船已经回到方块形态，再打开该站舱口并结算本轮出勤。
         if (dockSite != null) {
@@ -2333,8 +2925,20 @@ public final class VsPilot {
                                         ShipState shipState, BlockPos core, ServerShip assembled) {
         try {
             Vec3 pos = VsBridge.position(assembled);
-            ShipSavedData.get(level).setAssembled(ShipSavedData.AssembledShip.of(
-                    assembled.getId(), core, proxyPos, pos, captured, shipState));
+            ShipSavedData.AssembledShip record = ShipSavedData.AssembledShip.of(
+                    assembled.getId(), core, proxyPos, pos, captured, shipState);
+            // 历史舱内格必须随认领记录落盘：切掉外壁舱口后几何的 interior 会被裁空，
+            // 存档/重启后靠泊吸附还要靠它认出房里的人/任务货。
+            record.knownInterior.addAll(knownInteriorCells);
+            if (shipState != null) {
+                for (ShipGeometry.Compartment compartment : shipState.compartments()) {
+                    record.knownInterior.addAll(compartment.interiorCells());
+                }
+                for (ShipGeometry.Compartment pocket : shipState.geometry().openPockets()) {
+                    record.knownInterior.addAll(pocket.interiorCells());
+                }
+            }
+            ShipSavedData.get(level).setAssembled(record);
             // 立刻落盘：只在正常存世界时写的话，退出世界时若被 VS2 的区块卸载 bug
             // 打断（实测 NoSuchElementException），认领记录会丢，物理船变永久孤儿。
             level.getDataStorage().save();
@@ -2380,6 +2984,9 @@ public final class VsPilot {
             record.hullDamage.copyFrom(state.hullDamage());
             record.hullMultiplier = state.hullHealthMultiplier();
             record.engineMultiplier = state.engineMultiplier();
+            // 只增不减的舱内格历史：切破洞后新几何裁空的部分也要落盘。
+            record.knownInterior.clear();
+            record.knownInterior.addAll(knownInteriorCells);
             if (proxyPos != null) {
                 record.proxyPos = proxyPos;
             }
@@ -2629,7 +3236,17 @@ public final class VsPilot {
             }
         };
         ShipGeometry.Result geometry = ShipGeometry.scanShip(core, ShipCoreBlockEntity.RADIUS,
-                snap::containsKey, probe);
+                snap::containsKey, probe, 0,
+                // 和 rebuildGeometry 用同一套船壳判定，认领时才能正确排除船外空气。
+                pos -> {
+                    BlockState st = snap.get(pos);
+                    return st != null && (ModShipBlocks.isRepairableHull(st)
+                            || ModShipBlocks.isDoorway(st));
+                },
+                pos -> {
+                    BlockState st = snap.get(pos);
+                    return st != null && ModShipBlocks.isEquipment(st);
+                });
         ShipState rebuilt = new ShipState(geometry,
                 new MachineCount(0, 0, 0, 0, 0, 0, sonar));
         rebuilt.setHullHealthMultiplier(record.hullMultiplier);
@@ -2684,6 +3301,10 @@ public final class VsPilot {
             interiorCells.addAll(pocket.cells());
         }
         guardCells = buildGuardCells(interiorCells);
+        // 历史舱内格从认领记录恢复（旧存档没有这份集合 → 空集，退回按几何重建）。
+        // 不能只按 rebuilt 几何重建：切掉外壁舱口后那间房的 interior 已经被裁空。
+        knownInteriorCells = java.util.Set.copyOf(record.knownInterior);
+        rememberInterior(rebuilt.geometry());
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
         interiorOffsetZ = Integer.MIN_VALUE;
@@ -2727,6 +3348,12 @@ public final class VsPilot {
         }
         ServerShip loaded = VsBridge.loaded(level, ship);
         return loaded != null ? loaded : ship;
+    }
+
+    /** 当前活动物理船所在的世界；没有物理船返回 null。 */
+    @Nullable
+    public static ServerLevel activeLevel() {
+        return ship == null ? null : lastLevel;
     }
 
     /** 数一下船中心周围有多少非空气方块——拆船后应该是满的。 */

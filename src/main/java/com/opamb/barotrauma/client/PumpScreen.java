@@ -4,7 +4,7 @@ import com.opamb.barotrauma.menu.PumpMenu;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.PumpActionPacket;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
@@ -22,10 +22,10 @@ import net.minecraft.world.entity.player.Inventory;
  * <p>原版是水泵读水传感器；这里传感器已经并进泵里，所以"自动控制"就是
  * 有水自动泵出、没水停机。自动控制打开时滑块置灰，等同原版传感器接管。</p>
  */
-public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
+public class PumpScreen extends ScaledContainerScreen<PumpMenu> {
 
     private static final int W = 220;
-    private static final int H = 118;
+    private static final int H = 176;
 
     private static final int BG = 0xF0141B16;
     private static final int EDGE = 0xFF3B463C;
@@ -50,11 +50,6 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
         this.imageHeight = H;
     }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
-        super.render(graphics, mouseX, mouseY, partialTick);
-    }
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -109,7 +104,9 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
 
         // 状态/提示
         String state;
-        if (!powered) {
+        if (menu.data().get(PumpMenu.DATA_CONDITION) <= 0) {
+            state = "泵已损坏，需要扳手修理";
+        } else if (!powered) {
             state = "无电力，泵无法运行";
         } else if (auto && ballast) {
             state = flow > 0 ? "跟随舵台：下潜，泵入压载舱"
@@ -163,9 +160,11 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (button != 0) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(screenX, screenY, button);
         }
         if (inAutoToggle(mouseX, mouseY)) {
             ModNetwork.CHANNEL.sendToServer(
@@ -177,22 +176,26 @@ public class PumpScreen extends AbstractContainerScreen<PumpMenu> {
             sendFlow(flowAt(mouseX));
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(double screenX, double screenY, int button, double dragX, double dragY) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (dragging && button == 0) {
             sendFlow(flowAt(mouseX));
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(screenX, screenY, button, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         dragging = false;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(screenX, screenY, button);
     }
 
     private void sendFlow(int value) {

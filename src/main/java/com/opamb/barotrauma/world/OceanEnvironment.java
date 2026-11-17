@@ -186,6 +186,47 @@ public final class OceanEnvironment {
     }
 
     /**
+     * 这个位置是否在某艘船的舱室里（干舱/进水舱都算）。
+     *
+     * <p>潜行防掉边必须在这里关掉：VS2 物理船的方块对 {@code level.noCollision}
+     * 不可见，原版 {@code maybeBackOffFromEdge} 会把整个舱室当成悬崖边缘，
+     * 在干舱里按 Shift 移动会被"挤开"甚至挤穿船壳（用户实测小泵上 Shift+移动）。</p>
+     */
+    public static boolean isInsideShipCompartment(Level level, Vec3 pos) {
+        if (!isInOcean(level, pos)) {
+            return false;
+        }
+        // 物理船用实时逆变换查询：返回值非 null 就说明在舱内（干舱/进水舱都算），
+        // 不能拿干湿布尔值判断，否则进水舱里的潜行保护会失效。
+        if (com.opamb.barotrauma.ship.vs.VsState
+                .queryPlayerInDryCompartment(level, pos) != null) {
+            return true;
+        }
+        DryZone zone = level.isClientSide() ? clientDryZone : serverDryZone;
+        return zone != null && zone.isInsideCompartment(level, pos);
+    }
+
+    /** 只判物理船舱室（不含方块船干舱）：潜行防掉边 mixin 专用。 */
+    public static boolean isInsidePhysicalShipCompartment(Level level, Vec3 pos) {
+        if (!isInOcean(level, pos)) {
+            return false;
+        }
+        if (level.isClientSide()) {
+            // 客户端（尤其是连专用服务器时）拿不到服务端的 compartmentQuery，
+            // 只能读同步过来的水面盒；方块船没有物理刚体，这条分支显式不算。
+            return Boolean.TRUE.equals(net.minecraftforge.fml.DistExecutor.unsafeCallWhenOn(
+                    net.minecraftforge.api.distmarker.Dist.CLIENT,
+                    () -> () -> com.opamb.barotrauma.client.ShipWaterRenderer
+                            .isInsidePhysicalCompartment(level, pos)));
+        }
+        // 查询桥装好时一定返回 true/false（true = 干燥舱，false = 进水舱，两者都算在舱内），
+        // 只有没有物理船/没装 VS2 才是 null。不能再退回只减平移量的旧查询：
+        // 船偏航后舱外位置会落进未旋转的水盒里，被误判成舱内。
+        return com.opamb.barotrauma.ship.vs.VsState
+                .queryPlayerInDryCompartment(level, pos) != null;
+    }
+
+    /**
      * 游泳/溺水的权威浸没判定（issue #31）：在 {@link #isSubmerged} 之上追加
      * 方块船干舱兜底与物理船舱内干湿询问。
      *

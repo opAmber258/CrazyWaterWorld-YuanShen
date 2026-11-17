@@ -4,6 +4,7 @@ import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.ShipCores;
+import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -52,33 +53,64 @@ public final class HullDamageEvents {
         }
         float base = (float) Math.min(MAX_DAMAGE, BASE_DAMAGE + DAMAGE_PER_RADIUS * radius);
 
-        if (VsState.active()) {
-            // 物理船：世界方块照常炸，船壳单独按快照结算。
-            VsState.damageExplosion(level, center, radius + 0.75D, base);
-            return;
-        }
-
         BlockPos centerPos = BlockPos.containing(center);
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, centerPos,
-                Math.max(32.0D, radius + 32.0D));
-        if (core == null || core.state() == null) {
+        // 物理船按快照独立结算：damageExplosion 自己会用完整 shipToWorld 变换
+        // 判断命中，没有船/没命中时返回 0。不要在外面用只含平移的包围盒粗筛——
+        // 船偏航 90° 后，船首附近的爆炸会被旧包围盒排除、整次伤害跳过。
+        if (VsState.active()) {
+            VsState.damageExplosion(level, center, radius + 0.75D, base);
+        }
+        // 方块船分支照常跑：世界上有物理船时，旁边方块船的熔毁仍要走船壳耐久，
+        // 不能因为全局 active() 提前返回、被原版爆炸直接删掉。
+        //
+        // 一次爆炸可能同时扫到多艘方块船（A 船反应堆熔毁，冲击波打到旁边的 B 船）。
+        // 必须按“这一格归哪艘船”逐格匹配，不能只取离爆心最近的核心：更近的 C 船
+        // 会把 B 船的船壳从归属判定里挤掉，B 的船壳就被原版爆炸直接删了（0% 应该
+        // 变成 BREACHED，不是删除方块）。
+        // 船体扫描是每个坐标轴 ±24 格的立方体：爆炸命中船角时，核心离爆心
+        // 最远约 41.6 格，+32 的欧氏半径会漏掉这艘船，船壳就被原版爆炸删了。
+        List<ShipCoreBlockEntity> cores = ShipCores.coresNear(level, centerPos,
+                Math.max(48.0D, radius + 48.0D));
+        if (cores.isEmpty()) {
             return;
         }
-        List<BlockPos> hullHits = new ArrayList<>();
+        java.util.Map<ShipCoreBlockEntity, List<BlockPos>> hitsByCore =
+                new java.util.LinkedHashMap<>();
         Iterator<BlockPos> iterator = event.getAffectedBlocks().iterator();
         while (iterator.hasNext()) {
             BlockPos pos = iterator.next();
-            if ((level.getBlockState(pos).is(ModShipBlocks.SONAR.get())
-                    || level.getBlockState(pos).is(ModShipBlocks.NAVIGATION_TERMINAL.get()))
-                    && core.state().tracksHullBlock(pos)) {
+            net.minecraft.world.level.block.state.BlockState blockState = level.getBlockState(pos);
+            boolean brain = blockState.is(ModShipBlocks.SONAR.get())
+                    || blockState.is(ModShipBlocks.NAVIGATION_TERMINAL.get());
+            if (!brain && !ModShipBlocks.isRepairableHull(blockState)) {
+                continue;
+            }
+            ShipCoreBlockEntity owner = null;
+            for (ShipCoreBlockEntity candidate : cores) {
+                // 区块重载后核心状态可能是 null；不补扫的话普通船壳认不出归属，
+                // 会被原版爆炸直接删掉（0% 应该变 BREACHED，不是删除方块）。
+                ShipState state = candidate.state() != null
+                        ? candidate.state() : candidate.rescan(level);
+                // 物理船的世界方块是空气，不会出现在爆炸列表里；跳过它的状态。
+                // 注意 state 为 null 时不能连带跳过核心位置匹配：区块刚重载、
+                // 还没 rescan 时声纳/导航台正好在核心位置上，也要算本船船脑。
+                if (state != null && state == VsState.activeState()) {
+                    continue;
+                }
+                // 核心自己也是“船脑”：几何收集会跳过核心自身、owns() 不包含它，
+                // 所以声纳/导航台正好放在核心位置上时要单独认。
+                if (candidate.getBlockPos().equals(pos)
+                        || (state != null && state.tracksHullBlock(pos))) {
+                    owner = candidate;
+                    break;
+                }
+            }
+            if (owner == null) {
+                continue;
+            }
+            if (brain) {
                 // 声纳是船脑，爆炸也不能炸掉。
                 iterator.remove();
-                continue;
-            }
-            if (!ModShipBlocks.isRepairableHull(level.getBlockState(pos))) {
-                continue;
-            }
-            if (!core.state().tracksHullBlock(pos)) {
                 continue;
             }
             double distance = Math.sqrt(Vec3.atCenterOf(pos).distanceToSqr(center));
@@ -87,10 +119,12 @@ public final class HullDamageEvents {
             }
             // 从原版破坏列表移除：爆炸不再秒掉这格，改由耐久系统决定。
             iterator.remove();
-            hullHits.add(pos);
+            hitsByCore.computeIfAbsent(owner, key -> new ArrayList<>()).add(pos);
         }
-        if (!hullHits.isEmpty()) {
-            core.applyExplosion(level, hullHits, center, radius + 0.75D, base);
+        for (java.util.Map.Entry<ShipCoreBlockEntity, List<BlockPos>> entry
+                : hitsByCore.entrySet()) {
+            entry.getKey().applyExplosion(level, entry.getValue(), center,
+                    radius + 0.75D, base);
         }
     }
 }

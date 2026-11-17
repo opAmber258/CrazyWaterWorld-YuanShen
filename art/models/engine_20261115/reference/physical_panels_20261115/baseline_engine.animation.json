@@ -1,0 +1,149 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.engine.rotor_spin": {
+      "loop": true,
+      "animation_length": 0.8,
+      "bones": {
+        "rotor": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.2": [
+              -90,
+              0,
+              0
+            ],
+            "0.4": [
+              -180,
+              0,
+              0
+            ],
+            "0.6": [
+              -270,
+              0,
+              0
+            ],
+            "0.8": [
+              -360,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    "animation.engine.pistons": {
+      "loop": true,
+      "animation_length": 1.2,
+      "bones": {
+        "piston_left_moving": {
+          "position": [
+            0,
+            "1.5 * math.cos(query.anim_time * 300)",
+            0
+          ]
+        },
+        "piston_right_moving": {
+          "position": [
+            0,
+            "-1.5 * math.cos(query.anim_time * 300)",
+            0
+          ]
+        }
+      }
+    },
+    "animation.engine.running": {
+      "loop": true,
+      "animation_length": 2.4,
+      "bones": {
+        "rotor": {
+          "rotation": {
+            "0.0": [
+              0,
+              0,
+              0
+            ],
+            "0.2": [
+              -90,
+              0,
+              0
+            ],
+            "0.4": [
+              -180,
+              0,
+              0
+            ],
+            "0.6": [
+              -270,
+              0,
+              0
+            ],
+            "0.8": [
+              -360,
+              0,
+              0
+            ],
+            "1.0": [
+              -450,
+              0,
+              0
+            ],
+            "1.2": [
+              -540,
+              0,
+              0
+            ],
+            "1.4": [
+              -630,
+              0,
+              0
+            ],
+            "1.6": [
+              -720,
+              0,
+              0
+            ],
+            "1.8": [
+              -810,
+              0,
+              0
+            ],
+            "2.0": [
+              -900,
+              0,
+              0
+            ],
+            "2.2": [
+              -990,
+              0,
+              0
+            ],
+            "2.4": [
+              -1080,
+              0,
+              0
+            ]
+          }
+        },
+        "piston_left_moving": {
+          "position": [
+            0,
+            "1.5 * math.cos(query.anim_time * 300)",
+            0
+          ]
+        },
+        "piston_right_moving": {
+          "position": [
+            0,
+            "-1.5 * math.cos(query.anim_time * 300)",
+            0
+          ]
+        }
+      }
+    }
+  }
+}

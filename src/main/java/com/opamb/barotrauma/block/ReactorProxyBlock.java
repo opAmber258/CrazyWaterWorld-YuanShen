@@ -43,6 +43,10 @@ public class ReactorProxyBlock extends Block {
             }
             Component title = Component.translatable(
                     reactor.getBlockState().getBlock().getDescriptionId());
+            if (com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
+                    serverPlayer, pos, reactor, false)) {
+                return InteractionResult.CONSUME;
+            }
             NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inventory, p) -> new ReactorMenu(id, inventory, pos),

@@ -28,6 +28,7 @@ public final class ClientSetup {
     public static void onRegisterKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
         event.register(CampaignClient.OPEN_MAP);
         event.register(UnderwaterMovement.TOGGLE_NATURAL_SINK);
+        event.register(PowerClient.OPEN_POWER);
     }
 
     /** 客户端初始化：干燥区回调、渲染层与菜单界面注册。 */
@@ -61,9 +62,18 @@ public final class ClientSetup {
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.ENGINE.get(), EngineScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.BATTERY.get(), BatteryScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.CABINET.get(), CabinetScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.CRATE.get(), CrateScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.REPAIR.get(), RepairScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.FABRICATOR.get(), FabricatorScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.DECONSTRUCTOR.get(),
+                    DeconstructorScreen::new);
         });
     }
 
@@ -87,6 +97,14 @@ public final class ClientSetup {
                 context -> new ReactorRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.ENGINE.get(),
                 context -> new EngineRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.JUNCTION_BOX.get(),
+                context -> new JunctionBoxRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.BATTERY.get(),
+                context -> new BatteryRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.FABRICATOR.get(),
+                context -> new FabricatorRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.DECONSTRUCTOR.get(),
+                context -> new DeconstructorRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.CABINET.get(),
                 context -> new CabinetRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.HATCH.get(), context -> new HatchRenderer());
