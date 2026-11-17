@@ -785,6 +785,20 @@ public final class VsPilot {
         // 只在那边调 tickSeaFlood 的话，物理船砸出洞后水永远不涨。
         if (++simTickCounter % 2L == 0L && state != null) {
             try {
+                // 导航台/声纳终端也吃电（原作 Steering 10 + Sonar 100 = 110 kW），
+                // 物理船上方块级 tick 停了，由这里补报终端负载。
+                if (level != null) {
+                    com.opamb.barotrauma.blockentity.ShipCoreBlockEntity terminal =
+                            sonarCoreBlockEntity(level);
+                    if (terminal != null) {
+                        // 世界重开 + adopt() 之后 BE 的 state 可能还是 null，
+                        // reportTerminalPower 会直接返回，110 kW 终端负载一直不进模拟。
+                        if (terminal.state() == null) {
+                            terminal.setState(state);
+                        }
+                        terminal.reportTerminalPower(toAssembly(terminal.getBlockPos()));
+                    }
+                }
                 state.simulation().tick(0.1D);
                 if (now != null) {
                     state.simulation().tickSeaFlood(0.1D, Math.max(0.0D, -now.y));
@@ -1266,6 +1280,17 @@ public final class VsPilot {
         }
         return level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.ReactorBlockEntity reactor
                 ? reactor : null;
+    }
+
+    /** 物理船导航/声纳核心（修理面板走它）。 */
+    @Nullable
+    public static com.opamb.barotrauma.blockentity.ShipCoreBlockEntity sonarCoreBlockEntity(ServerLevel level) {
+        if (sonarAnchor == null || yardOffsetX == Integer.MIN_VALUE) {
+            return null;
+        }
+        BlockPos yard = sonarAnchor.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+        return level.getBlockEntity(yard) instanceof com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core
+                ? core : null;
     }
 
     /** 物理船引擎在船坞里的坐标。 */
@@ -1970,7 +1995,15 @@ public final class VsPilot {
                 continue;
             }
             float max = state.hullMaxHealth(block);
-            if (max <= 0.0F) {
+            // 设备（泵/反应堆/引擎/门/柜子等）没有船壳耐久，但爆炸同样要伤到
+            // 耐久组件；物理船方块在世界里是空气，RepairDamageEvents 拿不到它们。
+            BlockPos deviceYard = pos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+            net.minecraft.world.level.block.entity.BlockEntity deviceBe =
+                    level.getBlockEntity(deviceYard);
+            com.opamb.barotrauma.ship.RepairTarget device =
+                    deviceBe instanceof com.opamb.barotrauma.ship.RepairTarget target
+                            ? target : null;
+            if (max <= 0.0F && device == null) {
                 continue;
             }
             org.joml.Vector3d shipSpace = new org.joml.Vector3d(
@@ -1987,7 +2020,11 @@ public final class VsPilot {
                 continue;
             }
             hit++;
-            if (state.hullDamage().applyDamage(pos, amount, max) <= 0.0F) {
+            if (device != null) {
+                device.damage(com.opamb.barotrauma.event.RepairDamageEvents.EXPLOSION_DAMAGE);
+                deviceBe.setChanged();
+            }
+            if (max > 0.0F && state.hullDamage().applyDamage(pos, amount, max) <= 0.0F) {
                 broken.add(pos);
             }
         }

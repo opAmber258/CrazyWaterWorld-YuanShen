@@ -96,6 +96,35 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
             if (ship == null) {
                 return;
             }
+            // 导航/声纳核心耐久归零：终端离线，舵令不再生效。
+            ShipCoreBlockEntity terminal = core;
+            if (terminal == null && com.opamb.barotrauma.ship.vs.VsState.active()) {
+                terminal = com.opamb.barotrauma.ship.vs.VsPilot.sonarCoreBlockEntity(level);
+            }
+            // 物理船必须有声纳核心：核心被拆后不能再操舵/控泵。
+            if (terminal == null && com.opamb.barotrauma.ship.vs.VsState.active()) {
+                return;
+            }
+            if (terminal != null && terminal.condition() <= 0.0D) {
+                return;
+            }
+            // 原作 Powered.HasPower：电压低于 MinVoltage 0.5 时导航台完全不能用。
+            // 必须用终端自己的电压：绑定的接线盒坏了以后 consumerVoltage(终端)=0，
+            // 但全船可能还有电，不能继续操舵。
+            BlockPos terminalCell = null;
+            if (terminal != null) {
+                boolean yard = com.opamb.barotrauma.ship.vs.VsState.active()
+                        && com.opamb.barotrauma.ship.vs.VsPilot.isYardBlock(terminal.getBlockPos());
+                terminalCell = yard
+                        ? com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(terminal.getBlockPos())
+                        : terminal.getBlockPos();
+            }
+            double terminalVoltage = terminalCell != null
+                    ? ship.simulation().consumerVoltage(terminalCell)
+                    : ship.simulation().voltage();
+            if (terminalVoltage < ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE) {
+                return;
+            }
             switch (action) {
                 case PUMP_OUT -> ship.simulation().setPumpOut(true);
                 case PUMP_IN -> ship.simulation().setPumpOut(false);

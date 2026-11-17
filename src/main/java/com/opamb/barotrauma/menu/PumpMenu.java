@@ -34,8 +34,10 @@ public class PumpMenu extends AbstractContainerMenu {
     public static final int DATA_POWER = 2;
     /** 数据位 3：是否是压载泵（自动模式跟随舵台，而不是水传感器）。 */
     public static final int DATA_BALLAST = 3;
+    /** 数据位 4：耐久 × 10。 */
+    public static final int DATA_CONDITION = 4;
 
-    public static final int DATA_COUNT = 4;
+    public static final int DATA_COUNT = 5;
 
     private final BlockPos pumpPos;
     private final ContainerData data;
@@ -71,6 +73,7 @@ public class PumpMenu extends AbstractContainerMenu {
                         case DATA_FLOW -> pump.effectiveFlow();
                         case DATA_POWER -> powered(shipState) ? 1 : 0;
                         case DATA_BALLAST -> pump.ballast() ? 1 : 0;
+                        case DATA_CONDITION -> (int) Math.round(pump.condition() * 10.0D);
                         default -> 0;
                     };
                 }
@@ -86,7 +89,11 @@ public class PumpMenu extends AbstractContainerMenu {
                 }
             };
         } else {
-            this.data = new SimpleContainerData(DATA_COUNT);
+            SimpleContainerData fallback = new SimpleContainerData(DATA_COUNT);
+            fallback.set(DATA_AUTO, 1);
+            fallback.set(DATA_FLOW, -100);
+            fallback.set(DATA_CONDITION, 1000);
+            this.data = fallback;
         }
         addDataSlots(data);
     }

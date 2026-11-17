@@ -9,7 +9,7 @@ import com.opamb.barotrauma.network.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
+import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import java.util.ArrayList;
@@ -24,7 +24,11 @@ import java.util.Set;
  * 左键选相邻目的站 → 右侧只列该目的地能接的任务、勾选（一趟最多 3 条）→ 点「下潜」时
  * 连同勾选一起发给服务端，服务端接取任务（货运同时装货）并开始航程。</p>
  */
-public final class CampaignMapScreen extends Screen {
+public final class CampaignMapScreen extends ScaledScreen {
+
+    /** 设计尺寸：整张海图按这块画布等比缩放（窗口小/GUI Scale 大时整体缩进去）。 */
+    private static final int MAP_W = 560;
+    private static final int MAP_H = 320;
     private static final ResourceLocation MAP_PIECES =
             new ResourceLocation("barotrauma", "textures/gui/map_pieces.png");
     private static final ResourceLocation MAP_ICONS =
@@ -44,7 +48,7 @@ public final class CampaignMapScreen extends Screen {
     private Button dive;
     private boolean pending;
 
-    public CampaignMapScreen() { super(tr("title")); }
+    public CampaignMapScreen() { super(tr("title"), MAP_W, MAP_H); }
 
     /** 服务端发 OpenCampaignMapPacket 后调用（右键站务员）。 */
     public static void openFromNpc() {
@@ -55,16 +59,17 @@ public final class CampaignMapScreen extends Screen {
     private static Component nodeName(MapNode n) { return tr("node." + n.id()); }
 
     @Override protected void init() {
+        super.init();
         var state = CampaignClient.state();
         if (state == null) { onClose(); return; }
         if (origin != state.current()) { origin = state.current(); selected = -1; checked.clear(); }
-        panelW = Math.max(135, Math.min(270, width * 42 / 100));
-        panelX = width - panelW - 10;
-        int availableW = Math.max(60, panelX - 20), availableH = Math.max(45, height - 82);
+        panelW = Math.max(135, Math.min(270, MAP_W * 42 / 100));
+        panelX = MAP_W - panelW - 10;
+        int availableW = Math.max(60, panelX - 20), availableH = Math.max(45, MAP_H - 82);
         scale = Math.min(availableW / (double) CampaignMap.VIEW_WIDTH, availableH / (double) CampaignMap.MAP_HEIGHT);
         mapW = (int) (CampaignMap.VIEW_WIDTH * scale); mapH = (int) (CampaignMap.MAP_HEIGHT * scale);
         mapX = 10 + (availableW - mapW) / 2; mapY = 45 + (availableH - mapH) / 2;
-        bodyY = 53; bodyBottom = height - 54;
+        bodyY = 53; bodyBottom = MAP_H - 54;
         dive = addRenderableWidget(Button.builder(tr("dive"), button -> {
             if (!canDive()) {
                 Component why = selected < 0 ? Component.translatable("campaign.barotrauma.select_first")
@@ -83,9 +88,9 @@ public final class CampaignMapScreen extends Screen {
             ModNetwork.CHANNEL.sendToServer(new CampaignActionPacket(origin, selected, ids));
             // 服务端会立刻把全员传送进艇；先关掉海图，否则玩家会卡在 GUI 里点不到声纳/水泵。
             onClose();
-        }).bounds(panelX + 6, height - 44, panelW - 12, 20).build());
+        }).bounds(panelX + 6, MAP_H - 44, panelW - 12, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("campaign.barotrauma.close"), button -> onClose())
-                .bounds(10, height - 28, 70, 20).build());
+                .bounds(10, MAP_H - 28, 70, 20).build());
         dive.active = canDive();
     }
 
@@ -125,16 +130,15 @@ public final class CampaignMapScreen extends Screen {
         return ClientMissionCache.grantedFor(selected);
     }
 
-    @Override public void render(GuiGraphics g, int mx, int my, float partialTick) {
-        renderBackground(g);
-        g.fill(5, 5, width - 5, height - 5, 0xF0081116);
+    @Override protected void renderDesign(GuiGraphics g, int mx, int my, float partialTick) {
+        g.fill(5, 5, MAP_W - 5, MAP_H - 5, 0xF0081116);
         g.drawString(font, title, 12, 12, 0xFFC1E8D9);
         g.drawString(font, tr("biome"), 12, 28, 0xFF80CEAF);
         g.drawString(font, tr("wallet", CampaignClient.state() == null ? 0 : CampaignClient.state().credits()), panelX, 28, 0xFFE3D78D);
         g.drawCenteredString(font, tr("biome"), mapX + mapW / 2, Math.max(46, mapY - 12), 0xAA9FBDB4);
         g.fill(mapX - 2, mapY - 2, mapX + mapW + 2, mapY + mapH + 2, 0xFF02070A);
 
-        g.enableScissor(mapX, mapY, mapX + mapW, mapY + mapH);
+        enableDesignScissor(g, mapX, mapY, mapX + mapW, mapY + mapH);
         drawBackground(g);
         // 极淡的坐标网格，只为参照距离
         for (int i = 0; i <= CampaignMap.VIEW_WIDTH; i += 200) {
@@ -176,8 +180,8 @@ public final class CampaignMapScreen extends Screen {
         }
         g.disableScissor();
 
-        g.fill(panelX, 44, width - 10, height - 49, 0xFF172B35);
-        g.enableScissor(panelX + 4, bodyY, width - 14, bodyBottom);
+        g.fill(panelX, 44, MAP_W - 10, MAP_H - 49, 0xFF172B35);
+        enableDesignScissor(g, panelX + 4, bodyY, MAP_W - 14, bodyBottom);
         if (!CampaignMap.isValid(selected)) {
             wrapped(g, tr("choose"), panelX + 8, bodyY + 6 - scroll, panelW - 16, 0xFFB6CEC8);
         } else {
@@ -204,8 +208,11 @@ public final class CampaignMapScreen extends Screen {
             maxScroll = Math.max(0, end + scroll - bodyBottom + 6);
         }
         g.disableScissor();
-        super.render(g, mx, my, partialTick);
-        MapNode hover = hit(mx, my);
+    }
+
+    /** 站点悬浮提示：不跟着界面缩放，用真实屏幕坐标画。 */
+    @Override protected void renderOverlay(GuiGraphics g, int mouseX, int mouseY) {
+        MapNode hover = hit(designX(mouseX), designY(mouseY));
         if (hover != null) {
             var text = new ArrayList<Component>();
             text.add(nodeName(hover));
@@ -214,7 +221,7 @@ public final class CampaignMapScreen extends Screen {
             if (hover.services().isEmpty()) text.add(tr("services.none"));
             else text.add(tr("services.outpost"));
             text.add(hover.faction().equals("none") ? tr("faction.none") : tr("faction.coalition", hover.reputation()));
-            g.renderComponentTooltip(font, text, mx, my);
+            g.renderComponentTooltip(font, text, mouseX, mouseY);
         }
     }
 
@@ -287,7 +294,8 @@ public final class CampaignMapScreen extends Screen {
             g.fill(xx, yy, xx + 1, yy + 1, color);
         }
     }
-    @Override public boolean mouseClicked(double mx, double my, int button) {
+    @Override public boolean mouseClicked(double screenX, double screenY, int button) {
+        double mx = designX(screenX), my = designY(screenY);
         if (button == 0) {
             MapNode n = hit(mx, my);
             if (n != null && CampaignMap.connects(origin, n.id()) && !pending) {
@@ -300,7 +308,7 @@ public final class CampaignMapScreen extends Screen {
                 }
             }
             // 任务勾选
-            if (mx >= panelX && mx < width - 10 && my >= bodyY && my < bodyBottom && !pending
+            if (mx >= panelX && mx < MAP_W - 10 && my >= bodyY && my < bodyBottom && !pending
                     && CampaignMap.isValid(selected)) {
                 int yy = bodyY - scroll;
                 yy += font.split(tr("route", nodeName(CampaignMap.node(origin)),
@@ -327,11 +335,12 @@ public final class CampaignMapScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mx, my, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
-    @Override public boolean mouseScrolled(double mx, double my, double delta) {
+    @Override public boolean mouseScrolled(double screenX, double screenY, double delta) {
+        double mx = designX(screenX), my = designY(screenY);
         if (mx >= panelX) { scroll = Math.max(0, Math.min(maxScroll, scroll - (int) (delta * 20))); return true; }
-        return super.mouseScrolled(mx, my, delta);
+        return super.mouseScrolled(screenX, screenY, delta);
     }
     @Override public boolean keyPressed(int key, int scan, int mods) {
         if (CampaignClient.OPEN_MAP.matches(key, scan)) { onClose(); return true; }

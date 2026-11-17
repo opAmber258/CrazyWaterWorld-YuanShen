@@ -11,8 +11,10 @@ import com.opamb.barotrauma.network.ShipActionPacket;
 import com.opamb.barotrauma.network.SonarPingPacket;
 import com.opamb.barotrauma.sonar.ClientSonarCache;
 import com.opamb.barotrauma.sonar.SonarScan;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
@@ -31,7 +33,7 @@ import org.lwjgl.glfw.GLFW;
  *       出海后靠近哨站变成「对接」，把物理船吸回码头并拆回方块船。</li>
  * </ul>
  */
-public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
+public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
 
     // ---- 版式 ----
     private static final int PANEL_W = 620;
@@ -67,14 +69,8 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     private static final int DOCK_CY = 292;
     private static final int DOCK_R = 32;
 
-    /**
-     * 设计分辨率 620×340 到屏幕的等比缩放：窗口/GUI 尺寸不够时整体缩小，
-     * 不会再把面板裁掉。绘制和命中测试全部用设计坐标，leftPos/topPos 归零。
-     */
-    private float uiScale = 1.0F;
-    /** 缩放后面板左上角在屏幕上的位置。 */
-    private int panelX;
-    private int panelY;
+    // 设计分辨率 620×340：缩放/居中/鼠标换算全部由 ScaledContainerScreen 处理，
+    // 这里只写设计坐标（leftPos/topPos 恒为 0）。
 
     /** 一次声纳脉冲由内向外扩散的周期（毫秒）。 */
     private static final float PING_MS = 2600.0F;
@@ -145,28 +141,10 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     @Override
     protected void init() {
         super.init();
-        // 按可用 GUI 空间等比缩放：窗口小 / GUI Scale 大时整块面板缩进去，不再被裁。
-        float margin = 12.0F;
-        float fitW = (this.width - margin * 2.0F) / PANEL_W;
-        float fitH = (this.height - margin * 2.0F) / PANEL_H;
-        uiScale = Mth.clamp(Math.min(fitW, fitH), 0.30F, 1.0F);
-        panelX = Math.round((this.width - PANEL_W * uiScale) * 0.5F);
-        panelY = Math.round((this.height - PANEL_H * uiScale) * 0.5F);
-        // 所有绘制/命中测试改用设计坐标（0..620 / 0..340），渲染时统一 translate+scale。
-        this.leftPos = 0;
-        this.topPos = 0;
+        // 缩放/居中由基类按设计尺寸 620×340 算好，这里只做界面自己的初始化。
         ClientSonarCache.clear();
         openedAt = System.currentTimeMillis();
         sendPing();
-    }
-
-    /** 屏幕坐标 → 设计坐标（缩放后的面板内部坐标）。 */
-    private int designX(double screenX) {
-        return (int) Math.floor((screenX - panelX) / uiScale);
-    }
-
-    private int designY(double screenY) {
-        return (int) Math.floor((screenY - panelY) / uiScale);
     }
 
     @Override
@@ -275,7 +253,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
     // ------------------------------------------------------------------ 绘制
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderScaled(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         if (!synced && ClientSonarCache.frame() != null) {
             power = ClientSonarCache.power();
             autoMode = ClientSonarCache.autopilot();
@@ -284,13 +262,8 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             headingZ = ClientSonarCache.headingZ();
             synced = true;
         }
-        // 全屏压暗不参与缩放。
-        renderBackground(graphics);
-        int dmx = designX(mouseX);
-        int dmy = designY(mouseY);
-        graphics.pose().pushPose();
-        graphics.pose().translate(panelX, panelY, 0.0F);
-        graphics.pose().scale(uiScale, uiScale, 1.0F);
+        int dmx = mouseX;
+        int dmy = mouseY;
         renderBg(graphics, partialTick, dmx, dmy);
         drawBanner(graphics);
         if (page == 0) {
@@ -307,7 +280,6 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             drawMissionPage(graphics, dmx, dmy);
         }
         drawTabs(graphics, dmx, dmy);
-        graphics.pose().popPose();
     }
 
     // ---------------------------------------------------------- 顶部横幅 / 页签
@@ -444,10 +416,11 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         String core = ClientSonarCache.core();
         if (core == null || core.isEmpty()) {
             graphics.drawString(font, "等待核心数据…", x + 8, y + 22, DIM, false);
+            drawCoreRepair(graphics, x, y, h);
             return;
         }
         int lineY = y + 22;
-        int bottom = y + h - 6;
+        int bottom = y + h - 34;
         for (String line : core.split("\n")) {
             if (lineY > bottom) {
                 graphics.drawString(font, "…", x + 8, lineY, DIM, false);
@@ -456,6 +429,17 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
             graphics.drawString(font, line, x + 8, lineY, TEXT, false);
             lineY += 11;
         }
+        drawCoreRepair(graphics, x, y, h);
+    }
+
+    /** 核心页底部：导航/声纳核心的耐久状态（修理入口在独立修理窗口）。 */
+    private void drawCoreRepair(GuiGraphics graphics, int x, int y, int h) {
+        int condition = menu.data().get(SonarMenu.DATA_CONDITION);
+        String text = condition <= 0
+                ? "核心已损坏，需要螺丝刀修理"
+                : "核心耐久: " + Math.round(condition / 10.0D) + "%";
+        graphics.drawString(font, text, x + 8, y + h - 20,
+                condition <= 0 ? 0xFFFF5555 : DIM, false);
     }
 
     // ---------------------------------------------------------- 左：舰况
@@ -1286,7 +1270,7 @@ public class SonarScreen extends AbstractContainerScreen<SonarMenu> {
         if (page == 2) {
             return super.mouseClicked(mouseX, mouseY, button);
         }
-        // 核心页只展示数据，不响应示波器拖拽之类的操作
+        // 核心页只展示数据，不响应示波器拖拽之类的操作。
         if (page == 1) {
             return super.mouseClicked(mouseX, mouseY, button);
         }

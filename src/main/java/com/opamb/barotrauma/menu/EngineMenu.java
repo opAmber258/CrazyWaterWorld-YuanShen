@@ -28,7 +28,8 @@ public class EngineMenu extends AbstractContainerMenu {
     public static final int DATA_DEMAND = 2;
     public static final int DATA_COUNT = 3;
     public static final int DATA_MAX_FORCE = 4;
-    public static final int DATA_SIZE = 5;
+    public static final int DATA_CONDITION = 5;
+    public static final int DATA_SIZE = 6;
 
     private final BlockPos enginePos;
     private final ContainerData data;
@@ -63,6 +64,7 @@ public class EngineMenu extends AbstractContainerMenu {
                         case DATA_DEMAND -> (int) Math.round(be.lastDemandKw());
                         case DATA_COUNT -> be.lastEngineCount();
                         case DATA_MAX_FORCE -> (int) Math.round(be.lastMaxForce());
+                        case DATA_CONDITION -> (int) Math.round(be.condition() * 10.0D);
                         default -> 0;
                     };
                 }
@@ -78,7 +80,9 @@ public class EngineMenu extends AbstractContainerMenu {
                 }
             };
         } else {
-            this.data = new SimpleContainerData(DATA_SIZE);
+            SimpleContainerData fallback = new SimpleContainerData(DATA_SIZE);
+            fallback.set(DATA_CONDITION, 1000);
+            this.data = fallback;
         }
         addDataSlots(data);
     }

@@ -1,11 +1,16 @@
 package com.opamb.barotrauma.menu;
 
+import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
+import com.opamb.barotrauma.network.RepairActionPacket;
 import com.opamb.barotrauma.registry.ModMenus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
@@ -17,8 +22,12 @@ import net.minecraft.world.phys.Vec3;
  */
 public class SonarMenu extends AbstractContainerMenu {
 
+    public static final int DATA_CONDITION = 0;
+    public static final int DATA_COUNT = 1;
+
     private final BlockPos sonarPos;
     private final int range;
+    private final ContainerData data;
 
     public SonarMenu(int id, Inventory inventory, FriendlyByteBuf buf) {
         this(id, inventory, buf.readBlockPos(), buf.readVarInt());
@@ -28,6 +37,41 @@ public class SonarMenu extends AbstractContainerMenu {
         super(ModMenus.SONAR.get(), id);
         this.sonarPos = sonarPos;
         this.range = range;
+        ShipCoreBlockEntity core = null;
+        if (!inventory.player.level().isClientSide
+                && inventory.player.level() instanceof ServerLevel serverLevel
+                && RepairActionPacket.find(serverLevel, sonarPos) instanceof ShipCoreBlockEntity found) {
+            core = found;
+        }
+        if (core != null) {
+            ShipCoreBlockEntity target = core;
+            this.data = new ContainerData() {
+                @Override
+                public int get(int index) {
+                    return index == DATA_CONDITION
+                            ? (int) Math.round(target.condition() * 10.0D) : 0;
+                }
+
+                @Override
+                public void set(int index, int value) {
+                    // 只读同步。
+                }
+
+                @Override
+                public int getCount() {
+                    return DATA_COUNT;
+                }
+            };
+        } else {
+            SimpleContainerData fallback = new SimpleContainerData(DATA_COUNT);
+            fallback.set(DATA_CONDITION, 1000);
+            this.data = fallback;
+        }
+        addDataSlots(data);
+    }
+
+    public ContainerData data() {
+        return data;
     }
 
     public BlockPos sonarPos() {

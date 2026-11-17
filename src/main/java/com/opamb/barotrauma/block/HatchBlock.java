@@ -2,6 +2,7 @@ package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.HatchBlockEntity;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.registry.ModSounds;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
@@ -150,6 +151,13 @@ public class HatchBlock extends BaseEntityBlock {
         }
     }
 
+    /** 主段（中间段）位置：左右段沿长轴反推；中间段返回自身。 */
+    public static BlockPos masterPos(BlockPos pos, BlockState state) {
+        Direction longAxis = state.getValue(FACING).getClockWise();
+        int offset = state.getValue(PART).ordinal() - 1;
+        return pos.relative(longAxis, -offset);
+    }
+
     private static BlockPos middlePos(Level level, BlockPos pos, BlockState state) {
         Direction longAxis = state.getValue(FACING).getClockWise();
         int offset = state.getValue(PART).ordinal() - 1;
@@ -170,12 +178,26 @@ public class HatchBlock extends BaseEntityBlock {
             if (middle == null) {
                 return InteractionResult.PASS;
             }
-            if (player.isShiftKeyDown()
-                    && level.getBlockEntity(middle) instanceof HatchBlockEntity hatch) {
-                hatch.cycleAutomation();
-                player.displayClientMessage(
-                        Component.translatable(hatch.automation().translationKey()), true);
-                return InteractionResult.CONSUME;
+            if (level.getBlockEntity(middle) instanceof HatchBlockEntity hatch) {
+                boolean wrench = player.getMainHandItem().is(ModItems.WRENCH.get())
+                        || player.getOffhandItem().is(ModItems.WRENCH.get());
+                // 手里有扳手就开修理窗口，空手右键才是开关舱口。
+                if (wrench && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
+                        && com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
+                                serverPlayer, middle, hatch, true)) {
+                    return InteractionResult.CONSUME;
+                }
+                if (hatch.condition() <= 0.0D) {
+                    player.displayClientMessage(
+                            Component.translatable("gui.barotrauma.hatch.broken"), true);
+                    return InteractionResult.CONSUME;
+                }
+                if (player.isShiftKeyDown()) {
+                    hatch.cycleAutomation();
+                    player.displayClientMessage(
+                            Component.translatable(hatch.automation().translationKey()), true);
+                    return InteractionResult.CONSUME;
+                }
             }
             setOpen(level, pos, state, !state.getValue(OPEN));
         }
@@ -186,6 +208,10 @@ public class HatchBlock extends BaseEntityBlock {
     public static boolean setOpen(Level level, BlockPos pos, BlockState state, boolean open) {
         BlockPos middle = middlePos(level, pos, state);
         if (middle == null) {
+            return false;
+        }
+        if (level.getBlockEntity(middle) instanceof HatchBlockEntity hatch
+                && hatch.condition() <= 0.0D) {
             return false;
         }
         Direction longAxis = state.getValue(FACING).getClockWise();

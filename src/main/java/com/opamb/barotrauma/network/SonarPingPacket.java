@@ -120,6 +120,15 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             }
             Set<BlockPos> hull = ship == null ? null : hullForSonar(ship, physical);
 
+            // 导航/声纳核心耐久归零：终端离线，扫描结果为空。
+            boolean terminalBroken = core != null && core.condition() <= 0.0D;
+            if (!terminalBroken && physical) {
+                var physicalCore = com.opamb.barotrauma.ship.vs.VsPilot.sonarCoreBlockEntity(level);
+                if (physicalCore != null) {
+                    terminalBroken = physicalCore.condition() <= 0.0D;
+                }
+            }
+
             SonarScan.Mode scanMode = SonarScan.Mode.byOrdinal(mode);
             // 被动模式没有回波，射程由船有多吵决定：反应堆出力 + 引擎在不在推
             int effectiveRange = scanMode == SonarScan.Mode.PASSIVE
@@ -139,7 +148,41 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                 }
             }
 
-            SonarScan.Frame frame = ship == null || ship.simulation().voltage() >= 0.5D
+            // 用终端自己的电压：绑定的接线盒坏了以后 consumerVoltage(终端)=0，
+            // 但全船可能还有电，声纳不能继续扫描。
+            double terminalVoltage = ship == null ? 1.0D : ship.simulation().voltage();
+            if (ship != null) {
+                BlockPos terminalCell = null;
+                if (core != null) {
+                    terminalCell = core.getBlockPos();
+                } else if (physical) {
+                    var physicalCore = com.opamb.barotrauma.ship.vs.VsPilot
+                            .sonarCoreBlockEntity(level);
+                    if (physicalCore != null) {
+                        terminalCell = com.opamb.barotrauma.ship.vs.VsPilot
+                                .toAssembly(physicalCore.getBlockPos());
+                    }
+                }
+                if (terminalCell != null) {
+                    terminalVoltage = ship.simulation().consumerVoltage(terminalCell);
+                }
+            }
+            // 物理船没有声纳核心：终端视为离线，不能继续扫描。
+            if (physical && core == null && !terminalBroken
+                    && com.opamb.barotrauma.ship.vs.VsState.active()
+                    && com.opamb.barotrauma.ship.vs.VsPilot.sonarCoreBlockEntity(level) == null) {
+                terminalBroken = true;
+            }
+            String offlineReason = null;
+            if (physical && core == null && com.opamb.barotrauma.ship.vs.VsState.active()
+                    && com.opamb.barotrauma.ship.vs.VsPilot.sonarCoreBlockEntity(level) == null) {
+                offlineReason = "终端缺失：物理船没有声纳核心";
+            } else if (terminalBroken) {
+                offlineReason = "终端损坏：需要扳手/螺丝刀修理";
+            } else if (terminalVoltage < 0.5D) {
+                offlineReason = "电力不足：声纳离线（需要 ≥50% 电压）";
+            }
+            SonarScan.Frame frame = !terminalBroken && terminalVoltage >= 0.5D
                     ? SonarScan.scan(level, center, effectiveRange, hull, player,
                             scanMode, dirX, dirY, dirZ)
                     : new SonarScan.Frame(effectiveRange, new int[0]);
@@ -185,7 +228,7 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                     hasTarget ? target.getX() - base.getX() : 0,
                     hasTarget ? target.getY() - base.getY() : 0,
                     hasTarget ? target.getZ() - base.getZ() : 0,
-                    statusText(ship, center, scanMode, frame.range()),
+                    statusText(ship, center, scanMode, frame.range(), offlineReason),
                     coreText(ship, physical),
                     dock.state(), dock.distance(), dock.label(),
                     physical,
@@ -413,6 +456,12 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
 
     /** 面板右栏的几行字。 */
     public static String statusText(ShipState ship, BlockPos center, SonarScan.Mode mode, int range) {
+        return statusText(ship, center, mode, range, null);
+    }
+
+    /** @param offlineReason 终端缺失/损坏/欠压的具体原因；null = 正常 */
+    public static String statusText(ShipState ship, BlockPos center, SonarScan.Mode mode, int range,
+                                    @org.jetbrains.annotations.Nullable String offlineReason) {
         StringBuilder sb = new StringBuilder();
         String modeName = switch (mode) {
             case PASSIVE -> "被动";
@@ -425,6 +474,10 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
         }
         if (ship == null) {
             sb.append("\n未接入船核心");
+            return sb.toString();
+        }
+        if (offlineReason != null) {
+            sb.append("\n").append(offlineReason);
             return sb.toString();
         }
         if (ship.simulation().voltage() < 0.5D) {

@@ -4,7 +4,7 @@ import com.opamb.barotrauma.menu.MissionMenu;
 import com.opamb.barotrauma.network.MissionActionPacket;
 import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
@@ -14,7 +14,7 @@ import net.minecraft.world.entity.player.Inventory;
  * <p>任务已改成在码头上找站务员 NPC 接，终端不再列任务；所有任务在靠泊目的站时
  * 自动结算，所以这里也没有"交付"按钮。</p>
  */
-public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
+public class MissionScreen extends ScaledContainerScreen<MissionMenu> {
 
     private static final int PANEL_W = 420;
     private static final int PANEL_H = 96;
@@ -39,11 +39,6 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
         graphics.drawString(font, title, 10, 6, ACCENT, false);
     }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
-        super.render(graphics, mouseX, mouseY, partialTick);
-    }
 
     /** 商店按钮的顶边（屏幕坐标）。 */
     private int shopTop() {
@@ -86,7 +81,9 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         // 商店按钮（无 missionId）：两行三列
         int shopY = shopTop();
         int localX = (int) mouseX - leftPos;
@@ -103,12 +100,12 @@ public class MissionScreen extends AbstractContainerScreen<MissionMenu> {
                     MissionActionPacket.BUY_ENGINE_UPGRADE, MissionActionPacket.BUY_DEEP_PERMIT};
             if (relX < 0 || col >= 3 || offX >= 76
                     || relY < 0 || row >= 2 || offY >= 14) {
-                return super.mouseClicked(mouseX, mouseY, button);
+                return super.mouseClicked(screenX, screenY, button);
             }
             int idx = row * 3 + col;
             ModNetwork.CHANNEL.sendToServer(new MissionActionPacket(actions[idx]));
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
 }

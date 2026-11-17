@@ -1,9 +1,11 @@
 package com.opamb.barotrauma.client;
 
 import com.opamb.barotrauma.block.CabinetBlock;
+import com.opamb.barotrauma.client.equipment.BagOverlay;
+import com.opamb.barotrauma.equipment.BagSlots;
 import com.opamb.barotrauma.menu.CabinetMenu;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
@@ -12,9 +14,10 @@ import net.minecraft.world.inventory.Slot;
  * 钢柜 / 货架 / 潜水服柜 / 氧气瓶架的容器界面。
  *
  * <p>按原作容器 UI 的深色钢板风格自绘：深色面板、细边框、方格槽位、
- * 顶部标题与分区标签；槽位布局和数量跟方块实体一致。</p>
+ * 顶部标题与分区标签；槽位布局和数量跟方块实体一致。玩家那半边和
+ * 加工台/解构仪一样：3×9 装备背包区 + 快捷栏，不再画原版 27 格。</p>
  */
-public class CabinetScreen extends AbstractContainerScreen<CabinetMenu> {
+public class CabinetScreen extends ScaledContainerScreen<CabinetMenu> {
 
     private static final int W = 176;
     private static final int BG = 0xFF1A1D20;
@@ -88,8 +91,27 @@ public class CabinetScreen extends AbstractContainerScreen<CabinetMenu> {
                     x + 8, y + 72, DIM, false);
         }
 
-        for (Slot slot : menu.slots) {
+        // 容器格：仍用钢柜自己的深色格。
+        int containerSlots = Math.min(menu.kind().slots(), menu.slots.size());
+        for (int i = 0; i < containerSlots; i++) {
+            Slot slot = menu.slots.get(i);
             drawSlot(graphics, x + slot.x - 1, y + slot.y - 1);
+        }
+        // 玩家区：快捷栏格子底；上面那 27 格是"装备背包区"，由 BagOverlay 整块画。
+        int areaY = menu.playerAreaY();
+        for (int col = 0; col < 9; col++) {
+            slotBg(graphics, x + CabinetMenu.INV_AREA_X + col * 18 - 1,
+                    y + areaY + 58 - 1);
+        }
+        if (minecraft != null && minecraft.player != null) {
+            // 背包换了（容量变化）先重建格子位置，再整块画背包区。
+            BagSlots.rebuildClientAt(menu, minecraft.player, menu.invStart(),
+                    CabinetMenu.INV_AREA_X, areaY,
+                    CabinetMenu.INV_AREA_W, CabinetMenu.INV_AREA_H);
+            BagOverlay.renderIn(graphics, x, y, minecraft.player,
+                    CabinetMenu.INV_AREA_X, areaY,
+                    CabinetMenu.INV_AREA_W, CabinetMenu.INV_AREA_H);
+            com.opamb.barotrauma.client.equipment.HandsSlotOverlay.renderIn(graphics, menu, x, y);
         }
     }
 
@@ -99,6 +121,12 @@ public class CabinetScreen extends AbstractContainerScreen<CabinetMenu> {
         graphics.fill(x, y, x + 1, y + 18, SLOT_HI);
         graphics.fill(x, y + 17, x + 18, y + 18, SLOT_LO);
         graphics.fill(x + 17, y, x + 18, y + 18, SLOT_LO);
+    }
+
+    /** 玩家物品栏格子底（和加工台/解构仪的 {@code slotBg} 同款）。 */
+    private static void slotBg(GuiGraphics graphics, int x, int y) {
+        graphics.fill(x, y, x + 18, y + 18, 0xFF8B8B8B);
+        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF373737);
     }
 
     @Override

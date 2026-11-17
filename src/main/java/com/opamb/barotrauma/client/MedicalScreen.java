@@ -10,10 +10,11 @@ import com.opamb.barotrauma.network.MedicalRequestPacket;
 import com.opamb.barotrauma.network.MedicalTreatPacket;
 import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -31,19 +32,17 @@ import java.util.function.Supplier;
  * 右=悬停部位的伤情明细 + **对症药品图标（按原作 SuitableTreatment 排序，单击即用，
  * 从背包取药）**；用药后面板保持打开（用户指令）。点击身体部位 = 用主手药品。</p>
  */
-public final class MedicalScreen extends Screen {
+public final class MedicalScreen extends ScaledScreen {
 
     private static final int PANEL_W = 200;
     /**
      * 面板高度。
      *
-     * <p>高度预算（自上而下）：标题 5、身体图 34..108、病症区 112..drugRowY、药品栏 18、
-     * 活力行 22。原来 186 只给病症区留 32px（≈2 行），一有两条以上病症就看不到描述，
-     * 甚至倒地时连标题都被挤掉（CodeRabbit Major）。加到 214 后病症区有 60px（≈5 行）。</p>
-     *
-     * <p>最小值检查：GUI 缩放高度 240 时 y=(240-214)/2=13，底部 227 仍在屏内。</p>
+     * <p>高度预算（自上而下）：标题 5、身体图 34..108、可滚动病症区 112..bottom-30、
+     * 活力行底部 22。诊断区现在**可滚动**（上游实现），不再靠截断，所以高度主要影响
+     * 一次能看到几行；220 在 GUI 缩放高度 240 下 y=10、底部 230，仍在屏内。</p>
      */
-    private static final int PANEL_H = 214;
+    private static final int PANEL_H = 220;
     private static final int LINE = 11;
 
     /** 对症药品（按原作 SuitableTreatment 适配度降序；底表 §4）。 */
@@ -75,15 +74,23 @@ public final class MedicalScreen extends Screen {
     private Limb selectedLimb;
     private final List<IconRect> iconRects = new ArrayList<>();
     private int refreshTicks;
+    /** 伤情明细区的滚动量（换行后的描述可能超过面板高度）。 */
+    private int statusScroll;
+    /** 上一帧算出的内容高度，用来夹滚动量。 */
+    private int statusContentHeight;
+    /** 上一帧的状态区视口（设计坐标），药品命中不能超出它。 */
+    private int statusViewTop;
+    private int statusViewBottom;
 
     public MedicalScreen(UUID target, String targetName) {
-        super(Component.literal("医疗"));
+        super(Component.literal("医疗"), PANEL_W, PANEL_H);
         this.target = target;
         this.targetName = targetName;
     }
 
     @Override
     protected void init() {
+        super.init();
         ModNetwork.sendToServer(new MedicalRequestPacket(target));
     }
 
@@ -103,10 +110,9 @@ public final class MedicalScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g);
-        int x = (this.width - PANEL_W) / 2;
-        int y = (this.height - PANEL_H) / 2;
+    protected void renderDesign(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        int x = 0;
+        int y = 0;
         g.fill(x - 1, y - 1, x + PANEL_W + 1, y + PANEL_H + 1, 0xFF4A4A5A);
         g.fill(x, y, x + PANEL_W, y + PANEL_H, 0xE012121A);
 
@@ -150,16 +156,23 @@ public final class MedicalScreen extends Screen {
         zones = TreatmentRenderer.zones(cx, by);
         TreatmentRenderer.draw(g, zones, snapshot.rows(), mouseX, mouseY);
 
-        // ---- 身体图**正下方**：选中部位伤情（含原作各阶段文案灰字）+ 对症药品栏 ----
-        //
-        // 布局预算：PANEL_H 固定 186，底部活力行占 22。**药品栏必须固定在活力行上方**——
-        // 原来它跟着描述文字往下排，胸口同时有烧伤+缺氧+内脏损伤+辐射病（4 条病症 × 各 1-2 行
-        // 文案）时会从 y≈250 开始，在 GUI 高度 240 下整条被挤出屏幕，玩家无法用药。
-        // 现在描述区限高到药品栏上沿，装不下就截断并补省略号（CodeRabbit Major）。
-        int vitalityY = y + PANEL_H - 22;
-        int drugRowY = vitalityY - 20;
-        int cy = by + 78;
-
+        // ---- 身体图**正下方**：可滚动区域 ----
+        // 伤情描述会按面板宽度换行，固定面板装不下；这里开裁剪 + 滚动，
+        // 药品图标跟着滚动，命中坐标也用滚动后的位置。
+        //（原来这里是"限高 + 截断"，和上游 main 独立落地的滚动方案撞车；
+        //  滚动是更好的解法——不会再丢内容，所以采用滚动。）
+        int statusTop = by + 78;
+        int statusBottom = y + PANEL_H - 30;
+        int viewHeight = Math.max(LINE * 2, statusBottom - statusTop);
+        statusViewTop = statusTop;
+        statusViewBottom = statusBottom;
+        statusScroll = Mth.clamp(statusScroll, 0, Math.max(0, statusContentHeight - viewHeight));
+        iconRects.clear();
+        enableDesignScissor(g, x, statusTop, x + PANEL_W, statusBottom);
+        g.pose().pushPose();
+        g.pose().translate(0.0F, -statusScroll, 0.0F);
+        int cy = statusTop;
+        List<DisplayLine> statusLines;
         if (selectedLimb != null) {
             g.drawString(this.font,
                     Component.literal(TreatmentRenderer.limbName(selectedLimb) + "："), x + 8, cy, 0xFF7FB8E8);
@@ -167,7 +180,6 @@ public final class MedicalScreen extends Screen {
             // 该部位的病症 = 分部位病症 + 指示在该部位的全身病症（原作 indicatorlimb）。
             // 缺氧/失血/辐射病/器官损伤挂在胸口，眩晕/阿片系挂在头部——玩家的直觉就是
             // 去胸口看缺氧，所以这里必须按指示部位列，不能只看 limbSpecific。
-            boolean truncated = false;
             for (AfflictionType type : AfflictionType.ALL) {
                 boolean shown;
                 double strength;
@@ -184,11 +196,6 @@ public final class MedicalScreen extends Screen {
                 if (!shown) {
                     continue;
                 }
-                // 病症标题行：放不下就整条跳过（不留半行）
-                if (cy + LINE > drugRowY) {
-                    truncated = true;
-                    break;
-                }
                 double ratio = TreatmentRenderer.severityRatio(type, strength);
                 g.drawString(this.font, Component.literal("· "
                         + TreatmentRenderer.label(type, strength)), x + 10, cy,
@@ -197,25 +204,11 @@ public final class MedicalScreen extends Screen {
                 // 原作阶段文案（灰字，自动换行不超框）
                 String desc = type.descriptionAt(strength);
                 for (String part : TreatmentRenderer.wrap(this.font, desc, PANEL_W - 24)) {
-                    if (cy + LINE > drugRowY) {
-                        truncated = true;
-                        break;
-                    }
                     g.drawString(this.font, Component.literal(part), x + 16, cy, 0xFF8A8A8A);
                     cy += LINE;
                 }
-                if (truncated) {
-                    break;
-                }
-            }
-            if (truncated) {
-                // 截断提示：悬停面板正文（身体图以外）查看该部位完整伤情。
-                // 具体绘制在 render 末尾的悬停块里，这里只留一行可读提示。
-                g.drawString(this.font, Component.literal("… 悬停此处看全部"),
-                        x + 16, Math.max(cy, drugRowY - LINE), 0xFF6A6A72);
             }
             // 对症药品栏：并排小方框，悬停高亮，单击对该部位用药（只显示背包里真实拥有的药品）
-            iconRects.clear();
             var minecraft = net.minecraft.client.Minecraft.getInstance();
             List<Item> drugs = new ArrayList<>();
             for (var entry : SUITABLE.entrySet()) {
@@ -231,39 +224,53 @@ public final class MedicalScreen extends Screen {
             if (!drugs.isEmpty()) {
                 int slotX = x + 10;
                 for (Item drug : drugs) {
+                    // 图标画在 cy - statusScroll：悬停判断也得用可见坐标，
+                    // 并且不能超出滚动视口（否则滚出去的行也会高亮）。
+                    int rowY = cy - statusScroll;
                     boolean slotHover = mouseX >= slotX && mouseX < slotX + 18
-                            && mouseY >= drugRowY && mouseY < drugRowY + 18;
-                    g.fill(slotX, drugRowY, slotX + 18, drugRowY + 18, 0xFF1E1E26);
-                    g.fill(slotX, drugRowY, slotX + 18, drugRowY + 1, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX, drugRowY + 17, slotX + 18, drugRowY + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX, drugRowY, slotX + 1, drugRowY + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX + 17, drugRowY, slotX + 18, drugRowY + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.renderItem(new ItemStack(drug), slotX + 1, drugRowY + 1);
-                    iconRects.add(new IconRect(drug, slotX + 1, drugRowY + 1));
+                            && mouseY >= rowY && mouseY < rowY + 18
+                            && rowY >= statusViewTop && rowY + 18 <= statusViewBottom;
+                    g.fill(slotX, cy, slotX + 18, cy + 18, 0xFF1E1E26);
+                    g.fill(slotX, cy, slotX + 18, cy + 1, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    g.fill(slotX, cy + 17, slotX + 18, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    g.fill(slotX, cy, slotX + 1, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    g.fill(slotX + 17, cy, slotX + 18, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    g.renderItem(new ItemStack(drug), slotX + 1, cy + 1);
+                    iconRects.add(new IconRect(drug, slotX + 1, cy - statusScroll + 1));
                     slotX += 20;
                 }
+                cy += 18;
             }
         } else {
             g.drawString(this.font, Component.literal("全身状态"), x + 8, cy, 0xFF7FB8E8);
             cy += LINE;
-            List<DisplayLine> statusLines = new ArrayList<>(
+            List<DisplayLine> globalStatus = new ArrayList<>(
                     TreatmentRenderer.globalLines(snapshot.rows()));
             if (snapshot.downed()) {
-                statusLines.add(new DisplayLine("⚠ 重伤倒地", 0xFFFF5A5A));
+                globalStatus.add(new DisplayLine("⚠ 重伤倒地", 0xFFFF5A5A));
             }
-            if (statusLines.isEmpty()) {
-                statusLines.add(new DisplayLine("没有伤病", 0xFF55E05A));
+            if (globalStatus.isEmpty()) {
+                globalStatus.add(new DisplayLine("没有伤病", 0xFF55E05A));
             }
-            for (DisplayLine line : statusLines) {
-                if (cy + LINE > drugRowY) {
-                    break;
-                }
+            for (DisplayLine line : globalStatus) {
                 g.drawString(this.font, Component.literal("· " + line.text()), x + 10, cy, line.color());
                 cy += LINE;
             }
         }
+        g.pose().popPose();
+        g.disableScissor();
+        statusContentHeight = cy - statusTop;
+        if (statusContentHeight > viewHeight) {
+            // 右侧滚动条：告诉玩家下面还有内容。
+            int barH = Math.max(8, viewHeight * viewHeight / statusContentHeight);
+            int maxScroll = statusContentHeight - viewHeight;
+            int barY = statusTop + (viewHeight - barH) * statusScroll / Math.max(1, maxScroll);
+            g.fill(x + PANEL_W - 3, statusTop, x + PANEL_W - 1, statusBottom, 0x40FFFFFF);
+            g.fill(x + PANEL_W - 3, barY, x + PANEL_W - 1, barY + barH, 0xFF7FB8E8);
+        }
 
         // ---- 底部：活力（操作提示按用户要求移除）----
+        int vitalityY = y + PANEL_H - 22;
         int vitalityColor = snapshot.downed() ? 0xFFFF5A5A
                 : snapshot.vitality() > 60 ? 0xFF55E05A
                 : snapshot.vitality() > 25 ? 0xFFFFD75A : 0xFFFF5A5A;
@@ -272,8 +279,8 @@ public final class MedicalScreen extends Screen {
                 x + 6, vitalityY, vitalityColor);
 
         // ---- 悬停身体图某个部位 → 浮窗显示该部位**完整**伤情 ----
-        // 病症区高度有限（PANEL_H 决定），多了会被截断。截断时只提示"悬停此处看全部"，
-        // 真正的完整内容靠这个浮窗给出——否则玩家根本看不到被截掉的病症和强度。
+        // 滚动区解决"内容装不下"，这里解决"不用点选就能直接看某部位"：
+        // 鼠标扫过身体图时立刻给出该部位全部病症（含强度标签），比先点选再读右侧更快。
         List<DisplayLine> hovered = TreatmentRenderer.hoverLines(zones, snapshot.rows(), mouseX, mouseY);
         if (!hovered.isEmpty()) {
             var tooltip = new ArrayList<Component>();
@@ -319,7 +326,21 @@ public final class MedicalScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseScrolled(double screenX, double screenY, double delta) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
+        if (delta != 0.0D && mouseX >= 0 && mouseX < PANEL_W
+                && mouseY >= 0 && mouseY < PANEL_H) {
+            statusScroll -= (int) Math.signum(delta) * LINE * 2;
+            return true;
+        }
+        return super.mouseScrolled(screenX, screenY, delta);
+    }
+
+    @Override
+    public boolean mouseClicked(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (button == 0) {
             // 超距/死亡时不给任何操作入口（图标已在 render 里清空，这里再兜一层，
             // 防止 render 尚未跑到的那一帧里点到过期图标）
@@ -328,8 +349,11 @@ public final class MedicalScreen extends Screen {
             }
             // 1) 对症药品图标 = 用该药（作用于当前选中部位）
             for (IconRect rect : iconRects) {
+                // 命中限制在状态区视口内：滚出视口的图标不能隔着文字/面板外点到。
+                int hitTop = Math.max(rect.y(), statusViewTop);
+                int hitBottom = Math.min(rect.y() + 16, statusViewBottom);
                 if (mouseX >= rect.x() && mouseX < rect.x() + 16
-                        && mouseY >= rect.y() && mouseY < rect.y() + 16) {
+                        && mouseY >= hitTop && mouseY < hitBottom) {
                     String itemId = String.valueOf(
                             net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(rect.item()));
                     ModNetwork.sendToServer(new MedicalTreatPacket(target,
@@ -346,7 +370,7 @@ public final class MedicalScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
 
     private static Limb findHoveredLimb(List<Zone> zones, double mouseX, double mouseY) {

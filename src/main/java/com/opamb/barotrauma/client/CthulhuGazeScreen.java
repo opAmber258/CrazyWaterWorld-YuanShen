@@ -5,7 +5,7 @@ import com.opamb.barotrauma.network.CthulhuGazePacket;
 import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.network.chat.Component;
 
@@ -18,7 +18,7 @@ import net.minecraft.network.chat.Component;
  * <p>布局按 440×272 设计；窗口太小（高 GUI 缩放）时整块等比缩小，
  * 避免像早先那样上下被裁掉。鼠标坐标也按同一比例换算。</p>
  */
-public final class CthulhuGazeScreen extends Screen {
+public final class CthulhuGazeScreen extends ScaledScreen {
 
     private static final int PANEL_W = 440;
     private static final int PANEL_H = 272;
@@ -43,13 +43,8 @@ public final class CthulhuGazeScreen extends Screen {
     /** 当前选中的时长下标（默认 6 秒）。 */
     private int durationIndex = 1;
 
-    /** 等比缩放：窗口装不下 440×300 时缩小。 */
-    private float uiScale = 1.0F;
-    private float originX;
-    private float originY;
-
     public CthulhuGazeScreen() {
-        super(Component.literal("克苏鲁的注视"));
+        super(Component.literal("克苏鲁的注视"), PANEL_W, PANEL_H);
     }
 
     public static void open() {
@@ -66,16 +61,9 @@ public final class CthulhuGazeScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g);
-        updateLayout();
-
-        float mx = (mouseX - originX) / uiScale;
-        float my = (mouseY - originY) / uiScale;
-
-        g.pose().pushPose();
-        g.pose().translate(originX, originY, 0.0F);
-        g.pose().scale(uiScale, uiScale, 1.0F);
+    protected void renderDesign(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        float mx = mouseX;
+        float my = mouseY;
 
         g.fill(0, 0, PANEL_W, PANEL_H, BG);
         g.fill(0, 0, PANEL_W, 1, EDGE);
@@ -126,8 +114,6 @@ public final class CthulhuGazeScreen extends Screen {
         g.drawString(font, "同一次只能生效一个注视；重新触发会覆盖当前预设/档位/时长",
                 10, PANEL_H - 14, DIM, false);
 
-        g.pose().popPose();
-        super.render(g, mouseX, mouseY, partialTick);
     }
 
     @Override
@@ -135,9 +121,8 @@ public final class CthulhuGazeScreen extends Screen {
         if (button != 0) {
             return super.mouseClicked(mouseX, mouseY, button);
         }
-        updateLayout();
-        double mx = (mouseX - originX) / uiScale;
-        double my = (mouseY - originY) / uiScale;
+        double mx = designX(mouseX);
+        double my = designY(mouseY);
 
         for (int i = 0; i < CthulhuPreset.DURATION_SECONDS.length; i++) {
             if (in(mx, my, durationX(i), 22, DUR_W, DUR_H)) {
@@ -160,18 +145,6 @@ public final class CthulhuGazeScreen extends Screen {
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    /** 窗口装不下就整体等比缩小并居中。 */
-    private void updateLayout() {
-        uiScale = Math.min(1.0F, Math.min(
-                (width - 8.0F) / PANEL_W,
-                (height - 8.0F) / PANEL_H));
-        if (uiScale <= 0.0F) {
-            uiScale = 0.1F;
-        }
-        originX = (width - PANEL_W * uiScale) / 2.0F;
-        originY = (height - PANEL_H * uiScale) / 2.0F;
     }
 
     private static int rowY(int index) {

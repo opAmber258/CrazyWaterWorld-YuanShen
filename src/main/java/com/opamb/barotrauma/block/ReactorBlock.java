@@ -236,6 +236,12 @@ public class ReactorBlock extends Block implements EntityBlock {
             if (!(masterState.getBlock() instanceof ReactorBlock)) {
                 return InteractionResult.PASS;
             }
+            // 手持螺丝刀且耐久低于 50%：先开独立修理窗口。
+            if (level.getBlockEntity(master) instanceof com.opamb.barotrauma.blockentity.ReactorBlockEntity reactor
+                    && com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
+                            serverPlayer, master, reactor, false)) {
+                return InteractionResult.CONSUME;
+            }
             NetworkHooks.openScreen(serverPlayer, new MenuProvider() {
                 @Override
                 public Component getDisplayName() {

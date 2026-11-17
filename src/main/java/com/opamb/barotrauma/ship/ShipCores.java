@@ -43,11 +43,35 @@ public final class ShipCores {
      * 并让物理船重新扫描船坞方块。</p>
      */
     public static void refreshNearby(Level level, BlockPos pos) {
+        // 物理船上新放的方块要进靠港还原快照，否则会留在船坞里回不来。
+        recordPlacedBlock(level, pos);
+        refreshGeometryNear(level, pos);
+    }
+
+    /**
+     * 物理船上新放的单个方块写进靠港还原快照。
+     *
+     * <p>多段设备要逐段调用：快照只按传入坐标登记，几何重扫不会补齐，
+     * 只登记主段的话靠港时其余段不会还原。</p>
+     */
+    public static void recordPlacedBlock(Level level, BlockPos pos) {
+        if (level instanceof net.minecraft.server.level.ServerLevel server && pos != null) {
+            com.opamb.barotrauma.ship.vs.VsState.recordPlacedBlock(server, pos);
+        }
+    }
+
+    /**
+     * 重扫附近船核心、刷新物理船几何（<b>不</b>写靠港快照）。
+     *
+     * <p>拆掉方块也要走这里：缓存的几何会把已拆的设备格当实心，舱室分隔/
+     * 水量判定会一直沿用旧数据，直到下一次碰巧重扫。拆方块不能调
+     * {@link #recordPlacedBlock}——快照只记"新放的方块"，拆掉的格子由重扫
+     * 自己扣。</p>
+     */
+    public static void refreshGeometryNear(Level level, BlockPos pos) {
         if (!(level instanceof net.minecraft.server.level.ServerLevel server)) {
             return;
         }
-        // 物理船上新放的方块要进靠港还原快照，否则会留在船坞里回不来。
-        com.opamb.barotrauma.ship.vs.VsState.recordPlacedBlock(server, pos);
         for (ShipCoreBlockEntity core : coresNear(level, pos, 64.0D)) {
             core.rescan(level);
         }
@@ -99,6 +123,51 @@ public final class ShipCores {
             }
         }
         return best;
+    }
+
+    /**
+     * 找 {@code center} 附近的船，船状态还没扫出来就先扫一次。
+     *
+     * <p>方块船的 {@link ShipState} 不存档，世界重开后是 null；以前只有打开电力
+     * 面板/声纳时才会 rescan。于是船上的机器在"没人打开过面板"之前一直以为身边
+     * 没有船，表现为加工台/解构仪明明有电却点不动、去面板绑定一次之后又莫名恢复。</p>
+     */
+    @Nullable
+    public static ShipState stateNear(Level level, BlockPos center, double maxDistance) {
+        ShipCoreBlockEntity core = nearestCore(level, center, maxDistance);
+        if (core == null) {
+            return null;
+        }
+        ShipState state = core.state();
+        return state != null ? state : core.rescan(level);
+    }
+
+    /**
+     * 找几何真正包含 {@code cell} 的船。
+     *
+     * <p>{@link #stateNear} 只看核心距离：两艘船并排时，A 船设备可能离 B 船核心更近，
+     * 取到 B 的几何后 {@code tracksHullBlock} 校验失败，设备就停止上报。这里遍历
+     * 附近核心，逐个检查几何归属，找不到再返回 null。</p>
+     */
+    @Nullable
+    public static ShipState stateOwning(Level level, BlockPos cell, double maxDistance) {
+        ShipCoreBlockEntity core = coreOwning(level, cell, maxDistance);
+        return core == null ? null : core.state();
+    }
+
+    /** 同 {@link #stateOwning}，但返回核心本身（设备可以缓存核心位置，避免每 tick 扫区块）。 */
+    @Nullable
+    public static ShipCoreBlockEntity coreOwning(Level level, BlockPos cell, double maxDistance) {
+        for (ShipCoreBlockEntity core : coresNear(level, cell, maxDistance)) {
+            ShipState state = core.state();
+            if (state == null) {
+                state = core.rescan(level);
+            }
+            if (state != null && state.tracksHullBlock(cell)) {
+                return core;
+            }
+        }
+        return null;
     }
 
     /**

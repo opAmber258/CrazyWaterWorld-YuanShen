@@ -3,6 +3,7 @@ package com.opamb.barotrauma.network;
 import com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.ship.PowerConsumer;
+import com.opamb.barotrauma.ship.PowerStorage;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
@@ -24,7 +25,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 服务端电力面板数据：从一个接线盒出发，收集它附近 16 格内的用电设备。
+ * 服务端电力面板数据：从一个接线盒出发，收集它附近 16 格内的用电设备和电池。
  *
  * <p>坐标系由调用方显式传入（物理船用装配坐标，普通世界用世界坐标），并且打开
  * 面板时把目标身份（维度 + 坐标 + 坐标系）记在服务端会话里。之后的绑定/刷新只
@@ -68,22 +69,43 @@ public final class PowerPanelState {
             return null;
         }
         List<PowerStatePacket.Device> devices = new ArrayList<>();
+        // 列整条船的设备：模组没有实体电线，离盒子远的机器（第二条解构仪在另一头）
+        // 也得能在面板里看到并绑定；按距离截断会让远处的设备"识别不出来"。
         for (var info : ship.simulation().consumerInfos()) {
-            if (info.pos().distSqr(boxCell) > (double) RANGE * RANGE) {
-                continue;
-            }
             BlockPos deviceYard = physical ? VsPilot.toYard(info.pos()) : info.pos();
             BlockEntity deviceBe = deviceYard == null || !level.hasChunkAt(deviceYard)
                     ? null : level.getBlockEntity(deviceYard);
             String key = deviceBe == null
                     ? "block.barotrauma.junction_box.unknown"
                     : deviceBe.getBlockState().getBlock().getDescriptionId();
-            // 绑定只改设备的 BE，ShipSimulation 的快照要等下一 tick 才更新；
-            // 直接读 BE，绑定后立刻刷新也能显示新状态。
-            BlockPos bound = deviceBe instanceof PowerConsumer consumer
-                    ? consumer.powerBox() : info.box();
+            // 绑定状态直接读方块实体：模拟里的 ConsumerReport 要等设备下一次上报，
+            // 点完按钮立刻刷新面板时会是旧值（用户实测“上一项要再点一次才显示绑定”）。
+            BlockPos deviceBox = info.box();
+            if (deviceBe instanceof PowerConsumer consumer) {
+                deviceBox = consumer.powerBox();
+            }
             devices.add(new PowerStatePacket.Device(info.pos(), key, info.demandKw(),
-                    info.minVoltage(), bound));
+                    info.minVoltage(), deviceBox, PowerStatePacket.KIND_CONSUMER,
+                    0.0D, 0.0D, 0.0D));
+        }
+        // 电池也能绑盒子：它不是用电设备，但同样需要归属到某个接线盒。
+        for (var info : ship.simulation().storageInfos()) {
+            BlockPos deviceYard = physical ? VsPilot.toYard(info.pos()) : info.pos();
+            BlockEntity deviceBe = deviceYard == null || !level.hasChunkAt(deviceYard)
+                    ? null : level.getBlockEntity(deviceYard);
+            String key = deviceBe == null
+                    ? "block.barotrauma.junction_box.unknown"
+                    : deviceBe.getBlockState().getBlock().getDescriptionId();
+            BlockPos deviceBox = info.box();
+            if (deviceBe instanceof PowerStorage storage) {
+                deviceBox = storage.storageBox();
+            }
+            double fraction = info.capacityKwm() <= 1.0E-9D ? 0.0D
+                    : info.chargeKwm() / info.capacityKwm();
+            devices.add(new PowerStatePacket.Device(info.pos(), key, 0.0D,
+                    0.0D, deviceBox, PowerStatePacket.KIND_BATTERY,
+                    Math.max(0.0D, Math.min(1.0D, fraction)),
+                    info.chargeKwm(), info.capacityKwm()));
         }
         devices.sort(Comparator.comparingDouble(d -> d.pos().distSqr(boxCell)));
         // 不能截断：客户端只能滚动收到的列表，没有分页请求；截掉的那部分设备
@@ -91,7 +113,9 @@ public final class PowerPanelState {
         double voltage = ship.simulation().voltage();
         return new PowerStatePacket(boxCell, ship.simulation().supplyKw(),
                 ship.simulation().report().powerDemand(), voltage,
-                box.condition(), ship.simulation().boxLoad(boxCell), open, devices);
+                box.condition(), ship.simulation().boxLoad(boxCell), open,
+                ship.simulation().batteryOutputKw(), ship.simulation().storedKwm(),
+                ship.simulation().storageCapacityKwm(), devices);
     }
 
     /**
@@ -164,9 +188,7 @@ public final class PowerPanelState {
             PANELS.remove(player.getUUID());
             return false;
         }
-        if (boxCell.distSqr(deviceCell) > (double) RANGE * RANGE) {
-            return false;
-        }
+        // 不再限制盒子到设备的距离：列表里列的是整条船的设备，远端的设备同样允许绑定。
         Vec3 boxWorld = physical
                 ? VsPilot.assemblyToWorld(boxCell)
                 : Vec3.atCenterOf(boxCell);
@@ -174,23 +196,28 @@ public final class PowerPanelState {
             return false;
         }
         BlockEntity raw = level.getBlockEntity(deviceYard);
-        if (!(raw instanceof PowerConsumer consumer)) {
-            return false;
-        }
         // 设备必须属于面板选中的这艘船，否则会写进一个永远不会被这台盒子供电的绑定。
         ShipState ship = stateOf(level, physical, panel.corePos());
         if (ship == null) {
             return false;
         }
-        // 用船体几何判断归属，而不是 consumerInfos：世界重开后设备还没重新上报时
-        // consumerInfos 是空的，但那台设备仍然属于这艘船，不能因此拒绝绑定。
+        // 用船体几何判断归属，而不是 consumerInfos/storageInfos：世界重开后设备
+        // 还没重新上报时列表是空的，但那台设备仍然属于这艘船，不能因此拒绝绑定。
         if (!ship.geometry().owns(deviceCell)) {
             return false;
         }
-        // PowerBox 与 ShipSimulation 的 boxes/consumers 使用同一套坐标。
-        consumer.setPowerBox(bind ? boxCell : null);
-        raw.setChanged();
-        return true;
+        // PowerBox / StorageBox 与 ShipSimulation 的 boxes/consumers 使用同一套坐标。
+        if (raw instanceof PowerConsumer consumer) {
+            consumer.setPowerBox(bind ? boxCell : null);
+            raw.setChanged();
+            return true;
+        }
+        if (raw instanceof PowerStorage storage) {
+            storage.setStorageBox(bind ? boxCell : null);
+            raw.setChanged();
+            return true;
+        }
+        return false;
     }
 
     /** 绑定成功后刷新面板：沿用会话里的船身份重新取当前状态，不重新搜索。 */

@@ -14,6 +14,14 @@
 - **CI 门禁**：`.github/workflows/mex-guard.yml`——改了 `src/` 或 `tools/` 却没改 `.mex/` 或 `docs/` 的 PR 会变红；例外是给 PR 加 `mex-skip` 标签并在说明里写一行原因。
 - **发布命令**：`.zcode/commands/publish.md`（`/publish` 或用户说"走流程"）。纯美术资产以资产文档与 Discussion 记账并直推 `main`；代码、共享工具及规则变更仍按通用流程做 MEX 记账并走 PR。
 
+## 界面规范（新增/改动 GUI 必读）
+
+所有模组自建界面（方块面板、容器、商店、对话、海图、医疗……）都必须继承
+`client/gui/ScaledContainerScreen` 或 `client/gui/ScaledScreen`，按设计坐标绘制，
+由基类统一做等比缩放（0.30～1.50）、居中和鼠标换算。禁止界面自己算
+`(width - W) / 2` 或 `pose().scale(...)`。完整规则与自查清单见
+`docs/GUI_SCALING_CONVENTION.md`。
+
 Git 提交、推送和拉取均需要人类明确授权；AI 不得默认执行。用户明确要求发布指定的**纯美术资产**时，默认完成交付检查 → 普通直推上游 `main` → 登记 Discussion #39，不创建 PR，也不再次询问是否直推；范围与步骤见 `docs/ASSET_DELIVERY_CONVENTION.md` §7，制作请求本身不含发布授权。代码、运行时资源、共享工具和规则变更仍默认走任务分支 → 提交 → 推送分支 → PR → 审查 → 合并 → 删除分支，除非用户明确指定其他方式。不强推；实际 pull 仍需另行授权；用户只授权限定动作时不得扩展范围。PR 有未解决意见或合并冲突时停下来报告，不硬合。CodeRabbit 只审 PR；资产直推由交付自查和维护者评选验收。
 
 ## 新机器：先装 MEX 工具

@@ -38,4 +38,35 @@ public final class PowerGrid {
     public static boolean overvoltage(double voltage, double threshold) {
         return voltage > Math.max(1.0D, threshold);
     }
+
+    /**
+     * 电池当前可输出功率（kW）。
+     *
+     * <p>原作 {@code PowerContainer.MinMaxPowerOut}：电量低于 10% 时最大输出
+     * 按比例线性下降（10% 以下最多只能给到 {@code 电量比例 × 10 × 额定输出}），
+     * 同时受本步可用能量限制（存电量单位是 kW·min）。</p>
+     */
+    public static double batteryOutputAvailable(double chargeKwm, double capacityKwm,
+                                                double maxOutputKw, double dtSeconds) {
+        if (!Double.isFinite(chargeKwm) || !Double.isFinite(capacityKwm)
+                || !Double.isFinite(maxOutputKw) || !Double.isFinite(dtSeconds)
+                || chargeKwm <= 0.0D || capacityKwm <= 0.0D
+                || maxOutputKw <= 0.0D || dtSeconds <= 0.0D) {
+            return 0.0D;
+        }
+        double fraction = Math.min(1.0D, chargeKwm / capacityKwm);
+        double scale = fraction < 0.1D ? fraction * 10.0D : 1.0D;
+        // kW·min -> kW·s -> 本步能放出的平均功率
+        double energyLimitKw = chargeKwm * 60.0D / dtSeconds;
+        return Math.max(0.0D, Math.min(maxOutputKw * scale, energyLimitKw));
+    }
+
+    /** 以 {@code powerKw} 充/放 {@code dtSeconds} 后的电量变化（kW·min，正=充）。 */
+    public static double batteryChargeDeltaKwm(double powerKw, double dtSeconds, double efficiency) {
+        if (!Double.isFinite(powerKw) || !Double.isFinite(dtSeconds)
+                || !Double.isFinite(efficiency) || powerKw <= 0.0D || dtSeconds <= 0.0D) {
+            return 0.0D;
+        }
+        return powerKw * dtSeconds / 60.0D * Math.max(0.0D, Math.min(1.0D, efficiency));
+    }
 }
