@@ -156,6 +156,11 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
         }
     }
 
+    /** 主段（下半段）位置：上半段返回下方那格，下半段返回自身。 */
+    public static BlockPos masterPos(BlockPos pos, BlockState state) {
+        return state.getValue(PART) == Part.LOWER ? pos : pos.below();
+    }
+
     private static BlockPos lowerPos(Level level, BlockPos pos, BlockState state) {
         BlockPos lower = pos.below(state.getValue(PART).ordinal());
         BlockState lowerState = level.getBlockState(lower);

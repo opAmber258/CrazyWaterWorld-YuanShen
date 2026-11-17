@@ -378,7 +378,20 @@ public class BatteryBlockEntity extends BlockEntity
     @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
-        tag.putDouble("Charge", chargeKwm);
+        // 充放电由船 tick 里的模拟结算，实体字段要到下一次 serverTick 才读回；
+        // 存档正好落在两者之间会把结算前的电量写盘，重开世界再写回模拟，
+        // 白退一次结算的量。这里直接读模拟里的权威值。
+        double charge = chargeKwm;
+        if (level instanceof ServerLevel server) {
+            ShipState ship = resolveShip(server, getBlockPos());
+            if (ship != null) {
+                Double reported = ship.simulation().storageCharge(assemblyPos(getBlockPos()));
+                if (reported != null) {
+                    charge = reported;
+                }
+            }
+        }
+        tag.putDouble("Charge", charge);
         tag.putDouble("Condition", condition);
         tag.putDouble("Recharge", rechargeKw);
         tag.putLong("Grace", graceTicks);

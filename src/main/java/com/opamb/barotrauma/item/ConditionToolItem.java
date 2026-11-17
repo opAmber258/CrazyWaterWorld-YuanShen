@@ -1,8 +1,5 @@
 package com.opamb.barotrauma.item;
 
-import com.opamb.barotrauma.block.EngineBlock;
-import com.opamb.barotrauma.block.NavigationTerminalBlock;
-import com.opamb.barotrauma.block.ReactorBlock;
 import com.opamb.barotrauma.network.RepairActionPacket;
 import com.opamb.barotrauma.ship.RepairTarget;
 import net.minecraft.ChatFormatting;
@@ -16,7 +13,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.List;
@@ -97,21 +93,12 @@ public class ConditionToolItem extends Item {
         if (target != null) {
             return target;
         }
-        BlockState state = level.getBlockState(pos);
-        Block block = state.getBlock();
-        BlockPos master = null;
-        if (block instanceof ReactorBlock) {
-            master = ReactorBlock.masterPos(pos, state);
-        } else if (block instanceof EngineBlock) {
-            master = EngineBlock.masterPos(pos, state);
-        } else if (block instanceof NavigationTerminalBlock) {
-            master = NavigationTerminalBlock.masterPos(pos, state);
-        }
-        if (master != null) {
-            target = RepairActionPacket.find(level, master);
-            if (target != null) {
-                return target;
-            }
+        // 多段设备（反应堆/引擎/加工台/解构仪/舱口/舱壁门/导航终端）统一解析
+        // 到承载方块实体的主段；单格方块返回自身，重复查一次也无害。
+        BlockPos master = com.opamb.barotrauma.event.RepairDamageEvents.masterOf(level, pos);
+        target = RepairActionPacket.find(level, master);
+        if (target != null) {
+            return target;
         }
         for (Direction direction : Direction.Plane.HORIZONTAL) {
             target = RepairActionPacket.find(level, pos.relative(direction));

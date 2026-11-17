@@ -49,20 +49,26 @@ public final class RepairDamageEvents {
         }
         // 设备只掉耐久、不该被原版爆炸删掉：单格设备把格子移出破坏列表，
         // 多段设备把同一方块类的相邻段一起保留（否则段被删会连带主段）。
+        // 多段设备的方块实体只在主段上：命中上半段/左右段时先解析回主段，
+        // 按主段去重扣耐久，两段都保留（否则非主段被删、耐久却没人扣）。
         java.util.List<BlockPos> affected = event.getAffectedBlocks();
         java.util.List<BlockPos> keep = new java.util.ArrayList<>();
+        java.util.Set<BlockPos> damaged = new java.util.HashSet<>();
         for (BlockPos pos : affected) {
-            if (!(level.getBlockEntity(pos) instanceof RepairTarget target)) {
+            BlockPos master = masterOf(level, pos);
+            if (!(level.getBlockEntity(master) instanceof RepairTarget target)) {
                 continue;
             }
-            target.damage(EXPLOSION_DAMAGE);
             keep.add(pos);
-            Block block = level.getBlockState(pos).getBlock();
+            if (damaged.add(master)) {
+                target.damage(EXPLOSION_DAMAGE);
+            }
+            Block block = level.getBlockState(master).getBlock();
             if (!isMultiPart(block)) {
                 continue;
             }
             for (BlockPos other : affected) {
-                if (other.equals(pos) || other.distManhattan(pos) > 4) {
+                if (other.equals(master) || other.distManhattan(master) > 4) {
                     continue;
                 }
                 if (level.getBlockState(other).getBlock() == block) {
@@ -71,6 +77,37 @@ public final class RepairDamageEvents {
             }
         }
         affected.removeAll(keep);
+    }
+
+    /** 多段设备解析到承载方块实体的主段；单格方块返回自身。 */
+    public static BlockPos masterOf(ServerLevel level, BlockPos pos) {
+        net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
+        Block block = state.getBlock();
+        if (block == com.opamb.barotrauma.registry.ModBlocks.FABRICATOR.get()) {
+            return com.opamb.barotrauma.block.FabricatorBlock.masterPos(pos, state);
+        }
+        if (block == com.opamb.barotrauma.registry.ModBlocks.DECONSTRUCTOR.get()) {
+            return com.opamb.barotrauma.block.DeconstructorBlock.masterPos(pos, state);
+        }
+        if (block == com.opamb.barotrauma.registry.ModBlocks.REACTOR.get()) {
+            return com.opamb.barotrauma.block.ReactorBlock.masterPos(pos, state);
+        }
+        if (block == com.opamb.barotrauma.registry.ModBlocks.ENGINE.get()) {
+            return com.opamb.barotrauma.block.EngineBlock.masterPos(pos, state);
+        }
+        if (block == com.opamb.barotrauma.registry.ModBlocks.BALLAST_PUMP.get()) {
+            return com.opamb.barotrauma.block.BallastPumpBlock.masterPos(pos, state);
+        }
+        if (block instanceof com.opamb.barotrauma.block.HatchBlock hatch) {
+            return hatch.masterPos(pos, state);
+        }
+        if (block instanceof com.opamb.barotrauma.block.BulkheadDoorBlock door) {
+            return door.masterPos(pos, state);
+        }
+        if (block == com.opamb.barotrauma.registry.ModShipBlocks.NAVIGATION_TERMINAL.get()) {
+            return com.opamb.barotrauma.block.NavigationTerminalBlock.masterPos(pos, state);
+        }
+        return pos;
     }
 
     /** 多段设备：爆炸时保留所有段，避免段被删后主段/数据一起失效。 */

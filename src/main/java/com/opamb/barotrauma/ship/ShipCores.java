@@ -43,11 +43,35 @@ public final class ShipCores {
      * 并让物理船重新扫描船坞方块。</p>
      */
     public static void refreshNearby(Level level, BlockPos pos) {
+        // 物理船上新放的方块要进靠港还原快照，否则会留在船坞里回不来。
+        recordPlacedBlock(level, pos);
+        refreshGeometryNear(level, pos);
+    }
+
+    /**
+     * 物理船上新放的单个方块写进靠港还原快照。
+     *
+     * <p>多段设备要逐段调用：快照只按传入坐标登记，几何重扫不会补齐，
+     * 只登记主段的话靠港时其余段不会还原。</p>
+     */
+    public static void recordPlacedBlock(Level level, BlockPos pos) {
+        if (level instanceof net.minecraft.server.level.ServerLevel server && pos != null) {
+            com.opamb.barotrauma.ship.vs.VsState.recordPlacedBlock(server, pos);
+        }
+    }
+
+    /**
+     * 重扫附近船核心、刷新物理船几何（<b>不</b>写靠港快照）。
+     *
+     * <p>拆掉方块也要走这里：缓存的几何会把已拆的设备格当实心，舱室分隔/
+     * 水量判定会一直沿用旧数据，直到下一次碰巧重扫。拆方块不能调
+     * {@link #recordPlacedBlock}——快照只记"新放的方块"，拆掉的格子由重扫
+     * 自己扣。</p>
+     */
+    public static void refreshGeometryNear(Level level, BlockPos pos) {
         if (!(level instanceof net.minecraft.server.level.ServerLevel server)) {
             return;
         }
-        // 物理船上新放的方块要进靠港还原快照，否则会留在船坞里回不来。
-        com.opamb.barotrauma.ship.vs.VsState.recordPlacedBlock(server, pos);
         for (ShipCoreBlockEntity core : coresNear(level, pos, 64.0D)) {
             core.rescan(level);
         }

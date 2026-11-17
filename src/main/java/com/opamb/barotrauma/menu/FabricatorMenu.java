@@ -171,6 +171,11 @@ public class FabricatorMenu extends AbstractContainerMenu {
             // 机器 → 装备背包，再进快捷栏。
             moved = moveItemStackTo(stack, bagStart, bagEnd, false)
                     || moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false);
+        } else if (index == HOTBAR_END) {
+            // 双手栏（箱子）→ 只回装备背包/快捷栏：输入格是默认 Slot，
+            // mayPlace 恒 true，箱子不能被塞进加工台输入格。
+            moved = moveItemStackTo(stack, bagStart, bagEnd, false)
+                    || moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false);
         } else if (index >= HOTBAR_START) {
             // 快捷栏 → 输入格，再进装备背包。
             moved = moveItemStackTo(stack, 0, INPUT_SLOTS, false)

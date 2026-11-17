@@ -151,6 +151,13 @@ public class HatchBlock extends BaseEntityBlock {
         }
     }
 
+    /** 主段（中间段）位置：左右段沿长轴反推；中间段返回自身。 */
+    public static BlockPos masterPos(BlockPos pos, BlockState state) {
+        Direction longAxis = state.getValue(FACING).getClockWise();
+        int offset = state.getValue(PART).ordinal() - 1;
+        return pos.relative(longAxis, -offset);
+    }
+
     private static BlockPos middlePos(Level level, BlockPos pos, BlockState state) {
         Direction longAxis = state.getValue(FACING).getClockWise();
         int offset = state.getValue(PART).ordinal() - 1;

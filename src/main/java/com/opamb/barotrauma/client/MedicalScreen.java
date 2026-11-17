@@ -212,8 +212,12 @@ public final class MedicalScreen extends ScaledScreen {
             } else {
                 int slotX = x + 10;
                 for (Item drug : drugs) {
+                    // 图标画在 cy - statusScroll：悬停判断也得用可见坐标，
+                    // 并且不能超出滚动视口（否则滚出去的行也会高亮）。
+                    int rowY = cy - statusScroll;
                     boolean slotHover = mouseX >= slotX && mouseX < slotX + 18
-                            && mouseY >= cy && mouseY < cy + 18;
+                            && mouseY >= rowY && mouseY < rowY + 18
+                            && rowY >= statusViewTop && rowY + 18 <= statusViewBottom;
                     g.fill(slotX, cy, slotX + 18, cy + 18, 0xFF1E1E26);
                     g.fill(slotX, cy, slotX + 18, cy + 1, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
                     g.fill(slotX, cy + 17, slotX + 18, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);

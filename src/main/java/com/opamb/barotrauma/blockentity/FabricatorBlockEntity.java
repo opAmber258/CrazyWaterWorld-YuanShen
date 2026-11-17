@@ -58,6 +58,8 @@ public class FabricatorBlockEntity extends BlockEntity
     private String recipeId;
     /** 剩余要做的件数（原作 Fabricator 的 AmountToFabricate 队列）。 */
     private int pendingCrafts;
+    /** 本件实际扣掉的原材料副本（保留损耗 NBT）：取消时原样退回。 */
+    private final java.util.List<ItemStack> consumedForCraft = new java.util.ArrayList<>();
     /** 发起制作的玩家，续做时用来扣料。 */
     private java.util.UUID ownerId;
     private double progressSeconds;
@@ -205,20 +207,27 @@ public class FabricatorBlockEntity extends BlockEntity
                 : FabricatorData.catalog().recipe(recipeId);
         Player owner = ownerId == null ? null
                 : level.getServer().getPlayerList().getPlayer(ownerId);
-        if (recipe != null) {
+        // 退的是"实际扣掉的物品"，不是按配方新建：扣料只按物品种类匹配，
+        // 损耗的燃料棒也能当输入，按配方重建会把它洗成全新的（物品复制）。
+        java.util.List<ItemStack> refunds = new java.util.ArrayList<>(consumedForCraft);
+        if (refunds.isEmpty() && recipe != null) {
+            // 旧存档没有扣料明细：退回本件应消耗的原料数量。
             for (FabricatorCatalog.Ingredient ingredient : recipe.ingredients()) {
                 ItemStack refund = new ItemStack(FabricatorData.item(ingredient.itemId()),
                         ingredient.count());
-                if (refund.isEmpty()) {
-                    continue;
+                if (!refund.isEmpty()) {
+                    refunds.add(refund);
                 }
-                if (owner != null && owner.getInventory().add(refund)) {
-                    continue;
-                }
-                Containers.dropItemStack(level, worldPosition.getX() + 0.5D,
-                        worldPosition.getY() + 1.0D, worldPosition.getZ() + 0.5D, refund);
             }
         }
+        for (ItemStack refund : refunds) {
+            if (owner != null && owner.getInventory().add(refund)) {
+                continue;
+            }
+            Containers.dropItemStack(level, worldPosition.getX() + 0.5D,
+                    worldPosition.getY() + 1.0D, worldPosition.getZ() + 0.5D, refund);
+        }
+        consumedForCraft.clear();
         working = false;
         progressSeconds = 0.0D;
         recipeId = null;
@@ -233,6 +242,8 @@ public class FabricatorBlockEntity extends BlockEntity
         working = false;
         progressSeconds = 0.0D;
         recipeId = null;
+        // 本件已产出：这一份扣料不再是"待退款"。续做会在 consume 里换成新的明细。
+        consumedForCraft.clear();
         if (recipe == null) {
             setChanged();
             return;
@@ -313,23 +324,29 @@ public class FabricatorBlockEntity extends BlockEntity
     }
 
     private void consume(Player player, FabricatorCatalog.Recipe recipe) {
+        java.util.List<ItemStack> taken = new java.util.ArrayList<>();
         for (FabricatorCatalog.Ingredient ingredient : recipe.ingredients()) {
             int left = ingredient.count();
-            left = takeFromSlots(ingredient, left);
+            left = takeFromSlots(ingredient, left, taken);
             if (left > 0 && player != null) {
-                takeFromInventory(player, ingredient, left);
+                takeFromInventory(player, ingredient, left, taken);
             }
         }
+        // 记下每次实际移出的副本（含损耗 NBT）：取消时按这份退回。
+        consumedForCraft.clear();
+        consumedForCraft.addAll(taken);
         setChanged();
     }
 
-    private int takeFromSlots(FabricatorCatalog.Ingredient ingredient, int amount) {
+    private int takeFromSlots(FabricatorCatalog.Ingredient ingredient, int amount,
+                              java.util.List<ItemStack> taken) {
         for (int i = 0; i < INPUT_SLOTS && amount > 0; i++) {
             ItemStack stack = items.get(i);
             if (stack.isEmpty() || !stack.is(FabricatorData.item(ingredient.itemId()))) {
                 continue;
             }
             int take = Math.min(amount, stack.getCount());
+            taken.add(stack.copyWithCount(take));
             stack.shrink(take);
             amount -= take;
             if (stack.isEmpty()) {
@@ -340,7 +357,7 @@ public class FabricatorBlockEntity extends BlockEntity
     }
 
     private static void takeFromInventory(Player player, FabricatorCatalog.Ingredient ingredient,
-                                          int amount) {
+                                          int amount, java.util.List<ItemStack> taken) {
         var inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize() && amount > 0; i++) {
             ItemStack stack = inventory.getItem(i);
@@ -348,6 +365,7 @@ public class FabricatorBlockEntity extends BlockEntity
                 continue;
             }
             int take = Math.min(amount, stack.getCount());
+            taken.add(stack.copyWithCount(take));
             stack.shrink(take);
             amount -= take;
             if (stack.isEmpty()) {
@@ -362,6 +380,7 @@ public class FabricatorBlockEntity extends BlockEntity
                 continue;
             }
             int take = Math.min(amount, stack.getCount());
+            taken.add(stack.copyWithCount(take));
             stack.shrink(take);
             amount -= take;
             bagChanged = true;
@@ -550,6 +569,13 @@ public class FabricatorBlockEntity extends BlockEntity
         }
         tag.putDouble("Progress", progressSeconds);
         tag.putDouble("Duration", durationSeconds);
+        if (!consumedForCraft.isEmpty()) {
+            net.minecraft.nbt.ListTag consumed = new net.minecraft.nbt.ListTag();
+            for (ItemStack stack : consumedForCraft) {
+                consumed.add(stack.save(new CompoundTag()));
+            }
+            tag.put("Consumed", consumed);
+        }
         if (recipeId != null) {
             tag.putString("Recipe", recipeId);
         }
@@ -571,6 +597,12 @@ public class FabricatorBlockEntity extends BlockEntity
         progressSeconds = tag.getDouble("Progress");
         durationSeconds = tag.getDouble("Duration");
         recipeId = tag.contains("Recipe") ? tag.getString("Recipe") : null;
+        consumedForCraft.clear();
+        net.minecraft.nbt.ListTag consumed =
+                tag.getList("Consumed", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (int i = 0; i < consumed.size(); i++) {
+            consumedForCraft.add(ItemStack.of(consumed.getCompound(i)));
+        }
         for (int i = 0; i < SLOTS; i++) {
             items.set(i, tag.contains("Slot" + i)
                     ? ItemStack.of(tag.getCompound("Slot" + i)) : ItemStack.EMPTY);

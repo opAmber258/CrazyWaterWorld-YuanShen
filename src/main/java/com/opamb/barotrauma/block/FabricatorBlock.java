@@ -165,7 +165,12 @@ public class FabricatorBlock extends Block implements EntityBlock {
         }
         if (!level.isClientSide) {
             // 新机器要立刻进船体几何，否则 stateOwning 复用旧缓存、机器找不到船，
-            // 也不上报用电（和电池/接线盒放置后的处理一致）。
+            // 也不上报用电（和电池/接线盒放置后的处理一致）。六段都要登记靠港
+            // 快照：只登记主段的话，靠港时其余五段不会还原。
+            for (Part part : Part.values()) {
+                com.opamb.barotrauma.ship.ShipCores.recordPlacedBlock(level,
+                        partPos(pos, facing, part));
+            }
             com.opamb.barotrauma.ship.ShipCores.refreshNearby(level, pos);
         }
     }
@@ -188,7 +193,11 @@ public class FabricatorBlock extends Block implements EntityBlock {
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moving) {
-        if (!level.isClientSide && newState.getBlock() != this && !REMOVING.get()) {
+        // VS2 装配会先复制整台机器再逐格清理原位置：装配期间掉库存/补方块掉落
+        // 会和快照恢复出来的副本重复（物品复制），整段跳过。
+        boolean assembling = com.opamb.barotrauma.ship.vs.VsSupport.available()
+                && com.opamb.barotrauma.ship.vs.VsBridge.isAssembling();
+        if (!level.isClientSide && newState.getBlock() != this && !REMOVING.get() && !assembling) {
             REMOVING.set(Boolean.TRUE);
             try {
                 BlockPos master = masterPos(pos, state);
@@ -215,6 +224,8 @@ public class FabricatorBlock extends Block implements EntityBlock {
             } finally {
                 REMOVING.set(Boolean.FALSE);
             }
+            // 拆掉的格子在缓存几何里还是实心：重扫一次（不写靠港快照）。
+            com.opamb.barotrauma.ship.ShipCores.refreshGeometryNear(level, pos);
         }
         super.onRemove(state, level, pos, newState, moving);
     }
