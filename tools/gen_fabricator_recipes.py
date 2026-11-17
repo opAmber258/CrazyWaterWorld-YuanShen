@@ -33,10 +33,22 @@ def load_mod_items() -> dict[str, str]:
     text = MOD_ITEMS_JAVA.read_text(encoding="utf-8")
     ids = set(re.findall(r'ITEMS\.register\("([a-z0-9_]+)"', text))
     ids.update(re.findall(r'mineral\("([a-z0-9_]+)"\)', text))
+    # 辅助注册：crate("metalcrate", 20) / cargoPlaceholder("detonator") /
+    # blockItem("battery", ...)。漏掉这些会让对应解构配方被静默跳过。
+    ids.update(re.findall(r'(?:crate|cargoPlaceholder|blockItem)\("([a-z0-9_]+)"', text))
     mapping: dict[str, str] = {}
     for item_id in ids:
         mapping[item_id.replace("_", "")] = item_id
     return mapping
+
+
+def self_test() -> None:
+    """映射自检：辅助注册的物品也必须进映射（防止有效配方被静默删除）。"""
+    mapping = load_mod_items()
+    for expected in ("metalcrate", "detonator", "battery"):
+        if expected not in mapping:
+            raise SystemExit("mapping missing " + expected)
+    print("mapping self-test ok:", len(mapping), "items")
 
 
 def parse_items(content: Path):
@@ -106,8 +118,13 @@ def parse_items(content: Path):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--self-test", action="store_true",
+                        help="只跑物品映射自检")
     parser.add_argument("--content", type=Path, default=DEFAULT_CONTENT)
     args = parser.parse_args()
+    if args.self_test:
+        self_test()
+        return
     if not args.content.is_dir():
         print(f"找不到 Barotrauma Content 目录: {args.content}", file=sys.stderr)
         return 1

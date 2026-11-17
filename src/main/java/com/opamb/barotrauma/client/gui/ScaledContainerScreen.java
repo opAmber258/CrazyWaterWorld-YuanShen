@@ -160,10 +160,20 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
     // 屏幕坐标先换算回设计坐标，再交给原版逻辑：槽位命中、拖拽分堆、
     // Shift 点击、"点在外面丢出" 全部按设计空间算。
 
+    /** 本次拖动属于哪个控件（点击时记录）；点的是物品槽则为 null。 */
+    private GuiEventListener dragOwner;
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         double dx = designX(mouseX);
         double dy = designY(mouseY);
+        dragOwner = null;
+        for (GuiEventListener child : children()) {
+            if (child.isMouseOver(dx, dy)) {
+                dragOwner = child;
+                break;
+            }
+        }
         // 双手格里的箱子：悬停弹窗里的格子（左键整堆、右键 1 个）。弹窗画在缩放空间里，
         // 命中也要用设计坐标。
         int[] crateCell = com.opamb.barotrauma.client.equipment.CratePreviewOverlay.hitTest(
@@ -179,6 +189,7 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        dragOwner = null;
         return super.mouseReleased(designX(mouseX), designY(mouseY), button);
     }
 
@@ -190,11 +201,10 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
         double sx = dragX / uiScale;
         double sy = dragY / uiScale;
         // 原版 AbstractContainerScreen.mouseDragged 只处理槽位拖拽、不转发给控件，
-        // 所以容器界面里的滑条（电池充电速率等）点了没反应。先给控件一次机会。
-        for (GuiEventListener child : children()) {
-            if (child.mouseDragged(dx, dy, button, sx, sy)) {
-                return true;
-            }
+        // 所以容器界面里的滑条（电池充电速率等）点了没反应。只交给开始本次拖动的
+        // 控件：遍历所有子控件会让电池滑条在拖物品槽时也改充电速率。
+        if (dragOwner != null) {
+            return dragOwner.mouseDragged(dx, dy, button, sx, sy);
         }
         return super.mouseDragged(dx, dy, button, sx, sy);
     }

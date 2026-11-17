@@ -259,8 +259,17 @@ function render(view, W, H, file) {
         const depth = l0 * A.z + l1 * B.z + l2 * C.z;
         const idx = py * W + px;
         if (depth >= zbuf[idx]) continue;
-        const tu = l0 * tA[0] + l1 * tB[0] + l2 * tC[0];
-        const tv = l0 * tA[1] + l1 * tB[1] + l2 * tC[1];
+        let tu, tv;
+        if (ortho) {
+          tu = l0 * tA[0] + l1 * tB[0] + l2 * tC[0];
+          tv = l0 * tA[1] + l1 * tB[1] + l2 * tC[1];
+        } else {
+          // 透视：UV 按 1/z 加权，否则深度不同的端点会拉伸纹理、对角线接缝。
+          const q0 = l0 / A.z, q1 = l1 / B.z, q2 = l2 / C.z;
+          const qs = q0 + q1 + q2;
+          tu = (q0 * tA[0] + q1 * tB[0] + q2 * tC[0]) / qs;
+          tv = (q0 * tA[1] + q1 * tB[1] + q2 * tC[1]) / qs;
+        }
         const tx = Math.min(TEX.w - 1, Math.max(0, Math.floor(tu)));
         const ty = Math.min(TEX.h - 1, Math.max(0, Math.floor(tv)));
         const ti = (ty * TEX.w + tx) * 4;

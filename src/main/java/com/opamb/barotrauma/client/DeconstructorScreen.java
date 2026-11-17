@@ -40,15 +40,21 @@ public class DeconstructorScreen extends ScaledContainerScreen<DeconstructorMenu
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, title, 8, 6, ACCENT, false);
-        graphics.drawString(font, "输入", 16, 16, DIM, false);
-        graphics.drawString(font, "产出", 16, 72, DIM, false);
+        graphics.drawString(font, Component.translatable(
+                "gui.barotrauma.deconstructor.input").getString(), 16, 16, DIM, false);
+        graphics.drawString(font, Component.translatable(
+                "gui.barotrauma.deconstructor.output").getString(), 16, 72, DIM, false);
 
         int condition = menu.data().get(DeconstructorMenu.DATA_CONDITION);
         int working = menu.data().get(DeconstructorMenu.DATA_WORKING);
         int power = menu.data().get(DeconstructorMenu.DATA_POWER);
-        String status = condition <= 0 ? "已损坏（需要扳手）"
-                : power == 0 ? (working != 0 ? "供电不足，拆解暂停" : "供电不足（未通电）")
-                : "状态：可用";
+        String status = condition <= 0
+                ? Component.translatable("gui.barotrauma.deconstructor.broken").getString()
+                : power == 0
+                        ? Component.translatable(working != 0
+                                ? "gui.barotrauma.deconstructor.no_power_paused"
+                                : "gui.barotrauma.deconstructor.no_power").getString()
+                        : Component.translatable("gui.barotrauma.deconstructor.ready").getString();
         int color = condition <= 0 ? RED : power == 0 ? 0xFFD8B44A : DIM;
         graphics.drawString(font, status, 150, 100, color, false);
 
@@ -76,8 +82,12 @@ public class DeconstructorScreen extends ScaledContainerScreen<DeconstructorMenu
         boolean working = menu.data().get(DeconstructorMenu.DATA_WORKING) != 0;
         boolean canStart = !working && menu.data().get(DeconstructorMenu.DATA_CONDITION) > 0
                 && menu.data().get(DeconstructorMenu.DATA_POWER) != 0;
-        drawButton(graphics, x + 150, y + 30, 96, 18, "拆解", canStart, mouseX, mouseY);
-        drawButton(graphics, x + 150, y + 54, 96, 18, "取消", working, mouseX, mouseY);
+        drawButton(graphics, x + 150, y + 30, 96, 18,
+                Component.translatable("gui.barotrauma.deconstructor.start").getString(),
+                canStart, mouseX, mouseY);
+        drawButton(graphics, x + 150, y + 54, 96, 18,
+                Component.translatable("gui.barotrauma.deconstructor.cancel").getString(),
+                working, mouseX, mouseY);
 
         int progress = menu.data().get(DeconstructorMenu.DATA_PROGRESS);
         graphics.fill(x + 150, y + 82, x + 246, y + 92, TRACK);

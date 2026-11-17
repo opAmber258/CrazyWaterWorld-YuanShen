@@ -78,7 +78,7 @@ public class BatteryBlockEntity extends BlockEntity
         if (!(level instanceof ServerLevel server) || be.isRemoved()) {
             return;
         }
-        ShipState ship = resolveShip(server, pos);
+        ShipState ship = be.resolveShip(server, pos);
         if (ship == null) {
             return;
         }
@@ -241,14 +241,34 @@ public class BatteryBlockEntity extends BlockEntity
         return VsState.active() && VsPilot.isYardBlock(pos) ? VsPilot.toAssembly(pos) : pos;
     }
 
-    private static ShipState resolveShip(ServerLevel level, BlockPos pos) {
+    /** 已确认的核心位置；每 tick 扫 49 个区块太贵，和接线盒一样缓存。 */
+    private BlockPos cachedCorePos;
+    /** 找不到船时的重试冷却（tick）。 */
+    private int coreRetryTicks;
+
+    private ShipState resolveShip(ServerLevel level, BlockPos pos) {
         if (VsState.active() && VsPilot.isYardBlock(pos)) {
             return VsState.activeState();
         }
-        // 船状态不存档：世界重开后第一次 tick 靠自己补扫，不能等玩家去开电力面板。
-        // 两艘船靠近时最近核心可能属于另一艘船，按船体几何归属选。
-        // 核心扫描是各轴 ±24 格：对角设备离核心约 41.6 格，32 格会漏。
-        return ShipCores.stateOwning(level, pos, 48.0D);
+        // 先读缓存核心的当前状态（不缓存 ShipState，避免重扫前的旧对象）。
+        if (cachedCorePos != null && level.hasChunkAt(cachedCorePos)
+                && level.getBlockEntity(cachedCorePos) instanceof ShipCoreBlockEntity core) {
+            ShipState state = core.state() != null ? core.state() : core.rescan(level);
+            if (state != null && state.tracksHullBlock(pos)) {
+                return state;
+            }
+        }
+        // 找不到船也要冷却，否则没接入船体的电池每 tick 重扫附近区块。
+        if (coreRetryTicks > 0) {
+            coreRetryTicks--;
+            return null;
+        }
+        coreRetryTicks = 20;
+        // 两艘船靠近时最近核心可能属于另一艘船，按船体几何归属选；
+        // 核心扫描是各轴 ±24 格，对角设备离核心约 41.6 格，所以用 48。
+        ShipCoreBlockEntity core = ShipCores.coreOwning(level, pos, 48.0D);
+        cachedCorePos = core == null ? null : core.getBlockPos().immutable();
+        return core == null ? null : core.state();
     }
 
     @Override

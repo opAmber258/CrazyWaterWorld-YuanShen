@@ -63,6 +63,9 @@ public final class MedicalScreen extends ScaledScreen {
     private int statusScroll;
     /** 上一帧算出的内容高度，用来夹滚动量。 */
     private int statusContentHeight;
+    /** 上一帧的状态区视口（设计坐标），药品命中不能超出它。 */
+    private int statusViewTop;
+    private int statusViewBottom;
 
     public MedicalScreen(UUID target, String targetName) {
         super(Component.literal("医疗"), PANEL_W, PANEL_H);
@@ -133,6 +136,8 @@ public final class MedicalScreen extends ScaledScreen {
         int statusTop = by + 78;
         int statusBottom = y + PANEL_H - 30;
         int viewHeight = Math.max(LINE * 2, statusBottom - statusTop);
+        statusViewTop = statusTop;
+        statusViewBottom = statusBottom;
         statusScroll = Mth.clamp(statusScroll, 0, Math.max(0, statusContentHeight - viewHeight));
         iconRects.clear();
         enableDesignScissor(g, x, statusTop, x + PANEL_W, statusBottom);
@@ -218,6 +223,7 @@ public final class MedicalScreen extends ScaledScreen {
                     iconRects.add(new IconRect(drug, slotX + 1, cy - statusScroll + 1));
                     slotX += 20;
                 }
+                cy += 18;
             }
         } else {
             g.drawString(this.font, Component.literal("全身状态"), x + 8, cy, 0xFF7FB8E8);
@@ -292,8 +298,11 @@ public final class MedicalScreen extends ScaledScreen {
         if (button == 0) {
             // 1) 对症药品图标 = 用该药（作用于当前选中部位）
             for (IconRect rect : iconRects) {
+                // 命中限制在状态区视口内：滚出视口的图标不能隔着文字/面板外点到。
+                int hitTop = Math.max(rect.y(), statusViewTop);
+                int hitBottom = Math.min(rect.y() + 16, statusViewBottom);
                 if (mouseX >= rect.x() && mouseX < rect.x() + 16
-                        && mouseY >= rect.y() && mouseY < rect.y() + 16) {
+                        && mouseY >= hitTop && mouseY < hitBottom) {
                     String itemId = String.valueOf(
                             net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(rect.item()));
                     ModNetwork.sendToServer(new MedicalTreatPacket(target,

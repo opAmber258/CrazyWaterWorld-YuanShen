@@ -1271,6 +1271,25 @@ public final class ShipSimulation {
         return -1;
     }
 
+    /**
+     * 实心机器格用：找相邻的舱室格（机器自己不在水体里，bodyOf(自己) 恒为 -1）。
+     *
+     * @return 相邻的舱室格；四周都不在舱室里返回 null
+     */
+    public net.minecraft.core.BlockPos bodyCellNear(net.minecraft.core.BlockPos cell) {
+        if (cell == null) {
+            return null;
+        }
+        for (net.minecraft.core.BlockPos next : new net.minecraft.core.BlockPos[]{
+                cell.above(), cell.below(), cell.north(), cell.south(),
+                cell.east(), cell.west()}) {
+            if (bodyOf(next) >= 0) {
+                return next;
+            }
+        }
+        return null;
+    }
+
     /** 这一格在第几个水体里（0..n-1 密闭舱室，n.. 连海空腔）；不在任何舱里返回 -1。 */
     public int bodyOf(net.minecraft.core.BlockPos cell) {
         if (cell == null) {

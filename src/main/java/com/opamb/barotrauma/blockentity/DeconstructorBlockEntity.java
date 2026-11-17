@@ -105,7 +105,17 @@ public class DeconstructorBlockEntity extends BlockEntity
         if (!ship.tracksHullBlock(cell)) {
             return;
         }
-        boolean submerged = ship.simulation().bodyIsWet(ship.simulation().bodyOf(cell));
+        // 机器格本身是实心，bodyOf(自己) 恒为 -1；用相邻舱室格判断。
+        BlockPos wetCell = ship.simulation().bodyCellNear(cell);
+        boolean submerged = false;
+        if (wetCell != null && ship.simulation().bodyIsWet(ship.simulation().bodyOf(wetCell))) {
+            java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
+            for (ShipState.Breach breach : ship.breaches()) {
+                breachSources.add(breach.pos());
+            }
+            submerged = wetCell.getY()
+                    < ship.simulation().waterLevelAt(wetCell, breachSources);
+        }
         if (submerged) {
             be.condition.damage(SUBMERGED_DECAY / 20.0D);
             be.setChanged();

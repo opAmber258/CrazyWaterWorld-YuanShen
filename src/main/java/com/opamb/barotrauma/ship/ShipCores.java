@@ -127,13 +127,20 @@ public final class ShipCores {
      */
     @Nullable
     public static ShipState stateOwning(Level level, BlockPos cell, double maxDistance) {
+        ShipCoreBlockEntity core = coreOwning(level, cell, maxDistance);
+        return core == null ? null : core.state();
+    }
+
+    /** 同 {@link #stateOwning}，但返回核心本身（设备可以缓存核心位置，避免每 tick 扫区块）。 */
+    @Nullable
+    public static ShipCoreBlockEntity coreOwning(Level level, BlockPos cell, double maxDistance) {
         for (ShipCoreBlockEntity core : coresNear(level, cell, maxDistance)) {
             ShipState state = core.state();
             if (state == null) {
                 state = core.rescan(level);
             }
             if (state != null && state.tracksHullBlock(cell)) {
-                return state;
+                return core;
             }
         }
         return null;

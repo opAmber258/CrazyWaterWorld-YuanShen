@@ -189,12 +189,14 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
             return;
         }
         float marker = markerFraction();
-        boolean success = qteCooldown <= 0.0F && marker <= shownFraction();
-        if (!success && qteCooldown > 0.0F) {
-            // 原作：冷却中乱点会把指针打回右端。
+        boolean cooling = qteCooldown > 0.0F;
+        if (cooling) {
+            // 原作：冷却中乱点只把指针打回右端，不重置剩余冷却
+            //（服务端也保留剩余 tick，两端恢复时间要一致）。
             qteTimer = QTE_DURATION;
+        } else {
+            qteCooldown = QTE_COOLDOWN;
         }
-        qteCooldown = QTE_COOLDOWN;
         send(RepairActionPacket.ACTION_QTE, marker);
     }
 

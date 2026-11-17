@@ -159,6 +159,11 @@ public class DeconstructorBlock extends Block implements EntityBlock {
             }
             level.setBlock(partPos(pos, facing, part), state.setValue(PART, part), Block.UPDATE_ALL);
         }
+        if (!level.isClientSide) {
+            // 新机器要立刻进船体几何，否则 stateOwning 复用旧缓存、机器找不到船，
+            // 也不上报用电（和电池/接线盒放置后的处理一致）。
+            com.opamb.barotrauma.ship.ShipCores.refreshNearby(level, pos);
+        }
     }
 
     @Override

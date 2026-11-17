@@ -142,11 +142,18 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
             be.state.setPowerOn(false);
             be.lastRatio = 0.0D;
             // 停机冷却仍要推进：不调 tick 的话温度/裂变/涡轮永远停在损坏前的值。
-            // 输出单独上报 0，避免损坏的反应堆继续发电。
-            be.state.tick(SECONDS_PER_TICK, be.availableFuel(), 0.0D);
+            // 输出单独上报 0，避免损坏的反应堆继续发电；但残余热仍可能起火/熔毁，
+            // 事件不能丢。
+            int events = be.state.tick(SECONDS_PER_TICK, be.availableFuel(), 0.0D);
             if (ship != null && cell != null) {
                 ship.simulation().reportReactor(cell, 0.0D, be.state.capacityKw(),
                         be.state.temperature(), be.state.overheated(), be.state.meltedDown());
+            }
+            if ((events & ReactorState.EVENT_FIRE) != 0) {
+                be.spawnFire(server);
+            }
+            if ((events & ReactorState.EVENT_MELTDOWN) != 0) {
+                be.meltdown(server);
             }
             return;
         }

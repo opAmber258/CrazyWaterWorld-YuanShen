@@ -64,4 +64,4 @@
 - 离线渲染器（`reference/render_bbmodel.js`，ZYX 欧拉序）复算世界包围盒并渲染比对预览轮廓；
 - `reference/validate_deliverable.js` 在仓库根可重跑：命名、格式、计数、贴图 2 的幂与真透明、贴图与内嵌字节一致、预览尺寸等；
 - bbmodel 已由作者在 Blockbench 5.x 中重开编辑并保存（2026-11-15）；
-- 未接入 `src/main/resources`，未进入 Minecraft 客户端验证。
+- 已接入 `src/main/resources`（`battery.geo.json` + 方块注册，按电量切换四段贴图）；游戏内验收状态见 `validation.json` 的 `runtime.in_game_verified`。

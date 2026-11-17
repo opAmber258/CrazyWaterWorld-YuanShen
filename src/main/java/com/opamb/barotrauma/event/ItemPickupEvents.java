@@ -107,6 +107,10 @@ public final class ItemPickupEvents {
     private enum Pickup { PICKED, EMPTY, FAILED }
 
     private static Pickup tryPickup(Player player, ItemEntity itemEntity) {
+        // 旁观者也会收到 RightClickBlock：不能改世界物品。
+        if (player.isSpectator()) {
+            return Pickup.FAILED;
+        }
         ItemStack stack = itemEntity.getItem();
         if (stack.isEmpty()) {
             return Pickup.EMPTY;
