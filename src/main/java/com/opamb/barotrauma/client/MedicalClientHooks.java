@@ -112,7 +112,7 @@ public final class MedicalClientHooks {
     }
 
     /**
-     * 维护"长按高亮"的发光效果：有目标就续，没目标就摘掉。
+     * 维护"长按高亮"的发光效果：有目标就续期，没目标就**停止续期**让它自然过期。
      *
      * <p><b>必须让服务端挂效果</b>：1.20.1 的 {@code Entity.isCurrentlyGlowing()} 在客户端
      * 读的是 shared flag 6，不是药水效果——客户端本地 {@code addEffect(GLOWING)}
@@ -120,27 +120,19 @@ public final class MedicalClientHooks {
      * 核对 {@code isCurrentlyGlowing} 的字节码确认）。服务端 {@code addEffect} 才会通过
      * 实体元数据把 flag 推到客户端。</p>
      *
-     * <p>所以这里改成发 {@link MedicalHighlightPacket}：有目标且本地看不到光时请求一次，
-     * 目标消失时明确请求摘掉（服务端固定 40 tick 过期，漏发也不会永久残留）。</p>
+     * <p><b>松手不主动删</b>：GLOWING 是共享效果，倒地系统也在用。无条件
+     * {@code removeEffect} 会把别人的高光一起抹掉（两人同时选中同一目标、或该玩家正倒地）。
+     * 这里只停发续期请求，服务端挂的 40 tick 到期自然消失。</p>
      */
     private static void syncHighlightEffect(Minecraft minecraft) {
         java.util.UUID target = holdTargetId();
         if (target == null) {
-            if (lastHighlighted != null) {
-                // 明确摘掉，不等自然过期（玩家马上要去开面板，残留高光很碍眼）
-                com.opamb.barotrauma.network.ModNetwork.sendToServer(
-                        new com.opamb.barotrauma.network.MedicalHighlightPacket(lastHighlighted, false));
-            }
+            // 停发续期即可，不删效果（见上面的说明）
             lastHighlighted = null;
             return;
         }
         if (minecraft.level == null || minecraft.player == null) {
             return;
-        }
-        // 目标换了人：先给旧的摘掉
-        if (lastHighlighted != null && !lastHighlighted.equals(target)) {
-            com.opamb.barotrauma.network.ModNetwork.sendToServer(
-                    new com.opamb.barotrauma.network.MedicalHighlightPacket(lastHighlighted, false));
         }
         lastHighlighted = target;
         var entity = minecraft.level.getPlayerByUUID(target);
@@ -151,7 +143,7 @@ public final class MedicalClientHooks {
         var existing = entity.getEffect(net.minecraft.world.effect.MobEffects.GLOWING);
         if (existing == null || existing.getDuration() < 10) {
             com.opamb.barotrauma.network.ModNetwork.sendToServer(
-                    new com.opamb.barotrauma.network.MedicalHighlightPacket(target, true));
+                    new com.opamb.barotrauma.network.MedicalHighlightPacket(target));
         }
     }
 
