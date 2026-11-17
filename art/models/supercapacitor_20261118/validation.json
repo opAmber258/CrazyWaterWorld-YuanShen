@@ -1,0 +1,93 @@
+{
+  "asset": "supercapacitor",
+  "identifier": "supercapacitor",
+  "date": "2026-11-18",
+  "status": "complete",
+  "status_reason": "美术侧交付齐备（java_block 口径：bbmodel + 贴图 + 四向预览 + 说明文件，另附电量屏六状态贴图）。Java 方块模型 JSON 因旋转超限/多轴而未随附，见 limitations。",
+  "creation_source": "人工（Han-xing-official）",
+  "contributors": {
+    "human": ["Han-xing-official"],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线渲染校验、贴图状态提取、文档与登记起草；未参与几何、UV、贴图、预览制作"
+      }
+    ],
+    "division": "几何、UV、贴图绘制（含六个电量状态）、预览截图全部人工完成；AI 仅做交付打包、图层提取与离线校验。"
+  },
+  "display_name_zh": "超级电容器",
+  "display_name_en": "Supercapacitor",
+  "prototyping_note": "官方简中名查证自游戏加载提示原文（潜渊症中文维基收录）：超级电容器不能像电池那样储存很多电能，但能在瞬间释放高压脉冲电流……；标识 supercapacitor 按原版电气组件命名惯例推断。本机无游戏目录，未直接核验 entityname.supercapacitor XML，评选前可复核。",
+  "production": {
+    "model_format": "java_block",
+    "bbmodel_format_version": "5.0",
+    "blockbench": "5.x（作者 2026-11-18 编辑并保存）",
+    "textures_embedded": true,
+    "registered_type": "方块（java 方块模型路线）"
+  },
+  "counts": {
+    "cubes": 37,
+    "declared_faces": 222,
+    "groups": 20,
+    "bones": 0,
+    "animations": 0,
+    "hidden_elements": 0,
+    "rotated_cubes": 30,
+    "zero_thickness_planes": 4
+  },
+  "bounds_blockbench_units": {
+    "min": [-4, -0.399, 3],
+    "max": [20, 22.001, 16],
+    "size": [24.0, 22.4, 13.0]
+  },
+  "dimensions_blocks_at_16_units_per_block": [1.5, 1.4, 0.8125],
+  "cost": {
+    "texture": "128x128 RGBA",
+    "texture_pixels": 16384,
+    "transparent_pixels": 13626,
+    "texture_states": 6
+  },
+  "checks": [
+    { "name": "naming_convention", "pass": true, "detail": "supercapacitor = 超级电容器 Supercapacitor；官方简中名出自游戏加载提示原文（灰机 wiki 收录）；目录 supercapacitor_20261118。" },
+    { "name": "deliverable_set", "pass": true, "detail": "java_block 口径：bbmodel + _tex.png + 四向预览 + README/validation/structure_audit + reference（校验脚本 + 六状态贴图）。" },
+    { "name": "preview_geometry_consistency", "pass": true, "detail": "离线渲染器（ZYX 欧拉序）复算包围盒并渲染比对预览特征（柜体、V 形支撑柱、警戒条、电缆脚一致）。" },
+    { "name": "texture_power_of_two", "pass": true, "detail": "128×128，2 的幂。" },
+    { "name": "texture_true_transparency", "pass": true, "detail": "RGBA8，透明像素 alpha=0（13626/16384），无半透明噪点。" },
+    { "name": "texture_matches_embedded", "pass": true, "detail": "supercapacitor_tex.png 与 bbmodel 内嵌贴图逐字节一致（= 没电图层）。" },
+    { "name": "texture_states_extracted", "pass": true, "detail": "工程 6 个贴图图层对应电量屏 6 状态（没电/1-4格/满格）；5 个备用状态提取至 reference/screen_states/ 为完整 128×128 贴图；差异集中在屏条 UV 区 x49-53 / y14-15（逐格递增 6→30 px）。" },
+    { "name": "preview_dimensions", "pass": true, "detail": "4 张预览均 1200×900，纯黑底、无网格无 UI。" },
+    { "name": "no_hidden_geometry", "pass": true, "detail": "0 个隐藏元素、0 个隐藏分组。" },
+    { "name": "no_unused_cubes", "pass": true, "detail": "37 个 cube 全部参与几何。" },
+    { "name": "bbmodel_reopens", "pass": true, "detail": "作者于 2026-11-18 在 Blockbench 5.x 中编辑并保存。" }
+  ],
+  "errors": [],
+  "warnings": [
+    { "code": "ROTATION_OVER_LIMIT", "detail": "30/37 cube 带旋转，含 56.31°/±35°/±12.5°/±17.5° 等超限单轴角度与多轴自由旋转（如 [-27.16,51.43,-33.27]），超出 1.20.1 原版 Java 模型 JSON 限制；接入前需集成侧确认目标格式。" },
+    { "code": "ZERO_THICKNESS_PLANES", "detail": "4 个零厚度贴片（左前/左后贴片，1×0×3.60555）。" },
+    { "code": "INFORMAL_NAMES", "detail": "元素/分组命名含随意中文名（左那啥/多缴/2145 等）与重复名（电线×9、贴片×2 等），均为参与几何的正式对象，不影响导出。" }
+  ],
+  "previews": {
+    "method": "作者在 Blockbench 视口手动截图导出（约定 3.3 交互环境例外）；reference/ 内脚本为交付后自建校验工具，不用于产出预览",
+    "files": [
+      { "file": "preview_front.png", "view": "正视（正交）", "size": [1200, 900] },
+      { "file": "preview_back.png", "view": "背视（正交）", "size": [1200, 900] },
+      { "file": "preview_side.png", "view": "侧视（正交）", "size": [1200, 900] },
+      { "file": "preview_oblique.png", "view": "斜视（透视）", "size": [1200, 900] }
+    ]
+  },
+  "runtime": {
+    "integrated": false,
+    "in_game_verified": false,
+    "note": "美术资产交付，未修改 src/main/resources，未注册方块，未启动 Minecraft 客户端。blockstate/loot table/lang 属集成者接入范围。"
+  },
+  "limitations": [
+    "Java 方块模型 JSON 未随附：旋转含超限角度与多轴自由旋转，超出 1.20.1 原版 JSON 表达范围，待集成侧确认目标格式后用 Blockbench 原生导出。",
+    "电量屏六状态的切换方式（blockstate 方案）由集成侧实现；美术侧已备齐全部状态贴图。",
+    "无动画；无 display 设置（方块渲染不需要）。"
+  ],
+  "manual_acceptance": {
+    "bbmodel_reopens": "pass — 作者在 Blockbench 5.x 中编辑并保存工程（2026-11-18）",
+    "notes": "离线渲染器比对结论与作者预览一致；如需人工复核可运行 reference/ 内脚本。"
+  }
+}

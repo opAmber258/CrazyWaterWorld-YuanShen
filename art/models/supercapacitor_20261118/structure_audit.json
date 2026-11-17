@@ -1,0 +1,27 @@
+{
+  "asset": "supercapacitor",
+  "date": "2026-11-18",
+  "source": "supercapacitor.bbmodel (Blockbench 5.0, model_format java_block, java_block_version 26.3)",
+  "counts": {
+    "cubes": 37,
+    "faces": 222,
+    "groups": 20,
+    "bones": 0,
+    "loose_cubes": 0,
+    "hidden_elements": 0,
+    "hidden_groups": 0,
+    "animations": 0,
+    "rotated_cubes": 30,
+    "zero_thickness_planes": 4
+  },
+  "groups": ["左那啥", "主体", "装箱", "接地的线", "电线", "电线", "电线", "电线", "左电线组", "右那啥", "接地的线", "右边电线组", "电线", "电线", "电线", "电线", "电线", "多缴", "贴片", "贴片"],
+  "findings": [
+    { "level": "info", "code": "NO_BONES", "detail": "java_block 格式无骨骼，20 个分组仅作层级组织。" },
+    { "level": "info", "code": "NO_LOOSE_CUBES", "detail": "37 个 cube 全部在分组下，无游离元素。" },
+    { "level": "info", "code": "NO_ANIMATION", "detail": "0 条动画，静态交付。" },
+    { "level": "info", "code": "TEXTURE_LAYERS", "detail": "工程含 6 个贴图图层（电量屏 6 状态：没电/1-4格/满格）；主贴图为可见的没电状态，5 个备用状态已提取至 reference/screen_states/。" },
+    { "level": "warn", "code": "ROTATION_OVER_LIMIT", "detail": "30/37 个 cube 带旋转，含 56.31°/±35°/±12.5°/±17.5° 等超限单轴角度与多轴自由旋转（如 [-27.16,51.43,-33.27]），超出 1.20.1 原版 Java 模型 JSON 角度与单轴限制；接入前需集成侧确认目标格式。" },
+    { "level": "warn", "code": "ZERO_THICKNESS_PLANES", "detail": "4 个零厚度贴片（左前/左后贴片，1×0×3.60555）。" },
+    { "level": "info", "code": "INFORMAL_NAMES", "detail": "元素/分组命名含随意中文名与重复名（电线×9、2145×8、贴片×2 等），均为参与几何的正式对象，不影响导出。" }
+  ]
+}
