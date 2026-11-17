@@ -36,7 +36,6 @@ public final class ShipSimulation {
     private static final double CREW_OXYGEN = 700.0D;
     private static final double PUMP_RATE = 600.0D;
     private static final double PUMP_POWER = 300.0D;
-    private static final double O2_POWER = 300.0D;
     /** 声纳台耗电：wiki 的 Navigation Terminal / Sonar Monitor 都是 100。 */
 
     /** 驾驶台（Nav Terminal 本体）也吃 100；我们把它和声纳合在一台机器上，所以只算一份。 */
@@ -441,9 +440,11 @@ public final class ShipSimulation {
         // 计一遍（会变成 210 kW）；还没接入上报的旧船才用固定负载兜底。
         boolean terminalReporting = lastTerminalTick != Long.MIN_VALUE
                 && consumerTick - lastTerminalTick <= CONSUMER_STALE_TICKS;
+        // 制氧机将来作为 PowerConsumer 自己上报 1000 kW，这里不能再按
+        // machines.oxygen() 计一遍——两边都算就是双计。该字段现在恒 0，
+        // 这条旧路径直接去掉。
         double deviceDemand = (consumers.isEmpty() ? legacyDemand : consumerDemand)
                 + (terminalReporting ? 0.0D : machines.sonar() * SONAR_POWER)
-                + machines.oxygen() * O2_POWER
                 + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER);
 
         // 供电不足时电池补差。每块电池的可用输出按原版 PowerContainer 算
