@@ -147,7 +147,8 @@ public final class CthulhuGazeClient {
      * 淡出期间随 {@link #strength} 一起归零，所以退出时投影会平滑回弹。</p>
      */
     public static float projectionBlend() {
-        if (strength <= 0.001F || activePreset != CthulhuPreset.FLAT) {
+        if (strength <= 0.001F || activePreset != CthulhuPreset.FLAT || TurretClient.isActive()) {
+            // 炮塔 HUD 的落点括号按透视公式投影；正交混合会让它只在固定深度对齐目标。
             return 0.0F;
         }
         if (activeTier >= 3) {

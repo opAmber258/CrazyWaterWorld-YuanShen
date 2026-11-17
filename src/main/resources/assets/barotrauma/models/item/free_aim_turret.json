@@ -1,0 +1,8 @@
+{
+  "parent": "barotrauma:item/turret",
+  "textures": {
+    "base": "barotrauma:block/turret_base_freeaim",
+    "barrel": "barotrauma:block/turret_barrel",
+    "particle": "barotrauma:block/turret_base_freeaim"
+  }
+}
