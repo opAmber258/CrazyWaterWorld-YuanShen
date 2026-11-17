@@ -10,12 +10,13 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class ModNetwork {
 
-    // 13：购买确认两个交付选项 + 商店三标签。
+// 13：购买确认两个交付选项 + 商店三标签。
     // 14：电力面板增加电池条目（类型/电量/容量）与全船电池统计；诊所状态包区分“首次打开 / 治疗后刷新”。
     // 15：修理操作（持续修理 TICK / QTE）+ 电池面板。
     // 16：修理改为独立窗口（RepairMenu）：START/QTE/STOP，进度在服务端按 tick 推进。
     // 17：加工台制作/取消改走独立包（原版按钮编号只有 1 字节，装不下配方下标 + 数量）。
-    private static final String PROTOCOL = "17";
+    // 18：炮塔原型新增瞄准/开火/退出/状态同步包（在 17 基础上追加）。
+    private static final String PROTOCOL = "18";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -90,7 +91,7 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(CrateSlotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(CrateSlotPacket::encode).decoder(CrateSlotPacket::decode)
                 .consumerNetworkThread(CrateSlotPacket::handle).add();
-        CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(PowerStatePacket::encode).decoder(PowerStatePacket::decode)
                 .consumerNetworkThread(PowerStatePacket::handle).add();
         CHANNEL.messageBuilder(PowerBindPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
@@ -117,6 +118,19 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(FabricatorActionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(FabricatorActionPacket::encode).decoder(FabricatorActionPacket::decode)
                 .consumerNetworkThread(FabricatorActionPacket::handle).add();
+        // 炮塔原型：进入后客户端每 tick 发绝对角度，服务端限速并广播状态。
+        CHANNEL.messageBuilder(TurretAimPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TurretAimPacket::encode).decoder(TurretAimPacket::decode)
+                .consumerNetworkThread(TurretAimPacket::handle).add();
+        CHANNEL.messageBuilder(TurretFirePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TurretFirePacket::encode).decoder(TurretFirePacket::decode)
+                .consumerNetworkThread(TurretFirePacket::handle).add();
+        CHANNEL.messageBuilder(TurretExitPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TurretExitPacket::encode).decoder(TurretExitPacket::decode)
+                .consumerNetworkThread(TurretExitPacket::handle).add();
+        CHANNEL.messageBuilder(TurretStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(TurretStatePacket::encode).decoder(TurretStatePacket::decode)
+                .consumerNetworkThread(TurretStatePacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

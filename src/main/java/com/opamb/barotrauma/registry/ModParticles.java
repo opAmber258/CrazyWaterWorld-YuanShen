@@ -25,6 +25,14 @@ public final class ModParticles {
     public static final RegistryObject<SimpleParticleType> SHIP_SPRAY =
             PARTICLES.register("ship_spray", () -> new SimpleParticleType(false));
 
+    /**
+     * 炮塔开火粒子束的单点。故意用自定义粒子而不是原版 END_ROD：原版粒子太小改不了、
+     * 太大又糊成一条粗线，这里把 quadSize 压到 0.03 格，贴图见
+     * {@code assets/barotrauma/particles/turret_tracer.json}。
+     */
+    public static final RegistryObject<SimpleParticleType> TURRET_TRACER =
+            PARTICLES.register("turret_tracer", () -> new SimpleParticleType(false));
+
     private ModParticles() {
     }
 

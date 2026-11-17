@@ -116,6 +116,15 @@ public final class ModBlockEntities {
             BLOCK_ENTITIES.register("bulkhead_door", () -> BlockEntityType.Builder
                     .of(BulkheadDoorBlockEntity::new, ModShipBlocks.BULKHEAD_DOOR.get()).build(null));
 
+    /** 舰载/自由瞄准炮塔（原型）：占用者/瞄准角/冷却 + 炮管渲染；两种炮塔共用同一个方块实体类型。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.TurretBlockEntity>> TURRET =
+            BLOCK_ENTITIES.register("turret", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.TurretBlockEntity::new,
+                            ModBlocks.TURRET.get(),
+                            ModBlocks.FREE_AIM_TURRET.get(),
+                            ModBlocks.TRACKING_TURRET.get())
+                    .build(null));
+
     // 船核心方块已经合并进声纳台（SonarBlockEntity extends ShipCoreBlockEntity），
     // 不再有独立的 ship_core 方块实体。
 
