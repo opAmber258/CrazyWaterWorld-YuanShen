@@ -646,6 +646,47 @@ public final class ShipSimulation {
         return 0.0D;
     }
 
+    /**
+     * 连海空腔里船壳格的实际水量（单位）：按逐列水位累加。
+     *
+     * <p>不能按“壳内格数 / 空腔总格数”折算：各列底高不同，同一水面下水量不同，
+     * 按格数平均会让进水比例偏高/偏低，直接影响下沉判断。</p>
+     */
+    public double interiorWater(int pocketIndex, java.util.Set<net.minecraft.core.BlockPos> interior,
+                                java.util.Collection<net.minecraft.core.BlockPos> breachSources) {
+        List<ShipGeometry.Compartment> pockets = geometry.openPockets();
+        if (pocketIndex < 0 || pocketIndex >= pockets.size()
+                || pocketIndex >= pocketWater.length || interior == null || interior.isEmpty()) {
+            return 0.0D;
+        }
+        double units = pocketWater[pocketIndex];
+        if (units <= 0.0D) {
+            return 0.0D;
+        }
+        java.util.List<net.minecraft.core.BlockPos> sources = breachSources == null
+                ? java.util.List.of() : java.util.List.copyOf(breachSources);
+        PocketLevelCache cache = pocketLevelCache.get(pocketIndex);
+        if (cache == null || cache.units() != units || !cache.sources().equals(sources)) {
+            ShipPocketWater.Shape shape = ShipPocketWater.compute(pockets.get(pocketIndex).cells(),
+                    sources, units);
+            cache = new PocketLevelCache(units, sources, shape);
+            pocketLevelCache.put(pocketIndex, cache);
+        }
+        // 没有破口记录时 compute 找不到种子列，返回空列映射：这时和
+        // waterLevelAt 一样退回整块均匀水位，不能把水按 0 算。
+        double uniform = bodyLevel(geometry.compartments().size() + pocketIndex);
+        double water = 0.0D;
+        for (net.minecraft.core.BlockPos cell : interior) {
+            float level = cache.shape().levelAt(cell.getX(), cell.getZ());
+            if (Float.isNaN(level)) {
+                level = (float) uniform;
+            }
+            double fill = Math.max(0.0D, Math.min(1.0D, level - cell.getY()));
+            water += fill * UNITS_PER_BLOCK;
+        }
+        return water;
+    }
+
     /** 第 body 个水体的格子数。 */
     public int bodyVolume(int body) {
         List<ShipGeometry.Compartment> sealed = geometry.compartments();

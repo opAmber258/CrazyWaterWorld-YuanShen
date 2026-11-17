@@ -119,6 +119,28 @@ public final class ShipState {
         return out;
     }
 
+    /** 历史舱内格（核心 NBT 保存用）。 */
+    public long[] knownInteriorArray() {
+        long[] out = new long[knownInterior.size()];
+        int i = 0;
+        for (BlockPos pos : knownInterior) {
+            out[i++] = pos.asLong();
+        }
+        return out;
+    }
+
+    /** 世界重开后的首次重扫：恢复 NBT 里保存的历史舱内格。 */
+    public void restoreKnownInterior(long[] values) {
+        if (values == null || values.length == 0) {
+            return;
+        }
+        java.util.Set<BlockPos> merged = new java.util.HashSet<>(knownInterior);
+        for (long value : values) {
+            merged.add(BlockPos.of(value));
+        }
+        knownInterior = java.util.Set.copyOf(merged);
+    }
+
     /** 重扫换新对象时合并历史舱内格（只增不减）。 */
     public void inheritInteriorFrom(ShipState previous) {
         if (previous == null) {
@@ -212,6 +234,10 @@ public final class ShipState {
         // 那一瞬间水整体跑到漏水侧（用户实测：完好侧被清空）。
         Map<BlockPos, Double> carried = old == null ? Map.of() : waterByCell();
         this.geometry = next;
+        // 新几何确认的舱内格也要并入历史：只增不减，破损后仍能兜底。
+        java.util.Set<BlockPos> mergedInterior = new java.util.HashSet<>(knownInterior);
+        mergedInterior.addAll(collectInterior(next));
+        knownInterior = java.util.Set.copyOf(mergedInterior);
         // 已经打没的方块不再属于新几何；把它们的耐久记录清掉，客户端不会在空气里画血条。
         // 船内独立设备（接线盒/小型泵）也吃船壳伤害，重扫后不能把它们的耐久记录清掉。
         this.hullDamage.retain(next::owns);
@@ -714,18 +740,23 @@ public final class ShipState {
         if (volume <= 0.0D) {
             return 0.0D;
         }
-        // 连海空腔里的水按"壳内格数 / 空腔总格数"折算：空腔水位均匀，
-        // 只有船壳包住的那一部分才算船里的水。
+        // 连海空腔按逐列水位累加“船壳内格”的实际水量：各列底高不同，
+        // 按格数比例折算会让进水比例偏离真实水量（下沉判断跟着错）。
         double pocketWater = 0.0D;
         List<ShipGeometry.Compartment> pockets = geometry.openPockets();
         for (int i = 0; i < pockets.size(); i++) {
             ShipGeometry.Compartment pocket = pockets.get(i);
-            int cells = pocket.volume();
-            int interior = interiorCellsOf(pocket).size();
-            if (cells <= 0 || interior <= 0) {
+            java.util.Set<BlockPos> interior = interiorCellsOf(pocket);
+            if (interior.isEmpty()) {
                 continue;
             }
-            pocketWater += simulation().pocketWater(i) * (interior / (double) cells);
+            java.util.List<BlockPos> sources = new java.util.ArrayList<>();
+            for (Breach breach : breaches.values()) {
+                if (pocket.cells().contains(breach.pos())) {
+                    sources.add(breach.pos());
+                }
+            }
+            pocketWater += simulation().interiorWater(i, interior, sources);
         }
         double units = simulation().waterUnits() + pocketWater;
         double capacity = volume * ShipSimulation.UNITS_PER_BLOCK;

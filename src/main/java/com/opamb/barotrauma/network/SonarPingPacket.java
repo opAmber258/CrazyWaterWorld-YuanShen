@@ -208,9 +208,13 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
         if (physical) {
             BlockPos assembled = com.opamb.barotrauma.ship.vs.VsState.corePos();
             if (assembled != null) {
-                return assembled.offset(com.opamb.barotrauma.ship.vs.VsState.offsetX(),
-                        com.opamb.barotrauma.ship.vs.VsState.offsetY(),
-                        com.opamb.barotrauma.ship.vs.VsState.offsetZ());
+                // 必须用完整船体变换：偏航后“核心 + 平移”会和真实位置差 2·cu，
+                // 声纳显示的对接距离就会和 VsPilot.dock 的判定不一致。
+                net.minecraft.world.phys.Vec3 world =
+                        com.opamb.barotrauma.ship.vs.VsPilot.assemblyToWorld(assembled);
+                if (world != null) {
+                    return BlockPos.containing(world);
+                }
             }
         }
         return core != null ? core.getBlockPos() : fallback;
