@@ -2,7 +2,7 @@ package com.opamb.barotrauma.client;
 
 import com.opamb.barotrauma.menu.EngineMenu;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
@@ -11,10 +11,10 @@ import net.minecraft.world.entity.player.Inventory;
  * 引擎只读面板：目标推力、供电、耗电、引擎数量和运行状态。
  * 控制全在声纳台，这里只显示引擎收到了什么。
  */
-public class EngineScreen extends AbstractContainerScreen<EngineMenu> {
+public class EngineScreen extends ScaledContainerScreen<EngineMenu> {
 
     private static final int W = 220;
-    private static final int H = 120;
+    private static final int H = 176;
 
     private static final int BG = 0xF0141B16;
     private static final int EDGE = 0xFF3B463C;
@@ -37,11 +37,6 @@ public class EngineScreen extends AbstractContainerScreen<EngineMenu> {
         return menu.data().get(index);
     }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
-        super.render(graphics, mouseX, mouseY, partialTick);
-    }
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -90,7 +85,10 @@ public class EngineScreen extends AbstractContainerScreen<EngineMenu> {
 
         String state;
         int stateColor;
-        if (count <= 0) {
+        if (menu.data().get(EngineMenu.DATA_CONDITION) <= 0) {
+            state = "引擎已损坏，需要扳手修理";
+            stateColor = RED;
+        } else if (count <= 0) {
             state = "船上没有引擎，无法推进";
             stateColor = RED;
         } else if (force <= 0) {

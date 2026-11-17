@@ -1,12 +1,12 @@
 package com.opamb.barotrauma.client;
 
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import com.opamb.barotrauma.equipment.EquipmentSlot;
 import com.opamb.barotrauma.equipment.HandsSlot;
 import com.opamb.barotrauma.menu.CrateMenu;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,7 +19,7 @@ import net.minecraft.world.inventory.Slot;
  *
  * <p>和钢柜界面同一套深色钢板配色；打开期间隐藏右下角生命/状态 HUD。</p>
  */
-public class CrateScreen extends AbstractContainerScreen<CrateMenu> {
+public class CrateScreen extends ScaledContainerScreen<CrateMenu> {
 
     private static final int BG = 0xFF1A1D20;
     private static final int EDGE = 0xFF4A5157;
@@ -44,13 +44,10 @@ public class CrateScreen extends AbstractContainerScreen<CrateMenu> {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
+    protected void renderScaled(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.renderScaled(graphics, mouseX, mouseY, partialTick);
         // 赃物格子上的红手（任务货物）：画在物品图标之上。
         StolenMarker.renderSlots(graphics, menu, leftPos, topPos);
-        // 原版 AbstractContainerScreen 不自己画悬停物品 tooltip（背包界面是在
-        // InventoryScreen.render 里显式调的），自建界面必须自己补这一句。
-        this.renderTooltip(graphics, mouseX, mouseY);
     }
 
     @Override

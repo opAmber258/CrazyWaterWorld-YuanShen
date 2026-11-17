@@ -78,6 +78,10 @@ public class PumpProxyBlock extends Block {
             // 标题跟随真实泵类型（压载泵 / 排水泵 / 小型泵），不要一律写"排水泵"。
             Component title = Component.translatable(
                     resolved.getBlockState().getBlock().getDescriptionId());
+            if (com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
+                    serverPlayer, pos, resolved, false)) {
+                return InteractionResult.CONSUME;
+            }
             NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inventory, p) -> new PumpMenu(id, inventory, pos),

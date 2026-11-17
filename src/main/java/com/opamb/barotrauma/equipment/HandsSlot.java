@@ -26,6 +26,23 @@ public class HandsSlot extends Slot {
     public static final int X = -64;
     public static final int Y = 142;
 
+    /**
+     * 容器界面里的双手格：和装备背包区同高、放在面板左侧外面（和背包界面的摆法一致）。
+     *
+     * <p>{@code -30} 表示面板左边缘往左 30px（18px 格子 + 12px 间距），不压在背包区上；
+     * {@code ScaledContainerScreen} 会按负坐标自动给面板左侧留出缩放空间。</p>
+     */
+    public static final int CONTAINER_X = -30;
+    /**
+     * 双手格相对装备背包区顶部的偏移：和快捷栏同一行（背包界面 47 号位也在热键栏那一行），
+     * 这样双手格和快捷栏平行。
+     */
+    public static final int CONTAINER_ROW = 58;
+
+    public static int containerY(int areaY) {
+        return areaY + CONTAINER_ROW;
+    }
+
     /** 鼠标是否落在这格上（用原版 {@code isHovering} 的 ±1 像素边距）。 */
     public static boolean contains(net.minecraft.world.inventory.Slot slot, int guiLeft, int guiTop,
                                    double mouseX, double mouseY) {
@@ -36,6 +53,16 @@ public class HandsSlot extends Slot {
 
     public HandsSlot(Inventory inventory) {
         super(inventory, 40, X, Y);
+    }
+
+    /**
+     * 容器界面里的双手格：放在装备背包区左侧的空位里（面板内，不会被缩放裁掉）。
+     *
+     * <p>背包界的 47 号位在面板外（{@link #X}），容器界面的面板更小，放外面在
+     * 小窗口下会被裁掉，所以统一放进背包区左边距。</p>
+     */
+    public HandsSlot(Inventory inventory, int x, int y) {
+        super(inventory, 40, x, y);
     }
 
     @Override

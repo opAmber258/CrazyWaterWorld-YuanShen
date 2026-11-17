@@ -10,8 +10,12 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class ModNetwork {
 
-    // 14：诊所状态包区分“首次打开 / 治疗后刷新”；13：购买确认两个交付选项 + 商店三标签。
-    private static final String PROTOCOL = "16";
+    // 13：购买确认两个交付选项 + 商店三标签。
+    // 14：电力面板增加电池条目（类型/电量/容量）与全船电池统计；诊所状态包区分“首次打开 / 治疗后刷新”。
+    // 15：修理操作（持续修理 TICK / QTE）+ 电池面板。
+    // 16：修理改为独立窗口（RepairMenu）：START/QTE/STOP，进度在服务端按 tick 推进。
+    // 17：加工台制作/取消改走独立包（原版按钮编号只有 1 字节，装不下配方下标 + 数量）。
+    private static final String PROTOCOL = "17";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -92,6 +96,9 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(PowerBindPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(PowerBindPacket::encode).decoder(PowerBindPacket::decode)
                 .consumerNetworkThread(PowerBindPacket::handle).add();
+        CHANNEL.messageBuilder(RepairActionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RepairActionPacket::encode).decoder(RepairActionPacket::decode)
+                .consumerNetworkThread(RepairActionPacket::handle).add();
         CHANNEL.messageBuilder(PowerOpenRequestPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(PowerOpenRequestPacket::encode).decoder(PowerOpenRequestPacket::decode)
                 .consumerNetworkThread(PowerOpenRequestPacket::handle).add();
@@ -107,6 +114,9 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(ClinicActionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(ClinicActionPacket::encode).decoder(ClinicActionPacket::decode)
                 .consumerNetworkThread(ClinicActionPacket::handle).add();
+        CHANNEL.messageBuilder(FabricatorActionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(FabricatorActionPacket::encode).decoder(FabricatorActionPacket::decode)
+                .consumerNetworkThread(FabricatorActionPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

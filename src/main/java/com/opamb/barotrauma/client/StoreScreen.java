@@ -9,7 +9,7 @@ import com.opamb.barotrauma.network.StoreActionPacket;
 import com.opamb.barotrauma.network.StoreStatePacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -30,7 +30,7 @@ import java.util.Map;
  * 出售）。每行有数量选择（−/数量/+），选好的数量进购物车，底部显示总价并
  * 整单成交；服务端整单校验库存/余额/耐久。</p>
  */
-public final class StoreScreen extends Screen {
+public final class StoreScreen extends ScaledScreen {
 
     private static final int PANEL_W = 440;
     private static final int PANEL_H = 252;
@@ -41,6 +41,11 @@ public final class StoreScreen extends Screen {
     private static final int TAB_BUY = 0;
     private static final int TAB_SELL = 1;
     private static final int TAB_SUB = 2;
+
+    /** 购买交付弹窗（照原作 GUIMessageBox：标题 + 一句提问 + 两个按钮）。 */
+    private static final int PROMPT_W = 300;
+    private static final int PROMPT_H = 86;
+    private static final int PROMPT_BTN_W = 132;
 
     private static final int BG = 0xF01B2320;
     private static final int EDGE = 0xFF3B463C;
@@ -77,7 +82,7 @@ public final class StoreScreen extends Screen {
     }
 
     private StoreScreen(StoreStatePacket state) {
-        super(Component.translatable("store.title"));
+        super(Component.translatable("store.title"), PANEL_W, PANEL_H);
         this.state = state;
     }
 
@@ -105,30 +110,27 @@ public final class StoreScreen extends Screen {
         return false;
     }
 
+    /** 设计坐标原点：缩放由 ScaledScreen 处理，这里恒为 0。 */
     private int leftPos() {
-        return (width - panelW()) / 2;
+        return 0;
     }
 
     private int topPos() {
-        return (height - panelH()) / 2;
+        return 0;
     }
 
-    /**
-     * 面板宽度：GUI 缩放后可用宽度可能只有 320（1280×720 + 缩放 4），
-     * 固定 440 会让左半边跑到屏幕外。绘制和鼠标命中都走这里，保证一致。
-     */
+    /** 面板按设计坐标绘制，缩放/居中由 {@link ScaledScreen} 统一处理。 */
     private int panelW() {
-        return Math.max(160, Math.min(PANEL_W, width - 16));
+        return PANEL_W;
     }
 
-    /** 面板高度：矮窗口时收窄，避免底部购物车/按钮画出屏幕。 */
     private int panelH() {
-        return Math.max(140, Math.min(PANEL_H, height - 8));
+        return PANEL_H;
     }
 
-    /** 可见行数：按面板高度算；矮窗口少显示几行，其余靠滚动。 */
+    /** 可见行数由设计高度决定，其余靠滚动。 */
     private int visibleRows() {
-        return Math.max(3, Math.min(VISIBLE_ROWS, (panelH() - 78) / ROW_H));
+        return VISIBLE_ROWS;
     }
 
     private int listTop() {
@@ -292,13 +294,12 @@ public final class StoreScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+    protected void renderDesign(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         if (awaitingState && System.currentTimeMillis() - awaitingSince > 3000L) {
             // 没有订单 ID 回执，超时不能视为失败：继续锁定，提示"结果未知"，
             // 让玩家关掉界面重开确认，避免重复提交再卖一次。
             submitUnknown = true;
         }
-        renderBackground(g);
         int x = leftPos();
         int y = topPos();
         g.fill(x, y, x + panelW(), y + panelH(), BG);
@@ -330,12 +331,15 @@ public final class StoreScreen extends Screen {
         }
         g.fill(x + 8, listTop() - 3, x + panelW() - 8, listTop() - 2, EDGE);
 
-        if (tab == TAB_BUY) {
-            renderBuy(g, mouseX, mouseY);
-        } else if (tab == TAB_SELL) {
-            renderSell(g, mouseX, mouseY);
-        } else {
-            renderSub(g, mouseX, mouseY);
+        // 交付弹窗是模态的：打开期间不画列表行，避免行内的数量 −/0/+ 跟弹窗叠在一起。
+        if (!deliveryPrompt) {
+            if (tab == TAB_BUY) {
+                renderBuy(g, mouseX, mouseY);
+            } else if (tab == TAB_SELL) {
+                renderSell(g, mouseX, mouseY);
+            } else {
+                renderSub(g, mouseX, mouseY);
+            }
         }
 
         int total = tab == TAB_BUY ? buyTotal() : tab == TAB_SELL ? sellTotal() : subTotal();
@@ -380,29 +384,43 @@ public final class StoreScreen extends Screen {
         }
     }
 
-    /** 购买确认弹窗：现在拿 / 送到潜艇（照原作两个交付选项）。 */
+    private int promptX() {
+        return (designWidth() - PROMPT_W) / 2;
+    }
+
+    private int promptY() {
+        return (designHeight() - PROMPT_H) / 2;
+    }
+
+    /**
+     * 购买交付弹窗，照原作 {@code Store.BuyItems} 里的 {@code GUIMessageBox}：
+     * 标题「新补给品」+ 一句提问 + 两个按钮（立即获得 / 送至潜艇），没有选项行。
+     *
+     * <p>用设计坐标（{@code designWidth}/{@code designHeight}）居中，跟着界面一起缩放；
+     * 面板不透明，不会透出下面的商店列表。</p>
+     */
     private void renderDeliveryPrompt(GuiGraphics g, int mouseX, int mouseY) {
-        g.fill(0, 0, width, height, 0xA0000000);
-        int w = 260;
-        int h = 88;
-        int px = (width - w) / 2;
-        int py = (height - h) / 2;
-        g.fill(px, py, px + w, py + h, BG);
-        g.fill(px, py, px + w, py + 1, EDGE);
-        g.fill(px, py + h - 1, px + w, py + h, EDGE);
-        g.fill(px, py, px + 1, py + h, EDGE);
-        g.fill(px + w - 1, py, px + w, py + h, EDGE);
+        g.fill(0, 0, designWidth(), designHeight(), 0xA0000000);
+        int px = promptX();
+        int py = promptY();
+        g.fill(px, py, px + PROMPT_W, py + PROMPT_H, BG);
+        g.fill(px, py, px + PROMPT_W, py + 1, EDGE);
+        g.fill(px, py + PROMPT_H - 1, px + PROMPT_W, py + PROMPT_H, EDGE);
+        g.fill(px, py, px + 1, py + PROMPT_H, EDGE);
+        g.fill(px + PROMPT_W - 1, py, px + PROMPT_W, py + PROMPT_H, EDGE);
+        // 标题条
+        g.fill(px + 1, py + 1, px + PROMPT_W - 1, py + 19, 0xFF232A2E);
         g.drawString(font, Component.translatable("store.delivery.title"),
-                px + 10, py + 8, TEXT, false);
+                px + 10, py + 6, ACCENT, false);
         g.drawString(font, Component.translatable("store.delivery.immediate_desc"),
-                px + 10, py + 24, DIM, false);
+                px + 10, py + 26, DIM, false);
         g.drawString(font, Component.translatable("store.delivery.sub_desc"),
-                px + 10, py + 36, DIM, false);
-        int by = py + h - 26;
+                px + 10, py + 38, DIM, false);
+        int by = py + PROMPT_H - 28;
         drawPromptButton(g, Component.translatable("store.delivery.immediate").getString(),
-                px + 12, by, 110, mouseX, mouseY, promptChoice == 0);
+                px + 12, by, PROMPT_BTN_W, mouseX, mouseY, promptChoice == 0);
         drawPromptButton(g, Component.translatable("store.delivery.sub").getString(),
-                px + 138, by, 110, mouseX, mouseY, promptChoice == 1);
+                px + 156, by, PROMPT_BTN_W, mouseX, mouseY, promptChoice == 1);
     }
 
     private void drawPromptButton(GuiGraphics g, String label, int x, int y, int w,
@@ -614,7 +632,9 @@ public final class StoreScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (awaitingState) {
             // 上一次交易还在等服务端快照：先消费点击，避免连点重复提交。
             return true;
@@ -623,7 +643,7 @@ public final class StoreScreen extends Screen {
             return handleDeliveryPromptClick(mouseX, mouseY, button);
         }
         if (button != 0) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(screenX, screenY, button);
         }
         int x = leftPos();
         int y = topPos();
@@ -646,7 +666,7 @@ public final class StoreScreen extends Screen {
             if (tab == TAB_BUY) {
                 List<StoreStatePacket.Entry> entries = buyEntries();
                 if (index < 0 || index >= entries.size()) {
-                    return super.mouseClicked(mouseX, mouseY, button);
+                    return super.mouseClicked(screenX, screenY, button);
                 }
                 focusArea = 1;
                 focusRow = index;
@@ -671,7 +691,7 @@ public final class StoreScreen extends Screen {
             if (tab == TAB_SELL) {
                 List<SellRow> rows = sellRows();
                 if (index < 0 || index >= rows.size()) {
-                    return super.mouseClicked(mouseX, mouseY, button);
+                    return super.mouseClicked(screenX, screenY, button);
                 }
                 focusArea = 1;
                 focusRow = index;
@@ -694,7 +714,7 @@ public final class StoreScreen extends Screen {
             }
             List<StoreStatePacket.SubEntry> entries = state.subEntries();
             if (index < 0 || index >= entries.size()) {
-                return super.mouseClicked(mouseX, mouseY, button);
+                return super.mouseClicked(screenX, screenY, button);
             }
             focusArea = 1;
             focusRow = index;
@@ -723,28 +743,28 @@ public final class StoreScreen extends Screen {
             submitCart();
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
 
-    /** 购买交付弹窗的点击：现在拿 / 送到潜艇；点空白或 Esc 取消。 */
+    /** 购买交付弹窗的点击：现在拿 / 送到潜艇；点面板外或 Esc 取消。 */
     private boolean handleDeliveryPromptClick(double mouseX, double mouseY, int button) {
-        int w = 260;
-        int h = 88;
-        int px = (width - w) / 2;
-        int py = (height - h) / 2;
-        int by = py + h - 26;
+        int px = promptX();
+        int py = promptY();
+        int by = py + PROMPT_H - 28;
         if (button == 0) {
-            if (mouseX >= px + 12 && mouseX < px + 122 && mouseY >= by && mouseY < by + 18) {
+            if (mouseX >= px + 12 && mouseX < px + 12 + PROMPT_BTN_W
+                    && mouseY >= by && mouseY < by + 18) {
                 deliveryPrompt = false;
                 sendBuy(true);
                 return true;
             }
-            if (mouseX >= px + 138 && mouseX < px + 248 && mouseY >= by && mouseY < by + 18) {
+            if (mouseX >= px + 156 && mouseX < px + 156 + PROMPT_BTN_W
+                    && mouseY >= by && mouseY < by + 18) {
                 deliveryPrompt = false;
                 sendBuy(false);
                 return true;
             }
-            if (mouseX < px || mouseX >= px + w || mouseY < py || mouseY >= py + h) {
+            if (mouseX < px || mouseX >= px + PROMPT_W || mouseY < py || mouseY >= py + PROMPT_H) {
                 deliveryPrompt = false;
             }
         }
@@ -1012,7 +1032,11 @@ public final class StoreScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double screenX, double screenY, double delta) {
+        // 弹窗打开时滚轮不再滚后面的列表。
+        if (deliveryPrompt) {
+            return true;
+        }
         if (delta != 0) {
             scroll = Math.max(0, Math.min(maxScroll(), scroll + (delta > 0 ? -1 : 1)));
             // 滚轮把焦点行滚出可视区后，回车不能再去改看不见的商品数量。
@@ -1022,6 +1046,6 @@ public final class StoreScreen extends Screen {
             }
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(screenX, screenY, delta);
     }
 }

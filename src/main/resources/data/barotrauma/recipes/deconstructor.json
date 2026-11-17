@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SSS",
+    "CGC",
+    "SSS"
+  ],
+  "key": {
+    "S": {
+      "item": "barotrauma:steel"
+    },
+    "C": {
+      "item": "barotrauma:copper"
+    },
+    "G": {
+      "item": "barotrauma:iron"
+    }
+  },
+  "result": {
+    "item": "barotrauma:deconstructor"
+  }
+}

@@ -39,7 +39,9 @@ public record CrateSlotPacket(int menuIndex, int crateSlot, int button) {
                 return;
             }
             AbstractContainerMenu menu = player.containerMenu;
-            if (menu == null || menu != player.inventoryMenu) {
+            // 双手格现在也在加工台/柜子等界面里，不再限定必须打开背包菜单；
+            // 下面会校验这个下标确实是 HandsSlot、上面确实是带容器的箱子。
+            if (menu == null) {
                 return;
             }
             if (message.menuIndex < 0 || message.menuIndex >= menu.slots.size()) {
@@ -48,6 +50,11 @@ public record CrateSlotPacket(int menuIndex, int crateSlot, int button) {
             Slot slot = menu.slots.get(message.menuIndex);
             // 只有拿在手上的箱子会弹格子（放在背包/容器里的箱子看不到内容）。
             if (!(slot instanceof HandsSlot)) {
+                return;
+            }
+            // 箱子界面里那格双手位是只读展示；它背后有自己的 CrateContainer 缓存，
+            // 绕过它改 NBT 会让两份内容不一致。
+            if (!slot.mayPickup(player)) {
                 return;
             }
             ItemStack host = slot.getItem();

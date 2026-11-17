@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.client;
 
+import com.opamb.barotrauma.client.gui.ScaledScreen;
 import com.opamb.barotrauma.mission.Mission;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.NpcDialoguePacket;
@@ -7,7 +8,6 @@ import com.opamb.barotrauma.network.NpcTalkPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ import java.util.List;
  * <p>右键站务员先打招呼；点「有什么活儿？」才走服务端发任务的流程，回复里带上
  * 本次发放（或当前站已有）的任务 id，列表从 {@link ClientMissionCache} 里取。</p>
  */
-public final class NpcDialogueScreen extends Screen {
+public final class NpcDialogueScreen extends ScaledScreen {
 
     private static final int PANEL_W = 360;
     private static final int PANEL_H = 150;
@@ -39,7 +39,7 @@ public final class NpcDialogueScreen extends Screen {
     private long waitingSince;
 
     private NpcDialogueScreen(NpcDialoguePacket packet) {
-        super(Component.translatable("entity.barotrauma.npc"));
+        super(Component.translatable("entity.barotrauma.npc"), PANEL_W, PANEL_H);
         this.packet = packet;
     }
 
@@ -62,8 +62,9 @@ public final class NpcDialogueScreen extends Screen {
 
     @Override
     protected void init() {
-        int left = (width - PANEL_W) / 2;
-        int top = (height - PANEL_H) / 2;
+        super.init();
+        int left = 0;
+        int top = 0;
         int buttonY = top + PANEL_H - 28;
         boolean asked = packet.phase() != NpcDialoguePacket.GREETING;
         if (asked) {
@@ -90,10 +91,9 @@ public final class NpcDialogueScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
-        int left = (width - PANEL_W) / 2;
-        int top = (height - PANEL_H) / 2;
+    protected void renderDesign(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        int left = 0;
+        int top = 0;
         graphics.fill(left, top, left + PANEL_W, top + PANEL_H, BG);
         graphics.fill(left, top, left + PANEL_W, top + 1, EDGE);
         graphics.fill(left, top + PANEL_H - 1, left + PANEL_W, top + PANEL_H, EDGE);
@@ -136,7 +136,6 @@ public final class NpcDialogueScreen extends Screen {
         if (waiting) {
             graphics.drawString(font, tr("waiting"), x, top + PANEL_H - 24, DIM, false);
         }
-        super.render(graphics, mouseX, mouseY, partialTick);
     }
 
     /** 对话里要列出的任务：从客户端缓存按 id 找。 */

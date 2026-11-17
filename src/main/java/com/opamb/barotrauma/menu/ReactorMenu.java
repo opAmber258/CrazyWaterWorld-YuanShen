@@ -30,6 +30,16 @@ public class ReactorMenu extends AbstractContainerMenu {
 
     public static final int FUEL_SLOTS = ReactorBlockEntity.FUEL_SLOTS;
 
+    /** 玩家主物品栏 27 格的菜单位置（这 27 格会被换成装备背包 + 禁用占位）。 */
+    public static final int INV_START = FUEL_SLOTS;
+    public static final int HOTBAR_START = INV_START + 27;
+    public static final int HOTBAR_END = HOTBAR_START + 9;
+    /** 物品栏区域（GUI 局部坐标）。 */
+    public static final int INV_AREA_X = 119;
+    public static final int INV_AREA_Y = 214;
+    public static final int INV_AREA_W = 160;
+    public static final int INV_AREA_H = 54;
+
     public static final int DATA_POWER_ON = 0;
     public static final int DATA_AUTO = 1;
     public static final int DATA_TARGET_FISSION = 2;
@@ -46,7 +56,8 @@ public class ReactorMenu extends AbstractContainerMenu {
     public static final int DATA_RATIO = 13;
     public static final int DATA_CAPACITY = 14;
     public static final int DATA_CORRECT_TURBINE = 15;
-    public static final int DATA_COUNT = 16;
+    public static final int DATA_CONDITION = 16;
+    public static final int DATA_COUNT = 17;
 
     private final BlockPos reactorPos;
     private final ContainerData data;
@@ -81,12 +92,20 @@ public class ReactorMenu extends AbstractContainerMenu {
         }
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inventory, col + row * 9 + 9, 119 + col * 18, 214 + row * 18));
+                addSlot(new Slot(inventory, col + row * 9 + 9,
+                        INV_AREA_X + col * 18, INV_AREA_Y + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(inventory, col, 119 + col * 18, 272));
+            addSlot(new Slot(inventory, col, INV_AREA_X + col * 18, INV_AREA_Y + 58));
         }
+        // 主物品栏 27 格换成装备背包 + 禁用占位（和玩家物品栏同款）。
+        com.opamb.barotrauma.equipment.BagSlots.installAt(this, inventory.player, INV_START,
+                INV_AREA_X, INV_AREA_Y, INV_AREA_W, INV_AREA_H);
+        // 双手持栏位：放在装备背包区左侧空位（箱子只能抱在手上，容器界面里也要能放/拿）。
+        addSlot(new com.opamb.barotrauma.equipment.HandsSlot(inventory,
+                com.opamb.barotrauma.equipment.HandsSlot.CONTAINER_X,
+                com.opamb.barotrauma.equipment.HandsSlot.containerY(INV_AREA_Y)));
 
         if (reactor != null) {
             ReactorBlockEntity be = reactor;
@@ -110,6 +129,7 @@ public class ReactorMenu extends AbstractContainerMenu {
                         case DATA_RATIO -> (int) Math.round(be.lastRatio() * 1000.0D);
                         case DATA_CAPACITY -> (int) Math.round(be.state().capacityKw());
                         case DATA_CORRECT_TURBINE -> (int) Math.round(be.state().correctTurbine());
+                        case DATA_CONDITION -> (int) Math.round(be.condition() * 10.0D);
                         default -> 0;
                     };
                 }
@@ -125,7 +145,9 @@ public class ReactorMenu extends AbstractContainerMenu {
                 }
             };
         } else {
-            this.data = new SimpleContainerData(DATA_COUNT);
+            SimpleContainerData fallback = new SimpleContainerData(DATA_COUNT);
+            fallback.set(DATA_CONDITION, 1000);
+            this.data = fallback;
         }
         addDataSlots(data);
     }
@@ -153,21 +175,22 @@ public class ReactorMenu extends AbstractContainerMenu {
         ItemStack stack = slot.getItem();
         result = stack.copy();
 
-        int inventoryStart = FUEL_SLOTS;
-        int inventoryEnd = slots.size();
+        int bagStart = INV_START;
+        int bagEnd = bagStart + com.opamb.barotrauma.equipment.BagManager.capacity(player);
+        boolean moved;
         if (index < FUEL_SLOTS) {
-            if (!moveItemStackTo(stack, inventoryStart, inventoryEnd, true)) {
-                return ItemStack.EMPTY;
-            }
+            moved = moveItemStackTo(stack, bagStart, bagEnd, false)
+                    || moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false);
         } else if (ReactorFuel.isFuel(stack)) {
-            if (!moveItemStackTo(stack, 0, FUEL_SLOTS, false)) {
-                return ItemStack.EMPTY;
-            }
-        } else if (index < inventoryStart + 27) {
-            if (!moveItemStackTo(stack, inventoryStart + 27, inventoryEnd, false)) {
-                return ItemStack.EMPTY;
-            }
-        } else if (!moveItemStackTo(stack, inventoryStart, inventoryStart + 27, false)) {
+            moved = moveItemStackTo(stack, 0, FUEL_SLOTS, false)
+                    || moveItemStackTo(stack, index >= HOTBAR_START ? bagStart : HOTBAR_START,
+                    index >= HOTBAR_START ? bagEnd : HOTBAR_END, false);
+        } else if (index >= HOTBAR_START) {
+            moved = moveItemStackTo(stack, bagStart, bagEnd, false);
+        } else {
+            moved = moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false);
+        }
+        if (!moved) {
             return ItemStack.EMPTY;
         }
 

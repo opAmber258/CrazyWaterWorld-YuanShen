@@ -1,0 +1,1048 @@
+{
+  "//": "由 tools/gen_fabricator_recipes.py 从本机 Barotrauma 内容生成，不要手改。",
+  "recipes": [
+    {
+      "id": "diving_suit",
+      "output": "barotrauma:diving_suit",
+      "count": 1,
+      "time": 30.0,
+      "money": 0,
+      "category": "Diving,Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:titaniumaluminiumalloy",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:rubber",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "oxygen_tank",
+      "output": "barotrauma:oxygen_tank",
+      "count": 1,
+      "time": 10.0,
+      "money": 0,
+      "category": "Diving,Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:aluminium",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "fulgurium_fuel_rod",
+      "output": "barotrauma:fulgurium_fuel_rod",
+      "count": 1,
+      "time": 15.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:fulgurium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:lead",
+          "count": 2
+        },
+        {
+          "item": "barotrauma:steel",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fulgurium_fuel_rod#2",
+      "output": "barotrauma:fulgurium_fuel_rod",
+      "count": 1,
+      "time": 10.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:fulgurium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:fulgurium_fuel_rod",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "plasma_cutter",
+      "output": "barotrauma:plasma_cutter",
+      "count": 1,
+      "time": 20.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:steel",
+          "count": 2
+        },
+        {
+          "item": "barotrauma:plastic",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "screwdriver",
+      "output": "barotrauma:screwdriver",
+      "count": 1,
+      "time": 10.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:iron",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "thorium_fuel_rod",
+      "output": "barotrauma:thorium_fuel_rod",
+      "count": 1,
+      "time": 15.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:thorium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:steel",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:lead",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "thorium_fuel_rod#2",
+      "output": "barotrauma:thorium_fuel_rod",
+      "count": 1,
+      "time": 10.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:thorium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:thorium_fuel_rod",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "welding_tool",
+      "output": "barotrauma:welding_tool",
+      "count": 1,
+      "time": 20.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:steel",
+          "count": 2
+        },
+        {
+          "item": "barotrauma:plastic",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "wrench",
+      "output": "barotrauma:wrench",
+      "count": 1,
+      "time": 10.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:iron",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "battery_cell",
+      "output": "barotrauma:battery_cell",
+      "count": 1,
+      "time": 10.0,
+      "money": 0,
+      "category": "Equipment,Electrical",
+      "ingredients": [
+        {
+          "item": "barotrauma:zinc",
+          "count": 2
+        },
+        {
+          "item": "barotrauma:lithium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "ballisticfiber",
+      "output": "barotrauma:ballisticfiber",
+      "count": 1,
+      "time": 5.0,
+      "money": 0,
+      "category": "Material",
+      "ingredients": [
+        {
+          "item": "barotrauma:titanium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:plastic",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "flashpowder",
+      "output": "barotrauma:flashpowder",
+      "count": 1,
+      "time": 5.0,
+      "money": 0,
+      "category": "Material",
+      "ingredients": [
+        {
+          "item": "barotrauma:magnesium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:potassium",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "plastic",
+      "output": "barotrauma:plastic",
+      "count": 1,
+      "time": 5.0,
+      "money": 0,
+      "category": "Material",
+      "ingredients": [
+        {
+          "item": "barotrauma:silicon",
+          "count": 2
+        },
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "steel",
+      "output": "barotrauma:steel",
+      "count": 1,
+      "time": 5.0,
+      "money": 0,
+      "category": "Material",
+      "ingredients": [
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "titaniumaluminiumalloy",
+      "output": "barotrauma:titaniumaluminiumalloy",
+      "count": 1,
+      "time": 5.0,
+      "money": 0,
+      "category": "Material",
+      "ingredients": [
+        {
+          "item": "barotrauma:titanium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:aluminium",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "diving_knife",
+      "output": "barotrauma:diving_knife",
+      "count": 1,
+      "time": 10.0,
+      "money": 0,
+      "category": "Weapon",
+      "ingredients": [
+        {
+          "item": "barotrauma:iron",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "deconstruct": [
+    {
+      "id": "amblygonite",
+      "input": "barotrauma:amblygonite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:lithium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:aluminium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:sodium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "aragonite",
+      "input": "barotrauma:aragonite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:calcium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:calcium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "ballisticfiber",
+      "input": "barotrauma:ballisticfiber",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:titanium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:plastic",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "batterycell",
+      "input": "barotrauma:battery_cell",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:zinc",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:lithium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "bornite",
+      "input": "barotrauma:bornite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:copper",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:copper",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "brockite",
+      "input": "barotrauma:brockite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:phosphorus",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:thorium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "cassiterite",
+      "input": "barotrauma:cassiterite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:tin",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:tin",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:tin",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "chalcopyrite",
+      "input": "barotrauma:chalcopyrite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:copper",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:copper",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "chamosite",
+      "input": "barotrauma:chamosite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:aluminium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:aluminium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "chrysoprase",
+      "input": "barotrauma:chrysoprase",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:silicon",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "cryolite",
+      "input": "barotrauma:cryolite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:sodium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:sodium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "diamond",
+      "input": "barotrauma:diamond",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "divingknife",
+      "input": "barotrauma:diving_knife",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "divingsuit",
+      "input": "barotrauma:diving_suit",
+      "time": 30.0,
+      "outputs": [
+        {
+          "item": "barotrauma:titaniumaluminiumalloy",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:rubber",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "esperite",
+      "input": "barotrauma:esperite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:zinc",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:zinc",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:lead",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "flashpowder",
+      "input": "barotrauma:flashpowder",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:magnesium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:potassium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fulguriumfuelrod",
+      "input": "barotrauma:fulgurium_fuel_rod",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:steel",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:lead",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:fulgurium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "galena",
+      "input": "barotrauma:galena",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:lead",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:lead",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "graphite",
+      "input": "barotrauma:graphite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "hydroxyapatite",
+      "input": "barotrauma:hydroxyapatite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:calcium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:phosphorus",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:phosphorus",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "ilmenite",
+      "input": "barotrauma:ilmenite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:titanium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "ironore",
+      "input": "barotrauma:ironore",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "langbeinite",
+      "input": "barotrauma:langbeinite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:potassium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:magnesium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:magnesium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "lazulite",
+      "input": "barotrauma:lazulite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:phosphorus",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "oxygentank",
+      "input": "barotrauma:oxygen_tank",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:aluminium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "plasmacutter",
+      "input": "barotrauma:plasma_cutter",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:steel",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:plastic",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "plastic",
+      "input": "barotrauma:plastic",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:silicon",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "polyhalite",
+      "input": "barotrauma:polyhalite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:potassium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:calcium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "pyromorphite",
+      "input": "barotrauma:pyromorphite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:chlorine",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:chlorine",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "quartz",
+      "input": "barotrauma:quartz",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:silicon",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:silicon",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "scrap",
+      "input": "barotrauma:scrap",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:thorium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:steel",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:aluminium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:titaniumaluminiumalloy",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:copper",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:rubber",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:lead",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "screwdriver",
+      "input": "barotrauma:screwdriver",
+      "time": 20.0,
+      "outputs": [
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "sphalerite",
+      "input": "barotrauma:sphalerite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:zinc",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:zinc",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:zinc",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "stannite",
+      "input": "barotrauma:stannite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:copper",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:tin",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "steel",
+      "input": "barotrauma:steel",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:carbon",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "sylvite",
+      "input": "barotrauma:sylvite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:sodium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:potassium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:potassium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "thorianite",
+      "input": "barotrauma:thorianite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:thorium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:thorium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "thoriumfuelrod",
+      "input": "barotrauma:thorium_fuel_rod",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:steel",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:lead",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:thorium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "titanite",
+      "input": "barotrauma:titanite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:titanium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:titanium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:titanium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "titaniumaluminiumalloy",
+      "input": "barotrauma:titaniumaluminiumalloy",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:aluminium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:titanium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "triphylite",
+      "input": "barotrauma:triphylite",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:lithium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "uraniumore",
+      "input": "barotrauma:uraniumore",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:uranium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:uranium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:uranium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "weldingfueltank",
+      "input": "barotrauma:welding_fuel_tank",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:aluminium",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "weldingtool",
+      "input": "barotrauma:welding_tool",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:steel",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:plastic",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "wrench",
+      "input": "barotrauma:wrench",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:iron",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

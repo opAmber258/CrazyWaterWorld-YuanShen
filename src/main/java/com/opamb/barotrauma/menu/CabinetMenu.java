@@ -2,6 +2,7 @@ package com.opamb.barotrauma.menu;
 
 import com.opamb.barotrauma.block.CabinetBlock;
 import com.opamb.barotrauma.blockentity.CabinetBlockEntity;
+import com.opamb.barotrauma.equipment.BagSlots;
 import com.opamb.barotrauma.registry.ModMenus;
 import com.opamb.barotrauma.ship.vs.VsDistance;
 import net.minecraft.core.BlockPos;
@@ -24,8 +25,15 @@ import org.jetbrains.annotations.Nullable;
  */
 public class CabinetMenu extends AbstractContainerMenu {
 
+    /** 3×9 装备背包区在 GUI 里的 x / 宽 / 高；y 随柜子高度变（见 {@link #playerAreaY()}）。 */
+    public static final int INV_AREA_X = 8;
+    public static final int INV_AREA_W = 160;
+    public static final int INV_AREA_H = 54;
+
     private final BlockPos pos;
     private final CabinetBlock.Kind kind;
+    /** 玩家 3×9 物品栏区域的 y（快捷栏在它下面 58px）。 */
+    private int playerAreaY = 140;
 
     public CabinetMenu(int id, Inventory inventory, FriendlyByteBuf buf) {
         this(id, inventory, buf == null ? BlockPos.ZERO : buf.readBlockPos(),
@@ -79,12 +87,21 @@ public class CabinetMenu extends AbstractContainerMenu {
             }
             for (int row = 0; row < 3; row++) {
                 for (int col = 0; col < 9; col++) {
-                    addSlot(new Slot(inventory, col + row * 9 + 9, 8 + col * 18, playerY + row * 18));
+                    addSlot(new Slot(inventory, col + row * 9 + 9,
+                            INV_AREA_X + col * 18, playerY + row * 18));
                 }
             }
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inventory, col, 8 + col * 18, hotbarY));
+                addSlot(new Slot(inventory, col, INV_AREA_X + col * 18, hotbarY));
             }
+            // 原版 27 格主背包换成装备背包区 + 禁用占位（和加工台/解构仪同款）。
+            this.playerAreaY = playerY;
+            BagSlots.installAt(this, inventory.player, kind.slots(), INV_AREA_X, playerY,
+                    INV_AREA_W, INV_AREA_H);
+            // 双手持栏位：放在装备背包区左侧空位（箱子只能抱在手上，柜子界面里也要能放/拿）。
+            addSlot(new com.opamb.barotrauma.equipment.HandsSlot(inventory,
+                    com.opamb.barotrauma.equipment.HandsSlot.CONTAINER_X,
+                    com.opamb.barotrauma.equipment.HandsSlot.containerY(playerY)));
         } else {
             if (kind == CabinetBlock.Kind.DIVING_SUIT_LOCKER) {
                 addSlot(containerSlot(container, 0, 80, 28, 1));
@@ -95,12 +112,21 @@ public class CabinetMenu extends AbstractContainerMenu {
             }
             for (int row = 0; row < 3; row++) {
                 for (int col = 0; col < 9; col++) {
-                    addSlot(new Slot(inventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
+                    addSlot(new Slot(inventory, col + row * 9 + 9,
+                            INV_AREA_X + col * 18, 84 + row * 18));
                 }
             }
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inventory, col, 8 + col * 18, 142));
+                addSlot(new Slot(inventory, col, INV_AREA_X + col * 18, 142));
             }
+            // 矮柜同样是 3×9 装备背包区 + 快捷栏。
+            this.playerAreaY = 84;
+            BagSlots.installAt(this, inventory.player, kind.slots(), INV_AREA_X, 84,
+                    INV_AREA_W, INV_AREA_H);
+            // 双手持栏位：放在装备背包区左侧空位（箱子只能抱在手上，柜子界面里也要能放/拿）。
+            addSlot(new com.opamb.barotrauma.equipment.HandsSlot(inventory,
+                    com.opamb.barotrauma.equipment.HandsSlot.CONTAINER_X,
+                    com.opamb.barotrauma.equipment.HandsSlot.containerY(84)));
         }
     }
 
@@ -143,6 +169,16 @@ public class CabinetMenu extends AbstractContainerMenu {
 
     public CabinetBlock.Kind kind() {
         return kind;
+    }
+
+    /** 玩家 3×9 装备背包区的 y（快捷栏在 {@code +58}）。 */
+    public int playerAreaY() {
+        return playerAreaY;
+    }
+
+    /** 菜单里玩家 27 格主物品栏的起始下标（= 容器格数）。 */
+    public int invStart() {
+        return kind.slots();
     }
 
     @Override

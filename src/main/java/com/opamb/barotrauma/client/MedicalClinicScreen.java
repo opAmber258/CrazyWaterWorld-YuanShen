@@ -8,7 +8,7 @@ import com.opamb.barotrauma.network.ClinicStatePacket;
 import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -19,7 +19,7 @@ import java.util.List;
  * <p>列出玩家当前病症和原作公式算出的治疗价；左键一行治疗该病症，
  * 底部按钮一次治疗全部。收费与治疗都在服务端校验/执行。</p>
  */
-public final class MedicalClinicScreen extends Screen {
+public final class MedicalClinicScreen extends ScaledScreen {
 
     private static final int PANEL_W = 320;
     private static final int PANEL_H = 218;
@@ -43,7 +43,7 @@ public final class MedicalClinicScreen extends Screen {
     private int focusRow = -1;
 
     private MedicalClinicScreen(ClinicStatePacket state) {
-        super(Component.translatable("clinic.title"));
+        super(Component.translatable("clinic.title"), PANEL_W, PANEL_H);
         this.state = state;
     }
 
@@ -86,12 +86,13 @@ public final class MedicalClinicScreen extends Screen {
         return false;
     }
 
+    /** 设计坐标原点：缩放由 ScaledScreen 处理，这里恒为 0。 */
     private int leftPos() {
-        return (width - PANEL_W) / 2;
+        return 0;
     }
 
     private int topPos() {
-        return (height - PANEL_H) / 2;
+        return 0;
     }
 
     private int listTop() {
@@ -107,8 +108,7 @@ public final class MedicalClinicScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g);
+    protected void renderDesign(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         int x = leftPos();
         int y = topPos();
         g.fill(x, y, x + PANEL_W, y + PANEL_H, BG);
@@ -198,9 +198,11 @@ public final class MedicalClinicScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double screenX, double screenY, int button) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (button != 0) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(screenX, screenY, button);
         }
         int x = leftPos();
         int y = topPos();
@@ -223,7 +225,7 @@ public final class MedicalClinicScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(screenX, screenY, button);
     }
 
     @Override
@@ -292,7 +294,9 @@ public final class MedicalClinicScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double screenX, double screenY, double delta) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
         if (delta != 0) {
             int max = Math.max(0, state.entries().size() - VISIBLE_ROWS);
             scroll = Math.max(0, Math.min(max, scroll + (delta > 0 ? -1 : 1)));
@@ -304,6 +308,6 @@ public final class MedicalClinicScreen extends Screen {
             }
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(screenX, screenY, delta);
     }
 }

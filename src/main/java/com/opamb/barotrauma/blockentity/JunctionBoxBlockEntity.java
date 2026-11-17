@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
@@ -25,7 +26,7 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * 通电自然衰减 0.1/s（120–720 秒宽限后），泡水通电 0.25/s，电压超过 1.7
  * 时 10/s。耐久归零后盒子失效，绑在它上面的设备拿不到电。</p>
  */
-public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntity {
+public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget, GeoBlockEntity {
 
     /** 通电自然衰减速度（/秒）。 */
     private static final double DECAY_POWERED = 0.1D;
@@ -107,15 +108,35 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
         ship.simulation().reportJunctionBox(cell, be.condition);
     }
 
-    /** 螺丝刀维修：恢复耐久并重新随机宽限期。 */
-    public void repair(double amount) {
-        condition = Mth.clamp(condition + Math.max(0.0D, amount), 0.0D, 100.0D);
-        graceTicks = 2400L + (level == null ? 0 : level.random.nextInt(12000));
+    @Override
+    public double condition() {
+        return condition;
+    }
+
+    @Override
+    public double maxCondition() {
+        return 100.0D;
+    }
+
+    @Override
+    public void applyRepair(double points) {
+        if (points <= 0.0D) {
+            return;
+        }
+        condition = Mth.clamp(condition + points, 0.0D, 100.0D);
+        if (condition >= 100.0D) {
+            // 原作修满后重置劣化延迟。
+            graceTicks = 2400L + (level == null ? 0 : level.random.nextInt(12000));
+        }
         setChanged();
     }
 
-    public double condition() {
-        return condition;
+    @Override
+    public void damage(double points) {
+        if (points > 0.0D) {
+            condition = Mth.clamp(condition - points, 0.0D, 100.0D);
+            setChanged();
+        }
     }
 
     public boolean submerged() {
@@ -128,6 +149,18 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
 
     public boolean broken() {
         return condition <= 0.0D;
+    }
+
+    /** 这个盒子是否已经在船体几何里（决定要不要先重扫）。 */
+    public boolean inHull() {
+        if (!(level instanceof ServerLevel server)) {
+            return false;
+        }
+        // 两艘船靠近时最近核心可能属于另一艘船；按船体归属解析，
+        // 否则 inHull() 误报 false，玩家每次开面板都会触发一次重扫。
+        ShipState ship = VsState.active() && VsPilot.isYardBlock(worldPosition)
+                ? VsState.activeState() : resolveBlockShip(server, worldPosition);
+        return ship != null && ship.tracksHullBlock(assemblyPos(worldPosition));
     }
 
     public Component displayName() {
@@ -154,6 +187,18 @@ public class JunctionBoxBlockEntity extends BlockEntity implements GeoBlockEntit
         }
         cachedCorePos = null;
         return null;
+    }
+
+    private static BlockPos assemblyPos(BlockPos pos) {
+        return VsState.active() && VsPilot.isYardBlock(pos) ? VsPilot.toAssembly(pos) : pos;
+    }
+
+    private static ShipState resolveShip(ServerLevel level, BlockPos pos) {
+        if (VsState.active() && VsPilot.isYardBlock(pos)) {
+            return VsState.activeState();
+        }
+        // 船状态不存档：世界重开后第一次 tick 靠自己补扫，不能等玩家去开电力面板。
+        return ShipCores.stateNear(level, pos, 32.0D);
     }
 
     @Override

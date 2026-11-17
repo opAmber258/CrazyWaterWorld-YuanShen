@@ -36,6 +36,11 @@ public class SonarProxyBlock extends Block {
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            // 手持螺丝刀且核心耐久低：开独立修理窗口（按代理找回真实核心）。
+            if (com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
+                    serverPlayer, pos, false)) {
+                return InteractionResult.CONSUME;
+            }
             NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inventory, p) -> new SonarMenu(id, inventory, pos, SonarScan.DEFAULT_RANGE),

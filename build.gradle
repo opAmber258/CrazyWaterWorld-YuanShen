@@ -48,8 +48,10 @@ minecraft {
             property 'forge.enabledGameTestNamespaces', mod_id
             // 默认 8G 堆在 31G 机器上跑 VS2 + 大型整合包时会把系统提交内存吃满，
             // G1 扩堆失败直接闪退（run-client/hs_err_pid*.log：working set 7.4G、
-            // 系统只剩 421M）。实测堆峰值约 3.1G，5G 留足余量且不会再触发系统 OOM。
-            jvmArgs '-Xms1G', '-Xmx5G'
+            // 系统只剩 421M）。实测堆峰值约 3.1G。
+            // 2026-11-16：主机同时开游戏时可用提交内存只剩 5.6G，5G 堆 + VS2 原生
+            // 内存仍会 malloc 失败（hs_err Chunk::new），开发客户端降到 4G 留余量。
+            jvmArgs '-Xms1G', '-Xmx4G'
         }
 
         server {

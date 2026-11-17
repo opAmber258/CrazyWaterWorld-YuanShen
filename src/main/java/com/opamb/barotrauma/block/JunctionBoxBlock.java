@@ -3,14 +3,16 @@ package com.opamb.barotrauma.block;
 import com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity;
 import com.opamb.barotrauma.network.PowerPanelState;
 import com.opamb.barotrauma.registry.ModBlockEntities;
-import com.opamb.barotrauma.registry.ModItems;
+import com.opamb.barotrauma.ship.ShipCores;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -41,13 +43,22 @@ public class JunctionBoxBlock extends BaseEntityBlock {
 
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
-    private static final VoxelShape SHAPE_NS = Shapes.box(
-            3.0D / 16.0D, 0.0D, 3.6D / 16.0D,
-            13.0D / 16.0D, 1.0D, 12.4D / 16.0D);
+    // 模型背板贴墙：深度 8.8px，背板在朝墙那一侧；四种朝向各一份碰撞。
+    private static final VoxelShape SHAPE_NORTH = Shapes.box(
+            3.0D / 16.0D, 0.0D, 7.2D / 16.0D,
+            13.0D / 16.0D, 1.0D, 1.0D);
 
-    private static final VoxelShape SHAPE_EW = Shapes.box(
-            3.6D / 16.0D, 0.0D, 3.0D / 16.0D,
-            12.4D / 16.0D, 1.0D, 13.0D / 16.0D);
+    private static final VoxelShape SHAPE_SOUTH = Shapes.box(
+            3.0D / 16.0D, 0.0D, 0.0D,
+            13.0D / 16.0D, 1.0D, 8.8D / 16.0D);
+
+    private static final VoxelShape SHAPE_EAST = Shapes.box(
+            0.0D, 0.0D, 3.0D / 16.0D,
+            8.8D / 16.0D, 1.0D, 13.0D / 16.0D);
+
+    private static final VoxelShape SHAPE_WEST = Shapes.box(
+            7.2D / 16.0D, 0.0D, 3.0D / 16.0D,
+            1.0D, 1.0D, 13.0D / 16.0D);
 
     public JunctionBoxBlock(Properties properties) {
         super(properties);
@@ -66,17 +77,6 @@ public class JunctionBoxBlock extends BaseEntityBlock {
     }
 
     @Override
-    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
-                            net.minecraft.world.entity.LivingEntity placer,
-                            net.minecraft.world.item.ItemStack stack) {
-        if (!level.isClientSide) {
-            // 新接线盒不在旧船体几何里时，开合门/破口重扫之前 tracksHullBlock 会拒绝它，
-            // 设备永远拿不到供电；放置时主动重扫一次附近核心 + 物理船几何。
-            com.opamb.barotrauma.ship.ShipCores.refreshNearby(level, pos);
-        }
-    }
-
-    @Override
     public BlockState rotate(BlockState state, Rotation rotation) {
         return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
     }
@@ -87,7 +87,12 @@ public class JunctionBoxBlock extends BaseEntityBlock {
     }
 
     private static VoxelShape shape(BlockState state) {
-        return state.getValue(FACING).getAxis() == Direction.Axis.Z ? SHAPE_NS : SHAPE_EW;
+        return switch (state.getValue(FACING)) {
+            case SOUTH -> SHAPE_SOUTH;
+            case EAST -> SHAPE_EAST;
+            case WEST -> SHAPE_WEST;
+            default -> SHAPE_NORTH;
+        };
     }
 
     @Override
@@ -122,19 +127,49 @@ public class JunctionBoxBlock extends BaseEntityBlock {
             if (center == null || serverPlayer.distanceToSqr(center) > 64.0D) {
                 return InteractionResult.CONSUME;
             }
-            boolean screwdriver = serverPlayer.getMainHandItem().is(ModItems.SCREWDRIVER.get())
-                    || serverPlayer.getOffhandItem().is(ModItems.SCREWDRIVER.get());
-            if (screwdriver && level.getBlockEntity(pos) instanceof JunctionBoxBlockEntity box
-                    && box.condition() < 100.0D) {
-                box.repair(25.0D);
-                serverPlayer.displayClientMessage(
-                        Component.translatable("power.repaired", (int) Math.round(box.condition())), true);
-                return InteractionResult.CONSUME;
+            // 旧存档/刚放下的盒子可能还没进船体几何，开面板前补一次重扫。
+            if (level.getBlockEntity(pos) instanceof JunctionBoxBlockEntity box) {
+                if (!box.inHull()) {
+                    rescanShip(level, pos);
+                }
+                // 手持螺丝刀且耐久低于阈值：开独立修理窗口。
+                if (com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
+                        serverPlayer, pos, box, false)) {
+                    return InteractionResult.CONSUME;
+                }
             }
             PowerPanelState.send(serverPlayer, cell, physical);
             return InteractionResult.CONSUME;
         }
         return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
+                            @Nullable LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        rescanShip(level, pos);
+    }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos,
+                         BlockState newState, boolean isMoving) {
+        super.onRemove(state, level, pos, newState, isMoving);
+        if (!state.is(newState.getBlock())) {
+            rescanShip(level, pos);
+        }
+    }
+
+    /**
+     * 新放的接线盒必须让船几何重扫一次，否则它不在 {@code geometry.hull()} 里，
+     * 方块实体会一直 {@code tracksHullBlock == false}，P 面板也找不到它。
+     */
+    private static void rescanShip(Level level, BlockPos pos) {
+        if (level.isClientSide) {
+            return;
+        }
+        // 附近核心按 64 格找（大船的盒子可能离核心很远），并让物理船重扫船坞几何。
+        ShipCores.refreshNearby(level, pos);
     }
 
     @Nullable
