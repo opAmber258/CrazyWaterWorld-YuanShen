@@ -33,6 +33,10 @@ public record TurretAimPacket(BlockPos pos, float yaw, float pitch) {
             if (player == null) {
                 return;
             }
+            // 先拒绝未加载区块：getBlockEntity 可能触发同步加载，客户端可用假坐标拖垮服务端。
+            if (!player.level().hasChunkAt(pos)) {
+                return;
+            }
             if (player.level().getBlockEntity(pos) instanceof TurretBlockEntity turret) {
                 turret.aim(player, yaw, pitch);
             }

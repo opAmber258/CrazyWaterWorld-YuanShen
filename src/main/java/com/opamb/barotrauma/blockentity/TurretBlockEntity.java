@@ -78,6 +78,10 @@ public class TurretBlockEntity extends BlockEntity {
     private float prevYaw;
     private float prevPitch;
     private int cooldown;
+    /** 客户端最近一次请求的目标角：服务端每 tick 朝它转，丢包不会丢掉剩余角度。 */
+    private float aimTargetYaw;
+    private float aimTargetPitch;
+    private boolean aimTargetSet;
 
     @Nullable
     private UUID operator;
@@ -183,13 +187,15 @@ public class TurretBlockEntity extends BlockEntity {
 
         BlockPos previous = ACTIVE.put(player.getUUID(), getBlockPos());
         if (previous != null && !previous.equals(getBlockPos())
-                && server.getBlockEntity(previous) instanceof TurretBlockEntity old) {
+                && server.getBlockEntity(previous) instanceof TurretBlockEntity old
+                // ACTIVE 只存坐标不存维度：只有旧炮塔确实归本人时才清，避免跨维度误踢别人。
+                && player.getUUID().equals(old.operator)) {
             old.clearOperator(false);
         }
 
         operator = player.getUUID();
         operatorEntityId = player.getId();
-        cooldown = 0;
+        // 冷却由射击与 serverTick 管理，换人不重置：接替者不能靠重新进入跳过后坐。
         player.displayClientMessage(Component.translatable("msg.barotrauma.turret.entered"), true);
         broadcastState();
         return InteractionResult.CONSUME;
@@ -206,7 +212,8 @@ public class TurretBlockEntity extends BlockEntity {
         UUID old = operator;
         operator = null;
         operatorEntityId = -1;
-        cooldown = 0;
+        aimTargetSet = false;
+        // 冷却跨占用者保留：退出再进入不能立刻连发。
         if (old != null) {
             ACTIVE.remove(old, getBlockPos());
             if (notify && level instanceof ServerLevel server) {
@@ -238,25 +245,57 @@ public class TurretBlockEntity extends BlockEntity {
                     > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
             if (invalid) {
                 turret.clearOperator(true);
-            } else if (turret.cooldown > 0 && level.getGameTime() % 2L == 0L) {
-                // 开火后把冷却同步给周围客户端，炮管后坐/准星状态才不会冻住。
-                turret.broadcastState();
+            } else {
+                if (turret.aimTargetSet) {
+                    turret.stepAim();
+                }
+                if (turret.cooldown > 0 && level.getGameTime() % 2L == 0L) {
+                    // 开火后把冷却同步给周围客户端，炮管后坐/准星状态才不会冻住。
+                    turret.broadcastState();
+                }
             }
         }
     }
 
+    /**
+     * 客户端 tick：把插值起点收敛到当前角，否则观察者收到的 54°→60° 会一直重复插值，
+     * 鼠标停下后炮管仍在每 tick 抖一段。
+     */
+    public static void clientTick(Level level, BlockPos pos, BlockState state, TurretBlockEntity turret) {
+        turret.prevYaw = turret.yaw;
+        turret.prevPitch = turret.pitch;
+    }
+
     // ---- 瞄准 / 射击 ----
 
-    /** 客户端每次鼠标移动后发绝对角度；这里按最大转速截断，防止瞬移瞄准。 */
+    /**
+     * 客户端每次鼠标移动后发绝对目标角。这里只记录目标，实际转角放到
+     * {@link #serverTick} 里按每 tick 预算推进：同一 tick 收到多个包不会叠加成
+     * 一次转 12°，超过预算的剩余角度也不会被丢掉。
+     */
     public void aim(ServerPlayer player, float targetYaw, float targetPitch) {
-        if (!isOperator(player) || !withinReach(player)) {
+        if (!Float.isFinite(targetYaw) || !Float.isFinite(targetPitch)
+                || !isOperator(player) || !withinReach(player)) {
             return;
         }
-        float deltaYaw = Mth.clamp(Mth.wrapDegrees(targetYaw - yaw),
+        aimTargetYaw = Mth.wrapDegrees(targetYaw);
+        aimTargetPitch = Mth.clamp(targetPitch, MIN_PITCH, MAX_PITCH);
+        aimTargetSet = true;
+    }
+
+    /** 服务端每 tick 朝目标角追赶，最多 {@link #MAX_TURN_PER_TICK}。 */
+    private void stepAim() {
+        float deltaYaw = Mth.clamp(Mth.wrapDegrees(aimTargetYaw - yaw),
                 -MAX_TURN_PER_TICK, MAX_TURN_PER_TICK);
-        float deltaPitch = Mth.clamp(Mth.clamp(targetPitch, MIN_PITCH, MAX_PITCH) - pitch,
+        float deltaPitch = Mth.clamp(aimTargetPitch - pitch,
                 -MAX_TURN_PER_TICK, MAX_TURN_PER_TICK);
-        applyAim(Mth.wrapDegrees(yaw + deltaYaw), Mth.clamp(pitch + deltaPitch, MIN_PITCH, MAX_PITCH));
+        if (Math.abs(deltaYaw) < 1.0E-4F && Math.abs(deltaPitch) < 1.0E-4F) {
+            aimTargetSet = false;
+            return;
+        }
+        applyAim(Mth.wrapDegrees(yaw + deltaYaw),
+                Mth.clamp(pitch + deltaPitch, MIN_PITCH, MAX_PITCH));
+        setChanged();
         broadcastState();
     }
 

@@ -26,6 +26,9 @@ public record TurretExitPacket(BlockPos pos) {
             if (player == null) {
                 return;
             }
+            if (!player.level().hasChunkAt(pos)) {
+                return;
+            }
             if (player.level().getBlockEntity(pos) instanceof TurretBlockEntity turret) {
                 turret.exit(player);
             }

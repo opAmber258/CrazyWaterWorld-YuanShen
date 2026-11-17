@@ -31,4 +31,16 @@ public abstract class TurretInteractionMixin {
             cir.setReturnValue(false);
         }
     }
+
+    /**
+     * 只按住左键不会经过 {@code startAttack}：原版走 {@code continueAttack}，目标变化时
+     * 还会转入 {@code startDestroyBlock}。这里在按住左键时取消，松开时仍放行原版
+     * {@code stopDestroyBlock}，避免残留破坏进度。
+     */
+    @Inject(method = "continueAttack", at = @At("HEAD"), cancellable = true)
+    private void barotrauma$turretContinueAttack(boolean leftClick, CallbackInfo ci) {
+        if (leftClick && TurretClient.isActive()) {
+            ci.cancel();
+        }
+    }
 }

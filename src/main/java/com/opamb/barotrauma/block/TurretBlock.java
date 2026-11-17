@@ -100,7 +100,8 @@ public class TurretBlock extends BaseEntityBlock {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
                                                                   BlockEntityType<T> type) {
         if (level.isClientSide) {
-            return null;
+            // 客户端也要 tick：把 prev 角收敛到当前角，否则观察者看到的炮管会一直重复插值。
+            return createTickerHelper(type, ModBlockEntities.TURRET.get(), TurretBlockEntity::clientTick);
         }
         return createTickerHelper(type, ModBlockEntities.TURRET.get(), TurretBlockEntity::serverTick);
     }
