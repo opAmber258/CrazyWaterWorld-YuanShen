@@ -12,6 +12,8 @@ import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -32,7 +34,16 @@ import java.util.function.Supplier;
 public final class MedicalScreen extends Screen {
 
     private static final int PANEL_W = 200;
-    private static final int PANEL_H = 186;
+    /**
+     * 面板高度。
+     *
+     * <p>高度预算（自上而下）：标题 5、身体图 34..108、病症区 112..drugRowY、药品栏 18、
+     * 活力行 22。原来 186 只给病症区留 32px（≈2 行），一有两条以上病症就看不到描述，
+     * 甚至倒地时连标题都被挤掉（CodeRabbit Major）。加到 214 后病症区有 60px（≈5 行）。</p>
+     *
+     * <p>最小值检查：GUI 缩放高度 240 时 y=(240-214)/2=13，底部 227 仍在屏内。</p>
+     */
+    private static final int PANEL_H = 214;
     private static final int LINE = 11;
 
     /** 对症药品（按原作 SuitableTreatment 适配度降序；底表 §4）。 */
@@ -198,7 +209,9 @@ public final class MedicalScreen extends Screen {
                 }
             }
             if (truncated) {
-                g.drawString(this.font, Component.literal("… 更多伤情见悬停提示"),
+                // 截断提示：悬停面板正文（身体图以外）查看该部位完整伤情。
+                // 具体绘制在 render 末尾的悬停块里，这里只留一行可读提示。
+                g.drawString(this.font, Component.literal("… 悬停此处看全部"),
                         x + 16, Math.max(cy, drugRowY - LINE), 0xFF6A6A72);
             }
             // 对症药品栏：并排小方框，悬停高亮，单击对该部位用药（只显示背包里真实拥有的药品）
@@ -257,6 +270,19 @@ public final class MedicalScreen extends Screen {
         g.drawString(this.font, Component.literal(String.format("活力 %.0f/100%s",
                         snapshot.vitality(), snapshot.downed() ? "（倒地）" : "")),
                 x + 6, vitalityY, vitalityColor);
+
+        // ---- 悬停身体图某个部位 → 浮窗显示该部位**完整**伤情 ----
+        // 病症区高度有限（PANEL_H 决定），多了会被截断。截断时只提示"悬停此处看全部"，
+        // 真正的完整内容靠这个浮窗给出——否则玩家根本看不到被截掉的病症和强度。
+        List<DisplayLine> hovered = TreatmentRenderer.hoverLines(zones, snapshot.rows(), mouseX, mouseY);
+        if (!hovered.isEmpty()) {
+            var tooltip = new ArrayList<Component>();
+            for (DisplayLine line : hovered) {
+                tooltip.add(Component.literal(line.text())
+                        .setStyle(Style.EMPTY.withColor(TextColor.fromRgb(line.color()))));
+            }
+            g.renderTooltip(this.font, tooltip, java.util.Optional.empty(), mouseX, mouseY);
+        }
     }
 
     /** 该部位对症药品的图标点击（缺省部位=null → 全身/最强优先）。 */

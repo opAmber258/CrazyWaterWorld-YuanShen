@@ -174,6 +174,41 @@ class AfflictionDisplayChainTest {
         assertEquals(1.0, MedicalBodyRenderer.worstRatio(rows, Limb.TORSO), 1.0E-6);
     }
 
+    /**
+     * 回归（CodeRabbit）：严重度在"零消耗/正消耗"分界处不能骤降。
+     *
+     * <p>阿片成瘾 80 → 消耗 0（比例 0.8）；80.1 进入有消耗段（0.1 点 → 0.001）。
+     * 若两段规则不合并（取 max），病症刚过阈值时身体色会从橙红闪成绿。</p>
+     */
+    @Test
+    void severityIsMonotonicAcrossZeroDrainBoundary() {
+        double at80 = MedicalBodyRenderer.severityRatio(AfflictionType.OPIATE_ADDICTION, 80.0);
+        double at801 = MedicalBodyRenderer.severityRatio(AfflictionType.OPIATE_ADDICTION, 80.1);
+        assertEquals(0.8, at80, 1.0E-6, "成瘾 80 消耗为 0，按强度/上限 = 0.8");
+        assertTrue(at801 >= at80 - 1.0E-9,
+                "成瘾 80.1 的比例不能低于 80（实际 " + at801 + " vs " + at80 + "）");
+
+        double ox50 = MedicalBodyRenderer.severityRatio(AfflictionType.OXYGEN_LOW, 50.0);
+        double ox501 = MedicalBodyRenderer.severityRatio(AfflictionType.OXYGEN_LOW, 50.1);
+        assertEquals(0.25, ox50, 1.0E-6, "缺氧 50 消耗为 0，按强度/上限 = 50/200 = 0.25");
+        assertTrue(ox501 >= ox50 - 1.0E-9,
+                "缺氧 50.1 的比例不能低于 50（实际 " + ox501 + " vs " + ox50 + "）");
+    }
+
+    /** 严重度必须随强度单调不减（扫一遍阈值两侧）。 */
+    @Test
+    void severityNeverDecreasesAsStrengthRises() {
+        for (AfflictionType type : AfflictionType.ALL) {
+            double prev = -1.0;
+            for (double s = type.activationThreshold(); s <= type.maxStrength(); s += 0.25) {
+                double ratio = MedicalBodyRenderer.severityRatio(type, s);
+                assertTrue(ratio >= prev - 1.0E-9,
+                        type.id() + " 在强度 " + s + " 处比例下降：" + prev + " → " + ratio);
+                prev = ratio;
+            }
+        }
+    }
+
     private static String joinTexts(List<MedicalBodyRenderer.DisplayLine> lines) {
         return String.join(" | ", lines.stream().map(MedicalBodyRenderer.DisplayLine::text).toList());
     }

@@ -97,19 +97,29 @@ class TreatmentTest {
      * opiatewithdrawal / opiateaddiction / opiateoverdose，全为 `amount="2.0"`
      * （medical.xml:849-853），适用性表也把戒断列为 suitability 60。
      * 之前只实现了中毒/成瘾，面板却把纳洛酮推荐给戒断——点了消耗物品却毫无效果。</p>
+     *
+     * <p>断言用**未治疗对照组**比较：戒断自身每秒自衰 −0.1/s，只测"绝对值下降"
+     * 无法区分药效与自衰（删掉 NALOXONE 的戒断条目，50→49.9 也能过）。</p>
      */
     @Test
     void naloxoneTreatsWithdrawalToo() {
-        AfflictionContainer container = new AfflictionContainer();
-        container.add(AfflictionType.OPIATE_WITHDRAWAL, null, 50);
+        AfflictionContainer treated = new AfflictionContainer();
+        treated.add(AfflictionType.OPIATE_WITHDRAWAL, null, 50);
+        AfflictionContainer control = new AfflictionContainer();
+        control.add(AfflictionType.OPIATE_WITHDRAWAL, null, 50);
+
         for (TreatmentSpec.Effect effect : TreatmentSpec.NALOXONE.effects()) {
-            container.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
+            treated.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
         }
-        container.tickSecond();
-        // 每秒 −2，原本 50 → 48（自衰也有一点点，用宽松上下界避免锁死到别的机制）
-        double after = container.strength(AfflictionType.OPIATE_WITHDRAWAL, null);
-        assertTrue(after < 50.0, "纳洛酮必须降低戒断强度，实际: " + after);
-        assertTrue(after > 40.0, "只减了 31 秒的量级，不应一次清空，实际: " + after);
+        treated.tickSecond();
+        control.tickSecond();
+
+        double treatedAfter = treated.strength(AfflictionType.OPIATE_WITHDRAWAL, null);
+        double controlAfter = control.strength(AfflictionType.OPIATE_WITHDRAWAL, null);
+        // 纳洛酮对戒断是 −2/s，第一秒比对照组多减 2.0
+        assertEquals(2.0, controlAfter - treatedAfter, 1.0E-6,
+                "纳洛酮必须比自然自衰多降 2 点戒断强度；治疗组=" + treatedAfter
+                        + " 对照组=" + controlAfter);
     }
 
     @Test
