@@ -81,8 +81,14 @@ public record TreatmentSpec(String displayName, List<Effect> effects, boolean mu
 
     /**
      * 液态氧矿：**缓释**——原作是持续 60s、每秒 −2.5 的缺氧削减
-     * （medical.xml:616-618；注释说明"一剂即可压住正常溺水下的缺氧恶化"）。
-     * 副作用：器官损伤 +1.5/s×5s（原作 :640-642，注射必然带一点毒性）。一次性注射器。
+     * （medical.xml:616-618）。副作用：器官损伤 +1.5/s×5s（原作 :640-642，
+     * 注射必然带一点毒性）。一次性注射器。
+     *
+     * <p>**注意它压不住溺水**：缺氧在无氧环境下每秒 +5（`hypoxiaPerSecond()`），
+     * 而这里只减 2.5/s，**净效果仍是每秒 +2.5**。原作的注释也这么说——
+     * "Oxygen 5 is enough for that, meaning anything more than that slowly heals"，
+     * 即需要 −5/s 才能持平。2.5/s 的作用是**把恶化速度减半**（争取上浮时间），
+     * 不是"一剂即可压住正常溺水"，别按后者理解或写测试。</p>
      */
     public static final TreatmentSpec LIQUID_OXYGENITE = new TreatmentSpec("液态氧矿", List.of(
             new Effect(AfflictionType.OXYGEN_LOW, 2.5, 60),

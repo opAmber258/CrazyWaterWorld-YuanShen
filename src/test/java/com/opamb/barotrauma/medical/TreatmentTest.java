@@ -156,6 +156,33 @@ class TreatmentTest {
         assertEquals(172.5, container.strength(AfflictionType.OXYGEN_LOW, null), 1.0E-6);
     }
 
+    /**
+     * 回归（CodeRabbit）：液态氧矿**压不住**溺水，只能把恶化速度减半。
+     *
+     * <p>原作 medical.xml:614 的注释写得很清楚：
+     * {@code "One dose halts the progression of oxygen deprivation under normal conditions
+     * (like being submerged). Oxygen 5 is enough for that, meaning anything more than that
+     * slowly heals."}——即需要 −5/s 才能与环境的 +5/s 持平；
+     * 液态氧矿只有 −2.5/s，**净效果仍是每秒 +2.5**。</p>
+     *
+     * <p>这条测试锁住"叠加后的净速率"，避免以后有人把注释改成"一剂压住"。</p>
+     */
+    @Test
+    void liquidOxygeniteOnlyHalvesDrowningNotHaltsIt() {
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.OXYGEN_LOW, null, 50);
+        for (TreatmentSpec.Effect effect : TreatmentSpec.LIQUID_OXYGENITE.effects()) {
+            container.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
+        }
+        // 模拟"在水下：环境每秒 +5"，与药物的 −2.5 叠加
+        container.add(AfflictionType.OXYGEN_LOW, null,
+                com.opamb.barotrauma.medical.affliction.DamageConversions.hypoxiaPerSecond());
+        container.tickSecond();
+        // 50 + 5（环境）− 2.5（药）= 52.5：仍在恶化，只是慢了一半
+        assertEquals(52.5, container.strength(AfflictionType.OXYGEN_LOW, null), 1.0E-6,
+                "液态氧矿只能把恶化速度减半（净 +2.5/s），压不住溺水");
+    }
+
     @Test
     void everyAfflictionHasChineseDisplayName() {
         // 回归：辐射病曾经没有显示名，UI 里直接露出 "radiationsickness" 这种 id。

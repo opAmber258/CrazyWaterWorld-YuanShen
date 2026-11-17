@@ -114,35 +114,44 @@ public final class MedicalClientHooks {
     /**
      * 维护"长按高亮"的发光效果：有目标就续，没目标就摘掉。
      *
-     * <p>{@code addEffect} 在客户端是本地状态，不清理会一直留在实体上
-     * （而且每次续期都会重置计时）。这里统一收口：每 tick 只在目标变化或
-     * 持续时间快到时刷新，避免每帧都 addEffect。</p>
+     * <p><b>必须让服务端挂效果</b>：1.20.1 的 {@code Entity.isCurrentlyGlowing()} 在客户端
+     * 读的是 shared flag 6，不是药水效果——客户端本地 {@code addEffect(GLOWING)}
+     * 既不写这个 flag、也不同步，所以**根本不会有描边**（CodeRabbit 指出，已用 javap
+     * 核对 {@code isCurrentlyGlowing} 的字节码确认）。服务端 {@code addEffect} 才会通过
+     * 实体元数据把 flag 推到客户端。</p>
+     *
+     * <p>所以这里改成发 {@link MedicalHighlightPacket}：有目标且本地看不到光时请求一次，
+     * 目标消失时明确请求摘掉（服务端固定 40 tick 过期，漏发也不会永久残留）。</p>
      */
     private static void syncHighlightEffect(Minecraft minecraft) {
         java.util.UUID target = holdTargetId();
         if (target == null) {
-            if (lastHighlighted != null && minecraft.level != null) {
-                var entity = minecraft.level.getPlayerByUUID(lastHighlighted);
-                if (entity != null) {
-                    entity.removeEffect(net.minecraft.world.effect.MobEffects.GLOWING);
-                }
+            if (lastHighlighted != null) {
+                // 明确摘掉，不等自然过期（玩家马上要去开面板，残留高光很碍眼）
+                com.opamb.barotrauma.network.ModNetwork.sendToServer(
+                        new com.opamb.barotrauma.network.MedicalHighlightPacket(lastHighlighted, false));
             }
             lastHighlighted = null;
             return;
         }
-        if (minecraft.level == null) {
+        if (minecraft.level == null || minecraft.player == null) {
             return;
         }
+        // 目标换了人：先给旧的摘掉
+        if (lastHighlighted != null && !lastHighlighted.equals(target)) {
+            com.opamb.barotrauma.network.ModNetwork.sendToServer(
+                    new com.opamb.barotrauma.network.MedicalHighlightPacket(lastHighlighted, false));
+        }
+        lastHighlighted = target;
         var entity = minecraft.level.getPlayerByUUID(target);
         if (entity == null) {
             return;
         }
-        lastHighlighted = target;
+        // 服务端挂的效果会同步回来；剩余不足 10 tick 就再要一次续期。
         var existing = entity.getEffect(net.minecraft.world.effect.MobEffects.GLOWING);
-        // 剩余不足 10 tick 就续期（约 100ms 持续，够覆盖两次 tick 的抖动）
         if (existing == null || existing.getDuration() < 10) {
-            entity.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                    net.minecraft.world.effect.MobEffects.GLOWING, 20, 0, false, false, false));
+            com.opamb.barotrauma.network.ModNetwork.sendToServer(
+                    new com.opamb.barotrauma.network.MedicalHighlightPacket(target, true));
         }
     }
 
@@ -163,8 +172,25 @@ public final class MedicalClientHooks {
         boolean pressed = OPEN_HEALTH.isDown();
 
         if (!pressed) {
+            // 兜底：两次 tick 之间就按完又松开的短按，`isDown()` 两次都是 false，
+            // holdStartNanos 永远不会被初始化 → 单击丢失。consumeClick() 会把这类
+            // 排队中的点击交给这里兑现（CodeRabbit 指出）。
+            boolean queuedClick = false;
+            while (OPEN_HEALTH.consumeClick()) {
+                queuedClick = true;
+            }
+
             if (holdStartNanos != 0) {
-                boolean primed = holdPrimed;
+                // **按实际持续时长判定长按**，而不是只看"按住期间有没有翻过 holdPrimed"：
+                // 玩家 680ms 松开、但 700ms 的 tick 才处理时，holdPrimed 仍是 false，
+                // 会被当成短按开自己的面板（CodeRabbit 指出）。这里以真实时长为准，
+                // 顺便补做"达到阈值但还没选人"的目标选择。
+                boolean primed = holdPrimed
+                        || System.nanoTime() - holdStartNanos >= HOLD_NANOS;
+                if (primed && !holdPrimed) {
+                    var nearest = nearestTeammate(minecraft);
+                    holdTarget = nearest == null ? null : nearest.getUUID();
+                }
                 java.util.UUID target = holdTarget;
                 resetHold();
                 // 只有在按下期间没有界面被打开过，才兑现这次操作
@@ -202,6 +228,11 @@ public final class MedicalClientHooks {
                 }
                 minecraft.setScreen(new MedicalScreen(teammate.getUUID(),
                         teammate.getName().getString()));
+                return;
+            }
+            if (queuedClick && minecraft.screen == null && !downedSelf) {
+                // 纯单击（按下与松开都在两次 tick 之间完成）
+                openSelfTreatScreen();
             }
             return;
         }

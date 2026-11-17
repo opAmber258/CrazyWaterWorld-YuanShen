@@ -54,6 +54,10 @@ public final class MedicalScreen extends ScaledScreen {
         map.put(AfflictionType.BURN, List.of(ModMedicalItems.BANDAGE, ModMedicalItems.ANTIBIOTIC_GLUE));
         map.put(AfflictionType.BLOODLOSS, List.of(ModMedicalItems.BLOOD_PACK, ModMedicalItems.SALINE));
         map.put(AfflictionType.BLUNT_TRAUMA, List.of(ModMedicalItems.MORPHINE, ModMedicalItems.FENTANYL));
+        // 器官损伤：吗啡（损伤类 −2/s）与芬太尼（损伤类 −15/s）的 TreatmentSpec 都含
+        // ORGAN_DAMAGE 条目，所以必须给这个映射——否则只有器官损伤时药品栏是空的，
+        // 救人者手里有药也看不到可点（CodeRabbit 指出）。
+        map.put(AfflictionType.ORGAN_DAMAGE, List.of(ModMedicalItems.MORPHINE, ModMedicalItems.FENTANYL));
         map.put(AfflictionType.OPIATE_OVERDOSE, List.of(ModMedicalItems.NALOXONE));
         // 原作 SuitableTreatment 对照（medical.xml）：纳洛酮 suitability 覆盖成瘾/戒断；
         // 消辐灵 100 → 辐射病；液态氧矿 30 → 缺氧（负 suitability 是器官损伤，不作为对症推荐）。
