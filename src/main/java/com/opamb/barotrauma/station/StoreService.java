@@ -9,6 +9,7 @@ import com.opamb.barotrauma.equipment.BagManager;
 import com.opamb.barotrauma.equipment.CrateContainer;
 import com.opamb.barotrauma.equipment.ItemSubSlot;
 import com.opamb.barotrauma.item.CrateItem;
+import com.opamb.barotrauma.item.TwoHanded;
 import com.opamb.barotrauma.mission.MissionCargo;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.StoreActionPacket;
@@ -301,8 +302,10 @@ public final class StoreService {
                     ItemSubSlot.set(unit, new ItemStack(ModItems.WELDING_FUEL_TANK.get()));
                 }
                 Component name = unit.getHoverName();
-                boolean placed = deliverToShip(containers, unit);
-                if (!placed && player != null && !isBulkyCargo(unit)) {
+                // 潜水服这类大件不进箱子：必须先跳过所有装箱路径，直接落地。
+                boolean bulky = isBulkyCargo(unit);
+                boolean placed = !bulky && deliverToShip(containers, unit);
+                if (!placed && player != null && !bulky) {
                     // 原作有 cargocontaineridentifier 的小件：没有/放不下箱子时就生成一个金属箱。
                     placed = spawnCargoCrate(level, shipAnchor, player, unit, containers);
                 }
@@ -347,6 +350,15 @@ public final class StoreService {
      * 先手持位（我们的热键栏 0..8），再装备背包（工具带/背包）。
      */
     private static boolean giveToCharacter(ServerPlayer player, ItemStack stack) {
+        // 双手物品（箱子）不能进快捷栏/背包：和 InventoryMixin 一致，副手空就放副手。
+        if (TwoHanded.is(stack)) {
+            if (!player.getOffhandItem().isEmpty()) {
+                return false;
+            }
+            player.setItemInHand(net.minecraft.world.InteractionHand.OFF_HAND, stack.copy());
+            stack.setCount(0);
+            return true;
+        }
         if (tryPutInRange(player.getInventory(), 0, 9, stack)) {
             return true;
         }
@@ -358,7 +370,8 @@ public final class StoreService {
     private static boolean tryPutInRange(Container container, int start, int end, ItemStack stack) {
         for (int i = start; i < end; i++) {
             ItemStack existing = container.getItem(i);
-            if (existing.isEmpty() || !ItemStack.isSameItemSameTags(existing, stack)) {
+            if (existing.isEmpty() || !ItemStack.isSameItemSameTags(existing, stack)
+                    || !container.canPlaceItem(i, stack)) {
                 continue;
             }
             int max = Math.min(existing.getMaxStackSize(), container.getMaxStackSize());
@@ -374,7 +387,7 @@ public final class StoreService {
             }
         }
         for (int i = start; i < end; i++) {
-            if (!container.getItem(i).isEmpty()) {
+            if (!container.getItem(i).isEmpty() || !container.canPlaceItem(i, stack)) {
                 continue;
             }
             container.setItem(i, stack.copy());
@@ -474,7 +487,12 @@ public final class StoreService {
     private static Vec3 cargoDropPoint(ServerLevel level, BlockPos shipAnchor,
                                        ServerPlayer player) {
         if (VsState.active()) {
-            // 物理船货架方块在船坞坐标系里，世界坐标不能用；直接掉在玩家脚边。
+            // 物理船：用船核心世界坐标（舱内）。不能用订单主人的位置——
+            // 起航交付时主人可能还在另一个维度，货会生成在远处。
+            Vec3 core = MissionCargo.coreWorld(level);
+            if (core != null) {
+                return core;
+            }
             return player.position().add(0.0D, 0.2D, 0.0D);
         }
         for (CabinetBlockEntity shelf : MissionCargo.shelvesNear(level, shipAnchor)) {

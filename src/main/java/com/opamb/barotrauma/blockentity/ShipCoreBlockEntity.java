@@ -141,7 +141,7 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
         if (state == null) {
             return;
         }
-        state.simulation().reportConsumer(cell, TERMINAL_POWER_KW, TERMINAL_MIN_VOLTAGE, boundBox);
+        state.simulation().reportTerminal(cell, TERMINAL_POWER_KW, TERMINAL_MIN_VOLTAGE, boundBox);
     }
 
     /** 服务端 tick：每 2 tick 推进一次模拟（0.1 s，即 10 Hz）。 */

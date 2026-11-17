@@ -38,7 +38,7 @@ public final class ShipSimulation {
     private static final double PUMP_POWER = 300.0D;
     private static final double O2_POWER = 300.0D;
     /** 声纳台耗电：wiki 的 Navigation Terminal / Sonar Monitor 都是 100。 */
-    private static final double SONAR_POWER = 100.0D;
+
     /** 驾驶台（Nav Terminal 本体）也吃 100；我们把它和声纳合在一台机器上，所以只算一份。 */
     private static final double BALLAST_PER_TANK = 600.0D;
 
@@ -118,6 +118,9 @@ public final class ShipSimulation {
             new java.util.HashMap<>();
     private long consumerTick;
     private static final int CONSUMER_STALE_TICKS = 40;
+    /** 终端（船核心）上一次作为消费者上报的 tick；没上报时退回旧的固定声纳负载。 */
+    private long lastTerminalTick = Long.MIN_VALUE;
+    private static final double SONAR_POWER = 100.0D;
 
     /** 接线盒上报表：格子 → (耐久 0..100, 最后上报 tick)。 */
     private final java.util.Map<net.minecraft.core.BlockPos, BoxReport> boxes =
@@ -434,9 +437,12 @@ public final class ShipSimulation {
 
         // 还没改造完的设备走旧的全船统计；全部改造后 consumers 非空，用设备上报值。
         double legacyDemand = activePumps * PUMP_POWER + engineDemand;
+        // 终端（船核心）已经作为消费者上报 110 kW 时不能再按 machines.sonar()
+        // 计一遍（会变成 210 kW）；还没接入上报的旧船才用固定负载兜底。
+        boolean terminalReporting = lastTerminalTick != Long.MIN_VALUE
+                && consumerTick - lastTerminalTick <= CONSUMER_STALE_TICKS;
         double deviceDemand = (consumers.isEmpty() ? legacyDemand : consumerDemand)
-                // 声纳/导航台是船核心，没有独立设备实体上报，按数量固定计 100 kW。
-                + machines.sonar() * SONAR_POWER
+                + (terminalReporting ? 0.0D : machines.sonar() * SONAR_POWER)
                 + machines.oxygen() * O2_POWER
                 + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER);
 
@@ -966,6 +972,22 @@ public final class ShipSimulation {
         }
         pumps.clear();
         pumps.putAll(movedPumps);
+        // 电池上报表也要跟着走：旧位置的电池会继续充放电 40 tick，
+        // 同一块电池被重复计入容量/供电。
+        java.util.Map<net.minecraft.core.BlockPos, StorageReport> movedStorages =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, StorageReport> entry
+                : storages.entrySet()) {
+            StorageReport report = entry.getValue();
+            net.minecraft.core.BlockPos box = report.box() == null ? null
+                    : report.box().offset(dx, dy, dz);
+            movedStorages.put(entry.getKey().offset(dx, dy, dz),
+                    new StorageReport(report.chargeKwm(), report.capacityKwm(),
+                            report.maxOutputKw(), report.maxRechargeKw(), box,
+                            report.condition(), report.lastSeen()));
+        }
+        storages.clear();
+        storages.putAll(movedStorages);
     }
 
     /**
@@ -1376,6 +1398,13 @@ public final class ShipSimulation {
     }
 
     /** 设备每 tick 上报自己的电网需求；{@code box == null} 表示挂在默认总线上。 */
+    /** 终端（船核心）上报：和普通消费者一样登记，同时标记旧声纳负载不用再补。 */
+    public void reportTerminal(net.minecraft.core.BlockPos cell, double demandKw,
+                               double minVoltage, net.minecraft.core.BlockPos box) {
+        reportConsumer(cell, demandKw, minVoltage, box);
+        lastTerminalTick = consumerTick;
+    }
+
     public void reportConsumer(net.minecraft.core.BlockPos cell, double demandKw,
                                double minVoltage, net.minecraft.core.BlockPos box) {
         if (cell == null) {

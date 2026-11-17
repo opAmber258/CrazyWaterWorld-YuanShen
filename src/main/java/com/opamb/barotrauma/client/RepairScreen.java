@@ -47,7 +47,6 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
     private float qteTimer = QTE_DURATION;
     private float qteCooldown;
     private int startPendingTicks;
-    private long lastFrameMillis = Long.MIN_VALUE;
 
     private double prevFraction;
     private double curFraction;
@@ -92,6 +91,7 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
     @Override
     protected void containerTick() {
         super.containerTick();
+        updateQte();
         if (startPendingTicks > 0) {
             startPendingTicks--;
         }
@@ -104,15 +104,9 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
         }
     }
 
-    /** 每帧推进 QTE（原作 UpdateProjSpecific 的 qteTimer/qteCooldown）。 */
+    /** 每 tick 推进 QTE：和服务端同一个 20 Hz 步长，按帧推进会逐渐漂移。 */
     private void updateQte() {
-        long now = Util.getMillis();
-        if (lastFrameMillis == Long.MIN_VALUE) {
-            lastFrameMillis = now;
-            return;
-        }
-        float dt = Math.min(0.1F, (now - lastFrameMillis) / 1000.0F);
-        lastFrameMillis = now;
+        float dt = 1.0F / 20.0F;
         if (!repairingView()) {
             qteTimer = QTE_DURATION;
             qteCooldown = 0.0F;
@@ -236,12 +230,6 @@ public class RepairScreen extends ScaledContainerScreen<RepairMenu> {
         double partial = minecraft == null ? 1.0D : minecraft.getFrameTime();
         return Mth.clamp(repairingView()
                 ? Mth.lerp(partial, prevFraction, curFraction) : curFraction, 0.0D, 1.0D);
-    }
-
-    @Override
-    protected void renderScaled(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        updateQte();
-        super.renderScaled(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.opamb.barotrauma.event;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.item.TwoHanded;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -41,6 +42,17 @@ public final class TwoHandedEvents {
             return;
         }
         event.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (!TwoHanded.isCarrying(event.getEntity())) {
+            return;
+        }
+        // 方块交互放行（开机器/舱门/柜子），只拦主手 BlockItem 的放置。
+        if (event.getItemStack().getItem() instanceof BlockItem) {
+            event.setUseItem(net.minecraftforge.eventbus.api.Event.Result.DENY);
+        }
     }
 
     @SubscribeEvent

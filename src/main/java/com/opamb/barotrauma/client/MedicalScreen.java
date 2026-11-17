@@ -12,6 +12,7 @@ import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.gui.GuiGraphics;
 import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -32,7 +33,7 @@ import java.util.function.Supplier;
 public final class MedicalScreen extends ScaledScreen {
 
     private static final int PANEL_W = 200;
-    private static final int PANEL_H = 186;
+    private static final int PANEL_H = 220;
     private static final int LINE = 11;
 
     /** 对症药品（按原作 SuitableTreatment 适配度降序；底表 §4）。 */
@@ -58,6 +59,10 @@ public final class MedicalScreen extends ScaledScreen {
     private Limb selectedLimb;
     private final List<IconRect> iconRects = new ArrayList<>();
     private int refreshTicks;
+    /** 伤情明细区的滚动量（换行后的描述可能超过面板高度）。 */
+    private int statusScroll;
+    /** 上一帧算出的内容高度，用来夹滚动量。 */
+    private int statusContentHeight;
 
     public MedicalScreen(UUID target, String targetName) {
         super(Component.literal("医疗"), PANEL_W, PANEL_H);
@@ -122,8 +127,18 @@ public final class MedicalScreen extends ScaledScreen {
         zones = TreatmentRenderer.zones(cx, by);
         TreatmentRenderer.draw(g, zones, snapshot.rows(), mouseX, mouseY);
 
-        // ---- 身体图**正下方**：选中部位伤情（含原作各阶段文案灰字）+ 对症药品栏 ----
-        int cy = by + 78;
+        // ---- 身体图**正下方**：可滚动区域 ----
+        // 伤情描述会按面板宽度换行，固定面板装不下；这里开裁剪 + 滚动，
+        // 药品图标跟着滚动，命中坐标也用滚动后的位置。
+        int statusTop = by + 78;
+        int statusBottom = y + PANEL_H - 30;
+        int viewHeight = Math.max(LINE * 2, statusBottom - statusTop);
+        statusScroll = Mth.clamp(statusScroll, 0, Math.max(0, statusContentHeight - viewHeight));
+        iconRects.clear();
+        enableDesignScissor(g, x, statusTop, x + PANEL_W, statusBottom);
+        g.pose().pushPose();
+        g.pose().translate(0.0F, -statusScroll, 0.0F);
+        int cy = statusTop;
         List<DisplayLine> statusLines;
         if (selectedLimb != null) {
             g.drawString(this.font,
@@ -200,7 +215,7 @@ public final class MedicalScreen extends ScaledScreen {
                     g.fill(slotX, cy, slotX + 1, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
                     g.fill(slotX + 17, cy, slotX + 18, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
                     g.renderItem(new ItemStack(drug), slotX + 1, cy + 1);
-                    iconRects.add(new IconRect(drug, slotX + 1, cy + 1));
+                    iconRects.add(new IconRect(drug, slotX + 1, cy - statusScroll + 1));
                     slotX += 20;
                 }
             }
@@ -219,6 +234,17 @@ public final class MedicalScreen extends ScaledScreen {
                 cy += LINE;
             }
             g.drawString(this.font, Component.literal("左键点击身体选择部位"), x + 10, cy + 2, 0xFF909098);
+        }
+        g.pose().popPose();
+        g.disableScissor();
+        statusContentHeight = cy - statusTop;
+        if (statusContentHeight > viewHeight) {
+            // 右侧滚动条：告诉玩家下面还有内容。
+            int barH = Math.max(8, viewHeight * viewHeight / statusContentHeight);
+            int maxScroll = statusContentHeight - viewHeight;
+            int barY = statusTop + (viewHeight - barH) * statusScroll / Math.max(1, maxScroll);
+            g.fill(x + PANEL_W - 3, statusTop, x + PANEL_W - 1, statusBottom, 0x40FFFFFF);
+            g.fill(x + PANEL_W - 3, barY, x + PANEL_W - 1, barY + barH, 0xFF7FB8E8);
         }
 
         // ---- 底部：活力 + 操作提示 ----
@@ -245,6 +271,18 @@ public final class MedicalScreen extends ScaledScreen {
         var targetPlayer = minecraft.level.getPlayerByUUID(target);
         return targetPlayer != null
                 && (targetPlayer.isDeadOrDying() || targetPlayer.getHealth() <= 0.0F);
+    }
+
+    @Override
+    public boolean mouseScrolled(double screenX, double screenY, double delta) {
+        double mouseX = designX(screenX);
+        double mouseY = designY(screenY);
+        if (delta != 0.0D && mouseX >= 0 && mouseX < PANEL_W
+                && mouseY >= 0 && mouseY < PANEL_H) {
+            statusScroll -= (int) Math.signum(delta) * LINE * 2;
+            return true;
+        }
+        return super.mouseScrolled(screenX, screenY, delta);
     }
 
     @Override

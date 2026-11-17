@@ -1995,7 +1995,15 @@ public final class VsPilot {
                 continue;
             }
             float max = state.hullMaxHealth(block);
-            if (max <= 0.0F) {
+            // 设备（泵/反应堆/引擎/门/柜子等）没有船壳耐久，但爆炸同样要伤到
+            // 耐久组件；物理船方块在世界里是空气，RepairDamageEvents 拿不到它们。
+            BlockPos deviceYard = pos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+            net.minecraft.world.level.block.entity.BlockEntity deviceBe =
+                    level.getBlockEntity(deviceYard);
+            com.opamb.barotrauma.ship.RepairTarget device =
+                    deviceBe instanceof com.opamb.barotrauma.ship.RepairTarget target
+                            ? target : null;
+            if (max <= 0.0F && device == null) {
                 continue;
             }
             org.joml.Vector3d shipSpace = new org.joml.Vector3d(
@@ -2012,7 +2020,11 @@ public final class VsPilot {
                 continue;
             }
             hit++;
-            if (state.hullDamage().applyDamage(pos, amount, max) <= 0.0F) {
+            if (device != null) {
+                device.damage(com.opamb.barotrauma.event.RepairDamageEvents.EXPLOSION_DAMAGE);
+                deviceBe.setChanged();
+            }
+            if (max > 0.0F && state.hullDamage().applyDamage(pos, amount, max) <= 0.0F) {
                 broken.add(pos);
             }
         }

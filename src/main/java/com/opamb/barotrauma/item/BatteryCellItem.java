@@ -32,9 +32,9 @@ public class BatteryCellItem extends Item {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip,
                                 TooltipFlag flag) {
         int charge = stack.getMaxDamage() - stack.getDamageValue();
-        tooltip.add(Component.literal("电量: " + charge + " / " + stack.getMaxDamage())
-                .withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.literal("放进电池台面的三个槽里可以充电")
+        tooltip.add(Component.translatable("gui.barotrauma.battery_cell.charge",
+                charge, stack.getMaxDamage()).withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("gui.barotrauma.battery_cell.recharge_hint")
                 .withStyle(ChatFormatting.DARK_GRAY));
     }
 }

@@ -172,7 +172,7 @@ for (const el of bb.elements) {
   // east (+X), viewed from +X looking -X: +Z on the LEFT; TL=(x1,y1,z1)
   if (F.east && F.east.uv) q(c[6], c[2], c[1], c[5], F.east.uv);
   // up (+Y), viewed from above looking -Y: north(-Z) at top; TL=(x0,y1,z0)
-  if (F.up && F.up.uv) q(c[3], c[2], c[5+1], c[4+1], F.up.uv); // TL=(x0,y1,z0) TR=(x1,y1,z0) BR=(x1,y1,z1) BL=(x0,y1,z1)
+  if (F.up && F.up.uv) q(c[3], c[2], c[6], c[7], F.up.uv); // TL=(x0,y1,z0) TR=(x1,y1,z0) BR=(x1,y1,z1) BL=(x0,y1,z1)
   // down (-Y), viewed from below looking +Y: north(-Z) at top; TL=(x0,y0,z0)
   if (F.down && F.down.uv) q(c[0], c[1], c[5], c[4], F.down.uv);
 }
@@ -193,8 +193,8 @@ for (const cw of cubeWorld) {
 function render(view, W, H, file) {
   // camera basis
   let f, r, u, ortho = true, persp = null;
-  if (view === 'front') { f = [0, 0, -1]; }       // looking toward -Z (from south +Z)
-  else if (view === 'back') { f = [0, 0, 1]; }    // looking toward +Z (from north -Z)
+  if (view === 'front') { f = [0, 0, 1]; }        // 正视：从 -Z 看屏幕面（交付文档定义）
+  else if (view === 'back') { f = [0, 0, -1]; }   // 背视：从 +Z 看背面
   else if (view === 'side') { f = [-1, 0, 0]; }   // from +X looking -X: muzzle(-Z) on right
   else if (view === 'side2') { f = [1, 0, 0]; }
   else if (view === 'top') { f = [0, -1, 0]; }
@@ -205,7 +205,8 @@ function render(view, W, H, file) {
     persp = { eye: [wmax[0]/2 + dir[0]*dist, (wmin[1]+wmax[1])/2 + dir[1]*dist, (wmin[2]+wmax[2])/2 + dir[2]*dist], fov: 35 * D2R };
     f = dir.map(v => -v);
   }
-  const up0 = [0, 1, 0];
+  // 顶视图的视线和 Y 轴平行，用 Y 当 up 会叉积为零（NaN）；改用 Z 轴。
+  const up0 = view === 'top' ? [0, 0, -1] : [0, 1, 0];
   if (!f) throw new Error('view');
   r = norm(cross(f, up0));
   u = cross(r, f);
@@ -219,10 +220,12 @@ function render(view, W, H, file) {
   const project = (p) => {
     const rel = [p[0]-cx, p[1]-cy, p[2]-cz];
     const x = dot(rel, r), y = dot(rel, u), z = dot(rel, f);
-    if (ortho) return { x: x / span + 0.5, y: 0.5 - y / span, z };
+    // 画布是 1200×900：横向归一化要乘 H/W，否则等长边在屏幕上横向拉伸 4/3。
+    const aspect = H / W;
+    if (ortho) return { x: (x / span) * aspect + 0.5, y: 0.5 - y / span, z };
     const ez = dot(rel, f) + 40; // distance along view axis from eye plane
     const scale = 1 / (ez * Math.tan(persp.fov / 2));
-    return { x: 0.5 + x * scale, y: 0.5 - y * scale, z: ez };
+    return { x: 0.5 + x * scale * aspect, y: 0.5 - y * scale, z: ez };
   };
 
   for (const t of triangles) {

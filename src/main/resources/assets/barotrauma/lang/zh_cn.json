@@ -499,6 +499,8 @@
   "clinic.failed_refund": "治疗失败（已退款）",
   "clinic.healed": "治疗完成，共 %s 项（-%s mk）",
   "gui.barotrauma.repair": "修理",
+  "gui.barotrauma.battery_cell.charge": "电量：%s / %s",
+  "gui.barotrauma.battery_cell.recharge_hint": "放进电池台面的三个槽里可以充电",
   "gui.barotrauma.fabricator.category.all": "全部",
   "gui.barotrauma.fabricator.category.material": "材料",
   "gui.barotrauma.fabricator.category.equipment": "设备",

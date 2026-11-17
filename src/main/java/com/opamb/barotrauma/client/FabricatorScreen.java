@@ -161,6 +161,19 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
         filterBox.setResponder(text -> {
             search = text;
             scroll = 0;
+            // 选中的配方可能已经不在筛选结果里：不换的话制作按钮还会发旧配方，
+            // 材料齐全时服务端会照旧扣料开工。
+            List<FabricatorCatalog.Recipe> recipes = visibleRecipes();
+            boolean present = false;
+            for (FabricatorCatalog.Recipe recipe : recipes) {
+                if (recipe.id().equals(selectedId)) {
+                    present = true;
+                    break;
+                }
+            }
+            if (!present) {
+                selectedId = recipes.isEmpty() ? null : recipes.get(0).id();
+            }
         });
         addRenderableWidget(filterBox);
     }

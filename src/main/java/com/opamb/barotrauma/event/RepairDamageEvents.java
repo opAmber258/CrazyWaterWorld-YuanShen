@@ -24,7 +24,8 @@ import net.minecraftforge.fml.common.Mod;
         bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class RepairDamageEvents {
 
-    private static final double EXPLOSION_DAMAGE = 20.0D;
+    /** 每格爆炸伤害（物理船设备也复用这个值）。 */
+    public static final double EXPLOSION_DAMAGE = 20.0D;
 
     private RepairDamageEvents() {
     }

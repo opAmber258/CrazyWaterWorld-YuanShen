@@ -499,6 +499,8 @@
   "clinic.failed_refund": "Treatment failed (refunded)",
   "clinic.healed": "Treated %s conditions (-%s mk)",
   "gui.barotrauma.repair": "Repair",
+  "gui.barotrauma.battery_cell.charge": "Charge: %s / %s",
+  "gui.barotrauma.battery_cell.recharge_hint": "Put it in one of the three slots on the battery to recharge",
   "gui.barotrauma.fabricator.category.all": "All",
   "gui.barotrauma.fabricator.category.material": "Materials",
   "gui.barotrauma.fabricator.category.equipment": "Equipment",

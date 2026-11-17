@@ -72,24 +72,19 @@ public final class RepairInteractions {
     /**
      * 菜单里保存的坐标必须在船移动后仍能解析回同一台设备。
      *
-     * <p>物理船上玩家右键的是跟着船平移的代理方块，世界坐标会随船移动；
-     * 直接存世界坐标的话，船一开动 pos 就悬空，{@code worldCenter} 会把它
-     * 当装配坐标换算，距离检查失败、维修窗口被关掉。这里改存装配坐标
-     * （设备在快照里的原始位置）：{@code RepairActionPacket.find} 能经
-     * {@code toYard} 找回船坞里的方块实体，{@code worldCenter} 也能用
-     * {@code assemblyToWorld} 算出当前位置。</p>
+     * <p>物理船上玩家右键的是跟着船平移的代理方块，世界坐标会随船移动，不能存。
+     * 这里存设备真实的<b>船坞坐标</b>：{@code find} 能直接找到方块实体，
+     * {@code worldCenter} 也有船坞坐标分支换算当前位置。</p>
+     *
+     * <p>不要存装配坐标：船移动后装配坐标可能正好是另一个代理方块的位置，
+     * {@code find} 会优先解析那个代理，菜单就修到别的设备上了。</p>
      */
     private static BlockPos stablePos(BlockPos pos, RepairTarget target) {
         if (!VsState.active()) {
             return pos;
         }
-        // 代理方块：真实方块实体在船坞里，用它的坐标换算成装配坐标。
         if (target instanceof BlockEntity be && VsPilot.isYardBlock(be.getBlockPos())) {
-            return VsPilot.toAssembly(be.getBlockPos());
-        }
-        // 船坞里的方块（电池等直接右键的实体）：换算成装配坐标。
-        if (VsPilot.isYardBlock(pos)) {
-            return VsPilot.toAssembly(pos);
+            return be.getBlockPos().immutable();
         }
         return pos;
     }

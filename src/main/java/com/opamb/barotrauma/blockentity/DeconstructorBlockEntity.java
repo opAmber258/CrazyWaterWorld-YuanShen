@@ -343,12 +343,14 @@ public class DeconstructorBlockEntity extends BlockEntity
         }
         // 船状态不存档：世界重开后第一次 tick 靠自己补扫，不能等玩家去开电力面板。
         // stateNear 会翻 9×9 区块，缓存 1 秒；核心被拆/换船时最多 1 秒后自动失效。
-        if (cachedShip != null && shipCacheTicks > 0) {
+        // 冷却只看计时：找不到船时 cachedShip 是 null，也要等 1 秒再扫，
+        // 否则没接入船体的机器会每 tick 翻一遍附近 9×9 区块。
+        if (shipCacheTicks > 0) {
             shipCacheTicks--;
             return cachedShip;
         }
         shipCacheTicks = 20;
-        cachedShip = ShipCores.stateNear(level, pos, 64.0D);
+        cachedShip = ShipCores.stateOwning(level, pos, 64.0D);
         return cachedShip;
     }
 

@@ -148,8 +148,26 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                 }
             }
 
-            SonarScan.Frame frame = !terminalBroken
-                    && (ship == null || ship.simulation().voltage() >= 0.5D)
+            // 用终端自己的电压：绑定的接线盒坏了以后 consumerVoltage(终端)=0，
+            // 但全船可能还有电，声纳不能继续扫描。
+            double terminalVoltage = ship == null ? 1.0D : ship.simulation().voltage();
+            if (ship != null) {
+                BlockPos terminalCell = null;
+                if (core != null) {
+                    terminalCell = core.getBlockPos();
+                } else if (physical) {
+                    var physicalCore = com.opamb.barotrauma.ship.vs.VsPilot
+                            .sonarCoreBlockEntity(level);
+                    if (physicalCore != null) {
+                        terminalCell = com.opamb.barotrauma.ship.vs.VsPilot
+                                .toAssembly(physicalCore.getBlockPos());
+                    }
+                }
+                if (terminalCell != null) {
+                    terminalVoltage = ship.simulation().consumerVoltage(terminalCell);
+                }
+            }
+            SonarScan.Frame frame = !terminalBroken && terminalVoltage >= 0.5D
                     ? SonarScan.scan(level, center, effectiveRange, hull, player,
                             scanMode, dirX, dirY, dirZ)
                     : new SonarScan.Frame(effectiveRange, new int[0]);

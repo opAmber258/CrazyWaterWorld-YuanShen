@@ -94,7 +94,18 @@ public class BatteryBlockEntity extends BlockEntity
         }
 
         boolean powered = simulation.voltage() > 0.1D;
-        be.submerged = simulation.bodyIsWet(simulation.bodyOf(cell));
+        // 按电池位置的实际水位判泡水：舱底有点积水不代表高处的电池被淹。
+        // 连海空腔用所在列的水位（和渲染/接线盒同一套）。
+        boolean wetBody = simulation.bodyIsWet(simulation.bodyOf(cell));
+        if (wetBody) {
+            java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
+            for (ShipState.Breach breach : ship.breaches()) {
+                breachSources.add(breach.pos());
+            }
+            be.submerged = cell.getY() < simulation.waterLevelAt(cell, breachSources);
+        } else {
+            be.submerged = false;
+        }
         if (be.graceTicks < 0L) {
             be.graceTicks = 2400L + level.random.nextInt(2400);
         }
@@ -236,7 +247,8 @@ public class BatteryBlockEntity extends BlockEntity
         }
         // 船状态不存档：世界重开后第一次 tick 靠自己补扫，不能等玩家去开电力面板。
         // 两艘船靠近时最近核心可能属于另一艘船，按船体几何归属选。
-        return ShipCores.stateOwning(level, pos, 32.0D);
+        // 核心扫描是各轴 ±24 格：对角设备离核心约 41.6 格，32 格会漏。
+        return ShipCores.stateOwning(level, pos, 48.0D);
     }
 
     @Override

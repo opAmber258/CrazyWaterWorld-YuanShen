@@ -104,9 +104,21 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
             if (terminal != null && terminal.condition() <= 0.0D) {
                 return;
             }
-            // 原作 Powered.HasPower：电压低于 MinVoltage 0.5 时导航台完全不能用，
-            // 舵令/泵/气闸这些终端操作一律不生效。
-            if (ship.simulation().voltage() < ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE) {
+            // 原作 Powered.HasPower：电压低于 MinVoltage 0.5 时导航台完全不能用。
+            // 必须用终端自己的电压：绑定的接线盒坏了以后 consumerVoltage(终端)=0，
+            // 但全船可能还有电，不能继续操舵。
+            BlockPos terminalCell = null;
+            if (terminal != null) {
+                boolean yard = com.opamb.barotrauma.ship.vs.VsState.active()
+                        && com.opamb.barotrauma.ship.vs.VsPilot.isYardBlock(terminal.getBlockPos());
+                terminalCell = yard
+                        ? com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(terminal.getBlockPos())
+                        : terminal.getBlockPos();
+            }
+            double terminalVoltage = terminalCell != null
+                    ? ship.simulation().consumerVoltage(terminalCell)
+                    : ship.simulation().voltage();
+            if (terminalVoltage < ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE) {
                 return;
             }
             switch (action) {
