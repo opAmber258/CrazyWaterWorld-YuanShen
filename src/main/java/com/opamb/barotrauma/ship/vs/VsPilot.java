@@ -791,6 +791,11 @@ public final class VsPilot {
                     com.opamb.barotrauma.blockentity.ShipCoreBlockEntity terminal =
                             sonarCoreBlockEntity(level);
                     if (terminal != null) {
+                        // 世界重开 + adopt() 之后 BE 的 state 可能还是 null，
+                        // reportTerminalPower 会直接返回，110 kW 终端负载一直不进模拟。
+                        if (terminal.state() == null) {
+                            terminal.setState(state);
+                        }
                         terminal.reportTerminalPower(toAssembly(terminal.getBlockPos()));
                     }
                 }

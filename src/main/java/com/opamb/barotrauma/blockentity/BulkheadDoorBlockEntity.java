@@ -39,7 +39,7 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
     private int motionHold;
     /** 门不自然劣化（原作 Repairable 默认 0/s），只被外力打坏后修理。 */
     private final ConditionComponent condition =
-            new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 80.0D);
+            new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 0.8D);
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 

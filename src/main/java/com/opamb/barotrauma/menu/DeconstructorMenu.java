@@ -163,7 +163,16 @@ public class DeconstructorMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return player.distanceToSqr(Vec3.atCenterOf(pos)) <= 64.0D;
+        if (player.distanceToSqr(Vec3.atCenterOf(pos)) > 64.0D) {
+            return false;
+        }
+        if (player.level().isClientSide) {
+            return true;
+        }
+        // 服务端：机器被拆掉或同位置换了一台时关闭菜单，
+        // 否则槽位继续引用已移除的实体，放进去的物品关窗后会丢。
+        return serverMachine != null && !serverMachine.isRemoved()
+                && player.level().getBlockEntity(pos) == serverMachine;
     }
 
     @Override

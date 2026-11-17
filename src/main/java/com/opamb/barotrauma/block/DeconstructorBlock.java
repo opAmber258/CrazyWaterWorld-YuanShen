@@ -42,9 +42,9 @@ import org.jetbrains.annotations.Nullable;
 /**
  * 解构仪：2 格宽 × 3 格高 × 2 格深的多方块（原作 deconstructor，模型 2.0×2.519×1.569 格）。
  *
- * <p>12 段由 {@link Part} 描述：2 列 × 3 行 × 2 层。主方块是
- * <b>前层 · 下排 · 左列</b>（2 格宽没有中列），只有它挂方块实体和 GeckoLib 模型
- * （双刀轴 1 秒工作循环）；其余 11 段是隐形附属段。</p>
+ * <p>6 段由 {@link Part} 描述：2 列 × 3 行 × 1 层。主方块是
+ * <b>下排 · 左列</b>（2 格宽没有中列），只有它挂方块实体和 GeckoLib 模型
+ * （双刀轴 1 秒工作循环）；其余 5 段是隐形附属段。</p>
  */
 public class DeconstructorBlock extends Block implements EntityBlock {
 
@@ -94,6 +94,8 @@ public class DeconstructorBlock extends Block implements EntityBlock {
             0.0D, 0.0D, 0.0D, 1.0D, 8.0D / 16.0D, 1.0D);
 
     private static final ThreadLocal<Boolean> REMOVING = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    /** 玩家拆非主段时 playerWillDestroy 已经补过主方块掉落，onRemove 不要再补一次。 */
+    private static final ThreadLocal<Boolean> MASTER_DROPPED = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     public DeconstructorBlock(Properties properties) {
         super(properties);
@@ -161,11 +163,15 @@ public class DeconstructorBlock extends Block implements EntityBlock {
 
     @Override
     public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
-        if (!level.isClientSide && state.getValue(PART) != Part.LOWER_LEFT && !player.isCreative()) {
-            BlockPos master = masterPos(pos, state);
-            BlockState masterState = level.getBlockState(master);
-            if (masterState.getBlock() instanceof DeconstructorBlock) {
-                Block.dropResources(masterState, level, master);
+        if (!level.isClientSide && state.getValue(PART) != Part.LOWER_LEFT) {
+            // 玩家拆非主段：无论创造与否都标记 onRemove 不要补掉落。
+            MASTER_DROPPED.set(Boolean.TRUE);
+            if (!player.isCreative()) {
+                BlockPos master = masterPos(pos, state);
+                BlockState masterState = level.getBlockState(master);
+                if (masterState.getBlock() instanceof DeconstructorBlock) {
+                    Block.dropResources(masterState, level, master);
+                }
             }
         }
         super.playerWillDestroy(level, pos, state, player);
@@ -181,6 +187,14 @@ public class DeconstructorBlock extends Block implements EntityBlock {
                 if (masterBe instanceof Container container
                         && (pos.equals(master) || level.getBlockState(master).getBlock() == this)) {
                     Containers.dropContents(level, master, container);
+                }
+                // 非玩家原因拆掉非主段（爆炸等）：主段会被 removeBlock(false)
+                // 无掉落移除，这里补一份方块物品；玩家拆除已在 playerWillDestroy 里补过。
+                boolean masterDropped = MASTER_DROPPED.get();
+                MASTER_DROPPED.set(Boolean.FALSE);
+                if (!masterDropped && state.getValue(PART) != Part.LOWER_LEFT
+                        && level.getBlockState(master).getBlock() == this) {
+                    Block.dropResources(level.getBlockState(master), level, master);
                 }
                 Direction facing = state.getValue(FACING);
                 for (Part part : Part.values()) {

@@ -45,16 +45,16 @@ public final class ConditionComponent {
         this.condition = this.maxCondition;
     }
 
-    /** 活动时每 tick 调一次；不活动不劣化，也不初始化宽限。 */
-    public void tick(Level level, boolean active) {
-        tick(level, active, 1.0D / 20.0D);
+    /** 活动时每 tick 调一次；不活动不劣化，也不初始化宽限。返回持久字段是否改变。 */
+    public boolean tick(Level level, boolean active) {
+        return tick(level, active, 1.0D / 20.0D);
     }
 
     /** 活动时按给定的模拟秒数劣化（船核心每 2 tick 才推进一次时用 0.1s）。 */
-    public void tick(Level level, boolean active, double seconds) {
+    public boolean tick(Level level, boolean active, double seconds) {
         if (!active || decayPerSecond <= 0.0D || condition <= minDeteriorationCondition
                 || seconds <= 0.0D) {
-            return;
+            return false;
         }
         if (graceTicks < 0L) {
             if (level == null) {
@@ -67,9 +67,11 @@ public final class ConditionComponent {
         if (graceTicks > 0L) {
             long step = Math.max(1L, Math.round(seconds * 20.0D));
             graceTicks = Math.max(0L, graceTicks - step);
-            return;
+            return true;
         }
+        double before = condition;
         condition = Math.max(minDeteriorationCondition, condition - decayPerSecond * seconds);
+        return condition != before;
     }
 
     /** 外力伤害（破口、爆炸等）。 */

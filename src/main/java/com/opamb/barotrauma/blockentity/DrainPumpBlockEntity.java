@@ -75,7 +75,7 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
         super(type, pos, state);
         boolean small = state.is(com.opamb.barotrauma.registry.ModBlocks.SMALL_PUMP.get());
         this.condition = new ConditionComponent(100.0D,
-                small ? 0.2D : 0.125D, 60, small ? 240 : 270, 0.0D, 80.0D);
+                small ? 0.2D : 0.125D, 60, small ? 240 : 270, 0.0D, 0.8D);
     }
 
     /** 不同泵的满流量。 */
@@ -209,8 +209,20 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
         }
         // 子类钩子：压载泵在这里读舵台垂直指令（下潜泵入 / 上浮泵出）。
         be.beforeReport(ship);
-        // 耐久：只有泵在真正抽/注水时才自然劣化。
-        be.condition.tick(server, Math.abs(be.signedRate(state)) > 0.1D);
+        // 硬核供电：实际流量按设备拿到的电压缩放（原作 Pump.Update 用 min(Voltage, 2)）；
+        // 请求值单独上报，负载按请求流量算。
+        double requested = be.signedRate(state);
+        ship.simulation().reportConsumer(cell, be.powerDemandKw(), be.minVoltage(), be.boundBox);
+        double voltage = ship.simulation().consumerVoltage(cell);
+        // 欠压直接停转：effectiveFactor 会把 0.5 也当成可运行，泵会在门槛附近振荡。
+        double factor = PowerGrid.canRun(voltage, be.minVoltage())
+                ? PowerGrid.effectiveFactor(voltage) : 0.0D;
+        double actual = requested * factor;
+        // 耐久：只有泵真正在抽/注水（有电、流量非零）时才自然劣化；
+        // 不能按请求流量算，否则停电时没转的泵也会掉耐久。
+        if (be.condition.tick(server, Math.abs(actual) > 0.1D)) {
+            be.setChanged();
+        }
         if (be.condition.broken()) {
             ship.simulation().reportConsumer(cell, 0.0D, be.minVoltage(), be.boundBox);
             ship.simulation().reportPump(cell, 0.0D, be.ballast(), 0.0D,
@@ -224,15 +236,7 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
             // 用 bodyIsWet（水量 > 0.05 格）判断，自动泵才会真的在水进舱时启动。
             be.autoWet = ship.simulation().bodyIsWet(body);
         }
-        // 硬核供电：实际流量按设备拿到的电压缩放（原作 Pump.Update 用 min(Voltage, 2)）；
-        // 请求值单独上报，负载按请求流量算。
-        double requested = be.signedRate(state);
-        ship.simulation().reportConsumer(cell, be.powerDemandKw(), be.minVoltage(), be.boundBox);
-        double voltage = ship.simulation().consumerVoltage(cell);
-        // 欠压直接停转：effectiveFactor 会把 0.5 也当成可运行，泵会在门槛附近振荡。
-        double factor = PowerGrid.canRun(voltage, be.minVoltage())
-                ? PowerGrid.effectiveFactor(voltage) : 0.0D;
-        ship.simulation().reportPump(cell, requested * factor, be.ballast(), requested,
+        ship.simulation().reportPump(cell, actual, be.ballast(), requested,
                 be.keepBelowDoor(), be.ballastTarget());
     }
 

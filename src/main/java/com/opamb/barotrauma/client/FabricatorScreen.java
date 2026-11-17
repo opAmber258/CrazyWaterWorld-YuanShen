@@ -7,6 +7,8 @@ import com.opamb.barotrauma.equipment.BagSlots;
 import com.opamb.barotrauma.fabricator.FabricatorCatalog;
 import com.opamb.barotrauma.fabricator.FabricatorData;
 import com.opamb.barotrauma.menu.FabricatorMenu;
+import com.opamb.barotrauma.network.FabricatorActionPacket;
+import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.locale.Language;
@@ -387,18 +389,18 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
             // 制作 / 取消
             if (inside(mouseX, mouseY, x + 296, y + 146, 136, 22)) {
                 boolean working = menu.data().get(FabricatorMenu.DATA_WORKING) != 0;
-                if (minecraft != null && minecraft.gameMode != null) {
-                    if (working) {
-                        minecraft.gameMode.handleInventoryButtonClick(menu.containerId,
-                                FabricatorMenu.BUTTON_CANCEL);
-                    } else {
-                        FabricatorCatalog.Recipe recipe = selected();
-                        int index = recipe == null ? -1
-                                : FabricatorData.catalog().recipes().indexOf(recipe);
-                        if (index >= 0) {
-                            minecraft.gameMode.handleInventoryButtonClick(menu.containerId,
-                                    index + amount * 1000);
-                        }
+                if (working) {
+                    ModNetwork.CHANNEL.sendToServer(new FabricatorActionPacket(
+                            menu.pos(), FabricatorActionPacket.CANCEL, 0, 1));
+                } else {
+                    FabricatorCatalog.Recipe recipe = selected();
+                    int index = recipe == null ? -1
+                            : FabricatorData.catalog().recipes().indexOf(recipe);
+                    if (index >= 0) {
+                        // 原版按钮包只有 1 字节，装不下“配方下标 + 数量”，
+                        // 改用独立包分开传，服务端再校验。
+                        ModNetwork.CHANNEL.sendToServer(new FabricatorActionPacket(
+                                menu.pos(), FabricatorActionPacket.START, index, amount));
                     }
                 }
                 return true;

@@ -49,6 +49,8 @@ public class BatteryMenu extends AbstractContainerMenu {
 
     private final BlockPos batteryPos;
     private final ContainerData data;
+    /** 构造时解析到的电池实例（仅服务端非 null）；用于校验菜单还绑着同一台电池。 */
+    private final BatteryBlockEntity battery;
 
     public BatteryMenu(int id, Inventory inventory, FriendlyByteBuf buf) {
         this(id, inventory, buf == null ? BlockPos.ZERO : buf.readBlockPos());
@@ -62,6 +64,7 @@ public class BatteryMenu extends AbstractContainerMenu {
                 && inventory.player.level() instanceof ServerLevel serverLevel) {
             resolved = RepairActionPacket.battery(serverLevel, batteryPos);
         }
+        this.battery = resolved;
         if (resolved != null) {
             BatteryBlockEntity battery = resolved;
             this.data = new ContainerData() {                @Override
@@ -140,9 +143,11 @@ public class BatteryMenu extends AbstractContainerMenu {
             return false;
         }
         if (player.level() instanceof ServerLevel serverLevel) {
-            BatteryBlockEntity battery = RepairActionPacket.battery(serverLevel, batteryPos);
-            if (battery != null) {
-                battery.setRechargeKw(BatteryBlockEntity.MAX_RECHARGE_KW * id / 100.0D);
+            // 优先用构造时校验过的实例，避免同位置换电池后改到新电池上。
+            BatteryBlockEntity target = battery != null ? battery
+                    : RepairActionPacket.battery(serverLevel, batteryPos);
+            if (target != null) {
+                target.setRechargeKw(BatteryBlockEntity.MAX_RECHARGE_KW * id / 100.0D);
                 return true;
             }
         }
@@ -155,7 +160,19 @@ public class BatteryMenu extends AbstractContainerMenu {
             return false;
         }
         Vec3 center = RepairActionPacket.worldCenter(player.level(), batteryPos);
-        return center != null && player.distanceToSqr(center) <= 64.0D;
+        if (center == null || player.distanceToSqr(center) > 64.0D) {
+            return false;
+        }
+        if (player.level().isClientSide) {
+            return true;
+        }
+        if (!(player.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        // 服务端：原电池实例必须还在，且当前位置仍解析为同一实例；
+        // 同位置换了一块新电池时旧菜单必须关闭，否则槽位写进已移除的实体。
+        return battery != null && !battery.isRemoved()
+                && RepairActionPacket.battery(level, batteryPos) == battery;
     }
 
     @Override

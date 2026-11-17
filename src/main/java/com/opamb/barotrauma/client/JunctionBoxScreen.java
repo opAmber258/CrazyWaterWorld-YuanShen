@@ -105,7 +105,6 @@ public class JunctionBoxScreen extends ScaledScreen {
     }
 
     @Override
-    @Override
     protected void renderDesign(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         if (bindReEnableAt != 0L && System.currentTimeMillis() >= bindReEnableAt) {
             // 服务端没回包（比如接线盒在这期间被拆了）：按钮不能永远禁用。

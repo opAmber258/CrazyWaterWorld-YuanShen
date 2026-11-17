@@ -156,7 +156,10 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
         if (!(level instanceof ServerLevel server)) {
             return false;
         }
-        ShipState ship = resolveShip(server, worldPosition);
+        // 两艘船靠近时最近核心可能属于另一艘船；按船体归属解析，
+        // 否则 inHull() 误报 false，玩家每次开面板都会触发一次重扫。
+        ShipState ship = VsState.active() && VsPilot.isYardBlock(worldPosition)
+                ? VsState.activeState() : resolveBlockShip(server, worldPosition);
         return ship != null && ship.tracksHullBlock(assemblyPos(worldPosition));
     }
 

@@ -181,10 +181,9 @@ public class BatteryBlock extends BaseEntityBlock {
         if (level.isClientSide) {
             return;
         }
-        ShipCores.rescanNear(level, pos, 16);
-        if (level instanceof ServerLevel server) {
-            com.opamb.barotrauma.ship.vs.VsState.refreshGeometry(server);
-        }
+        // 核心扫描支持 24 格，电池可能离核心 20 格：用 refreshNearby 的 64 格范围，
+        // 不能用 16 格 rescanNear，否则合法位置的电池永远进不了几何。
+        ShipCores.refreshNearby(level, pos);
     }
 
     @Nullable

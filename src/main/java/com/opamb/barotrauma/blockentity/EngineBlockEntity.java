@@ -3,6 +3,7 @@ package com.opamb.barotrauma.blockentity;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.ship.ConditionComponent;
 import com.opamb.barotrauma.ship.PowerConsumer;
+import com.opamb.barotrauma.ship.PowerGrid;
 import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
@@ -45,7 +46,7 @@ public class EngineBlockEntity extends BlockEntity
     private BlockPos boundBox;
     /** 耐久：原作 engine 0.125/s，延迟 120–300s，阈值 80%。 */
     private final ConditionComponent condition =
-            new ConditionComponent(100.0D, 0.125D, 120, 300, 0.0D, 80.0D);
+            new ConditionComponent(100.0D, 0.125D, 120, 300, 0.0D, 0.8D);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public EngineBlockEntity(BlockPos pos, BlockState state) {
@@ -89,7 +90,13 @@ public class EngineBlockEntity extends BlockEntity
         double force = ship.throttled() ? ship.power() : 0.0D;
         double demand = MAX_POWER_KW * Math.pow(Math.max(0.0D, force) / 100.0D, 1.5D)
                 * be.condition.powerPenalty();
-        be.condition.tick(server, force > 0.1D);
+        // 耐久：只有在“有油门且上一 tick 确实拿到电”时才劣化；
+        // 光看目标推力的话，全船停电时没转的引擎也会掉耐久。
+        boolean running = force > 0.1D
+                && PowerGrid.canRun(be.lastSupply, be.minVoltage());
+        if (be.condition.tick(server, running)) {
+            be.setChanged();
+        }
         if (be.condition.broken()) {
             be.lastForce = 0.0D;
             be.lastDemandKw = 0.0D;

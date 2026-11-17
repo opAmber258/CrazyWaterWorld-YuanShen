@@ -72,7 +72,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
     private double alarmTimer;
     /** 耐久：原作 reactor deteriorationspeed=0.125，延迟 120–720s，阈值 50%。 */
     private final ConditionComponent condition =
-            new ConditionComponent(100.0D, 0.125D, 120, 720, 10.0D, 50.0D);
+            new ConditionComponent(100.0D, 0.125D, 120, 720, 10.0D, 0.5D);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public ReactorBlockEntity(BlockPos pos, BlockState state) {
@@ -135,7 +135,9 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         be.lastLoadKw = load;
 
         // 耐久：反应堆开机时自然劣化；耐久归零直接停机，不再发电。
-        be.condition.tick(server, be.state.powerOn());
+        if (be.condition.tick(server, be.state.powerOn())) {
+            be.setChanged();
+        }
         if (be.condition.broken()) {
             be.state.setPowerOn(false);
             be.lastRatio = 0.0D;

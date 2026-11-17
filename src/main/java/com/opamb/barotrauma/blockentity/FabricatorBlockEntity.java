@@ -53,7 +53,7 @@ public class FabricatorBlockEntity extends BlockEntity
 
     private final NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
     private final ConditionComponent condition =
-            new ConditionComponent(100.0D, 0.0D, 60, 120, 0.0D, 80.0D);
+            new ConditionComponent(100.0D, 0.0D, 60, 120, 0.0D, 0.8D);
 
     private String recipeId;
     /** 剩余要做的件数（原作 Fabricator 的 AmountToFabricate 队列）。 */
@@ -68,6 +68,9 @@ public class FabricatorBlockEntity extends BlockEntity
     private boolean powerAvailable;
     private double lastVoltage;
     private BlockPos boundBox;
+    /** 缓存的船状态 + 重扫冷却：stateNear 每次要翻 9×9 区块，不能每 tick 扫。 */
+    private ShipState cachedShip;
+    private int shipCacheTicks;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public FabricatorBlockEntity(BlockPos pos, BlockState state) {
@@ -85,7 +88,7 @@ public class FabricatorBlockEntity extends BlockEntity
         if (!(level instanceof ServerLevel server) || be.isRemoved()) {
             return;
         }
-        ShipState ship = resolveShip(server, pos);
+        ShipState ship = be.resolveShip(server, pos);
         if (ship == null) {
             be.powered = false;
             be.powerAvailable = false;
@@ -324,6 +327,7 @@ public class FabricatorBlockEntity extends BlockEntity
             }
         }
         var bag = com.opamb.barotrauma.equipment.BagManager.container(player);
+        boolean bagChanged = false;
         for (int i = 0; i < bag.getContainerSize() && amount > 0; i++) {
             ItemStack stack = bag.getItem(i);
             if (stack.isEmpty() || !stack.is(FabricatorData.item(ingredient.itemId()))) {
@@ -332,9 +336,15 @@ public class FabricatorBlockEntity extends BlockEntity
             int take = Math.min(amount, stack.getCount());
             stack.shrink(take);
             amount -= take;
+            bagChanged = true;
             if (stack.isEmpty()) {
                 bag.setItem(i, ItemStack.EMPTY);
             }
+        }
+        if (bagChanged) {
+            // 只 shrink 不落盘的话，换下再穿回背包会按旧 NBT 恢复整堆材料；
+            // BagContainer.setChanged() 会把当前内容写回背包 NBT。
+            bag.setChanged();
         }
     }
 
@@ -404,16 +414,25 @@ public class FabricatorBlockEntity extends BlockEntity
         return RepairTarget.Tool.WRENCH;
     }
 
-    private static ShipState resolveShip(ServerLevel level, BlockPos pos) {
+    private ShipState resolveShip(ServerLevel level, BlockPos pos) {
         if (VsState.active() && VsPilot.isYardBlock(pos)) {
             return VsState.activeState();
         }
         // 船状态不存档：世界重开后第一次 tick 靠自己补扫，不能等玩家去开电力面板。
-        return ShipCores.stateNear(level, pos, 64.0D);
+        // stateNear 会翻 9×9 区块，缓存 1 秒；核心被拆/换船时最多 1 秒后自动失效。
+        if (cachedShip != null && shipCacheTicks > 0) {
+            shipCacheTicks--;
+            return cachedShip;
+        }
+        shipCacheTicks = 20;
+        cachedShip = ShipCores.stateNear(level, pos, 64.0D);
+        return cachedShip;
     }
 
     private static BlockPos assemblyPos(ServerLevel level, BlockPos pos) {
-        if (!VsState.active()) {
+        // 只有当前船坞里的方块才做装配坐标换算；别的船/普通世界的机器原样返回，
+        // 否则会减掉活动船的船坞偏移，tracksHullBlock 检查错位置。
+        if (!VsState.active() || !VsPilot.isYardBlock(pos)) {
             return pos;
         }
         return VsPilot.toAssembly(pos);

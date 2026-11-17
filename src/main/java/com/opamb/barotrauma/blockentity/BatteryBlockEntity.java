@@ -235,7 +235,8 @@ public class BatteryBlockEntity extends BlockEntity
             return VsState.activeState();
         }
         // 船状态不存档：世界重开后第一次 tick 靠自己补扫，不能等玩家去开电力面板。
-        return ShipCores.stateNear(level, pos, 32.0D);
+        // 两艘船靠近时最近核心可能属于另一艘船，按船体几何归属选。
+        return ShipCores.stateOwning(level, pos, 32.0D);
     }
 
     @Override

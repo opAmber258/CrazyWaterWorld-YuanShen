@@ -301,6 +301,21 @@ public final class MissionCargo {
     }
 
     /**
+     * 按给定锚点找货架（起航交付用）。
+     *
+     * <p>未装配时 {@link #coreWorld(ServerLevel)} 是 null，离线订单又没有玩家
+     * 位置可用；起航流程手里只有潜艇锚点，用它在附近找核心。</p>
+     */
+    public static List<CabinetBlockEntity> shelvesNear(ServerLevel level, BlockPos anchor) {
+        List<CabinetBlockEntity> assembled = assembledShelves(level);
+        if (assembled != null) {
+            return assembled;
+        }
+        ShipCoreBlockEntity core = ShipCores.nearestCore(level, anchor, 64.0D);
+        return core == null ? List.of() : shelvesOf(level, core, BlockPos.ZERO);
+    }
+
+    /**
      * 装配后的货架：方块被 VS2 搬到船坞，船核心的几何仍是装配时的世界坐标，
      * 所以按“船坞核心 − 装配核心”的平移去读船坞里的方块实体。
      *
@@ -358,6 +373,17 @@ public final class MissionCargo {
         Vec3 ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
         Vec3 offset = com.opamb.barotrauma.ship.vs.VsPilot.shipCoreOffset();
         return ship != null && offset != null ? ship.add(offset) : null;
+    }
+
+    /** 按给定锚点找船核心世界坐标（起航交付、未装配潜艇用）。 */
+    @Nullable
+    public static Vec3 coreWorldNear(ServerLevel level, BlockPos anchor) {
+        Vec3 world = coreWorld(level);
+        if (world != null) {
+            return world;
+        }
+        ShipCoreBlockEntity core = ShipCores.nearestCore(level, anchor, 64.0D);
+        return core == null ? null : Vec3.atCenterOf(core.getBlockPos());
     }
 
     /** 散箱落点：停泊时掉在货架顶上，出航（物理船装配）时掉在玩家脚边。 */

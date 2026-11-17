@@ -59,7 +59,7 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     private ShipState state;
     /** 导航终端/声纳台的耐久：原作 command 0.125/s，延迟 180–720s，阈值 80%。 */
     private final ConditionComponent condition =
-            new ConditionComponent(100.0D, 0.125D, 180, 720, 0.0D, 80.0D);
+            new ConditionComponent(100.0D, 0.125D, 180, 720, 0.0D, 0.8D);
     /** 绑定的接线盒；null = 默认总线。 */
     @Nullable
     private BlockPos boundBox;
@@ -156,7 +156,10 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
         }
         be.lastTickGameTime = now;
         // 导航/声纳核心耐久：船在运行时缓慢劣化；0 时只影响终端，不阻断船体模拟。
-        be.condition.tick(level, be.state != null, 0.1D);
+        // 定时状态包不能替代存档标脏：自然劣化也要 setChanged。
+        if (be.condition.tick(level, be.state != null, 0.1D)) {
+            be.setChanged();
+        }
         // 这艘船的方块是不是已经被收进 VS2 刚体了。方块进刚体之后并没有消失，
         // 而是被搬到船坞区块里、**仍然在 tick**——所以这里必须显式停手，否则：
         //   · tickMovement 会把船坞里的方块自己搬来搬去，和物理那套叠在一起

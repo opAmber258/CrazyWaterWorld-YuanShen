@@ -50,6 +50,8 @@ public class RepairMenu extends AbstractContainerMenu {
 
     /** QTE 冷却：原作 0.5 秒 = 10 tick。 */
     private static final int QTE_COOLDOWN_TICKS = 10;
+    /** 原作 QteDuration：指针从右端扫回左端 0.5 秒。 */
+    private static final float QTE_DURATION = 0.5F;
     private static final double MAX_DISTANCE_SQ = 8.0D * 8.0D;
 
     private final BlockPos pos;
@@ -59,6 +61,8 @@ public class RepairMenu extends AbstractContainerMenu {
     private RepairTarget target;
     private boolean repairing;
     private int qteCooldown;
+    /** 服务端自己维护的 QTE 指针时间（秒）；不信任客户端提交的 marker。 */
+    private float qteTimer = QTE_DURATION;
 
     public RepairMenu(int id, Inventory inventory, FriendlyByteBuf buf) {
         this(id, inventory, buf.readBlockPos());
@@ -70,11 +74,13 @@ public class RepairMenu extends AbstractContainerMenu {
         if (inventory.player.level() instanceof ServerLevel level) {
             this.owner = inventory.player;
             this.target = RepairActionPacket.find(level, pos);
-            RepairTarget handle = this.target;
             Player player = this.owner;
             this.data = new ContainerData() {
                 @Override
                 public int get(int index) {
+                    // 每次读当前目标，不缓存构造时的实例：设备被拆掉/换新后
+                    // 同步数据必须跟着校验后的 target 走。
+                    RepairTarget handle = target;
                     if (handle == null) {
                         return switch (index) {
                             case DATA_MAX, DATA_CONDITION -> 10000;
@@ -137,9 +143,27 @@ public class RepairMenu extends AbstractContainerMenu {
         }
         if (qteCooldown > 0) {
             qteCooldown--;
+            if (qteCooldown == 0) {
+                qteTimer = QTE_DURATION;
+            }
+        } else {
+            // 指针扫回左端：指数衰减，和客户端动画同一公式。
+            qteTimer -= (1.0F / 20.0F) * (qteTimer / QTE_DURATION);
+            if (qteTimer < 0.0F) {
+                qteTimer = QTE_DURATION;
+            }
         }
+        RepairTarget current = RepairActionPacket.find(level, pos);
         if (target == null) {
-            target = RepairActionPacket.find(level, pos);
+            target = current;
+        } else if (current != target) {
+            // 设备被拆掉或同位置换了一台：关闭窗口，别继续修旧/新实例。
+            repairing = false;
+            target = null;
+            if (owner instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                serverPlayer.closeContainer();
+            }
+            return;
         }
         RepairTarget handle = target;
         if (handle == null) {
@@ -176,6 +200,8 @@ public class RepairMenu extends AbstractContainerMenu {
             return;
         }
         repairing = true;
+        qteTimer = QTE_DURATION;
+        qteCooldown = 0;
     }
 
     /**
@@ -188,12 +214,16 @@ public class RepairMenu extends AbstractContainerMenu {
         if (owner == null || target == null || !repairing) {
             return;
         }
+        // 指针位置由服务端自己算：客户端提交的 marker 可以被改包伪造（CWE-602），
+        // 否则每 10 tick 发一次 0 就能无脑拿到 QTE 加成。
         if (qteCooldown > 0) {
+            // 原作：冷却中乱点会把指针打回右端。
+            qteTimer = QTE_DURATION;
             return;
         }
         qteCooldown = QTE_COOLDOWN_TICKS;
-        float clamped = Math.max(0.0F, Math.min(1.0F, marker));
-        if (clamped <= target.conditionFraction()) {
+        float serverMarker = Math.max(0.0F, Math.min(1.0F, qteTimer / QTE_DURATION));
+        if (serverMarker <= target.conditionFraction()) {
             target.applyRepair(target.qteBoostPoints());
         }
     }
@@ -217,7 +247,20 @@ public class RepairMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player player) {
         Vec3 center = RepairActionPacket.worldCenter(player.level(), pos);
-        return center != null && player.distanceToSqr(center) <= MAX_DISTANCE_SQ;
+        if (center == null || player.distanceToSqr(center) > MAX_DISTANCE_SQ) {
+            return false;
+        }
+        if (player.level().isClientSide) {
+            return true;
+        }
+        if (!(player.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        // 服务端：缓存目标必须仍是当前位置解析到的同一台设备。
+        return target != null
+                && !(target instanceof net.minecraft.world.level.block.entity.BlockEntity be
+                        && be.isRemoved())
+                && RepairActionPacket.find(level, pos) == target;
     }
 
     @Override

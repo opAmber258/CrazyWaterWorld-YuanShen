@@ -497,7 +497,7 @@
   "clinic.price_changed": "治疗价格已变化，请重新确认",
   "clinic.not_enough": "治疗需要 %s mk，余额不足（当前 %s）",
   "clinic.failed_refund": "治疗失败（已退款）",
-  "clinic.healed": "治疗完成，共 %s 项（-%s mk）"
+  "clinic.healed": "治疗完成，共 %s 项（-%s mk）",
   "gui.barotrauma.repair": "修理",
   "gui.barotrauma.fabricator.category.all": "全部",
   "gui.barotrauma.fabricator.category.material": "材料",

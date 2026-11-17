@@ -119,6 +119,27 @@ public final class ShipCores {
     }
 
     /**
+     * 找几何真正包含 {@code cell} 的船。
+     *
+     * <p>{@link #stateNear} 只看核心距离：两艘船并排时，A 船设备可能离 B 船核心更近，
+     * 取到 B 的几何后 {@code tracksHullBlock} 校验失败，设备就停止上报。这里遍历
+     * 附近核心，逐个检查几何归属，找不到再返回 null。</p>
+     */
+    @Nullable
+    public static ShipState stateOwning(Level level, BlockPos cell, double maxDistance) {
+        for (ShipCoreBlockEntity core : coresNear(level, cell, maxDistance)) {
+            ShipState state = core.state();
+            if (state == null) {
+                state = core.rescan(level);
+            }
+            if (state != null && state.tracksHullBlock(cell)) {
+                return state;
+            }
+        }
+        return null;
+    }
+
+    /**
      * 解析"我所在的船"：先看提示坐标上是不是真有核心（船没动时最准），
      * 船正在开、核心已经挪走时退回"离玩家最近的核心"。
      */

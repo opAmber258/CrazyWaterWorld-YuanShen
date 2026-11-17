@@ -33,9 +33,10 @@ function decodePNG(buf) {
     const cur = Buffer.alloc(w * ch);
     for (let i = 0; i < w * ch; i++) {
       const x = line[i];
-      const a = i % ch >= 1 ? cur[i - 1] : 0;
+      // PNG 预测按“同一通道”的左邻像素：a/c 都用 i - ch，不是 i - 1。
+      const a = i >= ch ? cur[i - ch] : 0;
       const b = prev[i];
-      const c = (y > 0 && i % ch >= 1) ? prev[i - ch] : 0;
+      const c = (y > 0 && i >= ch) ? prev[i - ch] : 0;
       let v;
       if (f === 0) v = x;
       else if (f === 1) v = x + a;

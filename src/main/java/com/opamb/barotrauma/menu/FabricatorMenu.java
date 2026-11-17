@@ -3,8 +3,6 @@ package com.opamb.barotrauma.menu;
 import com.opamb.barotrauma.blockentity.FabricatorBlockEntity;
 import com.opamb.barotrauma.equipment.BagManager;
 import com.opamb.barotrauma.equipment.BagSlots;
-import com.opamb.barotrauma.fabricator.FabricatorCatalog;
-import com.opamb.barotrauma.fabricator.FabricatorData;
 import com.opamb.barotrauma.registry.ModMenus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -43,9 +41,6 @@ public class FabricatorMenu extends AbstractContainerMenu {
     /** 耐久 × 10。 */
     public static final int DATA_CONDITION = 3;
     public static final int DATA_COUNT = 4;
-
-    /** 取消制作。 */
-    public static final int BUTTON_CANCEL = 99;
 
     /** 玩家主物品栏 27 格的菜单位置（这 27 格会被换成装备背包 + 禁用占位）。 */
     public static final int INV_START = MACHINE_SLOTS;
@@ -144,28 +139,21 @@ public class FabricatorMenu extends AbstractContainerMenu {
         return pos;
     }
 
-    @Override
-    public boolean clickMenuButton(Player player, int id) {
-        if (serverMachine == null) {
-            return false;
-        }
-        if (id == BUTTON_CANCEL) {
-            serverMachine.cancel();
-            return true;
-        }
-        // id = 配方下标 + 数量 × 1000（原作 AmountToFabricate 1..99）
-        int amount = Math.max(1, id / 1000);
-        int index = id % 1000;
-        if (index < 0 || index >= FabricatorData.catalog().recipes().size()) {
-            return false;
-        }
-        FabricatorCatalog.Recipe recipe = FabricatorData.catalog().recipes().get(index);
-        return serverMachine.start(player, recipe, amount);
-    }
+    // 制作/取消走 FabricatorActionPacket：原版按钮编号是 writeByte，
+    // 配方下标 + 数量 × 1000 会被截断，不能再用 clickMenuButton。
 
     @Override
     public boolean stillValid(Player player) {
-        return player.distanceToSqr(Vec3.atCenterOf(pos)) <= 64.0D;
+        if (player.distanceToSqr(Vec3.atCenterOf(pos)) > 64.0D) {
+            return false;
+        }
+        if (player.level().isClientSide) {
+            return true;
+        }
+        // 服务端：机器被拆掉或同位置换了一台时关闭菜单，
+        // 否则槽位继续引用已移除的实体，放进去的物品关窗后会丢。
+        return serverMachine != null && !serverMachine.isRemoved()
+                && player.level().getBlockEntity(pos) == serverMachine;
     }
 
     @Override

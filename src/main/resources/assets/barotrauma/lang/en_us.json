@@ -497,7 +497,7 @@
   "clinic.price_changed": "Treatment price changed; please confirm again",
   "clinic.not_enough": "Treatment costs %s mk; not enough credits (you have %s)",
   "clinic.failed_refund": "Treatment failed (refunded)",
-  "clinic.healed": "Treated %s conditions (-%s mk)"
+  "clinic.healed": "Treated %s conditions (-%s mk)",
   "gui.barotrauma.repair": "Repair",
   "gui.barotrauma.fabricator.category.all": "All",
   "gui.barotrauma.fabricator.category.material": "Materials",

@@ -246,13 +246,21 @@ public final class ModShipBlocks {
 
     /** 纯设备格：单独放在房间里时不能当作"船体连通块"的起点。 */
     public static boolean isEquipment(BlockState state) {
-        // 独立设备/家具（接线盒、各种泵、柜子）连成的小块离核心更近时，
-        // 不能抢走真正的船壳连通块；它们仍在船壳包围盒内时记进 equipment。
+        // 舱内独立设备/家具（接线盒、各种泵、电池、加工台、解构仪、反应堆、
+        // 引擎、声纳、导航台、柜子）：单独成块且离核心更近时，不能抢走真正的
+        // 船壳连通块；它们仍在船壳包围盒内时记进 equipment。
         Block block = state.getBlock();
         return block == ModBlocks.JUNCTION_BOX.get()
                 || block == ModBlocks.SMALL_PUMP.get()
                 || block == ModBlocks.DRAIN_PUMP.get()
                 || block == ModBlocks.BALLAST_PUMP.get()
+                || block == ModBlocks.BATTERY.get()
+                || block == ModBlocks.FABRICATOR.get()
+                || block == ModBlocks.DECONSTRUCTOR.get()
+                || block == ModBlocks.REACTOR.get()
+                || block == ModBlocks.ENGINE.get()
+                || block == SONAR.get()
+                || block == NAVIGATION_TERMINAL.get()
                 || block == ModBlocks.MEDIUM_STEEL_CABINET.get()
                 || block == ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get()
                 || block == ModBlocks.CRATE_SHELF.get()

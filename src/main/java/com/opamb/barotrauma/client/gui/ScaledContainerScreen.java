@@ -67,6 +67,20 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
     }
 
     /**
+     * 按设计坐标开裁剪（和 {@link ScaledScreen} 同一套换算）。
+     *
+     * <p>原版 {@code enableScissor} 不认 PoseStack 的缩放，容器界面里的
+     * 滚动列表也要先把设计矩形换算成屏幕像素。</p>
+     */
+    protected void enableDesignScissor(GuiGraphics graphics, int x1, int y1, int x2, int y2) {
+        graphics.enableScissor(
+                Math.round(panelX + x1 * uiScale),
+                Math.round(panelY + y1 * uiScale),
+                Math.round(panelX + x2 * uiScale),
+                Math.round(panelY + y2 * uiScale));
+    }
+
+    /**
      * 双手格箱子弹窗的展开方向，照原作 {@code CharacterInventory.CreateSlots}：
      * {@code SubInventoryDir = Math.Sign(screenH/2 - slotCenterY)}——槽位在屏幕下半边
      * 就向上弹（-1），在上半边就向下弹（+1）。

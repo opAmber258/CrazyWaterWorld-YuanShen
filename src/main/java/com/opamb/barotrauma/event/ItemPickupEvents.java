@@ -98,8 +98,10 @@ public final class ItemPickupEvents {
     /** 掉落物不超时消失（等价于原作里物件永久存在）。 */
     @SubscribeEvent
     public static void onItemExpire(ItemExpireEvent event) {
-        // 每次寿命到期都续 5 分钟，相当于永不消失。
+        // Forge 只在事件被取消时才采用 extraLife（未取消直接返回 -1 丢弃），
+        // 所以续命和取消必须成对调用。
         event.setExtraLife(6000);
+        event.setCanceled(true);
     }
 
     private enum Pickup { PICKED, EMPTY, FAILED }

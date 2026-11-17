@@ -234,9 +234,9 @@ public final class StoreService {
         if (pending.isEmpty()) {
             return;
         }
-        List<ContainerSlot> containers = cargoContainers(level);
-        Map<String, Integer> remaining = deliverPendingFor(level, player.getUUID(), pending,
-                player, containers);
+        List<ContainerSlot> containers = cargoContainers(level, shipAnchor);
+        Map<String, Integer> remaining = deliverPendingFor(level, shipAnchor, player.getUUID(),
+                pending, player, containers);
         if (!remaining.isEmpty()) {
             data.restore(player.getUUID(), remaining);
         }
@@ -258,7 +258,7 @@ public final class StoreService {
         if (pending.isEmpty()) {
             return;
         }
-        List<ContainerSlot> containers = cargoContainers(level);
+        List<ContainerSlot> containers = cargoContainers(level, shipAnchor);
         Map<UUID, ServerPlayer> onlineById = new LinkedHashMap<>();
         for (ServerPlayer player : online) {
             onlineById.put(player.getUUID(), player);
@@ -266,8 +266,8 @@ public final class StoreService {
         for (Map.Entry<UUID, Map<String, Integer>> entry : pending.entrySet()) {
             UUID owner = entry.getKey();
             ServerPlayer player = onlineById.get(owner);
-            Map<String, Integer> remaining = deliverPendingFor(level, owner, entry.getValue(),
-                    player, containers);
+            Map<String, Integer> remaining = deliverPendingFor(level, shipAnchor, owner,
+                    entry.getValue(), player, containers);
             if (!remaining.isEmpty()) {
                 data.restore(owner, remaining);
             }
@@ -281,7 +281,8 @@ public final class StoreService {
      *               装不下的留在待交付列表，下次起航再试）
      * @return 送不出去的剩余（调用方负责 {@link StoreDeliverySavedData#restore}）
      */
-    private static Map<String, Integer> deliverPendingFor(ServerLevel level, UUID owner,
+    private static Map<String, Integer> deliverPendingFor(ServerLevel level, BlockPos shipAnchor,
+                                                          UUID owner,
                                                           Map<String, Integer> items,
                                                           @Nullable ServerPlayer player,
                                                           List<ContainerSlot> containers) {
@@ -303,12 +304,12 @@ public final class StoreService {
                 boolean placed = deliverToShip(containers, unit);
                 if (!placed && player != null && !isBulkyCargo(unit)) {
                     // 原作有 cargocontaineridentifier 的小件：没有/放不下箱子时就生成一个金属箱。
-                    placed = spawnCargoCrate(player, unit, containers);
+                    placed = spawnCargoCrate(level, shipAnchor, player, unit, containers);
                 }
                 if (!placed && player != null) {
                     // 原作：箱子放不下就留在潜艇货舱地上。离线交付没有落点，留待下次起航。
-                    dropInShip(player, unit);
-                    placed = true;
+                    // 实体生成可能被 EntityJoinLevelEvent 取消，只有真的进世界才算交付。
+                    placed = dropInShip(level, shipAnchor, player, unit);
                 }
                 if (!placed) {
                     remaining.merge(entry.getKey(), 1, Integer::sum);
@@ -321,7 +322,7 @@ public final class StoreService {
             }
         }
         // 货架上的箱子内容改了：刷新方块实体，客户端列表才会更新。
-        for (CabinetBlockEntity shelf : MissionCargo.shelves(level)) {
+        for (CabinetBlockEntity shelf : MissionCargo.shelvesNear(level, shipAnchor)) {
             shelf.setChanged();
         }
         if (player != null) {
@@ -391,21 +392,26 @@ public final class StoreService {
      * 所以钢柜/衣柜这些不算——之前的实现把全船钢柜都当货舱，买的东西直接塞柜子里，
      * 和原作行为不一致。</p>
      */
-    private static List<ContainerSlot> cargoContainers(ServerLevel level) {
+    private static List<ContainerSlot> cargoContainers(ServerLevel level, BlockPos shipAnchor) {
         List<ContainerSlot> out = new ArrayList<>();
-        // 1) 货架上摆着的箱子。
-        for (CabinetBlockEntity shelf : MissionCargo.shelves(level)) {
+        // 1) 货架上摆着的箱子。未装配时没有物理船位置，按起航锚点找核心。
+        for (CabinetBlockEntity shelf : MissionCargo.shelvesNear(level, shipAnchor)) {
             for (int i = 0; i < shelf.getContainerSize(); i++) {
                 addCrateSlots(out, shelf.getItem(i));
             }
         }
         // 2) 货舱地上躺着的箱子（物理船的箱子跟着船在世界坐标里）。
-        Vec3 center = MissionCargo.coreWorld(level);
+        Vec3 center = MissionCargo.coreWorldNear(level, shipAnchor);
         if (center != null) {
             double radius = 48.0D;
             AABB area = new AABB(center.x - radius, center.y - radius, center.z - radius,
                     center.x + radius, center.y + radius, center.z + radius);
             for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, area)) {
+                // 只复用已经钉住跟船的箱子：没标记的箱子不会跟着潜艇走，
+                // 货装进去后船一开就留在原地。
+                if (!entity.getPersistentData().getBoolean(MissionCargo.TAG_PINNED)) {
+                    continue;
+                }
                 addCrateSlots(out, entity.getItem());
             }
         }
@@ -438,19 +444,26 @@ public final class StoreService {
      * 货舱里没有能装的箱子时，照原作 {@code GetOrCreateCargoContainerFor} 生成一个金属箱，
      * 把货装进去后再丢到货舱地上；一个都没装下（箱子类大件）就不生成空箱。
      */
-    private static boolean spawnCargoCrate(ServerPlayer player, ItemStack stack,
+    private static boolean spawnCargoCrate(ServerLevel level, BlockPos shipAnchor,
+                                           ServerPlayer player, ItemStack stack,
                                            List<ContainerSlot> slots) {
+        ItemStack original = stack.copy();
         ItemStack crateStack = new ItemStack(ModItems.METAL_CRATE.get());
         CrateContainer container = new CrateContainer(crateStack,
                 ((CrateItem) crateStack.getItem()).capacity());
         if (!tryPutInRange(container, 0, container.getContainerSize(), stack)) {
             return false;
         }
-        Vec3 drop = cargoDropPoint(player);
-        ItemEntity entity = new ItemEntity(player.serverLevel(), drop.x, drop.y, drop.z, crateStack);
+        Vec3 drop = cargoDropPoint(level, shipAnchor, player);
+        ItemEntity entity = new ItemEntity(level, drop.x, drop.y, drop.z, crateStack);
         entity.setDefaultPickUpDelay();
         pinToShip(entity);
-        player.serverLevel().addFreshEntity(entity);
+        // 生成可能被 EntityJoinLevelEvent 取消：只有真的进世界才登记槽位。
+        if (!level.addFreshEntity(entity)) {
+            // 货物已经被搬进这个没生成的箱子：还回原堆，让调用方走“落地”分支。
+            stack.setCount(original.getCount());
+            return false;
+        }
         for (int i = 0; i < container.getContainerSize(); i++) {
             slots.add(new ContainerSlot(container, i));
         }
@@ -458,27 +471,28 @@ public final class StoreService {
     }
 
     /** 货舱落点：物理船掉玩家脚边，普通船掉货架顶/船核心上。 */
-    private static Vec3 cargoDropPoint(ServerPlayer player) {
-        ServerLevel level = player.serverLevel();
+    private static Vec3 cargoDropPoint(ServerLevel level, BlockPos shipAnchor,
+                                       ServerPlayer player) {
         if (VsState.active()) {
             // 物理船货架方块在船坞坐标系里，世界坐标不能用；直接掉在玩家脚边。
             return player.position().add(0.0D, 0.2D, 0.0D);
         }
-        for (CabinetBlockEntity shelf : MissionCargo.shelves(level, player)) {
+        for (CabinetBlockEntity shelf : MissionCargo.shelvesNear(level, shipAnchor)) {
             BlockPos pos = shelf.getBlockPos();
             return new Vec3(pos.getX() + 0.5D, pos.getY() + 1.05D, pos.getZ() + 0.5D);
         }
-        Vec3 core = MissionCargo.coreWorld(level, player);
+        Vec3 core = MissionCargo.coreWorldNear(level, shipAnchor);
         return core != null ? core : player.position().add(0.0D, 0.2D, 0.0D);
     }
 
     /** 货舱容器都满了：把货丢在货舱地上（原作也是留在货舱地上）。 */
-    private static void dropInShip(ServerPlayer player, ItemStack stack) {
-        Vec3 drop = cargoDropPoint(player);
-        ItemEntity entity = new ItemEntity(player.serverLevel(), drop.x, drop.y, drop.z, stack.copy());
+    private static boolean dropInShip(ServerLevel level, BlockPos shipAnchor,
+                                      ServerPlayer player, ItemStack stack) {
+        Vec3 drop = cargoDropPoint(level, shipAnchor, player);
+        ItemEntity entity = new ItemEntity(level, drop.x, drop.y, drop.z, stack.copy());
         entity.setDefaultPickUpDelay();
         pinToShip(entity);
-        player.serverLevel().addFreshEntity(entity);
+        return level.addFreshEntity(entity);
     }
 
     /**
