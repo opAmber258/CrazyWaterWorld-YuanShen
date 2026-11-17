@@ -403,8 +403,10 @@ public final class MedicalEvents {
             lastSyncSignatures.put(player.getUUID(), signature);
             ModNetwork.sendToPlayer(player, new MedicalSyncPacket(player.getUUID(),
                     container.rows().toArray(String[]::new), (float) raw, downed));
-            // 诊断：确认包真的发出去了、发的是什么（排查"健康栏看不到"）
-            BarotraumaMod.LOGGER.info("[medical-diag] 同步 -> {} rows={} raw={}",
+            // 诊断：确认包真的发出去了、发的是什么（排查"健康栏看不到"）。
+            // 用 DEBUG：创造模式分支每秒都清签名重置 → 每秒都会走到这里，
+            // 用 INFO 会让每个创造模式玩家每小时刷 3600 行（CodeRabbit 指出）。
+            BarotraumaMod.LOGGER.debug("[medical-diag] 同步 -> {} rows={} raw={}",
                     player.getName().getString(), container.rows(), String.format("%.1f", raw));
         }
     }

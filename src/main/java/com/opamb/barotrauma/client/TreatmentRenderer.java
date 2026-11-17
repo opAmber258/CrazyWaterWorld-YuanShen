@@ -89,10 +89,26 @@ public final class TreatmentRenderer {
         }
     }
 
-    /** 严重度比例：**按实际 vitality 消耗占比**（消耗点数/100），而非强度/上限——
-     *  这样"出血 5 = 半条血"才会显示黄色而不是误导性的绿色（用户实测反馈 #3）。 */
+    /**
+     * 严重度比例（0–1）——身体图着色与文案配色都用它。
+     *
+     * <p>**优先按实际 vitality 消耗占比**（消耗点数/100），这样"出血 5 = 半条血"才会显示
+     * 黄色而不是误导性的绿色（用户实测反馈 #3）。</p>
+     *
+     * <p>消耗为 0 的病症（辐射病各段、缺氧 50 以下预警段）退回"强度占上限的比例"——
+     * 否则它们在面板里永远是 0、显示成健康绿，胸口不变色（CodeRabbit 指出）。
+     * 规则与 {@link MedicalBodyRenderer#severityRatio} 一致，两处不要各写一套。</p>
+     *
+     * <p>注意 `vitalityDecrease` 返回的是**每 100 点活力的消耗**（有的类型已乘上限、
+     * 有的是原始点数），所以必须**先除以 100 再截断**——先 min 会让 5 点变成满格红。</p>
+     */
     public static double severityRatio(AfflictionType type, double strength) {
-        return Math.min(1.0, type.vitalityDecrease(strength, 100.0) / 100.0);
+        double drain = type.vitalityDecrease(strength, 100.0);
+        if (drain > 0.0) {
+            return Math.min(1.0, drain / 100.0);
+        }
+        double max = type.maxStrength();
+        return max <= 0.0 ? 0.0 : Math.min(1.0, Math.max(0.0, strength / max));
     }
 
     /**

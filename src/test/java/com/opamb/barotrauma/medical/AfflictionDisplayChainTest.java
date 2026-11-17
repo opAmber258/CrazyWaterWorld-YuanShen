@@ -109,6 +109,71 @@ class AfflictionDisplayChainTest {
         assertTrue(head.contains("眩晕"), "头部必须显示眩晕，实际: " + head);
     }
 
+    /**
+     * 回归（CodeRabbit）：只有辐射病（零 vitality 消耗）时，胸口必须**变色**。
+     *
+     * <p>原来 worstRatio 只按 vitality 消耗算比例，而辐射病各段消耗全为 0，
+     * 于是 worstRatio 返回 0 → 身体图用 HEALTHY 色，玩家看不出中招。
+     * 现在消耗为 0 时退回"强度占上限的比例"。</p>
+     */
+    @Test
+    void zeroDrainAfflictionStillTintsTheBody() {
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.RADIATION, null, 75);
+        List<String> rows = container.rows();
+
+        assertEquals(0.0, AfflictionType.RADIATION.vitalityDecrease(75, 100.0), 1.0E-9,
+                "前提：辐射病本身不扣 vitality（伤害由烧伤/器官损伤结算）");
+        double ratio = MedicalBodyRenderer.worstRatio(rows, Limb.TORSO);
+        assertTrue(ratio > 0.0,
+                "辐射病 75 挂在胸口时必须让胸口变色，实际 worstRatio=" + ratio);
+        // 75 / maxStrength(200) = 0.375
+        assertEquals(0.375, ratio, 1.0E-6, "退回强度/上限比例");
+    }
+
+    /** 缺氧低段（纯预警、零消耗）同样必须染色，不能显示成健康绿。 */
+    @Test
+    void lowOxygenWarningStillTintsTheBody() {
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.OXYGEN_LOW, null, 40);
+        List<String> rows = container.rows();
+
+        assertEquals(0.0, AfflictionType.OXYGEN_LOW.vitalityDecrease(40, 100.0), 1.0E-9,
+                "前提：缺氧 50 以下只是预警，不扣 vitality");
+        double ratio = MedicalBodyRenderer.worstRatio(rows, Limb.TORSO);
+        assertTrue(ratio > 0.0, "缺氧 40 必须让胸口变色，实际 worstRatio=" + ratio);
+    }
+
+    /**
+     * 有 vitality 消耗的病症仍按消耗占比着色（不能被上一条改回按强度/上限）。
+     *
+     * <p>单位澄清：Tier 里的 drain 是**分数**，{@code multiplyByMaxVitality=true} 时
+     * 返回值 = 分数 × maxVitality，出血 50 落在 40–60 段（4..6 中间）= 5 × 100 = 500。
+     * 所以消耗占比 500/100 = 5 → 截到 1.0（满格红），这是**既有行为**：
+     * 出血 50（半条强度）本来就该是满格危险色。用这个区分"按消耗"与"按强度/上限"。</p>
+     */
+    @Test
+    void drainBasedSeverityUnchangedForBleeding() {
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.BLEEDING, Limb.TORSO, 50);
+        List<String> rows = container.rows();
+        double drain = AfflictionType.BLEEDING.vitalityDecrease(50, 100.0);
+        assertEquals(500.0, drain, 1.0E-6, "出血 50 的 vitality 消耗（5 分数 × 100）");
+        assertEquals(1.0, MedicalBodyRenderer.worstRatio(rows, Limb.TORSO), 1.0E-6,
+                "消耗占比 5 截到 1.0，满格危险色");
+    }
+
+    /** 低强度出血：消耗 1 分数 × 100 = 100 → 占比正好 1.0；再低就只有部分填充。 */
+    @Test
+    void lowBleedingUsesDrainRatio() {
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.BLEEDING, Limb.TORSO, 10);
+        List<String> rows = container.rows();
+        // 出血 10 落在 0–20 段（0..2 中间）= 1 分数 → 100 点 → 1.0
+        assertEquals(100.0, AfflictionType.BLEEDING.vitalityDecrease(10, 100.0), 1.0E-6);
+        assertEquals(1.0, MedicalBodyRenderer.worstRatio(rows, Limb.TORSO), 1.0E-6);
+    }
+
     private static String joinTexts(List<MedicalBodyRenderer.DisplayLine> lines) {
         return String.join(" | ", lines.stream().map(MedicalBodyRenderer.DisplayLine::text).toList());
     }

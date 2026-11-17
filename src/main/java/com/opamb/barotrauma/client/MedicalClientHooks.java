@@ -191,6 +191,15 @@ public final class MedicalClientHooks {
                 if (teammate == null) {
                     return;
                 }
+                // 松开这一刻**重新校验距离**：holdTarget 是按住达阈值那一刻锁定的，
+                // 玩家可能在这之后走开（或队友走开）。不重验就会打开一个服务端会拒绝
+                // 所有请求的空面板（CodeRabbit 指出）。
+                if (!isWithinTreatRange(minecraft.player, teammate)) {
+                    minecraft.player.displayClientMessage(
+                            Component.literal("队友已超出 " + (int) com.opamb.barotrauma.medical.MedicalTuning.TREAT_RANGE_BLOCKS
+                                    + " 格治疗范围"), true);
+                    return;
+                }
                 minecraft.setScreen(new MedicalScreen(teammate.getUUID(),
                         teammate.getName().getString()));
             }
@@ -243,6 +252,20 @@ public final class MedicalClientHooks {
     /** 当前高亮的队友 UUID（null = 不高亮）。只在按住满 0.67 秒后非 null。 */
     public static java.util.UUID holdTargetId() {
         return holdPrimed ? holdTarget : null;
+    }
+
+    /**
+     * 两个玩家是否在治疗距离内（{@link MedicalTuning#TREAT_RANGE_SQR}）。
+     *
+     * <p>客户端与服务端用同一个常数，所以这里判 false 时服务端一定也会拒绝——
+     * 面板请求、用药、H 键选人都以此为准，避免"打开了一个永远空着的面板"。</p>
+     */
+    public static boolean isWithinTreatRange(net.minecraft.world.entity.player.Player self,
+                                            net.minecraft.world.entity.player.Player other) {
+        if (self == null || other == null || self.level() != other.level()) {
+            return false;
+        }
+        return self.distanceToSqr(other) <= com.opamb.barotrauma.medical.MedicalTuning.TREAT_RANGE_SQR;
     }
 
     /** 倒地时血条：取消原版心数，画**缓冲消耗的鲜红心**——倒地流失在血条上可见（用户指令 #7）。 */

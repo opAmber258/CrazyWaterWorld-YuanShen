@@ -80,10 +80,36 @@ public final class MedicalBodyRenderer {
         }
     }
 
-    /** 严重度比例：**按实际 vitality 消耗占比**（消耗点数/100），而非强度/上限——
-     *  这样"出血 5 = 半条血"才会显示黄色而不是误导性的绿色（用户实测反馈 #3）。 */
+    /**
+     * 严重度比例（0–1）——身体图着色与文案配色都用它。
+     *
+     * <p>**优先按实际 vitality 消耗占比**（消耗点数/100），这样"出血 5 = 半条血"才会显示
+     * 黄色而不是误导性的绿色（用户实测反馈 #3）。</p>
+     *
+     * <p>但有一类病症**完全没有 vitality 消耗**却必须可见：辐射病的各段
+     * {@code vitalityDecrease} 全是 0（伤害由它附加的烧伤/内脏损伤结算），缺氧在 50 以下
+     * 也是纯预警。若只按消耗算，这些病症在面板里永远返回 0 → 显示成"健康绿"，
+     * 胸口不会变色，玩家看不出中招。所以消耗为 0 时**退回到"强度占上限的比例"**。</p>
+     */
     public static double severityRatio(AfflictionType type, double strength) {
-        return Math.min(1.0, type.vitalityDecrease(strength, 100.0) / 100.0);
+        double byVitality = ratioFromDrain(type.vitalityDecrease(strength, 100.0));
+        if (byVitality > 0.0) {
+            return byVitality;
+        }
+        double max = type.maxStrength();
+        return max <= 0.0 ? 0.0 : Math.min(1.0, Math.max(0.0, strength / max));
+    }
+
+    /**
+     * 把 vitality 消耗折算成 0–1 比例。
+     *
+     * <p>{@link AfflictionType#vitalityDecrease} 对 {@code multiplyByMaxVitality=true} 的类型
+     * 返回**已乘过上限的点数**（出血 50 的 Tier 写的是 4..6，返回 5×100/100=5 点），
+     * 对 {@code false} 的类型返回原始点数（同样是 5 点）。两种情况都是"每 100 点活力的消耗"，
+     * 所以先除以 100 再截断——**顺序不能反**，先 {@code min(1, drain)} 会让 5 点变成满格红。</p>
+     */
+    private static double ratioFromDrain(double drain) {
+        return drain <= 0.0 ? 0.0 : Math.min(1.0, drain / 100.0);
     }
 
     /** 悬停部位的伤情文字（含该部位全部病症 + 头部指示型全身病症）；无悬停返回空列表。 */

@@ -58,9 +58,17 @@ public final class MedicalCommand {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         AfflictionContainer container = MedicalCapabilities.container(player);
         // 诊断头：先说明"现在注入会不会被清掉"，否则玩家会以为注入无效。
-        // 创造模式下没有调试器时，MedicalEvents 每秒 clear() 一次——这是设计如此。
-        boolean wiped = player.isSpectator() || player.isCreative();
-        if (wiped) {
+        //
+        // 两种模式的处理**不同**（MedicalEvents.onPlayerTick）：
+        //   - 旁观：无条件 clear()，调试器也不豁免——所以提示必须说"始终清空"，
+        //     否则会给出"放个调试器就行"的无效建议；
+        //   - 创造：只有背包里没有医疗调试器时才 clear()。
+        if (player.isSpectator()) {
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "【诊断】旁观模式 → 病症每秒被清空，医疗调试器也不豁免。"
+                            + "注入前请先切回生存模式（/gamemode survival）")
+                    .withStyle(ChatFormatting.RED), false);
+        } else if (player.isCreative()) {
             boolean hasDebugger = carriesDebugger(player);
             ctx.getSource().sendSuccess(() -> Component.literal(
                     hasDebugger

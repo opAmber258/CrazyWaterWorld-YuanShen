@@ -111,6 +111,17 @@ public final class MedicalScreen extends Screen {
             return;
         }
 
+        if (targetOutOfRange()) {
+            // 超距：服务端的快照请求会被静默丢弃，缓存里的是过期数据——不要再显示它，
+            // 也不要把旧图标留成可点击（点了服务端同样拒绝）。
+            iconRects.clear();
+            g.fill(x + 4, y + 18, x + PANEL_W - 4, y + 32, 0x80FF5A5A);
+            g.drawString(this.font, Component.literal("目标超出治疗范围（"
+                            + (int) com.opamb.barotrauma.medical.MedicalTuning.TREAT_RANGE_BLOCKS + " 格内）"),
+                    x + 7, y + 22, 0xFFFFE0E0);
+            return;
+        }
+
         if (snapshot == null) {
             // 数据还没到：面板留空即可（用户要求去掉操作提示类灰字）
             return;
@@ -129,16 +140,23 @@ public final class MedicalScreen extends Screen {
         TreatmentRenderer.draw(g, zones, snapshot.rows(), mouseX, mouseY);
 
         // ---- 身体图**正下方**：选中部位伤情（含原作各阶段文案灰字）+ 对症药品栏 ----
+        //
+        // 布局预算：PANEL_H 固定 186，底部活力行占 22。**药品栏必须固定在活力行上方**——
+        // 原来它跟着描述文字往下排，胸口同时有烧伤+缺氧+内脏损伤+辐射病（4 条病症 × 各 1-2 行
+        // 文案）时会从 y≈250 开始，在 GUI 高度 240 下整条被挤出屏幕，玩家无法用药。
+        // 现在描述区限高到药品栏上沿，装不下就截断并补省略号（CodeRabbit Major）。
+        int vitalityY = y + PANEL_H - 22;
+        int drugRowY = vitalityY - 20;
         int cy = by + 78;
-        List<DisplayLine> statusLines;
+
         if (selectedLimb != null) {
             g.drawString(this.font,
                     Component.literal(TreatmentRenderer.limbName(selectedLimb) + "："), x + 8, cy, 0xFF7FB8E8);
             cy += LINE;
-            statusLines = limbStatusLines(snapshot, selectedLimb);
             // 该部位的病症 = 分部位病症 + 指示在该部位的全身病症（原作 indicatorlimb）。
             // 缺氧/失血/辐射病/器官损伤挂在胸口，眩晕/阿片系挂在头部——玩家的直觉就是
             // 去胸口看缺氧，所以这里必须按指示部位列，不能只看 limbSpecific。
+            boolean truncated = false;
             for (AfflictionType type : AfflictionType.ALL) {
                 boolean shown;
                 double strength;
@@ -155,6 +173,11 @@ public final class MedicalScreen extends Screen {
                 if (!shown) {
                     continue;
                 }
+                // 病症标题行：放不下就整条跳过（不留半行）
+                if (cy + LINE > drugRowY) {
+                    truncated = true;
+                    break;
+                }
                 double ratio = TreatmentRenderer.severityRatio(type, strength);
                 g.drawString(this.font, Component.literal("· "
                         + TreatmentRenderer.label(type, strength)), x + 10, cy,
@@ -163,9 +186,20 @@ public final class MedicalScreen extends Screen {
                 // 原作阶段文案（灰字，自动换行不超框）
                 String desc = type.descriptionAt(strength);
                 for (String part : TreatmentRenderer.wrap(this.font, desc, PANEL_W - 24)) {
+                    if (cy + LINE > drugRowY) {
+                        truncated = true;
+                        break;
+                    }
                     g.drawString(this.font, Component.literal(part), x + 16, cy, 0xFF8A8A8A);
                     cy += LINE;
                 }
+                if (truncated) {
+                    break;
+                }
+            }
+            if (truncated) {
+                g.drawString(this.font, Component.literal("… 更多伤情见悬停提示"),
+                        x + 16, Math.max(cy, drugRowY - LINE), 0xFF6A6A72);
             }
             // 对症药品栏：并排小方框，悬停高亮，单击对该部位用药（只显示背包里真实拥有的药品）
             iconRects.clear();
@@ -181,28 +215,26 @@ public final class MedicalScreen extends Screen {
                     }
                 }
             }
-            if (drugs.isEmpty()) {
-                // 没有对症药品：不画提示语（用户要求去掉操作提示类灰字），只推进一行保持布局
-                cy += LINE;
-            } else {
+            if (!drugs.isEmpty()) {
                 int slotX = x + 10;
                 for (Item drug : drugs) {
                     boolean slotHover = mouseX >= slotX && mouseX < slotX + 18
-                            && mouseY >= cy && mouseY < cy + 18;
-                    g.fill(slotX, cy, slotX + 18, cy + 18, 0xFF1E1E26);
-                    g.fill(slotX, cy, slotX + 18, cy + 1, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX, cy + 17, slotX + 18, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX, cy, slotX + 1, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX + 17, cy, slotX + 18, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.renderItem(new ItemStack(drug), slotX + 1, cy + 1);
-                    iconRects.add(new IconRect(drug, slotX + 1, cy + 1));
+                            && mouseY >= drugRowY && mouseY < drugRowY + 18;
+                    g.fill(slotX, drugRowY, slotX + 18, drugRowY + 18, 0xFF1E1E26);
+                    g.fill(slotX, drugRowY, slotX + 18, drugRowY + 1, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    g.fill(slotX, drugRowY + 17, slotX + 18, drugRowY + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    g.fill(slotX, drugRowY, slotX + 1, drugRowY + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    g.fill(slotX + 17, drugRowY, slotX + 18, drugRowY + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    g.renderItem(new ItemStack(drug), slotX + 1, drugRowY + 1);
+                    iconRects.add(new IconRect(drug, slotX + 1, drugRowY + 1));
                     slotX += 20;
                 }
             }
         } else {
             g.drawString(this.font, Component.literal("全身状态"), x + 8, cy, 0xFF7FB8E8);
             cy += LINE;
-            statusLines = new ArrayList<>(TreatmentRenderer.globalLines(snapshot.rows()));
+            List<DisplayLine> statusLines = new ArrayList<>(
+                    TreatmentRenderer.globalLines(snapshot.rows()));
             if (snapshot.downed()) {
                 statusLines.add(new DisplayLine("⚠ 重伤倒地", 0xFFFF5A5A));
             }
@@ -210,19 +242,21 @@ public final class MedicalScreen extends Screen {
                 statusLines.add(new DisplayLine("没有伤病", 0xFF55E05A));
             }
             for (DisplayLine line : statusLines) {
+                if (cy + LINE > drugRowY) {
+                    break;
+                }
                 g.drawString(this.font, Component.literal("· " + line.text()), x + 10, cy, line.color());
                 cy += LINE;
             }
         }
 
         // ---- 底部：活力（操作提示按用户要求移除）----
-        int bottom = y + PANEL_H - 22;
         int vitalityColor = snapshot.downed() ? 0xFFFF5A5A
                 : snapshot.vitality() > 60 ? 0xFF55E05A
                 : snapshot.vitality() > 25 ? 0xFFFFD75A : 0xFFFF5A5A;
         g.drawString(this.font, Component.literal(String.format("活力 %.0f/100%s",
                         snapshot.vitality(), snapshot.downed() ? "（倒地）" : "")),
-                x + 6, bottom, vitalityColor);
+                x + 6, vitalityY, vitalityColor);
     }
 
     /** 该部位对症药品的图标点击（缺省部位=null → 全身/最强优先）。 */
@@ -239,9 +273,33 @@ public final class MedicalScreen extends Screen {
                 && (targetPlayer.isDeadOrDying() || targetPlayer.getHealth() <= 0.0F);
     }
 
+    /**
+     * 目标是否已超出治疗距离（或不在同一维度）。
+     *
+     * <p>服务端对超距的 {@link MedicalRequestPacket} **静默丢弃**，客户端于是继续画缓存里的
+     * 旧快照——玩家走开后看到的是一直不更新的过期数据，还照样能点药品（点了也没用）。
+     * 这里用与服务端同一个常数判断，超距时面板不再显示旧数据（CodeRabbit 指出）。</p>
+     */
+    private boolean targetOutOfRange() {
+        if (minecraft == null || minecraft.level == null || minecraft.player == null) {
+            return true;
+        }
+        var targetPlayer = minecraft.level.getPlayerByUUID(target);
+        if (targetPlayer == null || targetPlayer.level() != minecraft.player.level()) {
+            return true;
+        }
+        return minecraft.player.distanceToSqr(targetPlayer)
+                > com.opamb.barotrauma.medical.MedicalTuning.TREAT_RANGE_SQR;
+    }
+
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0) {
+            // 超距/死亡时不给任何操作入口（图标已在 render 里清空，这里再兜一层，
+            // 防止 render 尚未跑到的那一帧里点到过期图标）
+            if (targetOutOfRange() || targetDead()) {
+                return super.mouseClicked(mouseX, mouseY, button);
+            }
             // 1) 对症药品图标 = 用该药（作用于当前选中部位）
             for (IconRect rect : iconRects) {
                 if (mouseX >= rect.x() && mouseX < rect.x() + 16
