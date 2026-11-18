@@ -9,10 +9,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 炮塔模式下右键=开火、左键=无效。
+ * 炮塔模式下右键=瞄准、左键=开火。
  *
- * <p>直接拦 {@code startUseItem}/{@code startAttack}，否则右键还会顺手用一下
- * 脚下的炮塔方块（重新进入/摆动手臂），左键会把炮塔挖掉。</p>
+ * <p>右键按住由 {@link TurretClient} 每 tick 读 {@code keyUse} 判断，这里只拦掉
+ * {@code startUseItem}，避免顺手用一下脚下的炮塔方块（重新进入/摆动手臂）；
+ * 左键改为开火，并拦住 {@code startAttack}/{@code continueAttack}，避免把炮塔挖掉。</p>
  */
 @Mixin(Minecraft.class)
 public abstract class TurretInteractionMixin {
@@ -20,7 +21,6 @@ public abstract class TurretInteractionMixin {
     @Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
     private void barotrauma$turretUse(CallbackInfo ci) {
         if (TurretClient.isActive()) {
-            TurretClient.requestFire();
             ci.cancel();
         }
     }
@@ -28,6 +28,7 @@ public abstract class TurretInteractionMixin {
     @Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
     private void barotrauma$turretAttack(CallbackInfoReturnable<Boolean> cir) {
         if (TurretClient.isActive()) {
+            TurretClient.requestFire();
             cir.setReturnValue(false);
         }
     }
