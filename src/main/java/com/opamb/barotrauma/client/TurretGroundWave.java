@@ -70,6 +70,11 @@ final class TurretGroundWave {
         ACTIVE.add(new TurretGroundWave(minecraft.level, ground));
     }
 
+    /** 退出世界时清空，避免静态列表继续持有旧的 ClientLevel。 */
+    static void clear() {
+        ACTIVE.clear();
+    }
+
     /** 每帧推进所有地波；由炮塔相机事件统一调用，和是否还在炮塔里无关。 */
     static void tickFrame() {
         if (ACTIVE.isEmpty()) {

@@ -25,8 +25,17 @@ public abstract class TurretMouseMixin {
 
     @Inject(method = "turnPlayer", at = @At("HEAD"), cancellable = true)
     private void barotrauma$turretTurn(CallbackInfo ci) {
-        // 跟随型炮塔的视角就是普通鼠标视角，不拦截、不清增量。
-        if (!TurretClient.isActive() || TurretClient.isTracking()) {
+        if (!TurretClient.isActive()) {
+            return;
+        }
+        if (TurretClient.isTracking()) {
+            // 跟随型炮塔的视角就是普通鼠标视角，交给原版转玩家；但瞄准时要乘同一个
+            // 角度增益，否则缩放后它会比另外两种炮塔灵敏约 3 倍。
+            double scale = TurretClient.mouseAimScale();
+            if (scale < 1.0D) {
+                this.accumulatedDX *= scale;
+                this.accumulatedDY *= scale;
+            }
             return;
         }
         TurretClient.onMouseTurn(this.accumulatedDX, this.accumulatedDY);

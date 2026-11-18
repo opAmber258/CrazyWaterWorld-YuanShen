@@ -60,7 +60,9 @@ final class TurretShotFx {
             return;
         }
         long now = System.nanoTime();
-        float deltaSeconds = Mth.clamp((now - lastNanos) / 1.0E9F, 0.0F, 0.1F);
+        // 上限放到 0.25s：低帧率时仍按真实时间推进，不会让炮弹在半路变慢；
+        // 只有长时间卡顿才截断，避免一次跳完整条弹道。
+        float deltaSeconds = Mth.clamp((now - lastNanos) / 1.0E9F, 0.0F, 0.25F);
         lastNanos = now;
 
         float previous = travel;
@@ -71,7 +73,9 @@ final class TurretShotFx {
             Vec3 middle = origin.add(direction.scale((previous + travel) * 0.5D));
             boolean nowUnderwater = TurretClient.isUnderwater(middle);
             if (nowUnderwater != underwater) {
-                TurretClient.spawnSurfaceCrossing(middle);
+                // 二分找这一帧真正的水线位置，别把水花撒在段中点（长帧会偏离约 1 格）。
+                TurretClient.spawnSurfaceCrossing(
+                        findCrossing(previous, travel, nowUnderwater));
                 underwater = nowUnderwater;
             }
             float spacing = underwater ? WATER_SPACING : AIR_SPACING;
@@ -101,5 +105,19 @@ final class TurretShotFx {
             active = false;
             impact = null;
         }
+    }
+
+    /** 在 from…to 之间二分介质切换点；这一段里最多穿一次水面。 */
+    private Vec3 findCrossing(float from, float to, boolean targetUnderwater) {
+        for (int i = 0; i < 6; i++) {
+            float middle = (from + to) * 0.5F;
+            Vec3 point = origin.add(direction.scale(middle));
+            if (TurretClient.isUnderwater(point) == targetUnderwater) {
+                to = middle;
+            } else {
+                from = middle;
+            }
+        }
+        return origin.add(direction.scale((from + to) * 0.5D));
     }
 }

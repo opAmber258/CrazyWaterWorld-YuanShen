@@ -57,14 +57,16 @@ mex:
    `ClientTickEvent` 只有 20 Hz，放那儿会“一卡一卡”。
 3. 弹道起点统一用 `TurretBlockEntity.muzzlePosition()`：`PIVOT_Y = 0.75` + `MUZZLE_LENGTH = 1.14`。
    服务端 `fire()`、客户端 `predictedImpact()`、粒子束三处共用，别各写一份。
-4. 落点预判返回 `ImpactPrediction(point, halfWidth, halfHeight)`：实体取包围盒，方块按 1×1；
+4. 落点预判返回 `ImpactPrediction(point, halfWidth, halfHeight, kind)`：实体取包围盒，方块按 1×1；
    `TurretHud` 按透视把半宽/半高投成像素，竖边限制 3…7 px、横边至少 3× 竖边、上限 34 px。
 5. 曳光用自定义粒子 `ModParticles.TURRET_TRACER` + `TurretTracerParticle`，逐帧按
    `BEAM_SPEED * dt` 推进头部、沿新段落按间距撒点；不要给初速和抖动。
-6. **每发炮弹一个 `TurretShotFx`**：`TurretClient` 固定 4 个槽位（射程 48 / 24 格每秒 = 2 秒，
-   本地冷却 0.6 秒，最坏 4 发并发）。弹速固定 24 格/秒，和服务端 hitscan 的命中时刻一致；
+6. **每发炮弹一个 `TurretShotFx`**：`TurretClient` 固定 8 个槽位（正常帧率射程 48 / 24 格每秒 = 2 秒，
+   本地冷却 0.6 秒最多 4 发并发；低帧率按帧推进更慢，留 8 个槽位兜底，避免覆盖旧弹道时吞掉命中特效）。
+   弹速固定 24 格/秒，但**服务端 fire() 是瞬时 hitscan**：最远 48 格时客户端命中特效/标记会比真实伤害
+   晚约 2 秒（已知限制，弹道表现优先）。
    空中间距 0.12，水下间距 0.24 且同时撒 `TURRET_TRACER` 能量核心 + `TURRET_BUBBLE` 气泡尾。
-   介质按每帧弹道段中点查 `OceanEnvironment.isSubmerged`，跨水面时补一圈气泡。
+   介质按每帧弹道段中点查 `OceanEnvironment.isSubmerged`，跨水面时二分找水线再补一圈气泡。
 7. **命中先分类再出特效**：`ImpactPrediction` 带 `HitKind`（CREATURE / HULL_INTACT /
    HULL_BREACHED / GLASS / SEABED / MISS）。破口方块碰撞为空，COLLIDER 射线会穿过去，
    必须再用 `ClipContext.Block.OUTLINE` 扫一次（`HullBlock#getShape` 在 breached 时仍返回整格）。
@@ -91,6 +93,15 @@ mex:
   要做“腰射散、瞄准不散”必须让服务端知道瞄准状态并改 `fire()`，同时 bump 协议。
 - 地面波 `TurretGroundWave` 只在命中点 0.9 格内能找到可站立地面时触发，且按每个角度单独采样地形；
   不要在每帧对所有环点做全量地形扫描。
+- 破口 `OUTLINE` 只用于特效分类，**不要**拿 `breachPoint` 截短实体搜索：服务端 fire() 只做
+  COLLIDER，子弹会穿过破口打中后面的生物；截短会导致“服务端掉血、客户端显示穿洞没命中”。
+- ADS 灵敏度三种模式要一致：普通炮塔在角度增量上乘 `mouseAimScale()`；跟随炮塔由
+  `TurretMouseMixin` 把原版累积增量乘同一个系数；自由瞄准不额外乘（光标保持 1:1 像素），
+  靠 FOV 缩放提升角度精度。
+- 炮塔的 `ComputeFov` 在 `ComputeCameraAngles` 之前执行；HUD 投影要读 `onComputeFov`
+  缓存的最终 FOV（`effectiveFov()`），不能自己用 `options.fov()` 再算一遍。
+- 服务端 aim() 每 tick 最多转 6°，客户端 fire 用的是本地当帧角度且 `TurretFirePacket` 不带角度；
+  快速甩炮时服务端可能滞后 1 tick（48 格处约数格偏差）。要彻底对齐需让 fire 包携带角度并 bump 协议。
 - 客户端粒子只有本机可见；要让其他玩家看到弹道，需要新增服务端广播包。
 - `runClient` 运行期间不要跑 Gradle：会重写 `build/classes` 并触发 `NoClassDefFoundError`。
 

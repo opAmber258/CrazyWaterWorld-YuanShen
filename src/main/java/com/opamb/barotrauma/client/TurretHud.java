@@ -251,14 +251,21 @@ public final class TurretHud implements IGuiOverlay {
             graphics.fill(dotX, dotY, dotX + 2, dotY + 2, 0x55FF8A5C);
         }
 
+        int bracketColor = switch (prediction.kind()) {
+            case CREATURE -> 0xFFFF6B5E;
+            case HULL_INTACT -> 0xFFBFC6CC;
+            case GLASS -> 0xFF8FE8FF;
+            case STRUCTURE -> 0xFFA8B8C0;
+            default -> TRACKING_RETICLE;
+        };
         drawSquareBrackets(graphics, reticleX + 1, reticleY + 1,
                 halfHeight, widthOffset, arm, FREE_CURSOR_SHADOW);
         drawSquareBrackets(graphics, reticleX, reticleY,
-                halfHeight, widthOffset, arm, TRACKING_RETICLE);
+                halfHeight, widthOffset, arm, bracketColor);
 
         // 瞄准中心点：左边括号 + 中心点 + 右边括号，组成一个长方形。
         graphics.fill(reticleX - 1, reticleY - 1, reticleX + 2, reticleY + 2, FREE_CURSOR_SHADOW);
-        graphics.fill(reticleX, reticleY, reticleX + 1, reticleY + 1, TRACKING_RETICLE);
+        graphics.fill(reticleX, reticleY, reticleX + 1, reticleY + 1, bracketColor);
     }
 
     /** 按比例缩放 ARGB 颜色的 alpha 通道，保留 RGB。 */

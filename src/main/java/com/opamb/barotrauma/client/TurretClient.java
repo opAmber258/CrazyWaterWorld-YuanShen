@@ -31,6 +31,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.MovementInputUpdateEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderHandEvent;
@@ -51,7 +52,7 @@ import java.util.Optional;
  *   <li>把鼠标增量转成炮塔角度，并按每秒最大转角截断（“拖拽速度上限”）；</li>
  *   <li>接管相机位置与角度（{@link com.opamb.barotrauma.mixin.TurretCameraMixin}）；</li>
  *   <li>隐藏原版准星/热键栏/经验条，改画炮塔 HUD（{@link TurretHud}）；</li>
- *   <li>右键开火、左 Shift 退出。</li>
+ *   <li>右键瞄准（FOV 缩放）、左键开火、左 Shift 退出。</li>
  * </ul>
  *
  * <p>两种炮塔共用服务端逻辑，区别只在鼠标输入：普通炮塔鼠标直接转视角；
@@ -95,10 +96,11 @@ public final class TurretClient {
     private static final float AIM_BLEND_PER_SECOND = 12.0F;
 
     /**
-     * 同时在飞的炮弹特效槽位数：射程 48 格 / 24 格每秒 = 2 秒飞行，
-     * 本地冷却 12 tick（0.6 秒），最坏情况 4 发同时在飞。
+     * 同时在飞的炮弹特效槽位数：正常帧率下射程 48 格 / 24 格每秒 = 2 秒飞行，
+     * 本地冷却 12 tick（0.6 秒）最多 4 发并发；低帧率时弹道按帧推进会更慢，
+     * 留到 8 个槽位兜底，避免覆盖旧弹道时把它的命中特效一起吞掉。
      */
-    private static final int SHOT_SLOTS = 4;
+    private static final int SHOT_SLOTS = 8;
 
     private static boolean active;
     @Nullable
@@ -119,6 +121,8 @@ public final class TurretClient {
     /** 0…1 的瞄准过渡量，驱动 FOV、灵敏度和准心收拢。 */
     private static float aimBlend;
     private static long lastAimNanos = System.nanoTime();
+    /** 本帧真正提交给渲染的 FOV；HUD 投影读它，保证和画面一致。 */
+    private static float renderedFov = Float.NaN;
     private static boolean shiftWasDown;
     private static CameraType previousCameraType = CameraType.FIRST_PERSON;
     private static long lastTurnNanos = System.nanoTime();
@@ -179,14 +183,18 @@ public final class TurretClient {
         return aimPitch;
     }
 
-    /** 右键是否正按住（进入炮塔的那次右键要先松开）。 */
-    public static boolean isAiming() {
-        return active && aiming;
-    }
-
     /** 0…1 的瞄准过渡量：HUD 用它收拢准心，FOV/灵敏度也按它插值。 */
     public static float aimBlend() {
         return active ? aimBlend : 0.0F;
+    }
+
+    /**
+     * 瞄准时的鼠标角度增益（1 = 原样，0.35 = 瞄准最灵敏度的下限）。
+     * 普通炮塔直接乘在角度增量上；跟随炮塔在 {@code TurretMouseMixin} 里乘到
+     * 原版累积增量上，让三种模式的 ADS 手感一致。
+     */
+    public static double mouseAimScale() {
+        return 1.0D - (1.0D - AIM_SENSITIVITY) * (active ? aimBlend : 0.0F);
     }
 
     /**
@@ -194,8 +202,15 @@ public final class TurretClient {
      * 换算必须用这个值，否则括号/光标会和画面错位。
      */
     public static float effectiveFov() {
+        if (active && renderedFov > 1.0F) {
+            return renderedFov;
+        }
+        return fovForBlend(active ? aimBlend : 0.0F);
+    }
+
+    private static float fovForBlend(float blend) {
         return Minecraft.getInstance().options.fov().get()
-                * (1.0F - (1.0F - AIM_FOV_SCALE) * (active ? aimBlend : 0.0F));
+                * (1.0F - (1.0F - AIM_FOV_SCALE) * blend);
     }
 
     public static int cooldown() {
@@ -270,6 +285,7 @@ public final class TurretClient {
         aimArmed = !minecraft.options.keyUse.isDown();
         aiming = false;
         aimBlend = 0.0F;
+        renderedFov = Float.NaN;
         lastAimNanos = System.nanoTime();
         shiftWasDown = minecraft.options.keyShift.isDown();
         lastTurnNanos = System.nanoTime();
@@ -310,6 +326,7 @@ public final class TurretClient {
         aiming = false;
         aimArmed = false;
         aimBlend = 0.0F;
+        renderedFov = Float.NaN;
         // 退出时丢掉所有未飞完的弹道，避免下次进入炮塔时从旧弹道继续冒气泡。
         for (TurretShotFx shot : SHOTS) {
             shot.clear();
@@ -377,7 +394,7 @@ public final class TurretClient {
         double sensitivity = minecraft.options.sensitivity().get() * 0.6D + 0.2D;
         double scale = sensitivity * sensitivity * sensitivity * 8.0D * 0.15D;
         // 瞄准时降低角度增益：同样的鼠标移动转得更少，配合 FOV 缩放做微调。
-        scale *= 1.0D - (1.0D - AIM_SENSITIVITY) * aimBlend;
+        scale *= mouseAimScale();
         float rawYaw = (float) (deltaX * scale);
         float rawPitch = (float) (deltaY * scale);
         if (minecraft.options.invertYMouse().get()) {
@@ -419,7 +436,7 @@ public final class TurretClient {
     /**
      * 把视角朝自由光标转一点，并把转过的角度从光标偏移里扣掉。
      *
-     * <p>由 {@link #onMouseTurn} 在每次鼠标结算（每帧一次）时调用，和这一帧的
+     * <p>由 {@link #onCameraAngles} 在每次相机结算（每帧一次）时调用，和这一帧的
      * 鼠标增量共用同一个 dt、同一时刻生效——这是避免准心在屏幕上轻微抽搐的
      * 关键：输入和跟随不再各自在帧内不同时刻更新。</p>
      *
@@ -596,6 +613,7 @@ public final class TurretClient {
             case HULL_INTACT -> spawnHullImpact(minecraft, point, underwater);
             case HULL_BREACHED -> spawnBreachImpact(minecraft, point, direction);
             case GLASS -> spawnGlassImpact(minecraft, point, underwater);
+            case STRUCTURE -> spawnStructureImpact(minecraft, point, underwater);
             case SEABED -> spawnSeabedImpact(minecraft, point, direction, underwater);
             case MISS -> spawnMissImpact(minecraft, point, underwater);
         }
@@ -646,6 +664,27 @@ public final class TurretClient {
         minecraft.level.playLocalSound(point.x, point.y, point.z,
                 SoundEvents.ANVIL_LAND, SoundSource.PLAYERS,
                 underwater ? 0.30F : 0.45F, underwater ? 0.70F : 1.35F, false);
+    }
+
+    /** 船上非船壳结构（门、泵、柜子等）：少量碎屑和气泡，不触发海床地波。 */
+    private static void spawnStructureImpact(Minecraft minecraft, Vec3 point, boolean underwater) {
+        RandomSource random = minecraft.level.random;
+        for (int i = 0; i < 6; i++) {
+            minecraft.level.addParticle(ParticleTypes.CRIT,
+                    point.x, point.y, point.z,
+                    (random.nextDouble() - 0.5D) * 1.8D,
+                    0.5D + random.nextDouble() * 1.0D,
+                    (random.nextDouble() - 0.5D) * 1.8D);
+        }
+        if (underwater) {
+            for (int i = 0; i < 4; i++) {
+                minecraft.level.addParticle(ModParticles.TURRET_BUBBLE.get(),
+                        point.x, point.y, point.z,
+                        (random.nextDouble() - 0.5D) * 0.5D,
+                        0.12D + random.nextDouble() * 0.2D,
+                        (random.nextDouble() - 0.5D) * 0.5D);
+            }
+        }
     }
 
     /** 破口：弹丸穿洞，只留少量被吸进舱内的气泡，不做冲击环。 */
@@ -760,6 +799,10 @@ public final class TurretClient {
         if (kind == HitKind.CREATURE || kind == HitKind.HULL_INTACT || kind == HitKind.GLASS) {
             hitMarkerTicks = 8;
             hitMarkerKind = kind;
+        } else {
+            // 海床/打空/穿洞/设备命中不显示标记；同时清掉上一发的残留类型。
+            hitMarkerTicks = 0;
+            hitMarkerKind = HitKind.MISS;
         }
     }
 
@@ -787,6 +830,8 @@ public final class TurretClient {
         HULL_INTACT,
         HULL_BREACHED,
         GLASS,
+        /** 船上的非船壳结构：门、泵、柜子、声纳等，不触发海床地波。 */
+        STRUCTURE,
         SEABED,
         MISS
     }
@@ -828,26 +873,27 @@ public final class TurretClient {
         Vec3 maxEnd = origin.add(direction.scale(TurretBlockEntity.RANGE));
         BlockHitResult blockHit = minecraft.level.clip(new ClipContext(origin, maxEnd,
                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, minecraft.player));
-        Vec3 end = blockHit.getType() != HitResult.Type.MISS
+        Vec3 blockEnd = blockHit.getType() != HitResult.Type.MISS
                 ? blockHit.getLocation()
                 : maxEnd;
 
         // 破口方块碰撞为空，COLLIDER 射线会直接穿过去；HullBlock.getShape 在 breached
         // 时仍返回整格，所以用 OUTLINE 再扫一次，才能进入“打中破口”分支。
-        BlockHitResult outlineHit = minecraft.level.clip(new ClipContext(origin, end,
+        // 注意：这里只用于“特效分类”，不能拿 breachPoint 截短实体搜索——服务端 fire()
+        // 用的是 COLLIDER，子弹会穿过破口继续打中后面的生物。
+        BlockHitResult outlineHit = minecraft.level.clip(new ClipContext(origin, blockEnd,
                 ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, minecraft.player));
         Vec3 breachPoint = null;
         if (outlineHit.getType() != HitResult.Type.MISS) {
             BlockState outlineState = minecraft.level.getBlockState(outlineHit.getBlockPos());
             if (outlineState.getBlock() instanceof HullBlock && HullBlock.isBreached(outlineState)) {
                 breachPoint = outlineHit.getLocation();
-                end = breachPoint;
             }
         }
 
-        LivingEntity target = findClientTarget(minecraft, origin, end);
+        LivingEntity target = findClientTarget(minecraft, origin, blockEnd);
         if (target != null) {
-            Optional<Vec3> hit = target.getBoundingBox().inflate(0.25D).clip(origin, end);
+            Optional<Vec3> hit = target.getBoundingBox().inflate(0.25D).clip(origin, blockEnd);
             if (hit.isPresent()) {
                 AABB box = target.getBoundingBox();
                 double halfWidth = Math.max(box.getXsize(), box.getZsize()) * 0.5D;
@@ -860,10 +906,10 @@ public final class TurretClient {
         }
         if (blockHit.getType() != HitResult.Type.MISS) {
             HitKind kind = classifyBlock(minecraft.level, blockHit.getBlockPos());
-            return new ImpactPrediction(end, 0.5D, 0.5D, kind);
+            return new ImpactPrediction(blockEnd, 0.5D, 0.5D, kind);
         }
         // 方块按 1×1 半格处理；打空也按这个尺寸，准心不会缩没。
-        return new ImpactPrediction(end, 0.5D, 0.5D, HitKind.MISS);
+        return new ImpactPrediction(blockEnd, 0.5D, 0.5D, HitKind.MISS);
     }
 
     /** 方块分类：舷窗 > 船壳 > 其他地形（海床/岩壁）。 */
@@ -874,6 +920,9 @@ public final class TurretClient {
         }
         if (state.getBlock() instanceof HullBlock) {
             return HitKind.HULL_INTACT;
+        }
+        if (ModShipBlocks.isShipBlock(state)) {
+            return HitKind.STRUCTURE;
         }
         return HitKind.SEABED;
     }
@@ -976,13 +1025,29 @@ public final class TurretClient {
         input.shiftKeyDown = false;
     }
 
+    @SubscribeEvent
+    public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        // 客户端不再渲染旧世界，地波不会自己 tick 到清理；这里显式释放引用。
+        TurretGroundWave.clear();
+    }
+
     /** 瞄准缩放：FOV 按 aimBlend 平滑收拢，松开右键再平滑恢复。 */
     @SubscribeEvent
     public static void onComputeFov(ViewportEvent.ComputeFov event) {
-        if (!active || aimBlend <= 0.001F) {
+        if (!event.usedConfiguredFov()) {
+            // 手部/其他用途的 FOV 调用不要污染 HUD 的缓存。
             return;
         }
-        event.setFOV(event.getFOV() * (1.0F - (1.0F - AIM_FOV_SCALE) * aimBlend));
+        if (!active) {
+            renderedFov = (float) event.getFOV();
+            return;
+        }
+        float fov = (float) (event.getFOV()
+                * (1.0F - (1.0F - AIM_FOV_SCALE) * aimBlend));
+        event.setFOV(fov);
+        // 缓存真正提交的 FOV：ComputeFov 在 ComputeCameraAngles 之前执行，
+        // HUD 若自己再算一遍会跟画面差一帧。
+        renderedFov = fov;
     }
 
     private static void updateAimBlend() {
@@ -1004,7 +1069,18 @@ public final class TurretClient {
         if (!active) {
             return;
         }
+        float previousBlend = aimBlend;
         updateAimBlend();
+        if (freeAim && aimBlend != previousBlend) {
+            // 光标偏移是角度，屏幕位置 = offset / tan(halfFov)。FOV 变化时按 tan 比例
+            // 缩放偏移，光标才会留在鼠标原来的屏幕位置，而不是向外跳。
+            double oldTan = Math.tan(Math.toRadians(fovForBlend(previousBlend) * 0.5D));
+            double newTan = Math.tan(Math.toRadians(fovForBlend(aimBlend) * 0.5D));
+            float ratio = (float) (newTan / oldTan);
+            cursorYaw *= ratio;
+            cursorPitch *= ratio;
+            clampCursor();
+        }
         tickBeam();
         if (tracking) {
             // 视角就是玩家自己的（原版鼠标视角），这里只让炮塔准心限速追过去。
