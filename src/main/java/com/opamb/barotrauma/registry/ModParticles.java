@@ -8,7 +8,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
-/** 粒子注册：目前只有破口冒泡用的放大版气泡。 */
+/** 粒子注册：破口/炮塔用水气泡，炮塔还有一条细粒子束。 */
 public final class ModParticles {
 
     public static final DeferredRegister<ParticleType<?>> PARTICLES =
@@ -32,6 +32,19 @@ public final class ModParticles {
      */
     public static final RegistryObject<SimpleParticleType> TURRET_TRACER =
             PARTICLES.register("turret_tracer", () -> new SimpleParticleType(false));
+
+    /**
+     * 水下弹道气泡：枪口气泡团、水中尾迹和命中冲击环共用。贴图复用
+     * {@code ship_bubble}，行为由 {@code TurretBubbleParticle} 自己控制
+     * （轻微上浮 + 阻尼），粒子 JSON 见
+     * {@code assets/barotrauma/particles/turret_bubble.json}。
+     */
+    public static final RegistryObject<SimpleParticleType> TURRET_BUBBLE =
+            PARTICLES.register("turret_bubble", () -> new SimpleParticleType(false));
+
+    /** 地波扬起的海底泥沙：贴图复用 {@code ship_bubble}，粒子内做土黄色调。 */
+    public static final RegistryObject<SimpleParticleType> TURRET_SEDIMENT =
+            PARTICLES.register("turret_sediment", () -> new SimpleParticleType(false));
 
     private ModParticles() {
     }

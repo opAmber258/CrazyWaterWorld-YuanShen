@@ -32,5 +32,5 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [developer-tools.md](developer-tools.md) | Adding a creative-tab debug item, its screen, or a server-validated edit packet |
 | [publish.md](publish.md) | Publishing changes (走流程 / `/publish`): art-only checks → direct main push; code/shared tools/policies → MEX bookkeeping and PR |
 | [run-tests.md](run-tests.md) | Building and running the L1/L2/L3 verification layers |
-| [turret-aim-modes.md](turret-aim-modes.md) | Changing turret aiming (three prototypes), camera/input mixins, muzzle-based ballistics, tracer particles, or the impact reticle HUD |
+| [turret-aim-modes.md](turret-aim-modes.md) | Changing turret aiming (three prototypes), camera/input mixins, muzzle-based ballistics, underwater shot FX, ADS aim mode, hit-kind feedback, or the impact reticle HUD |
 | [vs2-physical-ship.md](vs2-physical-ship.md) | Launching, docking, controlling, or debugging a VS2 physical ship |

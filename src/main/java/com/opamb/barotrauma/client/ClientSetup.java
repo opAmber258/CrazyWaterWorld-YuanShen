@@ -82,6 +82,8 @@ public final class ClientSetup {
         event.registerSpriteSet(ModParticles.SHIP_BUBBLE.get(), ShipBubbleParticle.Provider::new);
         event.registerSpriteSet(ModParticles.SHIP_SPRAY.get(), ShipSprayParticle.Provider::new);
         event.registerSpriteSet(ModParticles.TURRET_TRACER.get(), TurretTracerParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.TURRET_BUBBLE.get(), TurretBubbleParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.TURRET_SEDIMENT.get(), TurretSedimentParticle.Provider::new);
     }
 
 

@@ -40,6 +40,11 @@ public final class TurretHud implements IGuiOverlay {
         int centerY = height / 2;
         boolean ready = TurretClient.cooldown() <= 0;
         int reticle = ready ? READY : COOLING;
+        // 命中生物的头几 tick，把准心染成暖红，和冷却色区分开。
+        if (TurretClient.hitMarkerKind() == TurretClient.HitKind.CREATURE
+                && TurretClient.hitMarkerTicks() > 4) {
+            reticle = 0xFFFF6B5E;
+        }
 
         drawFrame(graphics, width, height);
         if (TurretClient.isFreeAim()) {
@@ -51,6 +56,9 @@ public final class TurretHud implements IGuiOverlay {
                 TurretClient.isTracking() ? TurretClient.predictedImpact() : null;
         if (impact != null) {
             drawTrackingImpact(graphics, width, height, impact);
+        }
+        if (TurretClient.hitMarkerTicks() > 0) {
+            drawHitMarker(graphics, centerX, centerY);
         }
         drawPanel(graphics, width, height, ready, impact);
     }
@@ -81,8 +89,20 @@ public final class TurretHud implements IGuiOverlay {
     }
 
     private static void drawReticle(GuiGraphics graphics, int centerX, int centerY, int color, boolean ready) {
-        int gap = 7;
-        int length = 13;
+        // 跟随炮塔的视角中心就是鼠标十字；瞄准时压低不透明度，把画面让给炮塔落点。
+        if (TurretClient.isTracking()) {
+            color = fadeAlpha(color, 1.0F - 0.65F * TurretClient.aimBlend());
+        }
+        // 命中生物时四臂向外弹 1–2px，作为“打中了”的准心反馈。
+        int pulse = 0;
+        if (TurretClient.hitMarkerKind() == TurretClient.HitKind.CREATURE
+                && TurretClient.hitMarkerTicks() > 0) {
+            pulse = TurretClient.hitMarkerTicks() > 5 ? 2 : 1;
+        }
+        // 瞄准时准心收拢，提示“现在是高精度状态”。
+        int aimTighten = Math.round(3.0F * TurretClient.aimBlend());
+        int gap = 7 - aimTighten + pulse;
+        int length = 13 - Math.round(2.0F * TurretClient.aimBlend());
         // 上
         graphics.fill(centerX, centerY - gap - length, centerX + 1, centerY - gap, color);
         // 下
@@ -91,8 +111,7 @@ public final class TurretHud implements IGuiOverlay {
         graphics.fill(centerX - gap - length, centerY, centerX - gap, centerY + 1, color);
         // 右
         graphics.fill(centerX + gap, centerY, centerX + gap + length, centerY + 1, color);
-        // 中心点
-        graphics.fill(centerX - 1, centerY - 1, centerX + 1, centerY + 1, color);
+        // 不画中心点：准心中心必须完全空出来。
 
         // 装填条：冷却中显示进度，就绪时只剩一条细底线。
         int barWidth = 76;
@@ -109,13 +128,46 @@ public final class TurretHud implements IGuiOverlay {
     }
 
     /**
+     * 命中确认：在准心右上方画一个短命标记，不挡中心视野。
+     * 生物 = 白色 X；船壳 = 灰色菱形；舷窗 = 青色菱形；海床/打空/穿洞不显示。
+     */
+    private static void drawHitMarker(GuiGraphics graphics, int centerX, int centerY) {
+        TurretClient.HitKind kind = TurretClient.hitMarkerKind();
+        if (kind != TurretClient.HitKind.CREATURE
+                && kind != TurretClient.HitKind.HULL_INTACT
+                && kind != TurretClient.HitKind.GLASS) {
+            return;
+        }
+        int ticks = TurretClient.hitMarkerTicks();
+        int alpha = (int) (0xFF * Mth.clamp(ticks / 8.0F, 0.0F, 1.0F));
+        int x = centerX + 20;
+        int y = centerY - 20;
+        if (kind == TurretClient.HitKind.CREATURE) {
+            // 命中生物：暖红 X，先弹大再收回，告诉玩家“这一发确实咬肉了”。
+            int age = 8 - ticks;
+            int arm = age <= 2 ? 5 : 4;
+            int color = (alpha << 24) | 0xFF6B5E;
+            for (int i = -arm; i <= arm; i++) {
+                graphics.fill(x + i, y + i, x + i + 1, y + i + 1, color);
+                graphics.fill(x + i, y - i, x + i + 1, y - i + 1, color);
+            }
+            return;
+        }
+        int color = (alpha << 24) | (kind == TurretClient.HitKind.GLASS ? 0x8FE8FF : 0xBFC6CC);
+        for (int i = -4; i <= 4; i++) {
+            int halfWidth = 4 - Math.abs(i);
+            graphics.fill(x - halfWidth, y + i, x + halfWidth + 1, y + i + 1, color);
+        }
+    }
+
+    /**
      * 自由瞄准光标：按角度偏移投影到屏幕上，画四角括号 + 中心点，并用虚线连到
      * 中心准星，直观显示“视角正在追这个点”。
      */
     private static void drawFreeAim(GuiGraphics graphics, int width, int height) {
         int centerX = width / 2;
         int centerY = height / 2;
-        float halfFovY = Minecraft.getInstance().options.fov().get() * 0.5F;
+        float halfFovY = TurretClient.effectiveFov() * 0.5F;
         float aspect = height > 0 ? width / (float) height : 16.0F / 9.0F;
         float halfFovX = (float) Math.toDegrees(Math.atan(
                 Math.tan(Math.toRadians(halfFovY)) * aspect));
@@ -155,7 +207,7 @@ public final class TurretHud implements IGuiOverlay {
         }
         int centerX = width / 2;
         int centerY = height / 2;
-        float halfFovY = Minecraft.getInstance().options.fov().get() * 0.5F;
+        float halfFovY = TurretClient.effectiveFov() * 0.5F;
         float aspect = height > 0 ? width / (float) height : 16.0F / 9.0F;
         float tanY = (float) Math.tan(Math.toRadians(halfFovY));
         float tanX = tanY * aspect;
@@ -207,6 +259,12 @@ public final class TurretHud implements IGuiOverlay {
         // 瞄准中心点：左边括号 + 中心点 + 右边括号，组成一个长方形。
         graphics.fill(reticleX - 1, reticleY - 1, reticleX + 2, reticleY + 2, FREE_CURSOR_SHADOW);
         graphics.fill(reticleX, reticleY, reticleX + 1, reticleY + 1, TRACKING_RETICLE);
+    }
+
+    /** 按比例缩放 ARGB 颜色的 alpha 通道，保留 RGB。 */
+    private static int fadeAlpha(int color, float factor) {
+        int alpha = Math.round(((color >>> 24) & 0xFF) * Mth.clamp(factor, 0.0F, 1.0F));
+        return (alpha << 24) | (color & 0x00FFFFFF);
     }
 
     /** 左右方括号 [ ]：两条竖线 + 上下短横臂。 */

@@ -1,6 +1,6 @@
 ---
 name: turret-aim-modes
-description: 炮塔原型的瞄准模式与弹道实现：三种方块共用 BE、mixin 接管输入与相机、以炮口为起点的 hitscan/落点预判、细粒子曳光与 HUD 括号。
+description: 炮塔原型的瞄准模式与弹道实现：三种方块共用 BE、mixin 接管输入与相机、以炮口为起点的 hitscan/落点预判、水下炮弹特效、右键瞄准与 HUD 括号/命中反馈。
 triggers:
   - "炮塔"
   - "turret"
@@ -15,7 +15,7 @@ edges:
     condition: when changing the turret block model or barrel rendering geometry
   - target: patterns/run-tests.md
     condition: when verifying the turret change beyond a compile
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 mex:
   id: mx_01M7M7HRZYXWEE1W4VEB95FRVX
   type: pattern
@@ -50,7 +50,8 @@ mex:
 1. 输入走 mixin，不要直接改玩家朝向：
    - `TurretMouseMixin` 取消 `MouseHandler#turnPlayer` 并转发累积像素（跟随模式不取消，保留原版视角）；
    - `TurretCameraMixin` 在 `Camera#setup` 尾部改相机位置（`TurretClient.cameraPosition()`）；
-   - `TurretInteractionMixin` 拦 `startUseItem` / `startAttack`。
+   - `TurretInteractionMixin` 拦 `startUseItem`（右键瞄准，只取消不做事）与
+     `startAttack`（左键开火）以及 `continueAttack`（禁止挖炮塔）。
 2. **每帧推进的逻辑放 `ViewportEvent.ComputeCameraAngles`**（`GameRenderer.renderLevel` 每帧一次）：
    自由瞄准的限速跟随 `stepFreeAim`、跟随模式的 `stepTracking`、粒子束 `tickBeam` 都在这里。
    `ClientTickEvent` 只有 20 Hz，放那儿会“一卡一卡”。
@@ -59,7 +60,19 @@ mex:
 4. 落点预判返回 `ImpactPrediction(point, halfWidth, halfHeight)`：实体取包围盒，方块按 1×1；
    `TurretHud` 按透视把半宽/半高投成像素，竖边限制 3…7 px、横边至少 3× 竖边、上限 34 px。
 5. 曳光用自定义粒子 `ModParticles.TURRET_TRACER` + `TurretTracerParticle`，逐帧按
-   `BEAM_SPEED * dt` 推进头部、沿新段落按 `BEAM_DOT_SPACING` 撒点；不要给初速和抖动。
+   `BEAM_SPEED * dt` 推进头部、沿新段落按间距撒点；不要给初速和抖动。
+6. **每发炮弹一个 `TurretShotFx`**：`TurretClient` 固定 4 个槽位（射程 48 / 24 格每秒 = 2 秒，
+   本地冷却 0.6 秒，最坏 4 发并发）。弹速固定 24 格/秒，和服务端 hitscan 的命中时刻一致；
+   空中间距 0.12，水下间距 0.24 且同时撒 `TURRET_TRACER` 能量核心 + `TURRET_BUBBLE` 气泡尾。
+   介质按每帧弹道段中点查 `OceanEnvironment.isSubmerged`，跨水面时补一圈气泡。
+7. **命中先分类再出特效**：`ImpactPrediction` 带 `HitKind`（CREATURE / HULL_INTACT /
+   HULL_BREACHED / GLASS / SEABED / MISS）。破口方块碰撞为空，COLLIDER 射线会穿过去，
+   必须再用 `ClipContext.Block.OUTLINE` 扫一次（`HullBlock#getShape` 在 breached 时仍返回整格）。
+   各分支的特效、声音和 hitmarker 见 `TurretClient#spawnImpactEffects`。
+8. **右键瞄准（ADS）**：按住 `keyUse` 进入，FOV ×0.55、普通炮塔鼠标增益 ×0.35，
+   `aimBlend` 每帧插值；左键开火（`startAttack`）。跟随炮塔的视角中心是鼠标十字，
+   瞄准时把它的 alpha 压到 35%，把画面让给炮塔落点括号。
+   HUD 的世界点投影和自由光标换算必须用 `effectiveFov()`，否则缩放后括号会错位。
 
 ## Gotchas
 
@@ -70,7 +83,14 @@ mex:
 - 新增网络包必须 bump `ModNetwork.PROTOCOL`；合并上游时该行与包注册块最容易冲突，两侧都要保留。
 - 跟随炮塔退出时不能 snap 玩家视角（`deactivate` 里只有 `snapPlayerRotation && !tracking`）。
 - HUD 层级靠绘制顺序：拖动光标先画，炮塔准心、落点括号后画（后画的在上）。
-- 自由瞄准光标按屏幕像素换算角度（用 `options.fov()` 的基础 FOV），套原版角度灵敏度会在宽屏上快 2~3 倍。
+- 自由瞄准光标按屏幕像素换算角度；基础 FOV 不能直接用 `options.fov()`，瞄准缩放后要用
+  `TurretClient.effectiveFov()`，否则光标和落点括号会和画面错位。
+- breached 的 `HullBlock` 碰撞为空，`ClipContext.Block.COLLIDER` 射线会直接穿过去；
+  判“打中破口”必须补一次 `ClipContext.Block.OUTLINE`（它的 `getShape` 仍返回整格）。
+- 命中特效、hitmarker、右键瞄准都只是客户端预测/表现；服务端仍按 hitscan 结算，且没有瞄准散布。
+  要做“腰射散、瞄准不散”必须让服务端知道瞄准状态并改 `fire()`，同时 bump 协议。
+- 地面波 `TurretGroundWave` 只在命中点 0.9 格内能找到可站立地面时触发，且按每个角度单独采样地形；
+  不要在每帧对所有环点做全量地形扫描。
 - 客户端粒子只有本机可见；要让其他玩家看到弹道，需要新增服务端广播包。
 - `runClient` 运行期间不要跑 Gradle：会重写 `build/classes` 并触发 `NoClassDefFoundError`。
 
@@ -80,6 +100,10 @@ mex:
 - [ ] 三种炮塔分别能进入 / 瞄准 / 开火 / 左 Shift 退出，退出后玩家视角正常
 - [ ] 落点括号位置与实际命中一致（方块与实体各试一次）
 - [ ] 深海无光环境下粒子束仍可见，且不从镜头中心射出
+- [ ] 连发 0.6 秒冷却下两发弹道同时在飞，第一发尾迹不被覆盖
+- [ ] 水下能看到白蓝能量核心 + 气泡尾；空气/水下命中、破口、舷窗、海床分支可肉眼区分
+- [ ] 右键瞄准：FOV 缩到 55%，准心收拢；跟随炮塔的鼠标十字 alpha 降到 35%，松开恢复
+- [ ] 瞄准时 HUD 落点括号仍与实际命中一致（缩放后投影不能错位）
 
 ## Debug
 
