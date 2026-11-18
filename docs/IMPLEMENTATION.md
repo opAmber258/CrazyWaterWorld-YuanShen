@@ -337,16 +337,19 @@ graph TD
 
 ```
 output = 反应堆数 × 5000 × turbine        （:90）
-demand = 泵×300 + 制氧×300 + 声纳×100
+demand = 已接入设备 PowerConsumer 上报之和（无上报时按固定负载兜底）
+       + 声纳（未上报时 ×100）
        + (气闸动作中 ? 300 : 0) + 引擎×2000×0.5   （:91-95）
 ratio  = demand ≤ 0 ? 1 : min(1, output/demand)   （:96）
 ```
 
-三个要点：
+五个要点：
 
 1. **`fission` 不参与功率**，只有 `turbine` 决定 output；拉高裂变率只会加热（对比 `:90` 与 `:102`）。
 2. 引擎按 **2000 kW 的一半**计需求（`:95`），代码里没写为什么减半。
 3. `ratio` 只用来缩放制氧、水泵、气闸的速率（`:114`、`:131`、`:145`、`:151`），**不影响船的推进速度**——`ShipPhysics` 只看功率百分比（见 4.3.1）。也就是说缺电时船照样满速，这是一个实现与「电推潜艇」设定的偏差。
+4. **制氧机不在 `ShipSimulation` 计功率**（`machines.oxygen()` 恒 0，旧 `O2_POWER` 路径已删）。接入后由制氧机自己作为 `PowerConsumer` 上报 **1000 kW**（原作数值）；两边都计会变成双计 300 kW。
+5. **过压阈值只有一处**：`JunctionBoxBlockEntity.OVERVOLTAGE`（1.7），判定统一走 `PowerGrid.overvoltage(voltage, threshold)`；`ShipSimulation.JUNCTION_BOX_OVERVOLTAGE` 已删除，避免调阈值时改漏一边。
 
 #### 4.2.3 温度与熔毁
 
@@ -400,7 +403,7 @@ pumpOut = false → 灌进压载舱，上限 = 压载舱数 × 600        （:13
 | 量 | 值 | 位置 |
 | --- | --- | --- |
 | 反应堆最大功率 | 5000 kW | `:26` |
-| 制氧机 | 700 氧/s，300 kW | `:27`、`:31` |
+| 制氧机 | 700 氧/s；功率不计入 `ShipSimulation`（接入后由 PowerConsumer 上报 1000 kW） | `:27` |
 | 乘员耗氧 | 700/s | `:28` |
 | 水泵 | 600/s，300 kW | `:29-30` |
 | 声纳台 | 100 kW | `:33` |
