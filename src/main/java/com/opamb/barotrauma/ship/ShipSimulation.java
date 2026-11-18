@@ -170,9 +170,6 @@ public final class ShipSimulation {
     private long boxTick;
     private static final int BOX_STALE_TICKS = 40;
 
-    /** 原版 vanilla 潜艇接线盒的过压阈值（Dugong.sub 里是 1.7；代码默认 2.0）。 */
-    public static final double JUNCTION_BOX_OVERVOLTAGE = 1.7D;
-
     /** 上一次 tick 的全船电压（供电/负载，不封顶）。 */
     private double lastVoltage;
     /** 上一次 tick 的全船供电（kW）。 */
@@ -487,8 +484,9 @@ public final class ShipSimulation {
         // 计一遍（会变成 210 kW）；还没接入上报的旧船才用固定负载兜底。
         boolean terminalReporting = lastTerminalTick != Long.MIN_VALUE
                 && consumerTick - lastTerminalTick <= CONSUMER_STALE_TICKS;
-        // 制氧机也走 PowerConsumer 上报 1000 kW，这里不能再按 machines.oxygen()
-        // 计一遍（该字段现在恒 0，这条旧路径已无意义）。
+        // 制氧机自己作为 PowerConsumer 上报 1000 kW
+        // （OxygenGeneratorBlockEntity.POWER_KW），这里不能再按 machines.oxygen()
+        // 计一遍——两边都算就是双计。
         double deviceDemand = (consumers.isEmpty() ? legacyDemand : consumerDemand)
                 + (terminalReporting ? 0.0D : machines.sonar() * SONAR_POWER)
                 + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER);

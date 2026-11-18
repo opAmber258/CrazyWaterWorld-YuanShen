@@ -30,6 +30,8 @@ edges:
     condition: when hull durability, damage bars, welding, or breach-on-zero-HP behavior looks wrong
   - target: patterns/run-tests.md
     condition: when building or running the verification layers
+  - target: patterns/turret-aim-modes.md
+    condition: when changing turret aiming modes, turret camera/input mixins, muzzle-based ballistics, tracer particles, or the impact reticle HUD
   - target: patterns/publish.md
     condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
@@ -65,7 +67,11 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## Current Project State
 
-- **哨站服务 + 关卡洞窟网络 + 电力/采矿/装备批次（2026-11-15，PR 待审）**：工作区累积的未提交改动一次性提交到 `feat/outpost-batch-20261115` 并开 PR，**未合并**。内容：① 哨站服务——商人/医生/站务员三个独立 NPC，商店真实库存/商人余额 5000/±5%/补货、三标签（购买/出售/潜艇）、购物车数量选择、购买确认两个交付选项（立即获得 / 起航时送至潜艇，`StoreDeliverySavedData`）、医疗诊所原作收费公式；② 关卡地形——`RoutePath` 大洞窟网络（主航道随机上下+左右游走、侧隧道可挂侧隧道、洞室、`distanceToNetwork`）、`LevelType/LevelParams/LevelSelector`、`RoundState` 持久化；③ 电力——`PowerGrid`/接线盒/配电界面/螺丝刀；④ 采矿与装备——`MineralVeins`、矿脉方块、等离子切割机、玻璃潜水服、物品浮力；⑤ 配套任务/船只/渲染修正。`./gradlew test --offline` 272 项 0 失败（47 个测试类）；客户端未起，实机验收待用户。细节见 `docs/OUTPOST_SERVICES.md`。本地 `main` 仍在 `77009a7`，`origin/main` 已到 `7de2fc5`（多个美术提交）；本地 `feat/outpost-batch-20261115` 还停在 `6a07c48`，主工作区有未提交的电池/修理改动，**还没 pull/ff**；要拉需先提交或暂存那批改动。
+- **炮塔水下炮弹特效 + 右键瞄准（2026-11-18，PR 待审）**：在已合并的三原型基础上，新增 `TurretShotFx` 八槽位弹道状态机（连发不互相覆盖，低帧率兜底）、水下能量核心 + 气泡尾迹、跨水面气泡、按 `HitKind` 分支的命中特效（生物血雾/金属碎屑/破口吸泡/舷窗碎片/船内结构碎屑/海床冲击环 + 地波/打空）、`TurretHud` 命中标记与中心点删除；控制改为**右键瞄准（FOV ×0.55、灵敏度 ×0.35）+ 左键开火**，跟随炮塔瞄准时鼠标十字 alpha 降至 35%。协议号仍为 18（无新包）。参考 `patterns/turret-aim-modes.md`。已知限制：命中特效与 hitmarker 仍是客户端预测，服务端没有瞄准散布；服务端 aim() 每 tick 6° 滞后、`TurretFirePacket` 不带开火角度；粒子仅操作者可见。
+
+- **炮塔原型三模式（2026-11-17，已合并 `44c3eec`）**：`feat/turret-prototypes-20261117` 新增 `turret` / `free_aim_turret` / `tracking_turret` 三个独立方块（共用 `TurretBlockEntity`、四个网络包、`TurretRenderer`、`TurretHud`，放在开发者工具页签）。服务端权威限速瞄准（120°/s）+ **以炮口为起点**的 hitscan（`PIVOT_Y=0.75`、`MUZZLE_LENGTH=1.14`，射程 48、10 tick 冷却、12 伤害）；客户端本地落点预判与自定义细粒子曳光 `barotrauma:turret_tracer`（`quadSize=0.03`，去掉火焰/烟/炮口闪光）；跟随模式的落点括号按被命中物体的屏幕投影尺寸缩放（上下短、左右长）。协议号 17→18。参考 `patterns/turret-aim-modes.md`。已实机调过三轮手感；L1 与实机结论见 PR。已知限制：粒子束仅操作者可见；原型无弹药与音效资产；自由瞄准光标仍是屏幕像素直控。
+
+- **哨站服务 + 关卡洞窟网络 + 电力/采矿/装备批次（2026-11-15，PR 待审）**：工作区累积的未提交改动一次性提交到 `feat/outpost-batch-20261115` 并开 PR，已于 2026-11-17 合并（`1a5b2af`）。内容：① 哨站服务——商人/医生/站务员三个独立 NPC，商店真实库存/商人余额 5000/±5%/补货、三标签（购买/出售/潜艇）、购物车数量选择、购买确认两个交付选项（立即获得 / 起航时送至潜艇，`StoreDeliverySavedData`）、医疗诊所原作收费公式；② 关卡地形——`RoutePath` 大洞窟网络（主航道随机上下+左右游走、侧隧道可挂侧隧道、洞室、`distanceToNetwork`）、`LevelType/LevelParams/LevelSelector`、`RoundState` 持久化；③ 电力——`PowerGrid`/接线盒/配电界面/螺丝刀；④ 采矿与装备——`MineralVeins`、矿脉方块、等离子切割机、玻璃潜水服、物品浮力；⑤ 配套任务/船只/渲染修正。`./gradlew test --offline` 272 项 0 失败（47 个测试类）；客户端未起，实机验收待用户。细节见 `docs/OUTPOST_SERVICES.md`。本地 `main` 仍在 `77009a7`，`origin/main` 已到 `7de2fc5`（多个美术提交）；本地 `feat/outpost-batch-20261115` 还停在 `6a07c48`，主工作区有未提交的电池/修理改动，**还没 pull/ff**；要拉需先提交或暂存那批改动。
 
   **第四轮 CodeRabbit 修复（`6a07c48` 之后）**：电力面板改为服务端按玩家记录目标身份（维度 + 盒子坐标 + 坐标系），`bind`/`refresh` 不再按“坐标处有没有方块实体”重猜坐标系；`build`/`bind` 查询前先 `hasChunkAt`，客户端坐标不会触发同步区块加载；快捷打开面板同时扫描活动物理船和附近方块船，取最近的有效接线盒（物理船不再全局屏蔽方块船）；玩家退出时清面板会话。因并行电池任务正在改 `PowerPanelState.java`，本轮修复在独立 worktree `barotrauma-pr61` 里完成，主工作区未动。
 

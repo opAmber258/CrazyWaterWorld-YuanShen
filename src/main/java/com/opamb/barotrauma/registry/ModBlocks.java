@@ -4,9 +4,12 @@ import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.BallastPumpBlock;
 import com.opamb.barotrauma.block.Cpu6700X3DBlock;
 import com.opamb.barotrauma.block.DrainPumpBlock;
+import com.opamb.barotrauma.block.FreeAimTurretBlock;
 import com.opamb.barotrauma.block.HullBlock;
 import com.opamb.barotrauma.block.IronLadderBlock;
 import com.opamb.barotrauma.block.MissionTerminalBlock;
+import com.opamb.barotrauma.block.TrackingTurretBlock;
+import com.opamb.barotrauma.block.TurretBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -264,6 +267,29 @@ public final class ModBlocks {
                     .sound(SoundType.METAL)
                     // 不是整格方块：关掉遮挡剔除，避免相邻面被误剔
                     .noOcclusion()));
+
+/** 舰载炮塔（原型）：右键进入炮塔视角，炮管由方块实体渲染。 */
+    public static final RegistryObject<Block> TURRET = BLOCKS.register("turret",
+            () -> new TurretBlock(turretProperties()));
+
+    /** 自由瞄准炮塔（原型）：和舰载炮塔共用方块实体，客户端换成“拖动准心引导视角”。 */
+    public static final RegistryObject<Block> FREE_AIM_TURRET = BLOCKS.register("free_aim_turret",
+            () -> new FreeAimTurretBlock(turretProperties()));
+
+    /** 跟随炮塔（原型）：视角自由，炮塔准心限速追视角中心。 */
+    public static final RegistryObject<Block> TRACKING_TURRET = BLOCKS.register("tracking_turret",
+            () -> new TrackingTurretBlock(turretProperties()));
+
+    private static BlockBehaviour.Properties turretProperties() {
+        return BlockBehaviour.Properties.of()
+                .mapColor(MapColor.METAL)
+                .strength(8.0F, 600.0F)
+                .sound(SoundType.METAL)
+                // 炮座不是整格方块，炮管还会伸出方块范围
+                .noOcclusion()
+                .isViewBlocking((state, level, pos) -> false)
+                .isSuffocating((state, level, pos) -> false);
+    }
 
     // ---- 采矿任务用的岩壁矿脉（副本航线附近生成，等离子切割机切碎） ----
 

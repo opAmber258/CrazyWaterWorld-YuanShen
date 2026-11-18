@@ -162,6 +162,17 @@ public final class ModItems {
     /** 6700X3D 处理器彩蛋方块。 */
     public static final RegistryObject<Item> CPU_6700X3D = blockItem("cpu_6700x3d", ModBlocks.CPU_6700X3D);
 
+    /** 舰载炮塔（原型，开发者工具）：右键进入炮塔视角。 */
+    public static final RegistryObject<Item> TURRET = blockItem("turret", ModBlocks.TURRET);
+
+    /** 自由瞄准炮塔（原型，开发者工具）：鼠标拖动准心，视角限速跟随。 */
+    public static final RegistryObject<Item> FREE_AIM_TURRET =
+            blockItem("free_aim_turret", ModBlocks.FREE_AIM_TURRET);
+
+    /** 跟随炮塔（原型，开发者工具）：视角自由，炮塔准心限速追视角中心。 */
+    public static final RegistryObject<Item> TRACKING_TURRET =
+            blockItem("tracking_turret", ModBlocks.TRACKING_TURRET);
+
 
     // ---- 任务/经济 ----
     public static final RegistryObject<Item> MISSION_TERMINAL =

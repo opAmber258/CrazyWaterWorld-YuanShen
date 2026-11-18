@@ -1,0 +1,24 @@
+{
+  "asset": "plasma_cutter",
+  "date": "2026-11-15",
+  "source": "plasma_cutter.bbmodel (Blockbench 5.0, model_format java_block, java_block_version 26.3)",
+  "variant": "plasma_cutter_oxygen_tank.bbmodel (27 cubes / 162 faces, 含氧气瓶瓶体与垫环)",
+  "counts": {
+    "cubes": 25,
+    "faces": 150,
+    "groups": 6,
+    "bones": 0,
+    "loose_cubes": 0,
+    "hidden_elements": 0,
+    "animations": 0
+  },
+  "groups": ["整个", "主", "枪口", "琐之", "握把", "后握把"],
+  "findings": [
+    { "level": "info", "code": "NO_BONES", "detail": "java_block 格式无骨骼，7 个分组仅作层级组织。" },
+    { "level": "info", "code": "NO_LOOSE_CUBES", "detail": "25 个 cube 全部在分组下，无游离元素。" },
+    { "level": "info", "code": "NO_ANIMATION", "detail": "0 条动画，静态交付。" },
+    { "level": "info", "code": "INFORMAL_NAMES", "detail": "元素命名含随意中文名（不交/不叫/喳喳/这是电线等），均为参与几何的正式 cube，不影响导出。" },
+    { "level": "warn", "code": "ALL_CUBES_ROTATED", "detail": "25/25 个 cube 带旋转，多为多轴自由旋转（如 [-90,67.5,-90]），超出 1.20.1 原版 Java 模型 JSON 单轴 ±45°/±22.5° 限制；接入前需集成者确认目标格式。" },
+    { "level": "warn", "code": "ZERO_THICKNESS_PLANES", "detail": "2 个零厚度面片：喳喳（枪口锯齿 3×4×0）、这是电线（3×2×0）。" }
+  ]
+}

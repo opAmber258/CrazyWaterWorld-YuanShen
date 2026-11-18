@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.PowerGrid;
 import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
@@ -34,7 +35,11 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
     private static final double DECAY_SUBMERGED = 0.25D;
     /** 过压衰减速度（/秒）。 */
     private static final double DECAY_OVERVOLTAGE = 10.0D;
-    /** 过压阈值（原版 vanilla 潜艇 1.7）。 */
+    /**
+     * 过压阈值：原版 vanilla 潜艇（Dugong.sub）是 1.7，代码默认 2.0。
+     *
+     * <p>全仓只有这一份阈值；判定统一走 {@link PowerGrid#overvoltage}。</p>
+     */
     public static final double OVERVOLTAGE = 1.7D;
 
     private double condition = 100.0D;
@@ -97,7 +102,9 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
             if (be.submerged) {
                 be.condition -= DECAY_SUBMERGED / 20.0D;
             }
-            if (voltage > OVERVOLTAGE) {
+            // 阈值判定走 PowerGrid，别在这里再写一份比较：两边各一份的话，
+            // 以后调阈值只会改到其中一处。
+            if (PowerGrid.overvoltage(voltage, OVERVOLTAGE)) {
                 be.condition -= DECAY_OVERVOLTAGE / 20.0D;
             }
         }

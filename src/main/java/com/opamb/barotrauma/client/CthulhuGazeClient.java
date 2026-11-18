@@ -121,7 +121,8 @@ public final class CthulhuGazeClient {
     /** 镜头拉近 + 呼吸脉动（强度已含淡入淡出，所以进出场自然）。 */
     @SubscribeEvent
     public static void onComputeFov(ViewportEvent.ComputeFov event) {
-        if (strength <= 0.001F || activePreset == null) {
+        if (strength <= 0.001F || activePreset == null || TurretClient.isActive()) {
+            // 炮塔 HUD 的落点括号按当前渲染 FOV 投影；这里再改 FOV 会让括号错位。
             return;
         }
         double factor = 1.0 + (activePreset.fovFactor() - 1.0) * strength;
@@ -132,7 +133,8 @@ public final class CthulhuGazeClient {
     /** 轻微镜头滚转：低语/旧日更明显，像视线被什么东西拽着。 */
     @SubscribeEvent
     public static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
-        if (strength <= 0.001F || activePreset == null) {
+        if (strength <= 0.001F || activePreset == null || TurretClient.isActive()) {
+            // 炮塔相机每帧会重置 roll，这里不要再叠，避免视角被两套逻辑拉扯。
             return;
         }
         double phase = shaderTime() * 1.25;
@@ -147,7 +149,8 @@ public final class CthulhuGazeClient {
      * 淡出期间随 {@link #strength} 一起归零，所以退出时投影会平滑回弹。</p>
      */
     public static float projectionBlend() {
-        if (strength <= 0.001F || activePreset != CthulhuPreset.FLAT) {
+        if (strength <= 0.001F || activePreset != CthulhuPreset.FLAT || TurretClient.isActive()) {
+            // 炮塔 HUD 的落点括号按透视公式投影；正交混合会让它只在固定深度对齐目标。
             return 0.0F;
         }
         if (activeTier >= 3) {
