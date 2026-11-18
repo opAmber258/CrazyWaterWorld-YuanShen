@@ -799,11 +799,9 @@ public final class TurretClient {
         if (kind == HitKind.CREATURE || kind == HitKind.HULL_INTACT || kind == HitKind.GLASS) {
             hitMarkerTicks = 8;
             hitMarkerKind = kind;
-        } else {
-            // 海床/打空/穿洞/设备命中不显示标记；同时清掉上一发的残留类型。
-            hitMarkerTicks = 0;
-            hitMarkerKind = HitKind.MISS;
         }
+        // 非命中落点不要主动清零：多发同时在飞时，后落地的一发会提前掐掉
+        // 另一发刚亮起的标记；让 8 tick 自然过期即可。
     }
 
     public static int hitMarkerTicks() {
@@ -921,10 +919,18 @@ public final class TurretClient {
         if (state.getBlock() instanceof HullBlock) {
             return HitKind.HULL_INTACT;
         }
-        if (ModShipBlocks.isShipBlock(state)) {
+        if (isStructure(state)) {
             return HitKind.STRUCTURE;
         }
         return HitKind.SEABED;
+    }
+
+    /** 船上的设备/结构；炮塔方块不在 `isShipBlock` 里，单独补上。 */
+    private static boolean isStructure(BlockState state) {
+        return state.is(com.opamb.barotrauma.registry.ModBlocks.TURRET.get())
+                || state.is(com.opamb.barotrauma.registry.ModBlocks.FREE_AIM_TURRET.get())
+                || state.is(com.opamb.barotrauma.registry.ModBlocks.TRACKING_TURRET.get())
+                || ModShipBlocks.isShipBlock(state);
     }
 
     @Nullable

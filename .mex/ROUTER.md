@@ -67,7 +67,7 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## Current Project State
 
-- **炮塔水下炮弹特效 + 右键瞄准（2026-11-18，PR 待审）**：在已合并的三原型基础上，新增 `TurretShotFx` 八槽位弹道状态机（连发不互相覆盖，低帧率兜底）、水下能量核心 + 气泡尾迹、跨水面气泡、按 `HitKind` 分支的命中特效（生物血雾/金属碎屑/破口吸泡/舷窗碎片/海床冲击环 + 地波/打空）、`TurretHud` 命中标记与中心点删除；控制改为**右键瞄准（FOV ×0.55、灵敏度 ×0.35）+ 左键开火**，跟随炮塔瞄准时鼠标十字 alpha 降至 35%。协议号仍为 18（无新包）。参考 `patterns/turret-aim-modes.md`。已知限制：命中特效与 hitmarker 仍是客户端预测，服务端没有瞄准散布；服务端 aim() 每 tick 6° 滞后、`TurretFirePacket` 不带开火角度；粒子仅操作者可见。
+- **炮塔水下炮弹特效 + 右键瞄准（2026-11-18，PR 待审）**：在已合并的三原型基础上，新增 `TurretShotFx` 八槽位弹道状态机（连发不互相覆盖，低帧率兜底）、水下能量核心 + 气泡尾迹、跨水面气泡、按 `HitKind` 分支的命中特效（生物血雾/金属碎屑/破口吸泡/舷窗碎片/船内结构碎屑/海床冲击环 + 地波/打空）、`TurretHud` 命中标记与中心点删除；控制改为**右键瞄准（FOV ×0.55、灵敏度 ×0.35）+ 左键开火**，跟随炮塔瞄准时鼠标十字 alpha 降至 35%。协议号仍为 18（无新包）。参考 `patterns/turret-aim-modes.md`。已知限制：命中特效与 hitmarker 仍是客户端预测，服务端没有瞄准散布；服务端 aim() 每 tick 6° 滞后、`TurretFirePacket` 不带开火角度；粒子仅操作者可见。
 
 - **炮塔原型三模式（2026-11-17，已合并 `44c3eec`）**：`feat/turret-prototypes-20261117` 新增 `turret` / `free_aim_turret` / `tracking_turret` 三个独立方块（共用 `TurretBlockEntity`、四个网络包、`TurretRenderer`、`TurretHud`，放在开发者工具页签）。服务端权威限速瞄准（120°/s）+ **以炮口为起点**的 hitscan（`PIVOT_Y=0.75`、`MUZZLE_LENGTH=1.14`，射程 48、10 tick 冷却、12 伤害）；客户端本地落点预判与自定义细粒子曳光 `barotrauma:turret_tracer`（`quadSize=0.03`，去掉火焰/烟/炮口闪光）；跟随模式的落点括号按被命中物体的屏幕投影尺寸缩放（上下短、左右长）。协议号 17→18。参考 `patterns/turret-aim-modes.md`。已实机调过三轮手感；L1 与实机结论见 PR。已知限制：粒子束仅操作者可见；原型无弹药与音效资产；自由瞄准光标仍是屏幕像素直控。
 

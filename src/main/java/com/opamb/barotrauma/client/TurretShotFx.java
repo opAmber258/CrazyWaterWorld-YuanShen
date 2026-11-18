@@ -12,11 +12,14 @@ import net.minecraft.world.phys.Vec3;
  * 在水里撒“白蓝亮点 + 气泡”，穿过水面时补一圈气泡，到达落点后交给
  * {@link TurretClient#spawnImpactEffects} 按命中类型分支。</p>
  *
- * <p>槽位是复用的，所以两发（最多四发）炮弹同时在飞时互不覆盖。</p>
+ * <p>槽位是复用的，最多八发炮弹同时在飞时互不覆盖。</p>
  */
 final class TurretShotFx {
 
-    /** 弹道视觉推进速度（格/秒），和服务端 hitscan 的命中时刻保持一致。 */
+    /**
+     * 弹道视觉推进速度（格/秒）。服务端 fire() 是瞬时 hitscan，所以命中特效和
+     * hitmarker 会比真实伤害晚到（48 格最远约 2 秒），这是有意保留的观感取舍。
+     */
     private static final float SPEED = 24.0F;
 
     /** 空气中的光点间距。 */

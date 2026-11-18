@@ -62,13 +62,14 @@ mex:
 5. 曳光用自定义粒子 `ModParticles.TURRET_TRACER` + `TurretTracerParticle`，逐帧按
    `BEAM_SPEED * dt` 推进头部、沿新段落按间距撒点；不要给初速和抖动。
 6. **每发炮弹一个 `TurretShotFx`**：`TurretClient` 固定 8 个槽位（正常帧率射程 48 / 24 格每秒 = 2 秒，
-   本地冷却 0.6 秒最多 4 发并发；低帧率按帧推进更慢，留 8 个槽位兜底，避免覆盖旧弹道时吞掉命中特效）。
+   本地冷却 0.6 秒最多 4 发并发；4–20 FPS 区间按帧推进变慢，8 个槽位足够兜底；低于约 1.7 FPS
+   仍可能占满，属于极端情况）。
    弹速固定 24 格/秒，但**服务端 fire() 是瞬时 hitscan**：最远 48 格时客户端命中特效/标记会比真实伤害
    晚约 2 秒（已知限制，弹道表现优先）。
    空中间距 0.12，水下间距 0.24 且同时撒 `TURRET_TRACER` 能量核心 + `TURRET_BUBBLE` 气泡尾。
    介质按每帧弹道段中点查 `OceanEnvironment.isSubmerged`，跨水面时二分找水线再补一圈气泡。
 7. **命中先分类再出特效**：`ImpactPrediction` 带 `HitKind`（CREATURE / HULL_INTACT /
-   HULL_BREACHED / GLASS / SEABED / MISS）。破口方块碰撞为空，COLLIDER 射线会穿过去，
+   HULL_BREACHED / GLASS / STRUCTURE / SEABED / MISS）。破口方块碰撞为空，COLLIDER 射线会穿过去，
    必须再用 `ClipContext.Block.OUTLINE` 扫一次（`HullBlock#getShape` 在 breached 时仍返回整格）。
    各分支的特效、声音和 hitmarker 见 `TurretClient#spawnImpactEffects`。
 8. **右键瞄准（ADS）**：按住 `keyUse` 进入，FOV ×0.55、普通炮塔鼠标增益 ×0.35，

@@ -171,8 +171,12 @@ public final class TurretHud implements IGuiOverlay {
         float aspect = height > 0 ? width / (float) height : 16.0F / 9.0F;
         float halfFovX = (float) Math.toDegrees(Math.atan(
                 Math.tan(Math.toRadians(halfFovY)) * aspect));
-        float cursorX = centerX + TurretClient.cursorYawOffset() / halfFovX * centerX;
-        float cursorY = centerY + TurretClient.cursorPitchOffset() / halfFovY * centerY;
+        // 和相机透视一致：屏幕位置 ∝ tan(角度) / tan(halfFov)。FOV 变化时
+        // TurretClient 按同一 tan 比例缩放光标偏移，光标才会留在原来的像素位置。
+        float cursorX = centerX + (float) (Math.tan(Math.toRadians(TurretClient.cursorYawOffset()))
+                / Math.tan(Math.toRadians(halfFovX))) * centerX;
+        float cursorY = centerY + (float) (Math.tan(Math.toRadians(TurretClient.cursorPitchOffset()))
+                / Math.tan(Math.toRadians(halfFovY))) * centerY;
 
         int steps = 14;
         for (int i = 2; i < steps; i += 2) {
