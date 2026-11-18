@@ -54,6 +54,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.BATTERY_CELL.get());
                         output.accept(ModItems.FABRICATOR.get());
                         output.accept(ModItems.DECONSTRUCTOR.get());
+                        output.accept(ModItems.OXYGEN_GENERATOR.get());
+                        output.accept(ModItems.VENT.get());
                         output.accept(ModItems.MEDIUM_STEEL_CABINET.get());
                         output.accept(ModItems.MEDIUM_WINDOWED_STEEL_CABINET.get());
                         output.accept(ModItems.CRATE_SHELF.get());

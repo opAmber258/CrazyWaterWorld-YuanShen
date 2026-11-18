@@ -12,22 +12,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DockingBayTest {
 
     @Test
-    @DisplayName("靠泊标准位：旧小艇 (+1,−3)、儒艮号 (+6,0)，副本站按站点偏移")
+    @DisplayName("靠泊标准位：老小艇 (+1,−4)、旧儒艮号 (+6,0)、新儒艮号 (−2,−8)，副本站按站点偏移")
     void dockCoreFollowsLayout() {
         DockingBay.Site main = DockingBay.Site.MAIN;
-        var legacy = DockingBay.dockCore(main, false);
+        var legacy = DockingBay.dockCore(main, StarterSub.Layout.SMALL);
         assertEquals(StarterSub.ORIGIN_X + 5, legacy.getX());
         assertEquals(StarterSub.ORIGIN_Y + 1, legacy.getY());
         assertEquals(StarterSub.ORIGIN_Z + 4, legacy.getZ());
 
-        var dugong = DockingBay.dockCore(main, true);
+        var oldDugong = DockingBay.dockCore(main, StarterSub.Layout.DUGONG_V1);
+        assertEquals(6, oldDugong.getX());
+        assertEquals(-72, oldDugong.getY());
+        assertEquals(0, oldDugong.getZ());
+
+        var dugong = DockingBay.dockCore(main, StarterSub.Layout.DUGONG_V2);
         assertEquals(StarterSub.NEW_CORE_OFFSET_X, dugong.getX());
         assertEquals(StarterSub.NEW_CORE_OFFSET_Y, dugong.getY());
         assertEquals(StarterSub.NEW_CORE_OFFSET_Z, dugong.getZ());
         assertEquals(StarterSub.newCorePos(), dugong, "新布局码头核心必须就是儒艮号装配时的核心位");
 
         DockingBay.Site slot = DockingBay.Site.forSlot(2);
-        var instanceDock = DockingBay.dockCore(slot, true);
+        var instanceDock = DockingBay.dockCore(slot, StarterSub.Layout.DUGONG_V2);
         assertEquals(StarterSub.newCorePos(slot.x(), slot.z()), instanceDock,
                 "副本站的停靠核心同样按站点偏移");
     }
@@ -60,7 +65,7 @@ class DockingBayTest {
     }
 
     @Test
-    @DisplayName("新布局靠泊核心只认标称位和低一格，与 starterCore 同一判定")
+    @DisplayName("儒艮号靠泊核心只认标称位和低一格，与 starterCore 同一判定")
     void newLayoutDockedCoreTolerance() {
         DockingBay.Site site = DockingBay.Site.forSlot(2);
         net.minecraft.core.BlockPos nominal = StarterSub.newCorePos(site.x(), site.z());
@@ -71,6 +76,36 @@ class DockingBayTest {
         assertFalse(DockingBay.isDockedCore(nominal.east()), "水平偏一格不算靠泊");
         assertFalse(DockingBay.isDockedCore(nominal.offset(2, 0, 0)));
         assertFalse(DockingBay.isDockedCore(nominal.offset(0, 0, 2)));
+
+        // 旧存档里的旧儒艮号（核心 +6,−72,0）仍然算靠泊，否则老档一靠泊就吸错位。
+        net.minecraft.core.BlockPos oldNominal =
+                StarterSub.Layout.DUGONG_V1.coreAt(site.x(), site.z());
+        assertTrue(DockingBay.isDockedCore(oldNominal));
+        assertTrue(DockingBay.isDockedCore(oldNominal.below()));
+    }
+
+    @Test
+    @DisplayName("新儒艮号蓝图：塔顶舱口正对站点竖井，核心/出生点落在模板对应格")
+    void buildTemplateHatchAlignsWithShaft() {
+        StarterSub.Layout v2 = StarterSub.Layout.DUGONG_V2;
+        // 模板尺寸 35×14×13。气闸塔顶舱口局部 (17..19, 13, 10)。
+        assertEquals(35, v2.sizeX);
+        assertEquals(14, v2.sizeY);
+        assertEquals(13, v2.sizeZ);
+        assertEquals(DockingBay.SUB_HATCH_Y, v2.originY + 13, "塔顶舱口在 -69");
+        assertEquals(-1, v2.originX + 17);
+        assertEquals(1, v2.originX + 19);
+        assertEquals(0, v2.originZ + 10);
+        // 核心 = 导航终端 lower_middle，模板局部 (16,6,2)。
+        assertEquals(-2, v2.originX + 16);
+        assertEquals(-76, v2.originY + 6);
+        assertEquals(-8, v2.originZ + 2);
+
+        // 出生点在下铺床边，必须落在船体包围盒里。
+        var spawn = StarterSub.newSpawnPos();
+        assertTrue(spawn.x > v2.originX && spawn.x < v2.originX + v2.sizeX);
+        assertTrue(spawn.y > v2.originY && spawn.y < v2.originY + v2.sizeY);
+        assertTrue(spawn.z > v2.originZ && spawn.z < v2.originZ + v2.sizeZ);
     }
 
     @Test

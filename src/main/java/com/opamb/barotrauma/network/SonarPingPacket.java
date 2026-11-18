@@ -291,7 +291,7 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                         new com.opamb.barotrauma.world.DockingBay.Site(
                                 round.instanceX(), round.instanceZ());
                 target = com.opamb.barotrauma.world.DockingBay.dockCore(
-                        site, com.opamb.barotrauma.world.StarterSub.newLayout(level));
+                        site, com.opamb.barotrauma.world.StarterSub.layout(level));
             } else {
                 target = new BlockPos(round.instanceX(),
                         com.opamb.barotrauma.world.MissionInstance.ANCHOR_Y, round.instanceZ());
@@ -320,7 +320,7 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             return new Dock(0, -1, "");
         }
         BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(
-                site, com.opamb.barotrauma.world.StarterSub.newLayout(level));
+                site, com.opamb.barotrauma.world.StarterSub.layout(level));
         int distance = (int) Math.round(Math.hypot(
                 coreWorld.getX() - dockCore.getX(), coreWorld.getZ() - dockCore.getZ()));
         int dy = Math.abs(coreWorld.getY() - dockCore.getY());

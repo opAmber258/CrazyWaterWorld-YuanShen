@@ -10,9 +10,7 @@ import com.opamb.barotrauma.block.NavigationTerminalBlock;
 import com.opamb.barotrauma.block.NavigationTerminalLayout;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.LadderBlock;
-import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import com.opamb.barotrauma.ship.ShipTemplateSpawner;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -59,69 +57,152 @@ public final class StarterSub {
     public static final int SIZE_Y = 5;
     public static final int SIZE_Z = 15;
 
-    // ---- 儒艮号（2026-11-08 用户在新存档里搭的替换出生潜艇）----
+    // ---- 出生潜艇布局（表驱动：几何 / 核心 / 出生点）----
     /**
-     * 新出生潜艇「儒艮号」：模板原始朝向 5 宽 × 9 高 × 17 长（长轴沿 z）。
-     *
-     * <p>放置时整艘绕 Y 轴顺时针转 90°：长轴改为沿 x，船顶 3×1 舱口才会和哨站
-     * -68 中层舱口同向。原朝向的船顶舱口沿 z，和站侧舱口十字交叉，实际只能
-     * 过 1×1，用户反馈“对接对歪了”。</p>
-     *
-     * <p>因此世界包围盒是 17×9×5（x 17、y 9、z 5），x/z 都从 origin 向正方向。</p>
+     * 出生潜艇的三代布局。老存档按持久化的版本号决定用哪一行；客户端兜底盒子
+     * 也遍历这几行，避免"换了新船但某处还按旧坐标"。
      */
-    public static final int NEW_ORIGIN_X = -9;
-    public static final int NEW_ORIGIN_Y = -77;
-    public static final int NEW_ORIGIN_Z = -2;
-    public static final int NEW_SIZE_X = 17;
-    public static final int NEW_SIZE_Y = 9;
-    public static final int NEW_SIZE_Z = 5;
-    /** 相对站点原点的核心偏移（旋转后声纳在船的东端 (6,-72,0)）。 */
-    public static final int NEW_CORE_OFFSET_X = 6;
-    public static final int NEW_CORE_OFFSET_Y = -72;
-    public static final int NEW_CORE_OFFSET_Z = 0;
+    public enum Layout {
+        /** 老 9×5×15 小艇（还在码头里、未迁移的存档）。 */
+        SMALL(0, -4, -73, -7, 9, 5, 15, 1, -72, -3, 0.5D, -72.0D, 4.5D),
+        /** 旧儒艮号：模板 5×9×17，放置时顺时针 90°，世界包围盒 17×9×5。 */
+        DUGONG_V1(1, -9, -77, -2, 17, 9, 5, 6, -72, 0, -5.5D, -72.0D, 0.5D),
+        /** 新儒艮号蓝图 {@code dugong_custom_20261117}：35 长 × 14 高 × 13 宽。 */
+        DUGONG_V2(2, -18, -82, -10, 35, 14, 13, -2, -76, -8, 6.5D, -80.0D, -6.5D);
 
-    /** 儒艮号的声纳/船核心：站下方 (6, -72, 0)。 */
-    public static BlockPos newCorePos() {
-        return new BlockPos(6, -72, 0);
+        public final int version;
+        public final int originX;
+        public final int originY;
+        public final int originZ;
+        public final int sizeX;
+        public final int sizeY;
+        public final int sizeZ;
+        /** 船核心相对站点中心的 x/z 偏移（y 是绝对坐标）。 */
+        public final int coreOffsetX;
+        public final int coreY;
+        public final int coreOffsetZ;
+        public final double spawnX;
+        public final double spawnY;
+        public final double spawnZ;
+
+        Layout(int version, int originX, int originY, int originZ,
+               int sizeX, int sizeY, int sizeZ,
+               int coreOffsetX, int coreY, int coreOffsetZ,
+               double spawnX, double spawnY, double spawnZ) {
+            this.version = version;
+            this.originX = originX;
+            this.originY = originY;
+            this.originZ = originZ;
+            this.sizeX = sizeX;
+            this.sizeY = sizeY;
+            this.sizeZ = sizeZ;
+            this.coreOffsetX = coreOffsetX;
+            this.coreY = coreY;
+            this.coreOffsetZ = coreOffsetZ;
+            this.spawnX = spawnX;
+            this.spawnY = spawnY;
+            this.spawnZ = spawnZ;
+        }
+
+        public boolean dugong() {
+            return this != SMALL;
+        }
+
+        /** 主站（站点 0,0）的核心位。 */
+        public BlockPos core() {
+            return new BlockPos(coreOffsetX, coreY, coreOffsetZ);
+        }
+
+        /** 副本站的核心位（站点 x/z 平移，y 不变）。 */
+        public BlockPos coreAt(int siteX, int siteZ) {
+            return new BlockPos(siteX + coreOffsetX, coreY, siteZ + coreOffsetZ);
+        }
+
+        public net.minecraft.world.phys.Vec3 spawn() {
+            return new net.minecraft.world.phys.Vec3(spawnX, spawnY, spawnZ);
+        }
+
+        public static Layout byVersion(int version) {
+            for (Layout layout : values()) {
+                if (layout.version == version) {
+                    return layout;
+                }
+            }
+            return SMALL;
+        }
     }
 
-    /** 副本站点里的儒艮号核心（相对站点原点同一偏移）。 */
-    public static BlockPos newCorePos(int siteX, int siteZ) {
-        return new BlockPos(siteX + NEW_CORE_OFFSET_X, NEW_CORE_OFFSET_Y,
-                siteZ + NEW_CORE_OFFSET_Z);
+    /** 当前存档的出生潜艇布局（旧档没有版本号时由 {@code ShipSavedData} 迁移成 1）。 */
+    public static Layout layout(ServerLevel level) {
+        return Layout.byVersion(
+                com.opamb.barotrauma.data.ShipSavedData.get(level).starterLayoutVersion());
     }
 
-    /** 这个存档是否已切换到儒艮号出生潜艇布局。 */
+    /** 这个存档是否已切换到儒艮号出生潜艇布局（旧儒艮号或新蓝图）。 */
     public static boolean newLayout(ServerLevel level) {
-        return com.opamb.barotrauma.data.ShipSavedData.get(level).starterLayoutNew();
+        return layout(level).dugong();
     }
 
-    /** 儒艮号床边出生点（床在 x -8..-7、z -1..1，站在 x -6 的过道）。 */
+    /** 新儒艮号（蓝图 {@code dugong_custom_20261117}）的模板名。 */
+    public static final ResourceLocation DUGONG_V2_TEMPLATE =
+            new ResourceLocation(BarotraumaMod.MOD_ID, "dugong_custom_20261117");
+
+    /**
+     * 新儒艮号模板的世界包围盒（= {@link Layout#DUGONG_V2}）。
+     *
+     * <p>用户搭的蓝图 35×14×13，<b>不旋转</b>：气闸塔顶 3×1 舱口在局部
+     * (17..19, 13, 10)，放到 (-18,-82,-10) 后正好落在站点竖井
+     * (x −1..1, y −69, z 0)，和中层舱口 -68 上下叠着——这就是用户说的
+     * "气闸对接口直接和哨站对上"。</p>
+     */
+    public static final int NEW_ORIGIN_X = Layout.DUGONG_V2.originX;
+    public static final int NEW_ORIGIN_Y = Layout.DUGONG_V2.originY;
+    public static final int NEW_ORIGIN_Z = Layout.DUGONG_V2.originZ;
+    public static final int NEW_SIZE_X = Layout.DUGONG_V2.sizeX;
+    public static final int NEW_SIZE_Y = Layout.DUGONG_V2.sizeY;
+    public static final int NEW_SIZE_Z = Layout.DUGONG_V2.sizeZ;
+    /** 相对站点原点的核心偏移（导航终端 lower_middle 在 (-2,-76,-8)）。 */
+    public static final int NEW_CORE_OFFSET_X = Layout.DUGONG_V2.coreOffsetX;
+    public static final int NEW_CORE_OFFSET_Y = Layout.DUGONG_V2.coreY;
+    public static final int NEW_CORE_OFFSET_Z = Layout.DUGONG_V2.coreOffsetZ;
+
+    /** 新儒艮号的船核心：站下方 (-2, -76, -8)。 */
+    public static BlockPos newCorePos() {
+        return Layout.DUGONG_V2.core();
+    }
+
+    /** 副本站点里的新儒艮号核心（相对站点原点同一偏移）。 */
+    public static BlockPos newCorePos(int siteX, int siteZ) {
+        return Layout.DUGONG_V2.coreAt(siteX, siteZ);
+    }
+
+    /** 新儒艮号床边出生点（下铺床在局部 (24..25,2,2)，站在南侧 (24.5,2,3.5)）。 */
     public static net.minecraft.world.phys.Vec3 newSpawnPos() {
-        return new net.minecraft.world.phys.Vec3(-5.5D, -72.0D, 0.5D);
+        return Layout.DUGONG_V2.spawn();
     }
 
-    /** 这艘儒艮号是否已经在世界里（或已经被收成物理船）。 */
+    /** 这艘出生潜艇是否已经在世界里（或已经被收成物理船）。 */
     public static boolean newStarterActive(ServerLevel level) {
-        if (!newLayout(level)) {
+        Layout layout = layout(level);
+        if (!layout.dugong()) {
             return false;
         }
         if (starterCore(level) != null) {
             return true;
         }
-        BlockPos core = newCorePos();
+        BlockPos core = layout.core();
         return VsState.active() && VsState.corePos() != null
                 && VsState.corePos().distSqr(core) <= 16.0D;
     }
 
     /**
-     * 儒艮号的船核心：正常在 {@link #newCorePos()}，驾驶室改造过、导航终端整体
+     * 出生潜艇（儒艮号）的船核心：正常在布局标称位，驾驶室改造过、导航终端整体
      * 下移一格后会在下面一格。只在 x/z 对齐、y 为标称位或低一格时算数，
      * 与 {@link DockingBay#isDockedCore} 共用 {@link #isStarterCoreAt}。
      */
     @Nullable
     public static ShipCoreBlockEntity starterCore(ServerLevel level) {
-        BlockPos nominal = newCorePos();
+        BlockPos nominal = layout(level).core();
         level.getChunk(nominal.getX() >> 4, nominal.getZ() >> 4);
         if (level.getBlockEntity(nominal) instanceof ShipCoreBlockEntity core) {
             return core;
@@ -144,9 +225,10 @@ public final class StarterSub {
                 && core.getY() <= nominal.getY();
     }
 
-    /** 有儒艮号时出生在它床边，否则沿用旧出生潜艇。 */
+    /** 有儒艮号时出生在它床边（按存档的布局版本），否则沿用旧出生潜艇。 */
     public static net.minecraft.world.phys.Vec3 spawnPos(ServerLevel level) {
-        return newStarterActive(level) ? newSpawnPos() : spawnPos();
+        Layout layout = layout(level);
+        return layout.dugong() ? layout.spawn() : spawnPos();
     }
 
     private StarterSub() {
@@ -184,8 +266,10 @@ public final class StarterSub {
     public static ShipCoreBlockEntity ensure(ServerLevel level) {
         DockingBay.ensureStationHatch(level);
         // 旧存档里的儒艮号：驾驶舱还是旧声纳台时，登录时就地换成导航终端。
-        if (newLayout(level)) {
-            convertStarterConsole(level);
+        // 新蓝图模板本身已经带导航终端，转换函数会自己 no-op。
+        Layout layout = layout(level);
+        if (layout.dugong()) {
+            convertStarterConsole(level, layout);
             ensureConsoleTopRow(level);
         }
         // 用户在新存档里搭的儒艮号：已经在世界里（或已收成物理船）就优先认它，
@@ -280,8 +364,8 @@ public final class StarterSub {
      * 下两层（声纳/小泵/船壳）必须能替换；顶层只有在已经是空气时才铺——原版
      * 2 格高驾驶室的顶层是舱顶装甲板，硬拆会破壳，这种旧船只铺 2 层。</p>
      */
-    private static void convertStarterConsole(ServerLevel level) {
-        BlockPos core = newCorePos();
+    private static void convertStarterConsole(ServerLevel level, Layout layout) {
+        BlockPos core = layout.core();
         level.getChunk(core.getX() >> 4, core.getZ() >> 4);
         if (!level.getBlockState(core).is(ModShipBlocks.SONAR.get())) {
             return;
@@ -410,34 +494,37 @@ public final class StarterSub {
         tag.remove("z");
     }
 
+    /**
+     * 新世界：把用户搭的新儒艮号蓝图 {@code dugong_custom_20261117} 放到站正下方。
+     *
+     * <p><b>不旋转</b>：模板局部 (17..19, 13, 10) 的塔顶舱口放到世界
+     * (-1..1, -69, 0)，正好接上哨站竖井和中层舱口——气闸对接口直接对齐。
+     * 模板里的 {@code PowerBox}/{@code StorageBox} 是相对原点的坐标，必须走
+     * {@link ShipTemplateSpawner} 才会按生成原点重定基。</p>
+     */
     private static ShipCoreBlockEntity placeNewStarter(ServerLevel level) {
-        StructureTemplateManager manager = level.getStructureManager();
-        var template = manager.get(new ResourceLocation(BarotraumaMod.MOD_ID, "starter_sub"));
-        if (template.isEmpty()) {
-            BarotraumaMod.LOGGER.error("[Barotrauma] 找不到儒艮号结构模板 barotrauma:starter_sub");
-            return null;
-        }
         BlockPos origin = new BlockPos(NEW_ORIGIN_X, NEW_ORIGIN_Y, NEW_ORIGIN_Z);
-        level.getChunk(origin.getX() >> 4, origin.getZ() >> 4);
-        // 模板只存了非空气方块；先把整块体积清成空气，否则站外的水/岩石会灌进船内。
+        // 模板跨好几个区块：先全部加载，再清空体积；否则站外的水/岩石会灌进船内。
+        for (int cx = origin.getX() >> 4; cx <= (origin.getX() + NEW_SIZE_X - 1) >> 4; cx++) {
+            for (int cz = origin.getZ() >> 4; cz <= (origin.getZ() + NEW_SIZE_Z - 1) >> 4; cz++) {
+                level.getChunk(cx, cz);
+            }
+        }
         for (BlockPos pos : BlockPos.betweenClosed(origin,
                 origin.offset(NEW_SIZE_X - 1, NEW_SIZE_Y - 1, NEW_SIZE_Z - 1))) {
             level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
         }
-        StructurePlaceSettings settings = new StructurePlaceSettings()
-                .setRotation(Rotation.CLOCKWISE_90);
-        settings.setIgnoreEntities(false);
-        // 旋转以 (0,0,0) 为轴心：局部 (x,z) → 放置点 + (-z, x)。模板长 17，
-        // 把放置点放在包围盒 +x 边，船顶舱口（局部 z=7）才会落在 site.x 正下方。
-        BlockPos placePos = new BlockPos(origin.getX() + NEW_SIZE_X - 1, origin.getY(), origin.getZ());
-        template.get().placeInWorld(level, placePos, placePos, settings, level.random, 3);
-        // 旧模板里可能还是声纳台；放完立刻换成导航终端，并补齐 3 格高驾驶室的顶层。
-        convertStarterConsole(level);
+        if (!ShipTemplateSpawner.spawn(level, origin, DUGONG_V2_TEMPLATE)) {
+            BarotraumaMod.LOGGER.error("[Barotrauma] 找不到儒艮号结构模板 {}", DUGONG_V2_TEMPLATE);
+            return null;
+        }
+        // 老蓝图里驾驶舱可能还是声纳台；放完立刻换成导航终端并补齐 3 格高驾驶室顶层。
+        convertStarterConsole(level, Layout.DUGONG_V2);
         ensureConsoleTopRow(level);
 
         com.opamb.barotrauma.data.ShipSavedData data =
                 com.opamb.barotrauma.data.ShipSavedData.get(level);
-        data.markStarterLayoutNew();
+        data.setStarterLayoutVersion(Layout.DUGONG_V2.version);
         data.markStarterClaimed();
         BlockPos corePos = newCorePos();
         level.getChunk(corePos.getX() >> 4, corePos.getZ() >> 4);

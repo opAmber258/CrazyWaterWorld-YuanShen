@@ -123,6 +123,13 @@ public final class ModItems {
     public static final RegistryObject<Item> DECONSTRUCTOR =
             blockItem("deconstructor", ModBlocks.DECONSTRUCTOR);
 
+    /** 制氧机方块物品（临时单格版本）。 */
+    public static final RegistryObject<Item> OXYGEN_GENERATOR =
+            blockItem("oxygen_generator", ModBlocks.OXYGEN_GENERATOR);
+
+    /** 通风口方块物品（临时单格版本）。 */
+    public static final RegistryObject<Item> VENT = blockItem("vent", ModBlocks.VENT);
+
     // ---- 潜渊症容器 ----
     public static final RegistryObject<Item> MEDIUM_STEEL_CABINET =
             blockItem("medium_steel_cabinet", ModBlocks.MEDIUM_STEEL_CABINET);

@@ -152,6 +152,29 @@ public final class ModBlocks {
                     .isViewBlocking((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)));
 
+    /**
+     * 制氧机（临时单格版本）：原作是约 2.1×2.0 格的落地机器、1000 kW、5 个氧气瓶槽。
+     *
+     * <p>模型/多块/正式 GUI 还没做，先用普通立方体把"制氧机 → 舱室氧气"这条链路跑通；
+     * 正式模型确认后按多方块重做。</p>
+     */
+    public static final RegistryObject<Block> OXYGEN_GENERATOR = BLOCKS.register("oxygen_generator",
+            () -> new com.opamb.barotrauma.block.OxygenGeneratorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(20.0F, 1200.0F)
+                    .sound(SoundType.METAL)));
+
+    /**
+     * 通风口（临时单格版本）：原作是 0.73 格见方的墙挂通风口，只负责把氧送进所在舱室。
+     *
+     * <p>先用普通立方体占位；制氧机按"有通风口的舱室"体积分配氧气。</p>
+     */
+    public static final RegistryObject<Block> VENT = BLOCKS.register("vent",
+            () -> new com.opamb.barotrauma.block.VentBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(6.0F, 200.0F)
+                    .sound(SoundType.METAL)));
+
     // ---- 潜渊症容器（2026-11-10） ----
     /** 中型钢柜：5×4 主格 + 3 个移动容器格。 */
     public static final RegistryObject<Block> MEDIUM_STEEL_CABINET = BLOCKS.register("medium_steel_cabinet",
@@ -220,7 +243,11 @@ public final class ModBlocks {
             () -> new Block(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL)
                     .strength(4.0F, 200.0F)
-                    .sound(SoundType.METAL)));
+                    .sound(SoundType.METAL)
+                    // 中间是挖空的格栅（cutout），不能当实心遮挡面。
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
 
     /** 黑匣子方块：沉船船舱里那一格，打掉掉落 black_box（打捞任务的交付物）。 */
     public static final RegistryObject<Block> BLACK_BOX_BLOCK = BLOCKS.register("black_box_block",

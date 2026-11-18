@@ -49,6 +49,8 @@ public final class UnderwaterSurvival {
         if (player.level().isClientSide()) {
             return;
         }
+        // 乘员吸气：没有潜水服就从所在舱室扣氧（原作 Hull.OxygenConsumptionSpeed）。
+        com.opamb.barotrauma.ship.ShipBreathing.breathe(player);
         // 疾跑 + 浸没 = 原版自由泳姿态（视情况同步给其他客户端；单人也是同一 JVM）。
         // 放在呼吸豁免之前：创造/水肺玩家同样要同步姿态，并清理本模组设置的游泳标志。
         // 判定用脚上方 0.4 格，和 UnderwaterMovement 保持一致。

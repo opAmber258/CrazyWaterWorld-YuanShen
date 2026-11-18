@@ -26,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -316,25 +317,47 @@ public final class MissionCargo {
     }
 
     /**
-     * 装配后的货架：方块被 VS2 搬到船坞，船核心的几何仍是装配时的世界坐标，
-     * 所以按“船坞核心 − 装配核心”的平移去读船坞里的方块实体。
+     * 装配后的货架：方块被 VS2 搬到船坞，直接按**装配快照**里的方块位置找。
      *
-     * @return null = 没装配/船坞核心还没就绪，调用方退回世界查找
+     * <p>不能拿 {@code core.state()} + {@code collectBlocks(translate)} 去推：
+     * 船坞里的核心第一次重扫会把几何记成船坞坐标，再叠一次 translate 就整片
+     * 偏移，货架一个都找不到（用户实测：送货任务只掉出 1 个散箱）。快照本来就是
+     * 装配坐标，用 {@link VsPilot#toYard} 换到船坞坐标读方块实体最稳。</p>
+     *
+     * @return null = 没装配/船坞偏移还没对账，调用方退回世界查找
      */
     @Nullable
     private static List<CabinetBlockEntity> assembledShelves(ServerLevel level) {
         if (!com.opamb.barotrauma.ship.vs.VsState.active()) {
             return null;
         }
-        BlockPos yard = com.opamb.barotrauma.ship.vs.VsPilot.coreYardPos();
-        BlockPos original = com.opamb.barotrauma.ship.vs.VsPilot.corePos();
-        if (yard == null || original == null) {
+        if (com.opamb.barotrauma.ship.vs.VsPilot.coreYardPos() == null
+                && !com.opamb.barotrauma.ship.vs.VsPilot.ensureYardOffset(level)) {
+            // 船坞偏移还没对账：急着回去世界查找只会找到空气，货会掉地上。
             return null;
         }
-        if (level.getBlockEntity(yard) instanceof ShipCoreBlockEntity core) {
-            return shelvesOf(level, core, yard.subtract(original));
+        Map<BlockPos, net.minecraft.world.level.block.state.BlockState> blocks =
+                com.opamb.barotrauma.ship.vs.VsPilot.assembledBlocks();
+        if (blocks.isEmpty()) {
+            return null;
         }
-        return null;
+        List<CabinetBlockEntity> out = new ArrayList<>();
+        for (Map.Entry<BlockPos, net.minecraft.world.level.block.state.BlockState> entry
+                : blocks.entrySet()) {
+            if (entry.getValue().getBlock() != com.opamb.barotrauma.registry.ModBlocks.CRATE_SHELF.get()) {
+                continue;
+            }
+            BlockPos yardPos = com.opamb.barotrauma.ship.vs.VsPilot.toYard(entry.getKey());
+            if (yardPos == null) {
+                continue;
+            }
+            if (level.getBlockEntity(yardPos) instanceof CabinetBlockEntity cabinet
+                    && cabinet.kind() == CabinetBlock.Kind.CRATE_SHELF) {
+                out.add(cabinet);
+            }
+        }
+        out.sort(Comparator.comparingLong(cabinet -> cabinet.getBlockPos().asLong()));
+        return out;
     }
 
     private static List<CabinetBlockEntity> shelvesOf(ServerLevel level, ShipCoreBlockEntity core,

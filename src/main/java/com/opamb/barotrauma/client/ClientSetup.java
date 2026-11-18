@@ -64,6 +64,9 @@ public final class ClientSetup {
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.BATTERY.get(), BatteryScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.OXYGEN_GENERATOR.get(),
+                    OxygenGeneratorScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.CABINET.get(), CabinetScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.CRATE.get(), CrateScreen::new);

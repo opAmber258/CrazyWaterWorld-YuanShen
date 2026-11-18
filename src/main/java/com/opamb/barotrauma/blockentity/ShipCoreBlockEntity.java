@@ -494,7 +494,7 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                         return true;
                     }
                     BlockState shell = level.getBlockState(pos);
-                    return ModShipBlocks.isRepairableHull(shell) || ModShipBlocks.isDoorway(shell);
+                    return ModShipBlocks.sealsHull(shell);
                 },
                 pos -> ModShipBlocks.isEquipment(level.getBlockState(pos)));
 

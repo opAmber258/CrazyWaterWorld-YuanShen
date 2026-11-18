@@ -1,6 +1,9 @@
 package com.opamb.barotrauma.event;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.item.TwoHanded;
+import com.opamb.barotrauma.network.ModNetwork;
+import com.opamb.barotrauma.network.PickupItemPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -10,23 +13,29 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.ClipContext;
 import net.minecraftforge.event.entity.item.ItemExpireEvent;
+import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * 掉落物只能用右键捡（走过去不再自动拾取，见 {@code ItemEntityMixin}）。
+ * 掉落物拾取：原作 {@code Pickable} 是**左键（Action/Use）**触发，这里以左键为主，
+ * 右键保留为补充；走过去不再自动拾取（见 {@code ItemEntityMixin}）。
  *
- * <p>右键对着地上的物品实体：服务端把这堆东西按正常的拾取规则塞进背包
+ * <p>左键对着地上的物品实体：服务端把这堆东西按正常的拾取规则塞进背包
  * （装备背包 → 热键栏；双手持物品进双手格），剩下的留在原地。客户端只负责
  * 取消原版交互并挥手。</p>
  *
  * <p>另有两个兜底：</p>
  * <ul>
- *   <li>{@link #onRightClickBlock}：物品平躺在地上、准星实际打在它下面的方块上时
- *       也能捡。原版服务端 {@code handleUseItem} 对空手直接 return，{@code RightClickItem}
- *       根本没机会发给服务端，所以只能挂在 {@code RightClickBlock} 上；为避免把机器/
- *       柜子的右键抢走，只有物品比准星命中的方块面更近时才捡。</li>
+ *   <li>{@link #onLeftClickBlock}：物品平躺在地上、准星实际打在它下面的方块上时
+ *       也能捡（原作就是左键点物品）。只处理 START；物品必须在准星附近、没有隔着
+ *       方块，捡不动（背包满/别人的东西）就让方块正常挖。</li>
+ *   <li>{@link #onRightClickBlock}：空手右键的兜底（拿着东西时右键要留给方块）。
+ *       物理船上服务端收不到这个方块交互（VS2 的方块坐标在船坞，距离检查直接
+ *       丢包），所以客户端额外发 {@code PickupItemPacket} 报实体 id。</li>
+ *   <li>{@link #onRightClickItem}：准星没打到方块（MISS）时补同样的请求：
+ *       服务端对空手的 use-item 包直接 return，不能指望它。</li>
  *   <li>{@link #onItemExpire}：原版掉落物 5 分钟消失，原作里物件是永久的，
  *       这里每次到寿命就再续一轮。</li>
  * </ul>
@@ -34,8 +43,10 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ItemPickupEvents {
 
-    /** 兜底拾取的锥形半角（cos 值，约 20°）。 */
+    /** 右键兜底拾取的锥形半角（cos 值，约 20°）。 */
     private static final double CONE_COS = 0.94D;
+    /** 左键拾取的锥形半角（cos 值，约 8°）：左键同时负责挖方块，必须瞄得更准。 */
+    private static final double LEFT_CLICK_CONE_COS = 0.99D;
     /** 兜底拾取的最远距离（格）。 */
     private static final double FALLBACK_RANGE = 2.5D;
 
@@ -64,6 +75,54 @@ public final class ItemPickupEvents {
     }
 
     /**
+     * 左键点中物品实体：原作 {@code Pickable} 的拾取键是 {@code Action}/{@code Use}
+     * （也就是左键，见 {@code Item.cs} 的 {@code component.Pick(user)}），所以这里
+     * 把"左键打物品"接成拾取，而不是把它当攻击。
+     */
+    @SubscribeEvent
+    public static void onAttackEntity(AttackEntityEvent event) {
+        if (!(event.getTarget() instanceof ItemEntity itemEntity)) {
+            return;
+        }
+        Player player = event.getEntity();
+        // 物品不是攻击目标：两端都取消；实际拾取只由服务端执行。
+        event.setCanceled(true);
+        if (!player.level().isClientSide) {
+            tryPickup(player, itemEntity);
+        }
+    }
+
+    /**
+     * 左键点到物品下面的方块时的兜底：物品在准星锥形里就捡（原作就是左键点物品）。
+     *
+     * <p>只在 START 处理；捡不动（背包满/别人的东西）就完全不拦，方块正常挖。
+     * 客户端只取消本地挖掘，{@code START_DESTROY_BLOCK} 包仍会发给服务端
+     * （Forge 的左键事件是在发包流程里触发的），服务端再执行拾取。</p>
+     */
+    @SubscribeEvent
+    public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (event.getAction() != PlayerInteractEvent.LeftClickBlock.Action.START) {
+            return;
+        }
+        Player player = event.getEntity();
+        if (player.isSpectator()) {
+            return;
+        }
+        ItemEntity target = findAimedItem(player, LEFT_CLICK_CONE_COS);
+        if (target == null) {
+            return;
+        }
+        if (player.level().isClientSide) {
+            event.setCanceled(true);
+            return;
+        }
+        if (tryPickup(player, target) == Pickup.FAILED) {
+            return;
+        }
+        event.setCanceled(true);
+    }
+
+    /**
      * 空手右键方块时的兜底：物品躺在准星附近（锥形内、没有隔着方块）就捡。
      *
      * <p>只处理主手空手；物品必须比准星真正命中的方块面更近，否则对着机器、
@@ -72,13 +131,19 @@ public final class ItemPickupEvents {
      */
     @SubscribeEvent
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (!event.getItemStack().isEmpty()
-                || event.getHand() != InteractionHand.MAIN_HAND) {
+        if (event.getHand() != InteractionHand.MAIN_HAND) {
             return;
         }
         Player player = event.getEntity();
-        ItemEntity target = findAimedItem(player);
+        boolean emptyHand = event.getItemStack().isEmpty();
+        // 空手用宽松锥形；手里拿着工具/单手物品时只对双手持箱子放宽，
+        // 用更准的锥形（用户实测：拿着焊接工具去捡任务箱，右键被方块交互吃掉）。
+        ItemEntity target = findAimedItem(player, emptyHand ? CONE_COS : LEFT_CLICK_CONE_COS);
         if (target == null) {
+            return;
+        }
+        if (!emptyHand && (TwoHanded.is(event.getItemStack()) || !TwoHanded.is(target.getItem()))) {
+            // 已经抱着箱子（或目标不是箱子）时，右键留给方块/手里物品自己处理。
             return;
         }
         Vec3 eye = player.getEyePosition();
@@ -93,11 +158,44 @@ public final class ItemPickupEvents {
             // 捡东西还会把箱子界面弹出来。实际拾取只由服务端执行。
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
+            // 物理船的方块在 VS2 船坞里，客户端命中的方块坐标离玩家几百万格，
+            // 服务端 handleUseItemOn 的距离检查会直接丢掉这个包，服务端的
+            // RightClickBlock 事件根本不会触发。这种情况只能客户端报实体 id。
+            if (event.getHitVec().getBlockPos().distSqr(player.blockPosition()) > 64.0D) {
+                ModNetwork.sendToServer(new PickupItemPacket(target.getId()));
+            }
             return;
         }
         if (tryPickup(player, target) == Pickup.FAILED) {
             return;
         }
+        event.setCanceled(true);
+        event.setCancellationResult(InteractionResult.SUCCESS);
+    }
+
+    /**
+     * 右键空气（准星没打到方块）也捡：物理船里 VS2 的射线可能只返回 MISS，
+     * 此时客户端走 {@code RightClickItem}，而服务端对空手的 use-item 包直接 return。
+     * 客户端自己发现准星里的物品后发包给服务端；手里拿着工具时同样只对箱子放宽。
+     */
+    @SubscribeEvent
+    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (event.getHand() != InteractionHand.MAIN_HAND) {
+            return;
+        }
+        Player player = event.getEntity();
+        if (player.isSpectator() || !player.level().isClientSide) {
+            return;
+        }
+        boolean emptyHand = event.getItemStack().isEmpty();
+        ItemEntity target = findAimedItem(player, emptyHand ? CONE_COS : LEFT_CLICK_CONE_COS);
+        if (target == null) {
+            return;
+        }
+        if (!emptyHand && (TwoHanded.is(event.getItemStack()) || !TwoHanded.is(target.getItem()))) {
+            return;
+        }
+        ModNetwork.sendToServer(new PickupItemPacket(target.getId()));
         event.setCanceled(true);
         event.setCancellationResult(InteractionResult.SUCCESS);
     }
@@ -112,6 +210,14 @@ public final class ItemPickupEvents {
     }
 
     private enum Pickup { PICKED, EMPTY, FAILED }
+
+    /**
+     * 网络包入口：客户端已经确认准星对着这个掉落物，服务端也校验过距离。
+     * 这里只按正常拾取规则（装备背包 → 热键栏、双手持物品进双手格）执行。
+     */
+    public static boolean pickup(Player player, ItemEntity itemEntity) {
+        return tryPickup(player, itemEntity) == Pickup.PICKED;
+    }
 
     private static Pickup tryPickup(Player player, ItemEntity itemEntity) {
         // 旁观者也会收到 RightClickBlock：不能改世界物品。
@@ -139,8 +245,13 @@ public final class ItemPickupEvents {
         return Pickup.PICKED;
     }
 
-    /** 视线锥形里最近的掉落物（用于空手右键兜底）。 */
+    /** 视线锥形里最近的掉落物（空手右键兜底用，宽松锥形）。 */
     private static ItemEntity findAimedItem(Player player) {
+        return findAimedItem(player, CONE_COS);
+    }
+
+    /** 视线锥形里最近的掉落物（左键用更准的锥形）。 */
+    private static ItemEntity findAimedItem(Player player, double coneCos) {
         Vec3 eye = player.getEyePosition();
         Vec3 look = player.getLookAngle();
         ItemEntity best = null;
@@ -156,7 +267,7 @@ public final class ItemPickupEvents {
             if (distance > bestDist || distance < 1.0E-4D) {
                 continue;
             }
-            if (delta.normalize().dot(look) < CONE_COS) {
+            if (delta.normalize().dot(look) < coneCos) {
                 continue;
             }
             // 隔墙不捡：视线到物品之间有实心方块就跳过。

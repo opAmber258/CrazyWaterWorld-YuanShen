@@ -1,0 +1,79 @@
+package com.opamb.barotrauma.network;
+
+import com.opamb.barotrauma.ship.vs.VsPilot;
+import com.opamb.barotrauma.ship.vs.VsState;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.network.NetworkEvent;
+
+import java.util.function.Supplier;
+
+/**
+ * 物理船上右键方块（舱门/舱口/货架/柜子…）。
+ *
+ * <p>VS2 把船体方块收在船坞里，客户端命中的对方块坐标是船坞坐标。服务端
+ * {@code handleUseItemOn} 用玩家到方块的距离做检查，船坞坐标离玩家几百万格，
+ * 包会被直接丢掉——所以物理船上右键舱门/舱口/货架原本完全没有反应。</p>
+ *
+ * <p>客户端把<b>船坞坐标 + 面 + 相对命中点</b>发过来；服务端确认这一格属于
+ * 当前物理船、玩家离命中点足够近，然后在船坞方块上调用原版的 {@code use}。
+ * 方块实体、菜单、开门重扫都还是走原来的逻辑。</p>
+ */
+public record ShipUseBlockPacket(BlockPos yardPos, Direction face, InteractionHand hand,
+                                 double hitX, double hitY, double hitZ, Vec3 worldHit) {
+
+    /** 玩家眼睛到命中点的最大距离（格）。 */
+    private static final double MAX_DISTANCE = 6.0D;
+
+    public static void encode(ShipUseBlockPacket message, FriendlyByteBuf buf) {
+        buf.writeBlockPos(message.yardPos);
+        buf.writeEnum(message.face);
+        buf.writeEnum(message.hand);
+        buf.writeFloat((float) message.hitX);
+        buf.writeFloat((float) message.hitY);
+        buf.writeFloat((float) message.hitZ);
+        buf.writeDouble(message.worldHit.x);
+        buf.writeDouble(message.worldHit.y);
+        buf.writeDouble(message.worldHit.z);
+    }
+
+    public static ShipUseBlockPacket decode(FriendlyByteBuf buf) {
+        return new ShipUseBlockPacket(buf.readBlockPos(), buf.readEnum(Direction.class),
+                buf.readEnum(InteractionHand.class),
+                buf.readFloat(), buf.readFloat(), buf.readFloat(),
+                new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()));
+    }
+
+    public static void handle(ShipUseBlockPacket message, Supplier<NetworkEvent.Context> supplier) {
+        NetworkEvent.Context context = supplier.get();
+        context.enqueueWork(() -> {
+            ServerPlayer player = context.getSender();
+            if (player == null || player.isSpectator() || !(player.level() instanceof ServerLevel level)) {
+                return;
+            }
+            if (!VsState.active() || !VsPilot.isYardBlock(message.yardPos)) {
+                return;
+            }
+            if (player.getEyePosition().distanceToSqr(message.worldHit)
+                    > MAX_DISTANCE * MAX_DISTANCE) {
+                return;
+            }
+            BlockState state = level.getBlockState(message.yardPos);
+            if (state.isAir()) {
+                return;
+            }
+            Vec3 localHit = Vec3.atLowerCornerOf(message.yardPos)
+                    .add(message.hitX, message.hitY, message.hitZ);
+            BlockHitResult hit = new BlockHitResult(localHit, message.face, message.yardPos, false);
+            state.use(level, player, message.hand, hit);
+        });
+        context.setPacketHandled(true);
+    }
+}

@@ -284,11 +284,11 @@ public final class CampaignManager {
             return List.of();
         // 核心在 originY+1；旧存档的船还在 -78。
         int originY = corePos.getY() - 1;
-        boolean newLayout = StarterSub.newLayout(deep);
-        int shipX = site.x() + (newLayout ? StarterSub.NEW_ORIGIN_X : StarterSub.ORIGIN_X);
-        int shipZ = site.z() + (newLayout ? StarterSub.NEW_ORIGIN_Z : StarterSub.ORIGIN_Z);
-        int sizeX = newLayout ? StarterSub.NEW_SIZE_X : StarterSub.SIZE_X;
-        int sizeZ = newLayout ? StarterSub.NEW_SIZE_Z : StarterSub.SIZE_Z;
+        StarterSub.Layout layout = StarterSub.layout(deep);
+        int shipX = site.x() + layout.originX;
+        int shipZ = site.z() + layout.originZ;
+        int sizeX = layout.sizeX;
+        int sizeZ = layout.sizeZ;
         var boat = core.state() == null ? core.rescan(deep) : core.state();
         if (boat == null || boat.compartments().isEmpty() || boat.floodRatio() > 0.001) return List.of();
         List<Vec3> result = new ArrayList<>();
@@ -306,15 +306,16 @@ public final class CampaignManager {
         return List.of();
     }
 
-    /** 找到这个站停靠的初始潜艇核心；新布局找站外侧的儒艮号，旧存档兼容 -75/-77。 */
+    /** 找到这个站停靠的出生潜艇核心；儒艮号只在主站，旧存档兼容 -75/-77。 */
     private static BlockPos starterCorePos(ServerLevel deep, com.opamb.barotrauma.world.DockingBay.Site site) {
-        if (StarterSub.newLayout(deep)) {
+        StarterSub.Layout layout = StarterSub.layout(deep);
+        if (layout.dugong()) {
             // 儒艮号只在主站；驾驶室改过后核心可能比标称位置低一格。
             if (com.opamb.barotrauma.world.DockingBay.Site.MAIN.equals(site)) {
                 ShipCoreBlockEntity core = StarterSub.starterCore(deep);
                 return core == null ? null : core.getBlockPos();
             }
-            BlockPos pos = StarterSub.newCorePos(site.x(), site.z());
+            BlockPos pos = layout.coreAt(site.x(), site.z());
             deep.getChunkAt(pos);
             return deep.getBlockEntity(pos) instanceof ShipCoreBlockEntity ? pos : null;
         }

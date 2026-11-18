@@ -183,6 +183,16 @@ public final class VsPilot {
                 // 用实时逆变换 + interiorCells（含破洞后的历史兜底），不看水位。
                 return isInsideInterior(level, pos);
             }
+
+            @Override
+            public Integer compartmentIndex(Level level, Vec3 pos) {
+                if (ship == null || state == null || pos == null
+                        || !(level instanceof ServerLevel)) {
+                    return null;
+                }
+                BlockPos cell = toAssemblyCell(level, pos);
+                return cell == null ? null : state.compartmentAt(cell);
+            }
         });
         VsState.installBlockRecorder(VsPilot::recordPlacedBlock);
         // 只注册服务端干燥区：单人存档里客户端和集成服务端同进程，
@@ -255,6 +265,27 @@ public final class VsPilot {
             return null;
         }
         return corePos.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
+    }
+
+    /**
+     * 立刻对账船坞偏移，不等每秒一次的扫描。
+     *
+     * <p>装配 → 传送 → 接任务是在同一小段时间里发生的：货运装货时
+     * {@code yardOffset} 还可能没探测到，货架会一个都找不到，货只能掉在
+     * 地上（用户实测）。这里强制扫一次；扫成功后顺带把 pending 的方块
+     * 实体 NBT 装回船坞，货架容器才读得到。</p>
+     *
+     * @return true = 偏移已经可用
+     */
+    public static boolean ensureYardOffset(ServerLevel level) {
+        if (yardOffsetX != Integer.MIN_VALUE) {
+            return true;
+        }
+        if (level == null || ship == null || corePos == null || snapshot.isEmpty()) {
+            return false;
+        }
+        nextYardScanGameTime = Long.MIN_VALUE;
+        return discoverYardOffset(level);
     }
 
     /**
@@ -536,29 +567,13 @@ public final class VsPilot {
      */
     private static boolean isInsideInterior(Level level, Vec3 pos) {
         if (ship == null || state == null || pos == null
-                || !(level instanceof ServerLevel server)) {
+                || !(level instanceof ServerLevel)) {
             return false;
         }
-        org.valkyrienskies.core.api.ships.ServerShip live = view(server);
-        org.valkyrienskies.core.api.ships.ServerShip target = live != null ? live : ship;
-        if (target == null) {
+        BlockPos cell = toAssemblyCell(level, pos);
+        if (cell == null) {
             return false;
         }
-        var transform = target.getTransform();
-        var origin = new org.joml.Vector3d(
-                transform.getPositionInShip().x() - assembledPos.x,
-                transform.getPositionInShip().y() - assembledPos.y,
-                transform.getPositionInShip().z() - assembledPos.z);
-        org.joml.Vector3d shipSpace;
-        try {
-            shipSpace = transform.getShipToWorld().invert(new org.joml.Matrix4d())
-                    .transformPosition(new org.joml.Vector3d(pos.x, pos.y, pos.z),
-                            new org.joml.Vector3d());
-        } catch (Throwable error) {
-            return false;
-        }
-        BlockPos cell = BlockPos.containing(shipSpace.x - origin.x,
-                shipSpace.y - origin.y, shipSpace.z - origin.z);
         // 用 interiorCells（船壳以内）而不是 pocket.cells()：圆角船体包围盒里的
         // 船外空气也属于连海空腔，但不该把站台上的玩家算进乘客。
         for (var compartment : state.compartments()) {
@@ -574,6 +589,38 @@ public final class VsPilot {
         // 破洞后重扫可能把整间房的 interior 清空：用过切破洞前确认过的舱内格兜底，
         // 否则靠泊吸附会把仍站在房间里的玩家/任务货留在大海里。
         return knownInteriorCells.contains(cell);
+    }
+
+    /**
+     * 世界坐标 → 装配坐标格子（实时逆变换，不受传送/停靠平移影响）。
+     *
+     * @return 无法换算时返回 {@code null}
+     */
+    @Nullable
+    private static BlockPos toAssemblyCell(Level level, Vec3 pos) {
+        if (pos == null || !(level instanceof ServerLevel server)) {
+            return null;
+        }
+        org.valkyrienskies.core.api.ships.ServerShip live = view(server);
+        org.valkyrienskies.core.api.ships.ServerShip target = live != null ? live : ship;
+        if (target == null) {
+            return null;
+        }
+        var transform = target.getTransform();
+        var origin = new org.joml.Vector3d(
+                transform.getPositionInShip().x() - assembledPos.x,
+                transform.getPositionInShip().y() - assembledPos.y,
+                transform.getPositionInShip().z() - assembledPos.z);
+        org.joml.Vector3d shipSpace;
+        try {
+            shipSpace = transform.getShipToWorld().invert(new org.joml.Matrix4d())
+                    .transformPosition(new org.joml.Vector3d(pos.x, pos.y, pos.z),
+                            new org.joml.Vector3d());
+        } catch (Throwable error) {
+            return null;
+        }
+        return BlockPos.containing(shipSpace.x - origin.x,
+                shipSpace.y - origin.y, shipSpace.z - origin.z);
     }
 
     /** 把当前几何里确认的舱内格并入"已知舱内"集合（只增不减）。 */
@@ -1161,6 +1208,17 @@ public final class VsPilot {
     }
 
     /**
+     * 当前物理船的装配快照（装配坐标 → 方块状态）。
+     *
+     * <p>只读用途：任务装货时按快照里的方块位置找货架，再用 {@link #toYard}
+     * 换到船坞坐标读方块实体。不要改这个 Map——需要登记新方块走
+     * {@link #recordPlacedBlock}。</p>
+     */
+    public static Map<BlockPos, BlockState> assembledBlocks() {
+        return snapshot;
+    }
+
+    /**
      * 装配快照里所有泵的锚点：压载泵只取六格机器的主方块，普通泵/小型泵各占一格。
      *
      * <p>物理船收进刚体后方块右键不到，每台泵都要有自己的交互代理；
@@ -1395,7 +1453,7 @@ public final class VsPilot {
                         return false;
                     }
                     BlockState shell = level.getBlockState(pos.offset(ox, oy, oz));
-                    return ModShipBlocks.isRepairableHull(shell) || ModShipBlocks.isDoorway(shell);
+                    return ModShipBlocks.sealsHull(shell);
                 },
                 pos -> ModShipBlocks.isEquipment(level.getBlockState(pos.offset(ox, oy, oz))));
         current.replaceGeometry(geometry);
@@ -2759,8 +2817,8 @@ public final class VsPilot {
             if (dockSite == null) {
                 return "离哨站太远：把船开到哨站对接口附近再靠泊";
             }
-            boolean newLayout = StarterSub.newLayout(level);
-            BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(dockSite, newLayout);
+            BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(
+                    dockSite, StarterSub.layout(level));
             double horizontal = Math.hypot(checkCore.getX() - dockCore.getX(),
                     checkCore.getZ() - dockCore.getZ());
             if (horizontal > 16.0D || Math.abs(checkCore.getY() - dockCore.getY()) > 6) {

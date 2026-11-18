@@ -345,15 +345,22 @@ public final class ShipWaterRenderer {
             float minZ = boxes[i + 2];
             float maxZ = boxes[i + 5];
             // 盒子和初始潜艇内腔在 XZ 上有重叠，就认为它描述的是这艘船。
-            // 旧出生潜艇（码头内）或儒艮号（站外侧，新世界布局）都算。
+            // 旧出生潜艇（码头内）或儒艮号（旧/新两代布局）都算。
             boolean oldStarter = !(maxX + 1.0F < StarterSub.ORIGIN_X + 1
                     || minX > StarterSub.ORIGIN_X + StarterSub.SIZE_X - 1
                     || maxZ + 1.0F < StarterSub.ORIGIN_Z + 1
                     || minZ > StarterSub.ORIGIN_Z + StarterSub.SIZE_Z - 1);
-            boolean newStarter = !(maxX + 1.0F < StarterSub.NEW_ORIGIN_X + 1
-                    || minX > StarterSub.NEW_ORIGIN_X + StarterSub.NEW_SIZE_X - 1
-                    || maxZ + 1.0F < StarterSub.NEW_ORIGIN_Z + 1
-                    || minZ > StarterSub.NEW_ORIGIN_Z + StarterSub.NEW_SIZE_Z - 1);
+            boolean newStarter = false;
+            for (StarterSub.Layout layout : StarterSub.Layout.values()) {
+                if (layout.dugong()
+                        && !(maxX + 1.0F < layout.originX + 1
+                        || minX > layout.originX + layout.sizeX - 1
+                        || maxZ + 1.0F < layout.originZ + 1
+                        || minZ > layout.originZ + layout.sizeZ - 1)) {
+                    newStarter = true;
+                    break;
+                }
+            }
             if (!oldStarter && !newStarter) {
                 continue;
             }

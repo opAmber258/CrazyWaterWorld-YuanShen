@@ -220,6 +220,15 @@ public final class ShipState {
     }
 
     /**
+     * 这个格子属于哪个舱室/空腔（下标与 {@link ShipSimulation} 的氧气数组一致）。
+     *
+     * <p>连海空腔的下标在密闭舱室之后，它们的氧气按 0 处理；不在任何舱里返回 -1。</p>
+     */
+    public int compartmentAt(BlockPos cell) {
+        return simulation().bodyOf(cell);
+    }
+
+    /**
      * 船体破损后替换几何（舱室 / 连海空腔全部重算）。
      *
      * <p>模拟对象要重建（舱室数组长度变了），但反应堆、压载、水泵这些设置
@@ -233,6 +242,7 @@ public final class ShipState {
         // 先按"每格的水"把旧水收下来，再换几何；直接按容积比例重分会让关门的
         // 那一瞬间水整体跑到漏水侧（用户实测：完好侧被清空）。
         Map<BlockPos, Double> carried = old == null ? Map.of() : waterByCell();
+        Map<BlockPos, Double> carriedOxygen = old == null ? Map.of() : oxygenByCell();
         this.geometry = next;
         // 新几何确认的舱内格也要并入历史：只增不减，破损后仍能兜底。
         java.util.Set<BlockPos> mergedInterior = new java.util.HashSet<>(knownInterior);
@@ -253,6 +263,8 @@ public final class ShipState {
         } else {
             this.simulation.seedWaterByCell(carried, next);
         }
+        // 氧气同样按格搬过去：开门/换几何会重扫，不能因为重扫就"回满"。
+        this.simulation.seedOxygenByCell(carriedOxygen, next);
         this.water = null;
     }
 
@@ -321,7 +333,7 @@ public final class ShipState {
         }
     }
 
-    /** 方块船重扫会新建一个 {@link ShipState}：把旧船的水（按格子）和设置接过来。 */
+    /** 方块船重扫会新建一个 {@link ShipState}：把旧船的水/氧气（按格子）和设置接过来。 */
     public void inheritWaterFrom(ShipState previous) {
         if (previous == null) {
             return;
@@ -331,6 +343,35 @@ public final class ShipState {
         if (!carried.isEmpty()) {
             simulation().seedWaterByCell(carried, geometry);
         }
+        // 氧气也不能因重扫回满：按格搬（见 replaceGeometry 的同一处理）。
+        simulation().seedOxygenByCell(previous.oxygenByCell(), geometry);
+    }
+
+    /**
+     * 当前每个舱内格的氧气（单位，按舱室均分）。
+     *
+     * <p>重扫/换几何前用它把氧气按位置保存下来；开门、破洞、拆方块都会触发重扫，
+     * 不搬的话舱室氧气会被 {@link ShipSimulation} 的初始值（满氧）覆盖。</p>
+     */
+    public Map<BlockPos, Double> oxygenByCell() {
+        Map<BlockPos, Double> out = new HashMap<>();
+        ShipSimulation sim = this.simulation;
+        if (sim == null) {
+            return out;
+        }
+        List<ShipGeometry.Compartment> sealed = geometry.compartments();
+        for (int i = 0; i < sealed.size(); i++) {
+            double units = sim.oxygenUnits(i);
+            java.util.Set<BlockPos> cells = sealed.get(i).cells();
+            if (units <= 1.0E-6D || cells.isEmpty()) {
+                continue;
+            }
+            double per = units / cells.size();
+            for (BlockPos cell : cells) {
+                out.merge(cell, per, Double::sum);
+            }
+        }
+        return out;
     }
 
 

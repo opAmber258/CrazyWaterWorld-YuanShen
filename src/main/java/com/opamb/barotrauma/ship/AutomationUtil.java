@@ -28,8 +28,22 @@ public final class AutomationUtil {
         return ship != null && VsState.active() && VsState.activeState() == ship;
     }
 
-    /** 装配坐标下，玩家是否在 cell 的 range 格内（物理船会把玩家坐标转成装配坐标）。 */
+    /**
+     * 玩家是否在门/舱口附近、且**和门在同一片舱室里**。
+     *
+     * <p>原作的运动探测器只是门口一小块矩形（{@code Content/Items/Assemblies/
+     * AutoClosingDoor.xml}：{@code MotionSensor RangeX=120 RangeY=100}，scale 0.5），
+     * 不会隔着船壳/隔壁舱室触发；合并进门的自动化后如果只算直线距离，玩家在
+     * 隔壁房间贴墙站着也会把门打开（用户实测：引擎室门自己开、跟着进水）。</p>
+     *
+     * <p>这里先按距离筛选，再要求玩家所在的水体和门格自身/六个邻居属于同一批
+     * 水体——门两侧的舱室都算，隔一堵墙的第三个舱室不算。物理船用实时逆变换
+     * 查玩家舱室，方块船直接用世界坐标。</p>
+     */
     public static boolean playerNear(ServerLevel level, ShipState ship, BlockPos cell, double range) {
+        if (ship == null || level == null || cell == null) {
+            return false;
+        }
         double rangeSq = range * range;
         // 物理船的 cell 是装配坐标；先换到世界坐标再和玩家世界位置比较。
         net.minecraft.world.phys.Vec3 center = isPhysicalShip(ship)
@@ -38,12 +52,49 @@ public final class AutomationUtil {
         if (center == null) {
             return false;
         }
+        java.util.Set<Integer> bodies = bodiesAround(ship, cell);
         for (ServerPlayer player : level.players()) {
-            if (player.position().distanceToSqr(center) <= rangeSq) {
-                return true;
+            if (player.isSpectator()) {
+                continue;
             }
+            if (player.position().distanceToSqr(center) > rangeSq) {
+                continue;
+            }
+            int body = playerBody(level, ship, player);
+            if (body < 0) {
+                continue;
+            }
+            if (!bodies.isEmpty() && !bodies.contains(body)) {
+                continue;
+            }
+            return true;
         }
         return false;
+    }
+
+    /** 门格自身 + 六邻居所在的水体（密闭舱室或连海空腔）；门两侧都要算。 */
+    private static java.util.Set<Integer> bodiesAround(ShipState ship, BlockPos cell) {
+        java.util.Set<Integer> bodies = new java.util.HashSet<>();
+        int own = ship.simulation().bodyOf(cell);
+        if (own >= 0) {
+            bodies.add(own);
+        }
+        for (Direction direction : Direction.values()) {
+            int body = ship.simulation().bodyOf(cell.relative(direction));
+            if (body >= 0) {
+                bodies.add(body);
+            }
+        }
+        return bodies;
+    }
+
+    /** 玩家所在的水体下标；不在船上/没有物理船时返回 -1。 */
+    private static int playerBody(ServerLevel level, ShipState ship, ServerPlayer player) {
+        if (isPhysicalShip(ship)) {
+            Integer index = VsState.queryCompartmentIndex(level, player.position());
+            return index == null ? -1 : index;
+        }
+        return ship.compartmentAt(BlockPos.containing(player.position()));
     }
 
     /**

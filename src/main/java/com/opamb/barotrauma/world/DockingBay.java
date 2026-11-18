@@ -208,34 +208,28 @@ public final class DockingBay {
     }
 
     /**
-     * 某个站点「靠泊标准位」的核心坐标。
+     * 某个站点「靠泊标准位」的核心坐标，按存档里出生潜艇的布局版本算。
      *
-     * <p>旧布局（9×5×15 小艇）核心在站原点 (+1, -72, −3)；新布局「儒艮号」
-     * 旋转 90° 后核心在 (+6, −72, 0)。靠泊吸附、声纳对接判定必须用同一套坐标，
-     * 否则新船会被吸到旧船的码头位上，舱口对不上、看起来就是「对接对歪了」。</p>
+     * <p>靠泊吸附、声纳对接判定必须用同一套坐标，否则船会被吸到别的版本的
+     * 码头位上，舱口对不上、看起来就是「对接对歪了」。</p>
      */
-    public static BlockPos dockCore(Site site, boolean newLayout) {
-        if (newLayout) {
-            return new BlockPos(site.x() + StarterSub.NEW_CORE_OFFSET_X,
-                    StarterSub.NEW_CORE_OFFSET_Y,
-                    site.z() + StarterSub.NEW_CORE_OFFSET_Z);
-        }
-        return new BlockPos(site.x() + StarterSub.ORIGIN_X + 5,
-                StarterSub.ORIGIN_Y + 1,
-                site.z() + StarterSub.ORIGIN_Z + 4);
+    public static BlockPos dockCore(Site site, StarterSub.Layout layout) {
+        return layout.coreAt(site.x(), site.z());
     }
 
-    /** 是不是初始潜艇在码头的位置（核心 x/z 相对站点固定，y 覆盖新旧几版）。 */
+    /** 是不是出生潜艇在码头的位置（三代布局的核心位都认，y 覆盖新旧几版）。 */
     public static boolean isDockedCore(BlockPos core) {
         Site site = siteAt(core.getX(), core.getZ());
         if (site == null) {
             return false;
         }
-        // 新世界：儒艮号挂在站下方，核心在 (site,-72,-6)；驾驶室改过后可能低一格。
-        // 只认 x/z 对齐 + 标称位/低一格，和 StarterSub.starterCore 同一判定。
-        BlockPos nominal = StarterSub.newCorePos(site.x(), site.z());
-        if (StarterSub.isStarterCoreAt(nominal, core)) {
-            return true;
+        // 儒艮号（旧/新两代）：只认 x/z 对齐 + 标称位/低一格，
+        // 和 StarterSub.starterCore 同一判定。
+        for (StarterSub.Layout layout : StarterSub.Layout.values()) {
+            if (layout.dugong()
+                    && StarterSub.isStarterCoreAt(layout.coreAt(site.x(), site.z()), core)) {
+                return true;
+            }
         }
         // 旧出生潜艇在码头里的几版位置。
         return core.getX() == site.x() + 1
@@ -251,12 +245,19 @@ public final class DockingBay {
      */
     public static boolean isDockCapRow(BlockPos pos) {
         Site site = siteAt(pos.getX(), pos.getZ());
-        return site != null
-                && pos.getY() == MID_HATCH_Y
-                && pos.getX() >= site.x() + StarterSub.ORIGIN_X
-                && pos.getX() <= site.x() + StarterSub.ORIGIN_X + StarterSub.SIZE_X - 1
-                && pos.getZ() >= site.z() + StarterSub.ORIGIN_Z
-                && pos.getZ() <= site.z() + StarterSub.ORIGIN_Z + StarterSub.SIZE_Z - 1;
+        if (site == null || pos.getY() != MID_HATCH_Y) {
+            return false;
+        }
+        // 三代布局的船顶足迹都算：旧档的船可能还是老小艇/旧儒艮号。
+        for (StarterSub.Layout layout : StarterSub.Layout.values()) {
+            if (pos.getX() >= site.x() + layout.originX
+                    && pos.getX() <= site.x() + layout.originX + layout.sizeX - 1
+                    && pos.getZ() >= site.z() + layout.originZ
+                    && pos.getZ() <= site.z() + layout.originZ + layout.sizeZ - 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 站侧/中层 3×1 舱口格（中层舱口现在就是潜艇顶部舱口）。 */

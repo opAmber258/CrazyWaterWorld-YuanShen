@@ -48,6 +48,11 @@ public final class ModMenus {
             MENUS.register("battery", () -> IForgeMenuType.create(
                     com.opamb.barotrauma.menu.BatteryMenu::new));
 
+    /** 制氧机面板：5 个氧气瓶槽 + 产氧量/电压/耐久读数。 */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.OxygenGeneratorMenu>> OXYGEN_GENERATOR =
+            MENUS.register("oxygen_generator", () -> IForgeMenuType.create(
+                    com.opamb.barotrauma.menu.OxygenGeneratorMenu::new));
+
     /** 加工台：5 进 1 出 + 配方列表。 */
     public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.FabricatorMenu>> FABRICATOR =
             MENUS.register("fabricator", () -> IForgeMenuType.create(
