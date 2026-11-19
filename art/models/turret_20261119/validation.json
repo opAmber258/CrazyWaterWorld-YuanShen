@@ -1,0 +1,101 @@
+{
+  "asset": "turret",
+  "identifier": "turret",
+  "date": "2026-11-19",
+  "status": "complete",
+  "status_reason": "三段式 Java 方块模型交付齐备：bbmodel + 512x256 图集 + 四向 1200x900 预览 + README/validation/structure_audit/reference。运行时接入由同一工作区的代码提交完成。",
+  "creation_source": "AI（DeepSeek-V4.1-Flash）",
+  "contributors": {
+    "human": ["boingsetta"],
+    "ai": [
+      {
+        "name": "DeepSeek-V4.1-Flash",
+        "tool": "ZCode CLI + Blockbench MCP",
+        "role": "几何、UV、贴图、Blockbench 工程/导出、预览渲染与交付文档"
+      }
+    ],
+    "division": "人类提出三段式结构与验收标准；AI 完成建模、贴图、预览、导出与文档。"
+  },
+  "display_name_zh": "舰载炮塔",
+  "display_name_en": "Turret",
+  "prototyping_note": "非原版特定实体，项目定名；对应现有 turret / free_aim_turret / tracking_turret 三个原型方块，共用本几何。",
+  "production": {
+    "model_format": "java_block",
+    "bbmodel_format_version": "5.0",
+    "java_block_version": "26.3",
+    "blockbench": "5.2.2",
+    "textures_embedded": true,
+    "registered_type": "方块（Java 方块模型 + BER 旋转部件）"
+  },
+  "counts": {
+    "cubes": 28,
+    "declared_faces": 168,
+    "groups": 4,
+    "bones": 0,
+    "animations": 0,
+    "hidden_elements": 0,
+    "rotated_cubes": 0,
+    "zero_thickness_planes": 0,
+    "textures": 1
+  },
+  "bounds_blockbench_units": {
+    "min": [0.5, 0.0, 0.8],
+    "max": [15.5, 15.0, 26.24],
+    "size": [15.0, 15.0, 25.44]
+  },
+  "dimensions_blocks_at_16_units_per_block": [0.9375, 0.9375, 1.59],
+  "cost": {
+    "texture": "512x256 RGBA",
+    "texture_pixels": 131072,
+    "transparent_pixels": 69632,
+    "texture_tiles": 32,
+    "used_tiles": 20
+  },
+  "checks": [
+    { "name": "naming_convention", "pass": true, "detail": "turret = 舰载炮塔 Turret；沿用仓库现有原型命名，非原版特定实体。" },
+    { "name": "deliverable_set", "pass": true, "detail": "java_block 口径：bbmodel + turret_tex.png + 四向预览 + README/validation/structure_audit + reference/palette.json。" },
+    { "name": "preview_geometry_consistency", "pass": true, "detail": "四张预览由 Blockbench 5.2.2 当前工程视口直接渲染，加载后未修改几何。" },
+    { "name": "texture_power_of_two", "pass": true, "detail": "512x256，宽高均为 2 的幂。" },
+    { "name": "texture_true_transparency", "pass": true, "detail": "RGBA8；未使用瓦片与留白 69632 像素 alpha=0，无半透明噪点。" },
+    { "name": "texture_matches_embedded", "pass": true, "detail": "turret_tex.png 与 bbmodel 内嵌 data URL 逐字节一致。" },
+    { "name": "preview_dimensions", "pass": true, "detail": "4 张预览均 1200x900，纯深色底、无网格无 UI。" },
+    { "name": "no_hidden_geometry", "pass": true, "detail": "0 个隐藏元素、0 个隐藏分组。" },
+    { "name": "no_unused_cubes", "pass": true, "detail": "28 个 cube 全部在 base/turntable/barrel 分组中参与几何。" },
+    { "name": "bbmodel_reopens", "pass": true, "detail": "2026-11-19 通过 Blockbench MCP 重新载入工程，28 个元素/4 个分组正常打开。" },
+    { "name": "java_block_export", "pass": true, "detail": "Blockbench Codecs.java_block.compile() 仅导出 base 分组；每个 cube 的每个面使用独立瓦片内象限 UV，与仓库内 models/block/turret*.json 一致。" }
+  ],
+  "errors": [],
+  "warnings": [
+    {
+      "code": "BER_PARTS_OUTSIDE_BLOCK",
+      "detail": "炮管 z 最远 26.24（1.5775 格），超出单方块 16 格；炮管/基座由 TurretRenderer 的 BER 绘制，不进方块模型，属预期。"
+    },
+    {
+      "code": "STATIC_PREVIEW",
+      "detail": "预览为校正后的静态 0° yaw/pitch；游戏内旋转由 BER 按服务端/本地瞄准角驱动。"
+    }
+  ],
+  "previews": {
+    "method": "Blockbench 5.2.2 视口通过 MCP 以 1200x900（pixelRatio=1）渲染；隐藏网格、gizmo 与选中框，纯深色底",
+    "files": [
+      { "file": "preview_front.png", "view": "正视（正交）", "size": [1200, 900] },
+      { "file": "preview_back.png", "view": "背视（正交）", "size": [1200, 900] },
+      { "file": "preview_side.png", "view": "侧视（正交）", "size": [1200, 900] },
+      { "file": "preview_oblique.png", "view": "斜视（透视）", "size": [1200, 900] }
+    ]
+  },
+  "runtime": {
+    "integrated": false,
+    "in_game_verified": false,
+    "note": "美术资产交付；运行时接入在同日的代码 PR 中完成，合并后再做游戏内验收。"
+  },
+  "limitations": [
+    "炮管和旋转基座不在方块 JSON 内，必须由 BER 渲染；单独使用方块模型只能看到固定底座。",
+    "物品栏模型包含完整三部分，炮管长度超出单格，display scale 已缩到 0.42/0.32。",
+    "三种炮塔共用几何，仅图集颜色不同。"
+  ],
+  "manual_acceptance": {
+    "bbmodel_reopens": "pass — Blockbench 5.2.2 + MCP 重新载入",
+    "notes": "预览由 Blockbench 当前工程直接渲染；最终外观以游戏内 BER 为准。"
+  }
+}

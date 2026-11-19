@@ -1,0 +1,65 @@
+{
+  "texture": "turret_tex.png",
+  "size": [512, 256],
+  "layout": {
+    "tile": [64, 64],
+    "grid": [8, 4],
+    "tiles_used": 20,
+    "quadrants": {
+      "top": [0, 0, 32, 32],
+      "z_side": [32, 0, 64, 32],
+      "x_side": [0, 32, 32, 64],
+      "end": [32, 32, 64, 64]
+    }
+  },
+  "tiles": {
+    "base_plate": 0,
+    "base_step_front": 1,
+    "base_step_back": 2,
+    "base_ring": 3,
+    "base_collar": 4,
+    "base_bolts": 5,
+    "base_cables": 6,
+    "turntable_race": 7,
+    "turntable_hub": 8,
+    "yoke": 9,
+    "trunnion": 10,
+    "ammo_box": 11,
+    "piston": 12,
+    "sight_bracket": 13,
+    "breech": 14,
+    "breech_cap": 15,
+    "barrel_sleeve": 16,
+    "barrel_tube": 17,
+    "barrel_ring": 18,
+    "muzzle_brake": 19
+  },
+  "palette": {
+    "normal": {
+      "metal": "#3A3E42",
+      "panel": "#4A4E52",
+      "dark": "#202224",
+      "light": "#7E8286",
+      "accent": "#C49A2C"
+    },
+    "free_aim": {
+      "metal": "#363C44",
+      "panel": "#464E58",
+      "dark": "#1C2026",
+      "light": "#7E8894",
+      "accent": "#D67838"
+    },
+    "tracking": {
+      "metal": "#2E3E3E",
+      "panel": "#3C5050",
+      "dark": "#162222",
+      "light": "#6E9494",
+      "accent": "#40C8C6"
+    }
+  },
+  "notes": [
+    "每个 cube 独占一块 64x64 瓦片；顶面/Z面/X面分别取不同象限，避免整图重复贴面。",
+    "三种涂装共用同一版式，只替换整张图集的色板。",
+    "所有颜色为纯色像素，无渐变、无噪点。"
+  ]
+}

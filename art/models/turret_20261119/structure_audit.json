@@ -1,0 +1,30 @@
+{
+  "asset": "turret",
+  "date": "2026-11-19",
+  "source": "turret.bbmodel (Blockbench 5.0, model_format java_block, java_block_version 26.3)",
+  "counts": {
+    "cubes": 28,
+    "faces": 168,
+    "groups": 4,
+    "bones": 0,
+    "loose_cubes": 0,
+    "hidden_elements": 0,
+    "hidden_groups": 0,
+    "animations": 0,
+    "rotated_cubes": 0,
+    "zero_thickness_planes": 0
+  },
+  "groups": ["turret", "base", "turntable", "barrel"],
+  "group_members": {
+    "base": ["base_plate", "base_step_front", "base_step_back", "base_ring", "base_collar", "base_bolt_nw", "base_bolt_ne", "base_bolt_sw", "base_bolt_se", "base_cable_left", "base_cable_right"],
+    "turntable": ["turntable_race", "turntable_hub", "yoke_left", "yoke_right", "trunnion_left", "trunnion_right", "ammo_box", "piston_left", "piston_right", "sight_bracket"],
+    "barrel": ["breech", "breech_cap", "barrel_sleeve", "barrel_tube", "barrel_ring_rear", "barrel_ring_front", "muzzle_brake"]
+  },
+  "findings": [
+    { "level": "info", "code": "NO_BONES", "detail": "java_block 格式无骨骼；4 个分组仅作层级与导出筛选。" },
+    { "level": "info", "code": "NO_LOOSE_CUBES", "detail": "28 个 cube 全部在分组下，无游离元素。" },
+    { "level": "info", "code": "NO_ANIMATION", "detail": "0 条动画，静态交付；旋转由运行时 BER 完成。" },
+    { "level": "info", "code": "BER_SPLIT", "detail": "base 分组导出为方块模型；turntable/barrel 仅在 bbmodel 与运行时 BER 中使用。" },
+    { "level": "info", "code": "TEXTURE_ATLAS", "detail": "单张 512x256 图集，8x4 共 32 块 64x64 瓦片；20 种零件各占一块，瓦片内再分顶面/Z面/X面三个象限，右下留空。" }
+  ]
+}
