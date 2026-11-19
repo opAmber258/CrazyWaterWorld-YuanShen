@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.medical.affliction.AfflictionContainer;
 import com.opamb.barotrauma.medical.affliction.AfflictionType;
 import com.opamb.barotrauma.medical.affliction.Limb;
@@ -33,7 +34,8 @@ public final class MedicalCommand {
             "burn", "烧伤",
             "bloodloss", "失血",
             "oxygenlow", "缺氧",
-            "stun", "眩晕");
+            "stun", "眩晕",
+            "radiationsickness", "辐射病");
 
     private MedicalCommand() {
     }
@@ -55,6 +57,26 @@ public final class MedicalCommand {
     private static int show(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = ctx.getSource().getPlayerOrException();
         AfflictionContainer container = MedicalCapabilities.container(player);
+        // 诊断头：先说明"现在注入会不会被清掉"，否则玩家会以为注入无效。
+        //
+        // 两种模式的处理**不同**（MedicalEvents.onPlayerTick）：
+        //   - 旁观：无条件 clear()，调试器也不豁免——所以提示必须说"始终清空"，
+        //     否则会给出"放个调试器就行"的无效建议；
+        //   - 创造：只有背包里没有医疗调试器时才 clear()。
+        if (player.isSpectator()) {
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    "【诊断】旁观模式 → 病症每秒被清空，医疗调试器也不豁免。"
+                            + "注入前请先切回生存模式（/gamemode survival）")
+                    .withStyle(ChatFormatting.RED), false);
+        } else if (player.isCreative()) {
+            boolean hasDebugger = carriesDebugger(player);
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    hasDebugger
+                            ? "【诊断】创造模式 + 背包里有医疗调试器 → 病症不会被清空"
+                            : "【诊断】创造模式且背包里没有医疗调试器 → 病症每秒被清空！"
+                              + "注入前请先 /gamemode survival，或把医疗调试器放进背包")
+                    .withStyle(hasDebugger ? ChatFormatting.GREEN : ChatFormatting.RED), false);
+        }
         if (container == null || container.isEmpty()) {
             ctx.getSource().sendSuccess(() -> Component.literal("当前没有病症").withStyle(ChatFormatting.GREEN), false);
             return 1;
@@ -101,13 +123,42 @@ public final class MedicalCommand {
         }
         AfflictionContainer container = MedicalCapabilities.container(player);
         if (container == null) {
+            ctx.getSource().sendFailure(Component.literal("容器为 null——医疗能力未挂载"));
             return 0;
         }
         Limb limb = type.limbSpecific() ? Limb.TORSO : null;
-        container.add(type, limb, strength);
+        double after = container.add(type, limb, strength);
+
+        // 立即回读：证明写入真的发生了（这是排查"注入了却看不到"的关键证据）
+        double readBack = container.strength(type, limb);
+        int rowCount = container.rows().size();
+        BarotraumaMod.LOGGER.info(
+                "[medical-diag] give {} on {} | player={} creative={} spectator={} "
+                        + " wrote=[{} limb={}] readBack={} rows={}",
+                type.id(), player.getName().getString(), player.getUUID(),
+                player.isCreative(), player.isSpectator(),
+                after, limb, readBack, rowCount);
+        BarotraumaMod.LOGGER.info("[medical-diag] rows={}", container.rows());
+
+        final double shown = readBack;
         ctx.getSource().sendSuccess(() -> Component.literal(
-                "已注入 " + type.id() + " " + (limb == null ? "(全身)" : limb.name()) + " +" + strength), true);
+                "已注入 " + type.id() + (limb == null ? "(全身)" : " " + limb.name())
+                        + " +" + strength + " → 当前 " + format(shown)
+                        + (player.isCreative() ? "（注意：创造模式需要背包里有医疗调试器，否则每秒被清空）" : "")),
+                false);
         return 1;
+    }
+
+    /** 背包里是否有医疗调试器（`MedicalEvents` 创造模式清空的豁免条件，必须与那里一致）。 */
+    private static boolean carriesDebugger(ServerPlayer player) {
+        var expected = com.opamb.barotrauma.registry.ModItems.MEDICAL_DEBUGGER.get();
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            if (inventory.getItem(i).is(expected)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String perLimbText(AfflictionContainer container, AfflictionType type) {

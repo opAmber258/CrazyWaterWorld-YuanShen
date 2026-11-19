@@ -51,7 +51,21 @@ public final class ModMedicalItems {
     public static final RegistryObject<Item> ANTIBIOTICS = ITEMS.register("antibiotics",
             () -> new Item(new Item.Properties().stacksTo(16)));
 
+    /** 消辐灵：辐射病 −100/s×1s（原作 antirad），一次性注射器。反应堆熔毁后的唯一解药。 */
+    public static final RegistryObject<Item> ANTIRAD = ITEMS.register("antirad",
+            () -> new MedicalItem(new Item.Properties().stacksTo(16), TreatmentSpec.ANTIRAD));
+
+    /** 液态氧矿：缺氧 −2.5/s×60s 缓释，副作用器官损伤 +1.5/s×5s（原作 liquidoxygenite）。一次性注射器。 */
+    public static final RegistryObject<Item> LIQUID_OXYGENITE = ITEMS.register("liquid_oxygenite",
+            () -> new MedicalItem(new Item.Properties().stacksTo(16), TreatmentSpec.LIQUID_OXYGENITE));
+
     private ModMedicalItems() {
+    }
+
+    /** 全部医疗物品（顺序 = 面板里的显示顺序）。 */
+    public static java.util.List<RegistryObject<Item>> all() {
+        return java.util.List.of(BANDAGE, ANTIBIOTIC_GLUE, MORPHINE, FENTANYL,
+                BLOOD_PACK, SALINE, NALOXONE, ANTIRAD, LIQUID_OXYGENITE);
     }
 
     public static void register(IEventBus modBus) {

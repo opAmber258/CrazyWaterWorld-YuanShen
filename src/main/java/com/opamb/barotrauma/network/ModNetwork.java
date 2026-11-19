@@ -16,7 +16,10 @@ public final class ModNetwork {
     // 16：修理改为独立窗口（RepairMenu）：START/QTE/STOP，进度在服务端按 tick 推进。
     // 17：加工台制作/取消改走独立包（原版按钮编号只有 1 字节，装不下配方下标 + 数量）。
     // 18：炮塔原型新增瞄准/开火/退出/状态同步包（在 17 基础上追加）。
-    private static final String PROTOCOL = "18";
+    // 19：新增 MedicalHighlightPacket（H 键长按选队友的服务端高光）。
+    //   两个分支各自用过 18，合并后统一升到 19——协议号只用于握手比对，
+    //   升一版不会影响任何已发布存档（服务端与客户端都来自同一次构建）。
+    private static final String PROTOCOL = "19";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -79,6 +82,9 @@ public final class ModNetwork {
         CHANNEL.messageBuilder(MedicalDebugPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(MedicalDebugPacket::encode).decoder(MedicalDebugPacket::decode)
                 .consumerNetworkThread(MedicalDebugPacket::handle).add();
+        CHANNEL.messageBuilder(MedicalHighlightPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MedicalHighlightPacket::encode).decoder(MedicalHighlightPacket::decode)
+                .consumerNetworkThread(MedicalHighlightPacket::handle).add();
         CHANNEL.messageBuilder(CthulhuGazePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(CthulhuGazePacket::encode).decoder(CthulhuGazePacket::decode)
                 .consumerNetworkThread(CthulhuGazePacket::handle).add();

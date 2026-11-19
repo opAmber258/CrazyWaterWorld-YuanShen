@@ -70,9 +70,10 @@ public final class MedicalEvents {
      * 原作 {@code CharacterHealth.UpdateOxygen}：可用氧不足时 {@code OxygenAmount} 每秒 -5，
      * 有可用氧时每秒 +10。{@code oxygenlow} 强度 = {@code 100 - OxygenAmount}，
      * 所以强度 100 = 氧气耗尽（开始扣活力），200 = 憋死上限。
+     *
+     * <p>两个速率现在单点定义在 {@link DamageConversions#hypoxiaPerSecond()} 与
+     * {@link DamageConversions#breathRecoveryPerSecond()}（回归测试直接断言那里）。</p>
      */
-    private static final double OXYGEN_DRAIN_PER_SECOND = 5.0;
-    private static final double OXYGEN_RECOVERY_PER_SECOND = 10.0;
 
     /** 每个玩家上次同步的签名（行+活力），变化才发包。 */
     private static final Map<UUID, String> lastSyncSignatures = new HashMap<>();
@@ -127,6 +128,12 @@ public final class MedicalEvents {
             clearDownedEffects(player);
             AfflictionContainer c = MedicalCapabilities.container(player);
             if (c != null) {
+                // 只在真有东西要清时打日志，避免每 tick 刷屏，同时让"注入了却被清掉"可见
+                if (!c.isEmpty()) {
+                    BarotraumaMod.LOGGER.warn(
+                            "[medical-diag] 创造/旁观模式清空病症 {}（背包里没有医疗调试器）",
+                            c.rows());
+                }
                 c.clear();
                 if (player instanceof ServerPlayer serverPlayer) {
                     lastSyncSignatures.remove(serverPlayer.getUUID());
@@ -148,8 +155,11 @@ public final class MedicalEvents {
         // 氧气模型（原作 CharacterHealth.UpdateOxygen）：不再用原版空气值/氧气条。
         // 有可用氧 → oxygenlow 每秒 -10；无可用氧（潜水服没瓶、泡在海里、真实水里）
         // → 每秒 +5。强度 100 时对应原作 OxygenAmount=0，开始按 50..200 档扣活力。
-        container.addStrength(AfflictionType.OXYGEN_LOW, null,
-                oxygenAvailable(player) ? -OXYGEN_RECOVERY_PER_SECOND : OXYGEN_DRAIN_PER_SECOND);
+        // 速率单点来源在 DamageConversions，与底表 §2.5 的引用处保持一致。
+        double oxygenRate = oxygenAvailable(player)
+                ? -DamageConversions.breathRecoveryPerSecond()
+                : DamageConversions.hypoxiaPerSecond();
+        container.addStrength(AfflictionType.OXYGEN_LOW, null, oxygenRate);
         container.tickSecond();
         updateLifeState(player, container);
     }
@@ -393,6 +403,11 @@ public final class MedicalEvents {
             lastSyncSignatures.put(player.getUUID(), signature);
             ModNetwork.sendToPlayer(player, new MedicalSyncPacket(player.getUUID(),
                     container.rows().toArray(String[]::new), (float) raw, downed));
+            // 诊断：确认包真的发出去了、发的是什么（排查"健康栏看不到"）。
+            // 用 DEBUG：创造模式分支每秒都清签名重置 → 每秒都会走到这里，
+            // 用 INFO 会让每个创造模式玩家每小时刷 3600 行（CodeRabbit 指出）。
+            BarotraumaMod.LOGGER.debug("[medical-diag] 同步 -> {} rows={} raw={}",
+                    player.getName().getString(), container.rows(), String.format("%.1f", raw));
         }
     }
 

@@ -46,23 +46,25 @@ public final class AfflictionType {
                     new Tier(30, 60, 0.3, 0.6, 0),
                     new Tier(60, 200, 0.6, 2, 0)));
 
-    /** 失血。原作：全身，低于 5 无害，自衰 -0.1/s（止血才是根治）。 */
+    /** 失血。原作：全身/躯干指示（indicatorlimb="Torso"），低于 5 无害，自衰 -0.1/s（止血才是根治）。 */
     public static final AfflictionType BLOODLOSS = new AfflictionType(
             "bloodloss", false, 100.0, 5.0,
             List.of(new Tier(0, 5, 0, 0, -0.1),
                     new Tier(5, 45, 0, 0.75, -0.1),
-                    new Tier(45, 100, 0.75, 2, -0.1)));
+                    new Tier(45, 100, 0.75, 2, -0.1)),
+            true, Limb.TORSO, 0.0);
 
-    /** 缺氧。原作：全身，低于 1 无效果，1–50 只是预警不扣血；写入方是氧气模块。 */
+    /** 缺氧。原作：全身/**躯干指示**（indicatorlimb="Torso"），低于 1 无效果，1–50 只是预警不扣血。 */
     public static final AfflictionType OXYGEN_LOW = new AfflictionType(
             "oxygenlow", false, 200.0, 1.0,
             List.of(new Tier(1, 50, 0, 0, 0),
-                    new Tier(50, 200, 0, 2, 0)));
+                    new Tier(50, 200, 0, 2, 0)),
+            true, Limb.TORSO, 0.0);
 
     /** 眩晕。原作实测：0 伤害、无图标、-1/s 快衰——v1 定位为瞬时控制载体（见底表 §2.6）。头部指示。 */
     public static final AfflictionType STUN = new AfflictionType(
             "stun", false, 30.0, 0.0,
-            List.of(new Tier(0, 30, 0, 0, -1.0)), true, true, 0.0);
+            List.of(new Tier(0, 30, 0, 0, -1.0)), true, Limb.HEAD, 0.0);
 
     /**
      * 阿片中毒（底表 §7.5 头部系）。原作：全身/头部指示，0–50 无害仅色差，
@@ -72,14 +74,16 @@ public final class AfflictionType {
     public static final AfflictionType OPIATE_OVERDOSE = new AfflictionType(
             "opiateoverdose", false, 100.0, 0.0,
             List.of(new Tier(0, 50, 0, 0, -0.5),
-                    new Tier(50, 100, 0, 200, -0.5)), false, true, 0.0);
+                    new Tier(50, 100, 0, 200, -0.5)), false, Limb.HEAD, 0.0);
 
-    /** 内脏损伤。原作：全身/躯干指示，0→2 分数，无自然变化（抗生素凝胶的副作用，原作同款）。 */
+    /** 内脏损伤。原作：全身/**躯干指示**（indicatorlimb="Torso"），0→2 分数，无自然变化。 */
     public static final AfflictionType ORGAN_DAMAGE = new AfflictionType(
             "organdamage", false, 200.0, 0.0,
-            List.of(new Tier(0, 200, 0, 2, 0)));
+            List.of(new Tier(0, 200, 0, 2, 0)),
+            true, Limb.TORSO, 0.0);
 
-    /** 辐射病。原作：全身/躯干指示，0–25 无伤害、-0.07/s 自衰；25–200 每段 -0.2/s 自衰，
+    /** 辐射病。原作：全身/**躯干指示**（indicatorlimb="Torso"，showiconthreshold=25），
+     * 0–25 无伤害、-0.07/s 自衰；25–200 每段 -0.2/s 自衰，
      * 伤害由持续附加的烧伤/内脏损伤结算（熔毁时一次性给足）。 */
     public static final AfflictionType RADIATION = new AfflictionType(
             "radiationsickness", false, 200.0, 0.0,
@@ -87,7 +91,7 @@ public final class AfflictionType {
                     new Tier(25, 50, 0, 0, -0.2),
                     new Tier(50, 75, 0, 0, -0.2),
                     new Tier(75, 100, 0, 0, -0.2),
-                    new Tier(100, 200, 0, 0, -0.2)), true, false, 25.0);
+                    new Tier(100, 200, 0, 0, -0.2)), true, Limb.TORSO, 25.0);
 
     /** 阿片类药物成瘾。原作：全身/头部指示，max 100，80+ 段有 0→20 原始点数消耗，
      * 分段自衰 −0.05/−0.1/s，并按段位推高戒断（0.15/0.25/0.5 每秒），图标阈值 20。 */
@@ -96,7 +100,7 @@ public final class AfflictionType {
             List.of(new Tier(0, 20, 0, 0, -0.05),
                     new Tier(20, 40, 0, 0, -0.05),
                     new Tier(40, 80, 0, 0, -0.1),
-                    new Tier(80, 100, 0, 20, -0.1)), false, true, 20.0);
+                    new Tier(80, 100, 0, 20, -0.1)), false, Limb.HEAD, 20.0);
 
     /** 阿片类药物戒断反应。原作：全身/头部指示，20+ 段起有 0→20/20→50/50→200 **原始点数**消耗
      * （无 multiplybymaxvitality），分段自衰 −0.05/−0.1/−0.2/s，图标阈值 20。 */
@@ -105,7 +109,7 @@ public final class AfflictionType {
             List.of(new Tier(0, 20, 0, 0, -0.05),
                     new Tier(20, 40, 0, 20, -0.1),
                     new Tier(40, 80, 20, 50, -0.1),
-                    new Tier(80, 100, 50, 200, -0.2)), false, true, 20.0);
+                    new Tier(80, 100, 50, 200, -0.2)), false, Limb.HEAD, 20.0);
 
     /** v1 全部病症，顺序即文档顺序。 */
     public static final List<AfflictionType> ALL =
@@ -165,8 +169,8 @@ public final class AfflictionType {
     private final List<Tier> tiers;
     /** true = XML 值是最大生命的分数（×MaxVitality）；false = 原始 vitality 点数。 */
     private final boolean multiplyByMaxVitality;
-    /** 头部指示（原作 indicatorlimb="Head"）：UI 上显示在头部悬停里。 */
-    private final boolean headIndicator;
+    /** 原作 `indicatorlimb`：全身病症在 UI 上挂到哪个部位显示（null = 不挂）。 */
+    private final Limb indicatorLimb;
     /** 低于此强度的病症在 UI 列表里隐藏（原作 showiconthreshold）。 */
     private final double showThreshold;
 
@@ -176,19 +180,19 @@ public final class AfflictionType {
 
     private AfflictionType(String id, boolean limbSpecific, double maxStrength,
                            double activationThreshold, List<Tier> tiers) {
-        this(id, limbSpecific, maxStrength, activationThreshold, tiers, true, false, 0.0);
+        this(id, limbSpecific, maxStrength, activationThreshold, tiers, true, null, 0.0);
     }
 
     private AfflictionType(String id, boolean limbSpecific, double maxStrength,
                            double activationThreshold, List<Tier> tiers,
-                           boolean multiplyByMaxVitality, boolean headIndicator, double showThreshold) {
+                           boolean multiplyByMaxVitality, Limb indicatorLimb, double showThreshold) {
         this.id = id;
         this.limbSpecific = limbSpecific;
         this.maxStrength = maxStrength;
         this.activationThreshold = activationThreshold;
         this.tiers = List.copyOf(tiers);
         this.multiplyByMaxVitality = multiplyByMaxVitality;
-        this.headIndicator = headIndicator;
+        this.indicatorLimb = indicatorLimb;
         this.showThreshold = showThreshold;
     }
 
@@ -250,9 +254,21 @@ public final class AfflictionType {
         return BY_ID.get(id);
     }
 
-    /** 头部指示（原作 indicatorlimb="Head"）：UI 显示在头部悬停里。 */
+    /**
+     * 原作 `indicatorlimb`：全身病症在 UI 上挂到哪个部位（null = 无指示）。
+     *
+     * <p>原作里**几乎所有全身病症都有指示部位**，不是只有头部：
+     * oxygenlow / bloodloss / radiationsickness → `Torso`；
+     * opiate* / stun / 脑震荡等 → `Head`。只在"全身状态"里罗列会漏掉
+     * 玩家的直觉——他们习惯点开胸口看缺氧和辐射病。</p>
+     */
+    public Limb indicatorLimb() {
+        return indicatorLimb;
+    }
+
+    /** 是否挂在头部显示（等价于旧版 headIndicator）。 */
     public boolean headIndicator() {
-        return headIndicator;
+        return indicatorLimb == Limb.HEAD;
     }
 
     /** 低于此强度不在 UI 列表显示（原作 showiconthreshold）。 */

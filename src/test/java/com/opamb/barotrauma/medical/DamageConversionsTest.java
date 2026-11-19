@@ -170,4 +170,31 @@ class DamageConversionsTest {
                 "持续压力/无主伤害不能附加出血，否则每秒掷骰会滚雪球");
         assertTrue(DamageConversions.fromBluntOnly(0.2).isEmpty(), "低于最小伤害不产生病症");
     }
+
+    @Test
+    void hypoxiaRecoveryIsTwiceAsFastAsBuildUp() {
+        // 原作 CharacterHealth.UpdateOxygen:1036-1048：无氧 decreaseSpeed=-5/s、
+        // 有氧 increaseSpeed=10/s（强度 = 100 − OxygenAmount），回氧比恶化快一倍。
+        assertEquals(5.0, DamageConversions.hypoxiaPerSecond(), 1.0E-6);
+        assertEquals(10.0, DamageConversions.breathRecoveryPerSecond(), 1.0E-6);
+        assertTrue(DamageConversions.breathRecoveryPerSecond()
+                        > DamageConversions.hypoxiaPerSecond(),
+                "回氧必须快于恶化，否则溺水一次就永远缓不过来");
+    }
+
+    @Test
+    void oxygenLowClearsAtBreathRecoveryRate() {
+        // 回归：缺氧曾经只有注入、没有恢复——溺水过的玩家永久带伤。
+        // 缺氧 100 强度按 10/s 回氧，10 秒内清空。
+        com.opamb.barotrauma.medical.affliction.AfflictionContainer container =
+                new com.opamb.barotrauma.medical.affliction.AfflictionContainer();
+        container.add(AfflictionType.OXYGEN_LOW, null, 100);
+        assertEquals(0.0, AfflictionType.OXYGEN_LOW.strengthChangePerSecond(100), 1.0E-6,
+                "缺氧本身没有自然衰减，只能靠回氧");
+        for (int i = 0; i < 10; i++) {
+            container.reduce(AfflictionType.OXYGEN_LOW, null,
+                    DamageConversions.breathRecoveryPerSecond());
+        }
+        assertEquals(0.0, container.strength(AfflictionType.OXYGEN_LOW, null), 1.0E-6);
+    }
 }

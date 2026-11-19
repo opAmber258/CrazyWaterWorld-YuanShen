@@ -3,6 +3,7 @@ package com.opamb.barotrauma.medical;
 import com.opamb.barotrauma.medical.affliction.AfflictionContainer;
 import com.opamb.barotrauma.medical.affliction.AfflictionType;
 import com.opamb.barotrauma.medical.affliction.Limb;
+import com.opamb.barotrauma.medical.affliction.TreatmentSpec;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -87,5 +88,109 @@ class TreatmentTest {
         // 清空后 tick 不再有任何效果
         container.tickSecond();
         assertEquals(0, container.strength(AfflictionType.BLEEDING, Limb.TORSO), 1.0E-6);
+    }
+
+    /**
+     * 回归（CodeRabbit）：纳洛酮必须**真的**能治阿片戒断。
+     *
+     * <p>原作 `antinarc` 的 OnSuccess 段三条 `ReduceAffliction` 分别是
+     * opiatewithdrawal / opiateaddiction / opiateoverdose，全为 `amount="2.0"`
+     * （medical.xml:849-853），适用性表也把戒断列为 suitability 60。
+     * 之前只实现了中毒/成瘾，面板却把纳洛酮推荐给戒断——点了消耗物品却毫无效果。</p>
+     *
+     * <p>断言用**未治疗对照组**比较：戒断自身每秒自衰 −0.1/s，只测"绝对值下降"
+     * 无法区分药效与自衰（删掉 NALOXONE 的戒断条目，50→49.9 也能过）。</p>
+     */
+    @Test
+    void naloxoneTreatsWithdrawalToo() {
+        AfflictionContainer treated = new AfflictionContainer();
+        treated.add(AfflictionType.OPIATE_WITHDRAWAL, null, 50);
+        AfflictionContainer control = new AfflictionContainer();
+        control.add(AfflictionType.OPIATE_WITHDRAWAL, null, 50);
+
+        for (TreatmentSpec.Effect effect : TreatmentSpec.NALOXONE.effects()) {
+            treated.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
+        }
+        treated.tickSecond();
+        control.tickSecond();
+
+        double treatedAfter = treated.strength(AfflictionType.OPIATE_WITHDRAWAL, null);
+        double controlAfter = control.strength(AfflictionType.OPIATE_WITHDRAWAL, null);
+        // 纳洛酮对戒断是 −2/s，第一秒比对照组多减 2.0
+        assertEquals(2.0, controlAfter - treatedAfter, 1.0E-6,
+                "纳洛酮必须比自然自衰多降 2 点戒断强度；治疗组=" + treatedAfter
+                        + " 对照组=" + controlAfter);
+    }
+
+    @Test
+    void antiradClearsRadiationInOneShot() {        // 原作 antirad：radiationsickness −100/s×1s（OnSuccess 路径）
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.RADIATION, null, 75); // 反应堆熔毁注入量
+        for (TreatmentSpec.Effect effect : TreatmentSpec.ANTIRAD.effects()) {
+            container.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
+        }
+        container.tickSecond();
+        assertEquals(0.0, container.strength(AfflictionType.RADIATION, null), 1.0E-6,
+                "消辐灵一剂必须清空 75 强度的辐射病");
+    }
+
+    @Test
+    void liquidOxygeniteSlowReleasesAndDamagesOrgans() {
+        // 原作 liquidoxygenite：缺氧 −2.5/s×60s（缓释），副作用器官损伤 +1.5/s×5s
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.OXYGEN_LOW, null, 200);
+        for (TreatmentSpec.Effect effect : TreatmentSpec.LIQUID_OXYGENITE.effects()) {
+            container.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
+        }
+        container.tickSecond();
+        // 缺氧 200 → 197.5（每秒只减 2.5，这就是"缓释"）
+        assertEquals(197.5, container.strength(AfflictionType.OXYGEN_LOW, null), 1.0E-6);
+        // 器官损伤 0 → 1.5（注入必然带一点毒性，原作注释 "comes with some organ damage"）
+        assertEquals(1.5, container.strength(AfflictionType.ORGAN_DAMAGE, null), 1.0E-6);
+        // 副作用只有 5 秒，之后不再叠加
+        for (int i = 0; i < 10; i++) {
+            container.tickSecond();
+        }
+        assertEquals(1.5 * 5, container.strength(AfflictionType.ORGAN_DAMAGE, null), 1.0E-3);
+        // 缺氧持续削减：11 秒共 −27.5
+        assertEquals(172.5, container.strength(AfflictionType.OXYGEN_LOW, null), 1.0E-6);
+    }
+
+    /**
+     * 回归（CodeRabbit）：液态氧矿**压不住**溺水，只能把恶化速度减半。
+     *
+     * <p>原作 medical.xml:614 的注释写得很清楚：
+     * {@code "One dose halts the progression of oxygen deprivation under normal conditions
+     * (like being submerged). Oxygen 5 is enough for that, meaning anything more than that
+     * slowly heals."}——即需要 −5/s 才能与环境的 +5/s 持平；
+     * 液态氧矿只有 −2.5/s，**净效果仍是每秒 +2.5**。</p>
+     *
+     * <p>这条测试锁住"叠加后的净速率"，避免以后有人把注释改成"一剂压住"。</p>
+     */
+    @Test
+    void liquidOxygeniteOnlyHalvesDrowningNotHaltsIt() {
+        AfflictionContainer container = new AfflictionContainer();
+        container.add(AfflictionType.OXYGEN_LOW, null, 50);
+        for (TreatmentSpec.Effect effect : TreatmentSpec.LIQUID_OXYGENITE.effects()) {
+            container.applyTreatment(effect.type(), null, effect.perSecond(), effect.seconds());
+        }
+        // 模拟"在水下：环境每秒 +5"，与药物的 −2.5 叠加
+        container.add(AfflictionType.OXYGEN_LOW, null,
+                com.opamb.barotrauma.medical.affliction.DamageConversions.hypoxiaPerSecond());
+        container.tickSecond();
+        // 50 + 5（环境）− 2.5（药）= 52.5：仍在恶化，只是慢了一半
+        assertEquals(52.5, container.strength(AfflictionType.OXYGEN_LOW, null), 1.0E-6,
+                "液态氧矿只能把恶化速度减半（净 +2.5/s），压不住溺水");
+    }
+
+    @Test
+    void everyAfflictionHasChineseDisplayName() {
+        // 回归：辐射病曾经没有显示名，UI 里直接露出 "radiationsickness" 这种 id。
+        for (AfflictionType type : AfflictionType.ALL) {
+            assertTrue(com.opamb.barotrauma.client.TreatmentRenderer.DISPLAY_NAMES.containsKey(type.id()),
+                    "病症 " + type.id() + " 缺少中文显示名");
+            assertTrue(com.opamb.barotrauma.client.MedicalBodyRenderer.DISPLAY_NAMES.containsKey(type.id()),
+                    "病症 " + type.id() + " 缺少中文显示名（BodyRenderer）");
+        }
     }
 }

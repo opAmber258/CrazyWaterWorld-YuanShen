@@ -73,13 +73,10 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.FULGURIUM_FUEL_ROD.get());
                         output.accept(ModItems.DRAIN_OUTLET.get());
                         output.accept(ModItems.IRON_LADDER.get());
-                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.BANDAGE.get());
-                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.ANTIBIOTIC_GLUE.get());
-                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.MORPHINE.get());
-                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.BLOOD_PACK.get());
-                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.SALINE.get());
-                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.NALOXONE.get());
-                        output.accept(com.opamb.barotrauma.medical.ModMedicalItems.FENTANYL.get());
+                        // 药品走统一清单：新增药品只需在 ModMedicalItems.all() 里加一项
+                        com.opamb.barotrauma.medical.ModMedicalItems.all()
+                                .forEach(item -> output.accept(item.get()));
+                        // 抗生素是货运清单占位（无治疗效果），不进面板药品栏，只在创造页签露面
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.ANTIBIOTICS.get());
                     })
                     .build());

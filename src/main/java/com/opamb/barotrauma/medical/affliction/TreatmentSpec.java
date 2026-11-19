@@ -58,8 +58,39 @@ public record TreatmentSpec(String displayName, List<Effect> effects, boolean mu
     public static final TreatmentSpec SALINE = new TreatmentSpec("生理盐水", List.of(
             new Effect(AfflictionType.BLOODLOSS, 2.5, 10)), false);
 
-    /** 纳洛酮：阿片中毒/成瘾各 2/s×30s（原作 antinarc 同款；戒断 v1 无来源暂不处理）。一次性。 */
+    /**
+     * 纳洛酮：阿片中毒/成瘾/戒断各 2/s×30s（原作 `antinarc` 的 OnSuccess 段
+     * 三条 `ReduceAffliction` 全为 `amount="2.0"`，见 medical.xml:849-853）。
+     *
+     * <p>**戒断也必须治**：原作治疗表把 `opiatewithdrawal` 列为适用（suitability 60），
+     * 且两支（OnSuccess/OnFailure）都写了 `ReduceAffliction opiatewithdrawal`。
+     * 之前只实现了中毒/成瘾，导致面板把纳洛酮推荐给戒断、点了却看不到任何效果
+     * （CodeRabbit 指出）。一次性。</p>
+     */
     public static final TreatmentSpec NALOXONE = new TreatmentSpec("纳洛酮", List.of(
             new Effect(AfflictionType.OPIATE_OVERDOSE, 2, 30),
-            new Effect(AfflictionType.OPIATE_ADDICTION, 2, 30)), false);
+            new Effect(AfflictionType.OPIATE_ADDICTION, 2, 30),
+            new Effect(AfflictionType.OPIATE_WITHDRAWAL, 2, 30)), false);
+
+    /**
+     * 消辐灵：辐射病 100/s×1s（原作 antirad，一次性把 0–100 段清空；
+     * 原作 OnFailure 只减 25，v1 无技能系统恒走 Success）。无副作用。一次性注射器。
+     */
+    public static final TreatmentSpec ANTIRAD = new TreatmentSpec("消辐灵", List.of(
+            new Effect(AfflictionType.RADIATION, 100, 1)), false);
+
+    /**
+     * 液态氧矿：**缓释**——原作是持续 60s、每秒 −2.5 的缺氧削减
+     * （medical.xml:616-618）。副作用：器官损伤 +1.5/s×5s（原作 :640-642，
+     * 注射必然带一点毒性）。一次性注射器。
+     *
+     * <p>**注意它压不住溺水**：缺氧在无氧环境下每秒 +5（`hypoxiaPerSecond()`），
+     * 而这里只减 2.5/s，**净效果仍是每秒 +2.5**。原作的注释也这么说——
+     * "Oxygen 5 is enough for that, meaning anything more than that slowly heals"，
+     * 即需要 −5/s 才能持平。2.5/s 的作用是**把恶化速度减半**（争取上浮时间），
+     * 不是"一剂即可压住正常溺水"，别按后者理解或写测试。</p>
+     */
+    public static final TreatmentSpec LIQUID_OXYGENITE = new TreatmentSpec("液态氧矿", List.of(
+            new Effect(AfflictionType.OXYGEN_LOW, 2.5, 60),
+            new Effect(AfflictionType.ORGAN_DAMAGE, -1.5, 5)), false);
 }

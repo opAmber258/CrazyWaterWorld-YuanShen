@@ -8,6 +8,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiEvent;
@@ -53,6 +54,15 @@ public final class BaroHud {
     /** 状态图标沿用原作 50 高（与血条同高的旧比例已随血条压扁改回独立尺寸）。 */
     private static final float ICON_SIZE = 50f;
     private static final float ICON_GAP = 5f;
+
+    // ---- 状态图标（原作 MainIconsAtlas 切片，见 GenAfflictionAtlas.java） ----
+    /** 病症图标图集：4 列 × 3 行、每格 128px，顺序见 {@link #describe}。 */
+    private static final ResourceLocation AFFLICTION_ATLAS =
+            new ResourceLocation(BarotraumaMod.MOD_ID, "textures/gui/afflictions.png");
+    private static final int AFFLICTION_CELL = 128;
+    private static final int AFFLICTION_ATLAS_COLS = 4;
+    private static final int AFFLICTION_ATLAS_W = AFFLICTION_ATLAS_COLS * AFFLICTION_CELL;
+    private static final int AFFLICTION_ATLAS_H = 3 * AFFLICTION_CELL;
 
     // ---- 配色（原作 GUIStyle + 金属边框） ----
     private static final int FRAME = 0xFF3A4046;
@@ -252,13 +262,14 @@ public final class BaroHud {
         for (int i = 0; i < shown; i++) {
             Status status = statuses.get(i);
             float x = right - (index + 1) * step + ICON_GAP * s;
-            drawStatusIcon(graphics, font, x, top, iconSize, s, status.label(), status.color());
+            drawStatusIcon(graphics, font, x, top, iconSize, status);
             index++;
         }
         if (overflow) {
             int hidden = statuses.size() - shown;
             float x = right - (index + 1) * step + ICON_GAP * s;
-            drawStatusIcon(graphics, font, x, top, iconSize, s, "+" + hidden, FRAME_LIGHT);
+            drawStatusIcon(graphics, font, x, top, iconSize,
+                    new Status("+" + hidden, FRAME_LIGHT, -1, 0, 0));
         }
     }
 
@@ -266,21 +277,42 @@ public final class BaroHud {
         return INFO_W * s + BAR_FRAME_W * Math.min(s, 1f);
     }
 
+    /**
+     * 画一个状态图标——**原作样式**：整格贴原作图集切片。圆形徽章、描边、内部图形
+     * 和配色都已经烘在图里，这里不再叠画底板或边框（叠了反而会在徽章外露出方块）。
+     *
+     * <p>只有在没有图标的兜底情况（未知病症 / 溢出计数）才退回文字标。</p>
+     */
     private static void drawStatusIcon(GuiGraphics graphics, Font font, float x, float y,
-                                       float size, float s, String label, int color) {
+                                       float size, Status status) {
         int l = Math.round(x);
         int t = Math.round(y);
-        int r = Math.round(x + size);
-        int b = Math.round(y + size);
-        graphics.fill(l, t, r, b, 0xCC0A0C0E);
-        graphics.fill(l + 1, t + 1, r - 1, b - 1, 0xCC171C1F);
-        frameLine(graphics, l, t, r, b, color);
-        if (size < 8f || label.isEmpty()) {
+        int d = Math.round(size);
+        if (d < 4) {
             return;
         }
-        // 图标可能比两个字窄（血条压扁/低分辨率），整体缩放文字而不是把“缺氧”截成一个字。
-        int colorText = color | 0xFF000000;
-        float textScale = Math.min(1f, (size - 2f) / Math.max(1, font.width(label)));
+        int icon = status.icon();
+        if (icon >= 0) {
+            int col = icon % AFFLICTION_ATLAS_COLS;
+            int row = icon / AFFLICTION_ATLAS_COLS;
+            graphics.blit(AFFLICTION_ATLAS, l, t, d, d,
+                    col * AFFLICTION_CELL, row * AFFLICTION_CELL,
+                    AFFLICTION_CELL, AFFLICTION_CELL,
+                    AFFLICTION_ATLAS_W, AFFLICTION_ATLAS_H);
+            return;
+        }
+        // 兜底：文字标（无对应原版图标时）
+        String label = status.label();
+        if (label.isEmpty()) {
+            return;
+        }
+        int r = l + d;
+        int b = t + d;
+        graphics.fill(l, t, r, b, 0xCC0A0C0E);
+        graphics.fill(l + 1, t + 1, r - 1, b - 1, 0xCC171C1F);
+        frameLine(graphics, l, t, r, b, status.color());
+        int colorText = status.color() | 0xFF000000;
+        float textScale = Math.min(1f, (d - 2f) / Math.max(1, font.width(label)));
         com.mojang.blaze3d.vertex.PoseStack pose = graphics.pose();
         pose.pushPose();
         pose.translate((l + r) * 0.5f, (t + b) * 0.5f, 0f);
@@ -386,7 +418,7 @@ public final class BaroHud {
                 continue;
             }
             Status def = describe(entry.getKey());
-            result.add(new Status(def.label(), def.color(), entry.getValue(),
+            result.add(new Status(def.label(), def.color(), def.icon(), entry.getValue(),
                     type.vitalityDecrease(entry.getValue(), 100.0)));
         }
         result.sort(Comparator.comparingDouble(Status::drain).reversed()
@@ -394,10 +426,23 @@ public final class BaroHud {
         return result;
     }
 
-    private record Status(String label, int color, double strength, double drain) {
+    /**
+     * @param icon 原作图集里的格子序号（-1 = 没有对应图标，退回文字）
+     */
+    private record Status(String label, int color, int icon, double strength, double drain) {
     }
 
-    /** 病症 id → HUD 图标短名/颜色（原作图标是位图，这里用两字标签代替）。 */
+    /**
+     * 病症 id → HUD 图标配色 + 图集格子序号。
+     *
+     * <p>图标与配色全部来自原作 {@code Content/Afflictions.xml} 各元素的
+     * {@code <icon texture="Content/UI/MainIconsAtlas.png" sourcerect="..." color="..."/>}，
+     * 已由 {@code drafts/gen/GenAfflictionAtlas.java} 烘进
+     * {@link #AFFLICTION_ATLAS}（4×3 格、每格 128px），这里只记格子序号。
+     * 原作按 {@code showiconthreshold} 控制是否显示，判定在 {@link #collectStatuses} 里。</p>
+     *
+     * <p>V1 病症全部有原版图标，{@code icon < 0} 只是防御分支（未知 id 退回文字）。</p>
+     */
     private static Status describe(String id) {
         int color = switch (id) {
             case "blunttrauma" -> 0xFFC46A3A;
@@ -413,15 +458,23 @@ public final class BaroHud {
             case "radiationsickness" -> 0xFF9BD13C;
             default -> 0xFFB0B6BB;
         };
-        String key = switch (id) {
-            case "blunttrauma", "bleeding", "burn", "bloodloss", "oxygenlow", "stun",
-                    "opiateoverdose", "opiateaddiction", "opiatewithdrawal",
-                    "organdamage", "radiationsickness" -> id;
-            default -> "unknown";
+        int icon = switch (id) {
+            case "oxygenlow" -> 0;
+            case "bloodloss" -> 1;
+            case "bleeding" -> 2;
+            case "blunttrauma" -> 3;
+            case "burn" -> 4;
+            case "stun" -> 5;
+            case "organdamage" -> 6;
+            case "radiationsickness" -> 7;
+            case "opiateoverdose" -> 8;
+            case "opiateaddiction" -> 9;
+            case "opiatewithdrawal" -> 10;
+            default -> -1;
         };
         String label = net.minecraft.network.chat.Component
-                .translatable("hud.barotrauma.status." + key).getString();
-        return new Status(label, color, 0, 0);
+                .translatable("hud.barotrauma.status." + id).getString();
+        return new Status(label, color, icon, 0, 0);
     }
 
     /** 原作 {@code GradientLerp(vitality, Low, Medium, High)}。 */
