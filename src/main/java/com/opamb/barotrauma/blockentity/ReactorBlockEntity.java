@@ -66,6 +66,8 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
     private final double[] burnCarry = new double[FUEL_SLOTS];
     private double lastLoadKw;
     private double lastRatio;
+    /** 0 耐久熔毁只处理一次（原作 OnBroken 状态效果只触发一次）。 */
+    private boolean meltdownDone;
     /** 过热冒烟的节流计时（秒）。 */
     private double smokeTimer;
     /** 过热/熔毁警报的节流计时（秒）。 */
@@ -134,40 +136,52 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         }
         be.lastLoadKw = load;
 
-        // 耐久：反应堆开机时自然劣化；耐久归零直接停机，不再发电。
+        // 耐久：反应堆开机时自然劣化（最低 10%，见 ConditionComponent）；
+        // 泡水时按原作 reactor.xml 的 InWater 效果再掉 0.5/s，同样止于 10%。
         if (be.condition.tick(server, be.state.powerOn())) {
             be.setChanged();
+        }
+        if (ship != null && cell != null && be.condition.condition() > 10.0D) {
+            int body = ship.simulation().bodyOf(cell);
+            java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
+            for (ShipState.Breach breach : ship.breaches()) {
+                breachSources.add(breach.pos());
+            }
+            boolean wet = ship.simulation().bodyIsWet(body)
+                    && cell.getY() < ship.simulation().waterLevelAt(cell, breachSources);
+            if (wet) {
+                be.condition.damage(Math.min(0.5D * SECONDS_PER_TICK,
+                        be.condition.condition() - 10.0D));
+                be.setChanged();
+            }
         }
         if (be.condition.broken()) {
             be.state.setPowerOn(false);
             be.lastRatio = 0.0D;
-            // 停机冷却仍要推进：不调 tick 的话温度/裂变/涡轮永远停在损坏前的值。
-            // 输出单独上报 0，避免损坏的反应堆继续发电；但残余热仍可能起火/熔毁，
-            // 事件不能丢。
-            int events = be.state.tick(SECONDS_PER_TICK, be.availableFuel(), 0.0D);
-            // 温度/裂变/危险计时器在损坏后仍会变：必须标脏，否则读档回到旧热状态。
-            be.setChanged();
-            if (ship != null && cell != null) {
-                ship.simulation().reportReactor(cell, 0.0D, be.state.capacityKw(),
-                        be.state.temperature(), be.state.overheated(), be.state.meltedDown());
-            }
-            if ((events & ReactorState.EVENT_FIRE) != 0) {
-                be.spawnFire(server);
-            }
-            if ((events & ReactorState.EVENT_MELTDOWN) != 0) {
+            // 原作 reactor.xml OnBroken：舱内还有燃料（AvailableFuel > 1）就直接熔毁爆炸。
+            if (!be.meltdownDone && be.availableFuel() > 1.0D) {
                 be.meltdown(server);
             }
-            // 损坏不等于安全：过热警报/烟雾要继续，和正常分支共用。
+            // 原作 UpdateBroken：损坏后温度快速降到 0，不再起火/熔毁。
+            be.state.brokenTick(SECONDS_PER_TICK);
+            be.setChanged();
+            if (ship != null && cell != null) {
+                ship.simulation().reportReactor(cell, 0.0D, 0.0D, be.state.capacityKw(),
+                        be.state.temperature(), be.state.overheated(), be.state.meltedDown());
+            }
+            // 损坏不等于安全：过热警报/烟雾在冷却期间继续。
             dangerEffects(server, be);
             return;
         }
 
         double available = be.availableFuel();
-        int events = be.state.tick(SECONDS_PER_TICK, available, load);
+        int events = be.state.tick(SECONDS_PER_TICK, available, load,
+                be.condition.fraction());
         be.burnFuel(SECONDS_PER_TICK);
 
         if (ship != null && cell != null) {
-            ship.simulation().reportReactor(cell, be.state.outputKw(), be.state.capacityKw(),
+            ship.simulation().reportReactor(cell, be.state.minOutputKw(),
+                    be.state.maxOutputKw(), be.state.capacityKw(),
                     be.state.temperature(), be.state.overheated(), be.state.meltedDown());
             be.lastRatio = ship.simulation().powerRatio();
         } else {
@@ -410,6 +424,10 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
     }
 
     private void meltdown(ServerLevel level) {
+        if (meltdownDone) {
+            return;
+        }
+        meltdownDone = true;
         // 燃料棒全部烧毁
         for (int i = 0; i < FUEL_SLOTS; i++) {
             fuel.set(i, ItemStack.EMPTY);
@@ -518,6 +536,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         super.saveAdditional(tag);
         tag.put("ReactorState", doubleList(state.snapshot()));
         tag.put("ReactorBurn", doubleList(burnCarry));
+        tag.putBoolean("MeltdownDone", meltdownDone);
         condition.save(tag, "Condition");
         ContainerHelper.saveAllItems(tag, fuel);
     }
@@ -530,6 +549,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         for (int i = 0; i < Math.min(FUEL_SLOTS, burn.length); i++) {
             burnCarry[i] = Math.max(0.0D, burn[i]);
         }
+        meltdownDone = tag.getBoolean("MeltdownDone");
         condition.load(tag, "Condition");
         ContainerHelper.loadAllItems(tag, fuel);
     }

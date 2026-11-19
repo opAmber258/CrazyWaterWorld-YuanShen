@@ -3,7 +3,7 @@
   "render_type": "minecraft:cutout",
   "textures": {
     "top": "barotrauma:block/drain_outlet",
-    "bottom": "barotrauma:block/submarine_plating",
+    "bottom": "barotrauma:block/drain_outlet",
     "side": "barotrauma:block/submarine_plating"
   }
 }

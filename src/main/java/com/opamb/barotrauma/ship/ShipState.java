@@ -66,6 +66,28 @@ public final class ShipState {
     private int throttleX;
     private int throttleY;
     private int throttleZ;
+    /**
+     * 物理船手动舵令：+1 前进 / −1 后退 / 0 停车。
+     *
+     * <p>原作引擎只沿船头 X 轴出力（{@code Engine.Update} 里的
+     * {@code Submarine.ApplyForce(new Vector2(num, 0))}），没有横移。VS2 物理船
+     * 用这一组舵令；方块船的 {@link #throttleX}/{@link #throttleZ} 仍是世界方向，
+     * 两条路径互不影响。</p>
+     */
+    private int helmForward;
+    /**
+     * 物理船偏航舵令：+1 左转 / −1 右转 / 0 保持。
+     *
+     * <p>原作是 2D 侧视，刚体 {@code FixedRotation=true}，根本没有偏航。Minecraft
+     * 是 3D，必须留一个转向轴才能开到任意目标，所以 A/D 映射成绕世界 +Y 的偏航
+     * （+1 = 正方向，船头 +X 转向 −Z）。</p>
+     */
+    private int helmYaw;
+    /**
+     * 偏航舵令的幅度（0..1）：手动 A/D = 1（满舵 15°/s），自动驾驶按航向误差
+     * 成比例给，避免满舵在目标航向上左右横跳。
+     */
+    private double helmYawScale = 1.0D;
     private int moveTimer;
     /** 连续运动模型：记录物理船回写的速度（方块船自己不再移动）。 */
     private ShipPhysics physics = new ShipPhysics();
@@ -549,16 +571,73 @@ public final class ShipState {
         return out;
     }
 
-    /** 设定推进方向（每轴 −1/0/1）。 */
+    /** 设定方块船推进方向（每轴 −1/0/1，世界坐标）。物理船请用 {@link #setHelm}。 */
     public void setThrottle(int x, int y, int z) {
         throttleX = x;
         throttleY = y;
         throttleZ = z;
+        // 方块船路径不使用物理船舵令；切回方块船时清掉，避免旧舵令继续算推力。
+        helmForward = 0;
+        helmYaw = 0;
         moveTimer = 0;
         if (x != 0 || y != 0 || z != 0) {
             // 手动操舵即退出自动驾驶（wiki 里导航终端也是手动/自动二选一）
             autopilotHold = false;
         }
+    }
+
+    /**
+     * 物理船舵令：前进/后退 + 偏航 + 垂直（压载）。
+     *
+     * <p>垂直仍写 {@link #throttleY}：压载泵读的是它（原作的
+     * {@code velocity_y_out}），所以这里不另开一份。</p>
+     *
+     * @param forward +1 前进 / −1 后退 / 0 停车
+     * @param yaw     +1 左转 / −1 右转 / 0 保持（绕世界 +Y）
+     * @param vertical +1 上浮 / −1 下潜 / 0 保持
+     */
+    public void setHelm(int forward, int yaw, int vertical) {
+        helmForward = clampAxis(forward);
+        helmYaw = clampAxis(yaw);
+        helmYawScale = helmYaw == 0 ? 0.0D : 1.0D;
+        throttleY = clampAxis(vertical);
+        // 物理船不走世界方向；清掉方块船残留，面板也不会显示错误航向。
+        throttleX = 0;
+        throttleZ = 0;
+        moveTimer = 0;
+        if (helmForward != 0 || helmYaw != 0 || throttleY != 0) {
+            autopilotHold = false;
+        }
+    }
+
+    private static int clampAxis(int value) {
+        return value < 0 ? -1 : Math.min(value, 1);
+    }
+
+    /** 物理船前进舵令（−1/0/1）。 */
+    public int helmForward() {
+        return helmForward;
+    }
+
+    /** 物理船偏航舵令（−1/0/1）。 */
+    public int helmYaw() {
+        return helmYaw;
+    }
+
+    /** 偏航舵令幅度（0..1）；手动满舵 = 1，自动驾驶按航向误差成比例。 */
+    public double helmYawScale() {
+        return helmYawScale;
+    }
+
+    public void setHelmYawScale(double scale) {
+        helmYawScale = Double.isFinite(scale) ? clamp(scale, 0.0D, 1.0D) : 0.0D;
+    }
+
+    /** 引擎是否需要出力：物理船只看前进舵令，纯转向时不转螺旋桨。 */
+    public boolean engineThrustWanted(boolean physical) {
+        return physical
+                ? helmForward != 0
+                : throttleX != 0 || throttleZ != 0;
     }
 
     /** 自动驾驶开关。关掉只停船，标记点保留（下次打开继续前往）。 */
@@ -567,6 +646,9 @@ public final class ShipState {
         this.throttleX = 0;
         this.throttleY = 0;
         this.throttleZ = 0;
+        this.helmForward = 0;
+        this.helmYaw = 0;
+        this.helmYawScale = 0.0D;
         this.moveTimer = 0;
     }
 
@@ -577,6 +659,9 @@ public final class ShipState {
         throttleX = 0;
         throttleY = 0;
         throttleZ = 0;
+        helmForward = 0;
+        helmYaw = 0;
+        helmYawScale = 0.0D;
         moveTimer = 0;
     }
 
@@ -585,6 +670,8 @@ public final class ShipState {
         throttleX = 0;
         throttleY = 0;
         throttleZ = 0;
+        helmForward = 0;
+        helmYaw = 0;
     }
 
     @javax.annotation.Nullable
@@ -618,52 +705,120 @@ public final class ShipState {
     }
 
     /**
-     * 物理船用：自动驾驶朝目标点推一步（写 throttle，但不经过 {@link #setThrottle}，
-     * 否则会被当成手动操舵、把自动驾驶关掉）。
+     * 物理船自动驾驶：朝目标点算出**期望速度**，再拆成“转向 + 前进/后退”。
      *
-     * @param currentPos 船（声纳）当前的世界坐标
-     */
-    /**
-     * 物理船用：自动驾驶朝目标点推一步，**带惯性补偿**。
+     * <p>原作自动驾驶把二维目标速度发给引擎和压载泵；引擎只能沿船头 X 轴推，
+     * 所以这里不能像方块船那样直接给世界八向推力。流程：</p>
+     * <ol>
+     *   <li>位置误差 × 增益 − 当前速度 = 期望速度 {@code dv}（带刹车）；</li>
+     *   <li>把 {@code dv} 的方向和船头比较：目标在前方 → 前进；正后方 → 倒车；
+     *       其它方向 → 先偏航对准，对准后再前进；</li>
+     *   <li>垂直分量照旧写到 {@link #throttleY}，压载泵读它。</li>
+     * </ol>
      *
-     * <p>旧版只按"目标在哪边"给 ±1 推力，船有速度时会在目标附近来回过冲。
-     * 现在按物理船的 PD 控制：期望速度 = 位置误差 × 增益（限幅），
-     * 推力方向 = 期望速度 − 当前速度，所以接近目标时会提前反向刹车。</p>
+     * <p>不经过 {@link #setHelm}：那会把自动驾驶自己关掉。</p>
      *
-     * <p>不经过 {@link #setThrottle}，否则会被当成手动操舵、把自动驾驶关掉。</p>
+     * @param forwardX 船头在世界 XZ 平面的方向（单位向量）
+     * @param forwardZ 同上
      */
     public void autopilotStep(double x, double y, double z,
-                             double vx, double vy, double vz) {
+                             double vx, double vy, double vz,
+                             double forwardX, double forwardZ) {
         if (!autopilotHold || autopilotTarget == null) {
             return;
         }
-        // 推进器满功率能给出的速度（和 VsThruster 的 ACCEL 匹配）
-        double maxHorizontal = 6.0D;
-        double maxVertical = 2.5D;
-        double gain = 0.5D;
         double deadband = 0.15D;
 
         double ex = autopilotTarget.getX() + 0.5D - x;
         double ey = autopilotTarget.getY() + 0.5D - y;
         double ez = autopilotTarget.getZ() + 0.5D - z;
+        double horizontal = Math.hypot(ex, ez);
 
-        double dvx = clamp(ex * gain, -maxHorizontal, maxHorizontal) - vx;
-        double dvy = clamp(ey * gain, -maxVertical, maxVertical) - vy;
-        double dvz = clamp(ez * gain, -maxHorizontal, maxHorizontal) - vz;
+        double forwardLen = Math.hypot(forwardX, forwardZ);
+        if (forwardLen < 1.0E-6D) {
+            forwardX = 1.0D;
+            forwardZ = 0.0D;
+            forwardLen = 1.0D;
+        }
+        forwardX /= forwardLen;
+        forwardZ /= forwardLen;
 
-        throttleX = Math.abs(dvx) > deadband ? (int) Math.signum(dvx) : 0;
+        // 方块船的世界方向字段在物理船上不用；清掉，避免面板/调试读到旧值。
+        throttleX = 0;
+        throttleZ = 0;
+        helmForward = 0;
+        helmYaw = 0;
+        helmYawScale = 0.0D;
+
+        // 目标速度随距离衰减：远距离全速，接近目标自动收油，避免冲过头再掉头
+        // （原作 Steering 也是 (target-pos-v*slowdown)/5 的减速曲线）。
+        double desiredSpeed = Math.min(6.0D, Math.max(0.0D, (horizontal - 1.0D) * 0.6D));
+        if (horizontal > 1.2D) {
+            // 航向目标直接取“船 → 目标点”。不能取“期望速度”的方向：后者包含
+            // 当前速度，船一开始转，期望方向也跟着偏，形成正反馈，表现就是
+            // 船头绕着目标左右乱扭、永远收敛不了。
+            double dirX = ex / horizontal;
+            double dirZ = ez / horizontal;
+            double dot = dirX * forwardX + dirZ * forwardZ;
+            // 二维叉积：正 = 目标在船头左侧（绕世界 +Y 正方向）
+            double cross = forwardZ * dirX - forwardX * dirZ;
+            double angle = Math.atan2(cross, dot);
+            double along = vx * forwardX + vz * forwardZ;
+            if (dot < -0.9D) {
+                // 目标在正后方：先倒车（原作引擎目标速度可以是负的），不原地掉头。
+                double backward = -along;
+                if (backward < desiredSpeed - 0.2D) {
+                    helmForward = -1;
+                }
+            } else {
+                applyAutopilotYaw(angle);
+                // 船头大致朝向目标才给前进推力；差太多先原地转，别画大弧。
+                if (dot > 0.55D) {
+                    if (along < desiredSpeed - 0.2D) {
+                        helmForward = 1;
+                    } else if (along > desiredSpeed + 0.5D) {
+                        helmForward = -1;
+                    }
+                }
+            }
+        } else {
+            // 到点：不再纠航向，按沿船头的速度分量刹车，避免过冲后掉头。
+            double along = vx * forwardX + vz * forwardZ;
+            if (along > 0.3D) {
+                helmForward = -1;
+            }
+        }
+        double dvy = clamp(ey * 0.5D, -2.5D, 2.5D) - vy;
         throttleY = Math.abs(dvy) > deadband ? (int) Math.signum(dvy) : 0;
-        throttleZ = Math.abs(dvz) > deadband ? (int) Math.signum(dvz) : 0;
 
         // 到点附近且基本停住：清掉目标，避免原地抖
         if (Math.abs(ex) < 1.5D && Math.abs(ey) < 1.5D && Math.abs(ez) < 1.5D
                 && Math.abs(vx) + Math.abs(vy) + Math.abs(vz) < 0.6D) {
-            throttleX = 0;
             throttleY = 0;
-            throttleZ = 0;
+            helmForward = 0;
+            helmYaw = 0;
+            helmYawScale = 0.0D;
             autopilotTarget = null;
             autopilotHold = false;
         }
+    }
+
+    /**
+     * 自动驾驶偏航：把航向误差映射成 0..1 的偏航速率，而不是 ±1 满舵。
+     *
+     * <p>满舵 + 15°/s 的舵效会让船在目标航向上左右横跳：刚过线就满舵反打，
+     * 永远在过冲。按误差比例给速率后，航向近似指数收敛，不会来回摇。
+     * 3.4° 以内直接回中，避免在噪声上抖；误差超过 35° 才给满舵。</p>
+     */
+    private void applyAutopilotYaw(double angle) {
+        double abs = Math.abs(angle);
+        if (abs < 0.06D) {
+            helmYaw = 0;
+            helmYawScale = 0.0D;
+            return;
+        }
+        helmYaw = angle > 0.0D ? 1 : -1;
+        helmYawScale = clamp((abs - 0.06D) / 0.54D, 0.15D, 1.0D);
     }
 
     private static double clamp(double v, double min, double max) {
@@ -671,7 +826,8 @@ public final class ShipState {
     }
 
     public boolean throttled() {
-        return throttleX != 0 || throttleY != 0 || throttleZ != 0;
+        return throttleX != 0 || throttleY != 0 || throttleZ != 0
+                || helmForward != 0 || helmYaw != 0;
     }
 
     /**
@@ -712,13 +868,16 @@ public final class ShipState {
         return power;
     }
 
-    /** 当前推力对应的航向名（水平八向）。 */
+    /** 当前推力对应的航向名（水平八向；物理船回舵令描述）。 */
     public String headingName() {
         if (autopilotHold) {
             if (autopilotTarget == null) {
                 return "自动待命";
             }
             return throttled() ? "自动·前往标记" : "自动·已到达";
+        }
+        if (helmForward != 0 || helmYaw != 0) {
+            return helmName();
         }
         if (throttleX == 0 && throttleZ == 0) {
             return throttleY > 0 ? "上浮" : throttleY < 0 ? "下潜" : "停车";
@@ -733,9 +892,39 @@ public final class ShipState {
         return (throttleX > 0 ? "东" : "西") + vertical;
     }
 
+    /** 物理船舵令的文字描述。 */
+    public String helmName() {
+        if (autopilotHold) {
+            if (autopilotTarget == null) {
+                return "自动待命";
+            }
+            return throttled() ? "自动·前往标记" : "自动·已到达";
+        }
+        StringBuilder text = new StringBuilder();
+        if (helmForward > 0) {
+            text.append("前进");
+        } else if (helmForward < 0) {
+            text.append("后退");
+        }
+        if (helmYaw > 0) {
+            text.append(text.length() > 0 ? " + 左转" : "左转");
+        } else if (helmYaw < 0) {
+            text.append(text.length() > 0 ? " + 右转" : "右转");
+        }
+        if (throttleY > 0) {
+            text.append(text.length() > 0 ? " + 上浮" : "上浮");
+        } else if (throttleY < 0) {
+            text.append(text.length() > 0 ? " + 下潜" : "下潜");
+        }
+        return text.length() == 0 ? "停车" : text.toString();
+    }
+
     public String throttleName() {
         if (!throttled()) {
             return "停车";
+        }
+        if (helmForward != 0 || helmYaw != 0) {
+            return helmName() + "  (前 " + helmForward + ", 舵 " + helmYaw + ", 垂 " + throttleY + ")";
         }
         return headingName() + "  (" + throttleX + "," + throttleY + "," + throttleZ + ")";
     }
@@ -922,6 +1111,9 @@ public final class ShipState {
         this.throttleX = previous.throttleX;
         this.throttleY = previous.throttleY;
         this.throttleZ = previous.throttleZ;
+        this.helmForward = previous.helmForward;
+        this.helmYaw = previous.helmYaw;
+        this.helmYawScale = previous.helmYawScale;
         this.power = previous.power;
         this.autopilotHold = previous.autopilotHold;
         this.autopilotTarget = previous.autopilotTarget;
@@ -967,6 +1159,9 @@ public final class ShipState {
         next.throttleX = throttleX;
         next.throttleY = throttleY;
         next.throttleZ = throttleZ;
+        next.helmForward = helmForward;
+        next.helmYaw = helmYaw;
+        next.helmYawScale = helmYawScale;
         next.power = power;
         next.autopilotHold = autopilotHold;
         next.autopilotTarget = autopilotTarget;

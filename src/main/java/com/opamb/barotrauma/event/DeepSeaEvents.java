@@ -640,7 +640,13 @@ public final class DeepSeaEvents {
             return 0;
         }
         ShipState ship = ensureState(core, player.serverLevel());
-        ship.setThrottle(dx, dy, dz);
+        if (com.opamb.barotrauma.ship.vs.VsState.active()
+                && com.opamb.barotrauma.ship.vs.VsState.activeState() == ship) {
+            // 物理船：dx = 前进/后退，dz = 偏航，dy = 垂直。
+            ship.setHelm(dx, dz, dy);
+        } else {
+            ship.setThrottle(dx, dy, dz);
+        }
         player.sendSystemMessage(Component.literal("推进：" + ship.throttleName())
                 .withStyle(ChatFormatting.AQUA));
         return 1;
@@ -711,6 +717,14 @@ public final class DeepSeaEvents {
         float dirX = ship == null ? 0.0F : ship.throttleX();
         float dirY = ship == null ? 0.0F : ship.throttleY();
         float dirZ = ship == null ? 1.0F : ship.throttleZ();
+        if (com.opamb.barotrauma.ship.vs.VsState.active()) {
+            net.minecraft.world.phys.Vec3 forward = com.opamb.barotrauma.ship.vs.VsPilot.forwardWorld();
+            if (forward != null) {
+                dirX = (float) forward.x;
+                dirY = 0.0F;
+                dirZ = (float) forward.z;
+            }
+        }
 
         long start = System.nanoTime();
         SonarScan.Frame frame = SonarScan.scan(level, center, range, hull, player, mode, dirX, dirY, dirZ);
@@ -885,13 +899,15 @@ public final class DeepSeaEvents {
             ctx.getSource().sendFailure(Component.literal("现在没有物理船（先 /barotrauma ship vs launch）"));
             return 0;
         }
-        VsPilot.thruster().setThrottle(dx, dy, dz);
+        // 物理船语义：dx = 前进/后退，dz = 偏航，dy = 垂直。
+        VsPilot.thruster().setHelm(dx, dz, dy);
         // 面板上的推力来自 ShipState，控制台改推力也要同步过去，否则面板显示 0 实际在推
         ShipState ship = VsPilot.state();
         if (ship != null) {
-            ship.setThrottle(dx, dy, dz);
+            ship.setHelm(dx, dz, dy);
         }
-        ctx.getSource().sendSuccess(() -> Component.literal("物理船推力 (" + dx + "," + dy + "," + dz + ")"), false);
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "物理船舵令 (前进 " + dx + ", 偏航 " + dz + ", 垂直 " + dy + ")"), false);
         return 1;
     }
 

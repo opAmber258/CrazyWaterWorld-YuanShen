@@ -140,9 +140,18 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             float dirY = aimY;
             float dirZ = aimZ;
             if (Math.abs(dirX) + Math.abs(dirY) + Math.abs(dirZ) < 1.0E-4F) {
-                dirX = ship == null ? 0.0F : ship.throttleX();
-                dirY = ship == null ? 0.0F : ship.throttleY();
-                dirZ = ship == null ? 1.0F : ship.throttleZ();
+                if (physical) {
+                    // 物理船没有世界八向油门：退回船头方向。
+                    net.minecraft.world.phys.Vec3 forward =
+                            com.opamb.barotrauma.ship.vs.VsPilot.forwardWorld();
+                    dirX = forward == null ? 1.0F : (float) forward.x;
+                    dirY = 0.0F;
+                    dirZ = forward == null ? 0.0F : (float) forward.z;
+                } else {
+                    dirX = ship == null ? 0.0F : ship.throttleX();
+                    dirY = ship == null ? 0.0F : ship.throttleY();
+                    dirZ = ship == null ? 1.0F : ship.throttleZ();
+                }
                 if (dirX == 0.0F && dirY == 0.0F && dirZ == 0.0F) {
                     dirZ = 1.0F;
                 }
@@ -214,11 +223,27 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
                     && com.opamb.barotrauma.ship.vs.VsState.corePos() != null
                     ? com.opamb.barotrauma.ship.vs.VsState.corePos() : coreWorld;
 
+            // 物理船回传实际船头（×100，客户端画箭头/方位角）；方块船仍是八向推力。
+            int headingX;
+            int headingY;
+            int headingZ;
+            if (physical) {
+                net.minecraft.world.phys.Vec3 forward =
+                        com.opamb.barotrauma.ship.vs.VsPilot.forwardWorld();
+                headingX = forward == null ? 0 : (int) Math.round(forward.x * 100.0D);
+                headingY = 0;
+                headingZ = forward == null ? 0 : (int) Math.round(forward.z * 100.0D);
+            } else {
+                headingX = ship == null ? 0 : ship.throttleX();
+                headingY = ship == null ? 0 : ship.throttleY();
+                headingZ = ship == null ? 0 : ship.throttleZ();
+            }
+
             ModNetwork.sendToPlayer(player, new SonarDataPacket(frame.range(), frame.points(),
                     power,
-                    ship == null ? 0 : ship.throttleX(),
-                    ship == null ? 0 : ship.throttleY(),
-                    ship == null ? 0 : ship.throttleZ(),
+                    headingX,
+                    headingY,
+                    headingZ,
                     scanMode.id(),
                     -center.getY(),
                     (int) speedTenths,
@@ -418,6 +443,9 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
         if (dx == 0 && dy == 0 && dz == 0) {
             return raw;
         }
+        // 只做平移：船体点是"相对核心"的局部坐标，左舷舰况图要用未旋转的
+        // 侧视形状；真正的偏航旋转在客户端 drawCloud 里只对声纳屏的
+        // TYPE_HULL 点做，别把左舷侧视图一起转歪。
         Set<BlockPos> out = new java.util.HashSet<>(raw.size());
         for (BlockPos pos : raw) {
             out.add(pos.offset(dx, dy, dz));
@@ -449,7 +477,10 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
         }
         ShipSimulation.Report report = ship.simulation().report();
         double reactor = Math.min(1.0D, report.powerOutput() / 5000.0D);
-        double engine = ship.throttled() ? 1.0D : 0.0D;
+        // 只有真正转螺旋桨才吵：纯转向/纯压载不算引擎噪音。
+        boolean thrusting = ship.helmForward() != 0
+                || ship.throttleX() != 0 || ship.throttleZ() != 0;
+        double engine = thrusting ? 1.0D : 0.0D;
         double loudness = Math.min(1.0D, reactor * 0.75D + engine * 0.45D);
         return (int) Math.round(PASSIVE_MIN_RANGE + PASSIVE_RANGE_SPAN * loudness);
     }

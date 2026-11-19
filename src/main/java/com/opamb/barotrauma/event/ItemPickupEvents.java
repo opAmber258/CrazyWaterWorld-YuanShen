@@ -158,12 +158,12 @@ public final class ItemPickupEvents {
             // 捡东西还会把箱子界面弹出来。实际拾取只由服务端执行。
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);
-            // 物理船的方块在 VS2 船坞里，客户端命中的方块坐标离玩家几百万格，
-            // 服务端 handleUseItemOn 的距离检查会直接丢掉这个包，服务端的
-            // RightClickBlock 事件根本不会触发。这种情况只能客户端报实体 id。
-            if (event.getHitVec().getBlockPos().distSqr(player.blockPosition()) > 64.0D) {
-                ModNetwork.sendToServer(new PickupItemPacket(target.getId()));
-            }
+            // 统一由客户端报实体 id：取消这个事件后 use-on 包根本不会发给服务端
+            //（服务端的 RightClickBlock 兜底不会触发）；物理船的方块坐标还在船坞里，
+            // 即使发过去也会被 handleUseItemOn 的距离检查丢掉。
+            // 之前的实现只在"命中方块离玩家 > 8 格"时才发包，方块船/站内（坐标正常）
+            // 反而一条请求都不发——用户实测右键有人物挥手动画但东西捡不起来。
+            ModNetwork.sendToServer(new PickupItemPacket(target.getId()));
             return;
         }
         if (tryPickup(player, target) == Pickup.FAILED) {
@@ -229,12 +229,19 @@ public final class ItemPickupEvents {
             return Pickup.EMPTY;
         }
         // 和原版拾取一致：别人丢的东西不能抢（Owner 不匹配就拒绝）。
-        if (itemEntity.getOwner() != null
-                && !itemEntity.getOwner().equals(player.getUUID())) {
+        // 注意 ItemEntity.getOwner() 走 TraceableEntity，返回的是**实体**而不是 UUID
+        //（2026-11-19 实测日志：归属打印出 ServerPlayer[...]）；拿它和 UUID 比永远不等，
+        // 玩家自己丢的东西也捡不起来。
+        net.minecraft.world.entity.Entity owner = itemEntity.getOwner();
+        if (owner != null && !owner.getUUID().equals(player.getUUID())) {
+            BarotraumaMod.LOGGER.info("[pickup] 拒绝 {}：归属 {} 不是 {}",
+                    stack.getDescriptionId(), owner.getUUID(), player.getUUID());
             return Pickup.FAILED;
         }
         ItemStack remaining = stack.copy();
         if (!player.getInventory().add(remaining)) {
+            BarotraumaMod.LOGGER.info("[pickup] 拒绝 {}：装备背包/热键栏都满了",
+                    stack.getDescriptionId());
             return Pickup.FAILED;
         }
         if (remaining.isEmpty()) {

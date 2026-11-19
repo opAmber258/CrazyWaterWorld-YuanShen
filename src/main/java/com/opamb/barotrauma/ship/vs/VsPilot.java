@@ -227,6 +227,8 @@ public final class VsPilot {
 
     /** 物理船活着的时候每 2 tick 推进一次船内模拟（反应堆 / 氧气 / 水泵 / 压载）。 */
     private static long simTickCounter;
+    /** 连续多少 tick 没有玩家开着这艘船的声纳菜单；用于无人掌舵自动停车。 */
+    private static int helmWatchdogTicks;
 
     private VsPilot() {
     }
@@ -365,7 +367,47 @@ public final class VsPilot {
             }
             VsBridge.loadShipChunks(level, live);
             Vec3 from = VsBridge.position(live);
+            // 钉在船上的散货必须跟着传送走：VS2 传送只改刚体位置，实体留在原地。
+            // 商店"送至潜艇"的大件（潜水服）和没有空箱时生成的金属箱都是这种散货，
+            // 起航前生成在出发站货架顶上，不搬的话会整批留在出发站（用户实测：
+            // 两只玻璃潜水服 + 一个金属箱全落在出发点）。
+            Vec3 coreOffset = shipCoreOffset();
+            java.util.List<net.minecraft.world.entity.item.ItemEntity> carried =
+                    new java.util.ArrayList<>();
+            java.util.List<Vec3> carriedOffsets = new java.util.ArrayList<>();
+            if (level != null && coreOffset != null) {
+                Vec3 coreBefore = from.add(coreOffset);
+                net.minecraft.world.phys.AABB area = new net.minecraft.world.phys.AABB(
+                        coreBefore.x - 48.0D, coreBefore.y - 48.0D, coreBefore.z - 48.0D,
+                        coreBefore.x + 48.0D, coreBefore.y + 48.0D, coreBefore.z + 48.0D);
+                for (net.minecraft.world.entity.item.ItemEntity item
+                        : level.getEntitiesOfClass(
+                                net.minecraft.world.entity.item.ItemEntity.class, area)) {
+                    if (!item.getPersistentData().getBoolean(
+                            com.opamb.barotrauma.mission.MissionCargo.TAG_PINNED)) {
+                        continue;
+                    }
+                    carried.add(item);
+                    carriedOffsets.add(item.position().subtract(coreBefore));
+                }
+            }
             VsBridge.teleport(level, live, target);
+            if (!carried.isEmpty()) {
+                Vec3 coreAfter = target.add(coreOffset);
+                int moved = 0;
+                for (int i = 0; i < carried.size(); i++) {
+                    net.minecraft.world.entity.item.ItemEntity item = carried.get(i);
+                    if (item.isRemoved()) {
+                        continue;
+                    }
+                    Vec3 offset = carriedOffsets.get(i);
+                    item.setPos(coreAfter.x + offset.x, coreAfter.y + offset.y,
+                            coreAfter.z + offset.z);
+                    item.setDeltaMovement(Vec3.ZERO);
+                    moved++;
+                }
+                LOGGER.info("[vs] 传送时随船搬走钉住的散货 {} 件", moved);
+            }
             LOGGER.info("[vs] 物理船传送：{} -> {}（船坞区块已预加载）", from, target);
             return null;
         } catch (Throwable error) {
@@ -428,6 +470,10 @@ public final class VsPilot {
         interiorOffsetY = Integer.MIN_VALUE;
         interiorOffsetZ = Integer.MIN_VALUE;
         assembledPos = Vec3.ZERO;
+        bowLatched = false;
+        bowLocalX = 1.0D;
+        bowLocalZ = 0.0D;
+        helmWatchdogTicks = 0;
         unstaticTicks = 0;
         pendingShip = null;
         pendingThruster = null;
@@ -525,9 +571,14 @@ public final class VsPilot {
         if (boxes.length < 7) {
             return false;
         }
-        double lx = pos.x - VsState.offsetX();
-        double ly = pos.y - VsState.offsetY();
-        double lz = pos.z - VsState.offsetZ();
+        // 用实时逆变换：偏航后只减整数平移量会把舱内位置算到盒子外。
+        double[] local = toAssemblyLocal(level, pos);
+        if (local == null) {
+            return false;
+        }
+        double lx = local[0];
+        double ly = local[1];
+        double lz = local[2];
         for (int i = 0; i + 6 < boxes.length; i += 7) {
             if (lx >= boxes[i] && lx <= boxes[i + 3] + 1.0F
                     && ly >= boxes[i + 1] && ly <= boxes[i + 4] + 1.0F
@@ -536,6 +587,40 @@ public final class VsPilot {
             }
         }
         return false;
+    }
+
+    /**
+     * 世界坐标 → 装配坐标（小数，含实时旋转），水盒判定用。
+     *
+     * @return 无法换算时返回 {@code null}
+     */
+    @Nullable
+    private static double[] toAssemblyLocal(Level level, Vec3 pos) {
+        if (!(level instanceof ServerLevel server) || pos == null) {
+            return null;
+        }
+        org.valkyrienskies.core.api.ships.ServerShip live = view(server);
+        org.valkyrienskies.core.api.ships.ServerShip target = live != null ? live : ship;
+        if (target == null) {
+            return null;
+        }
+        var transform = target.getTransform();
+        var origin = new org.joml.Vector3d(
+                transform.getPositionInShip().x() - assembledPos.x,
+                transform.getPositionInShip().y() - assembledPos.y,
+                transform.getPositionInShip().z() - assembledPos.z);
+        try {
+            org.joml.Vector3d shipSpace = transform.getShipToWorld()
+                    .invert(new org.joml.Matrix4d())
+                    .transformPosition(new org.joml.Vector3d(pos.x, pos.y, pos.z),
+                            new org.joml.Vector3d());
+            return new double[]{
+                    shipSpace.x - origin.x,
+                    shipSpace.y - origin.y,
+                    shipSpace.z - origin.z};
+        } catch (Throwable error) {
+            return null;
+        }
     }
 
     /**
@@ -728,31 +813,9 @@ public final class VsPilot {
         if (ship == null || state == null || level == null || pos == null) {
             return false;
         }
-        ShipWaterStatePacket packet = lastWaterPacket;
-        float[] boxes = packet.boxes();
-        if (boxes.length < 7) {
-            return false;
-        }
-        double lx = pos.x - VsState.offsetX();
-        double ly = pos.y - VsState.offsetY();
-        double lz = pos.z - VsState.offsetZ();
-        for (int i = 0; i + 6 < boxes.length; i += 7) {
-            float minX = boxes[i];
-            float minY = boxes[i + 1];
-            float minZ = boxes[i + 2];
-            float maxX = boxes[i + 3] + 1.0F;
-            float maxY = boxes[i + 4] + 1.0F;
-            float maxZ = boxes[i + 5] + 1.0F;
-            float surface = boxes[i + 6];
-            boolean dryBox = surface <= minY + 0.01F;
-            if (lx >= minX && lx <= maxX
-                    && ly >= minY && ly <= maxY
-                    && lz >= minZ && lz <= maxZ
-                    && (dryBox || ly > surface + 0.01F)) {
-                return true;
-            }
-        }
-        return false;
+        // 和 isPlayerInDryCompartment 用同一套实时逆变换 + 盒内干湿判定；
+        // 旧实现只减整数位移，船偏航后舱内会被误判成水外。
+        return Boolean.TRUE.equals(isPlayerInDryCompartment(level, pos));
     }
 
     /** 把船状态推给物理推进器：油门 / 功率 / 压载 / 进水比例。 */
@@ -762,15 +825,163 @@ public final class VsPilot {
         if (target == null || control == null || control != state) {
             return;
         }
-        target.setThrottle(control.throttleX(), control.throttleY(), control.throttleZ());
+        target.setHelm(control.helmForward(), control.helmYaw(), control.throttleY());
+        // 自动驾驶按航向误差给偏航速率，手动 A/D 仍是满舵。
+        target.setHelmYawScale(control.helmYawScale());
         target.setPower(control.power());
-        target.setSupply(control.simulation().voltage());
+        // 舵效供电：导航台/电网有电（原作 MinVoltage 0.5）才能转舵；引擎空转也能转。
+        target.setHelmPowered(control.simulation().voltage() >= 0.5D);
         target.setEngineCount(control.simulation().engineCount());
-        // 逐引擎电压：某个引擎的接线盒坏了就不能继续按全船电压出力。
-        target.setEngineSupplyFactor(control.simulation().engineSupplyFactor());
+        // 原作 Engine.Update 的逐引擎力：maxforce × 推力% × 电压^(2/3) × 耐久插值。
+        target.setEngineForceRaw(control.simulation().engineForceRaw());
+        // 技能系统还没落地：先用船长起始驾驶技能的中值 50。落地后改读玩家技能。
+        target.setHelmSkill(50.0D);
         target.setEngineMultiplier(control.engineMultiplier());
-        // 原版浮力只认全船水量占比（含压载水），不再按"压载百分比"另算一份力。
+        // 船头方向：装配时锁定一次（见 currentBow），之后不随引擎增减而翻转。
+        double[] forward = currentBow(control);
+        target.setForward(forward[0], forward[1]);
+        // 原版浮力只认全船水量占比（含压载水），不再按“压载百分比”另算一份力。
         target.setWaterRatio(control.buoyancyWaterRatio());
+        // 临时诊断：定位“转向转不动”时打印舵令/供电/船头/实际力。
+        if (control.helmYaw() != 0 && lastLevel != null
+                && lastLevel.getGameTime() % 20L == 0L) {
+            LOGGER.info("[vs] helm f={} y={} v={} engines={} volt={} raw={} bow=({},{}) force=({},{})",
+                    control.helmForward(), control.helmYaw(), control.throttleY(),
+                    control.simulation().engineCount(), control.simulation().voltage(),
+                    control.simulation().engineForceRaw(),
+                    target.forwardLocalX(), target.forwardLocalZ(),
+                    target.lastForceX(), target.lastForceZ());
+        }
+    }
+
+    /**
+     * 无人掌舵看门狗：自动驾驶关闭时，连续 2 秒没有玩家开着这艘船的声纳菜单，
+     * 就把舵令清零。
+     *
+     * <p>{@code SonarScreen.onClose} 正常关屏会发 STOP，但掉线、死亡、被传送、
+     * 客户端崩溃都不会走到那里；服务端会保留最后一条舵令，船自己一直开下去。</p>
+     */
+    private static void tickHelmWatchdog(ServerLevel level, ShipState control) {
+        if (level == null || control == null || control.autopilotHold()
+                || !control.throttled()) {
+            helmWatchdogTicks = 0;
+            return;
+        }
+        for (ServerPlayer player : level.players()) {
+            if (player.containerMenu instanceof com.opamb.barotrauma.menu.SonarMenu menu
+                    && menu.stillValid(player)) {
+                helmWatchdogTicks = 0;
+                return;
+            }
+        }
+        if (++helmWatchdogTicks > 40) {
+            helmWatchdogTicks = 0;
+            control.setHelm(0, 0, 0);
+            applyControl(control);
+            LOGGER.info("[vs] 无人掌舵 2 秒，舵令归零");
+        }
+    }
+
+    /**
+     * 船头在船体局部 XZ 平面的方向。
+     *
+     * <p>原作每条船都是“引擎在船尾、船头朝 +X”；这个模组的船是玩家手搭的，
+     * 长轴可能是 X 也可能是 Z，所以从**引擎平均位置 → 船核心**反推：核心指向
+     * 引擎的反方向就是船头。没有引擎时退回局部 +X（模板默认朝向）。</p>
+     *
+     * @return {x, z}，已归一化
+     */
+    private static double[] forwardLocal(@Nullable ShipState control) {
+        if (control != null) {
+            double[] engines = control.simulation().engineCentroid();
+            if (engines != null) {
+                // 用整船包围盒中心，不用船核心：用户这艘船的导航台在左舷（z 偏一侧），
+                // 拿核心当参考会让船头歪十几度。包围盒中心才是船体几何中心。
+                ShipGeometry.Bounds bounds = control.geometry().bounds();
+                double centerX = (bounds.minX() + bounds.maxX() + 1) / 2.0D;
+                double centerZ = (bounds.minZ() + bounds.maxZ() + 1) / 2.0D;
+                if (bounds.sizeX() >= bounds.sizeZ()) {
+                    double sign = Math.signum(centerX - engines[0]);
+                    if (sign != 0.0D) {
+                        return new double[]{sign, 0.0D};
+                    }
+                } else {
+                    double sign = Math.signum(centerZ - engines[2]);
+                    if (sign != 0.0D) {
+                        return new double[]{0.0D, sign};
+                    }
+                }
+            }
+            // 备选：核心 → 引擎的反方向（引擎装得很靠中间时用）。
+            BlockPos core = corePos != null ? corePos : VsState.corePos();
+            if (engines != null && core != null) {
+                double fx = core.getX() + 0.5D - engines[0];
+                double fz = core.getZ() + 0.5D - engines[2];
+                double length = Math.sqrt(fx * fx + fz * fz);
+                if (length > 1.0D) {
+                    return new double[]{fx / length, fz / length};
+                }
+            }
+        }
+        return new double[]{1.0D, 0.0D};
+    }
+
+    /** 装配时锁定的船头方向（船体局部 XZ，单位向量）。 */
+    private static double bowLocalX = 1.0D;
+    private static double bowLocalZ = 0.0D;
+    private static boolean bowLatched;
+
+    /**
+     * 当前使用的船头方向：第一次能读到引擎位置时锁定，之后不再重算。
+     *
+     * <p>如果每 tick 都用引擎质心重算，打掉一台引擎、或在船头临时放一台，
+     * 质心跨过包围盒中心就会让推力瞬间反向。装配时锁一次，船的朝向就固定了；
+     * 之后引擎全没了也还是原方向。</p>
+     */
+    private static double[] currentBow(@Nullable ShipState control) {
+        if (!bowLatched && control != null
+                && control.simulation().engineCentroid() != null) {
+            double[] forward = forwardLocal(control);
+            bowLocalX = forward[0];
+            bowLocalZ = forward[1];
+            bowLatched = true;
+        }
+        if (!bowLatched) {
+            // 引擎还没上报（装配第一 tick）：先用实时推断，但不锁定。
+            return forwardLocal(control);
+        }
+        return new double[]{bowLocalX, bowLocalZ};
+    }
+
+    /**
+     * 船头在世界 XZ 平面的方向；没有物理船/查询失败返回 null。
+     *
+     * <p>声纳箭头、定向脉冲和自动驾驶都用它，不再拿 {@code throttleX/Z}
+     * 当世界方向（那套是方块船语义）。</p>
+     */
+    @Nullable
+    public static Vec3 forwardWorld() {
+        if (ship == null) {
+            return null;
+        }
+        try {
+            ServerShip live = lastLevel == null ? ship : view(lastLevel);
+            if (live == null) {
+                return null;
+            }
+            double[] local = currentBow(state);
+            org.joml.Vector3d value = live.getTransform().getShipToWorldRotation()
+                    .transform(new org.joml.Vector3d(local[0], 0.0D, local[1]),
+                            new org.joml.Vector3d());
+            value.y = 0.0D;
+            if (value.lengthSquared() < 1.0E-9D) {
+                return null;
+            }
+            value.normalize();
+            return new Vec3(value.x, 0.0D, value.z);
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     // ------------------------------------------------------------------ tick
@@ -860,6 +1071,8 @@ public final class VsPilot {
         }
         // 油门 / 功率 / 压载每 tick 同步一次：声纳面板改了状态，物理那边立刻生效
         applyControl(state);
+        // 无人掌舵看门狗：正常关屏会发 STOP，但掉线/崩溃不会。
+        tickHelmWatchdog(level, state);
         // 把刚体的真实位置 / 速度抄回船状态：拆船时按位移铺方块，面板上的航速也得是真的
         if (level != null && now != null && vel != null) {
             // 迟滞：船稳定停在小数 .5 附近时，Math.round 会在 N / N+1 之间每 tick 来回跳，
@@ -896,7 +1109,10 @@ public final class VsPilot {
                             assembledCore.getY() + VsState.offsetY(),
                             assembledCore.getZ() + VsState.offsetZ());
                 }
-                state.autopilotStep(ap.x, ap.y, ap.z, vel.x, vel.y, vel.z);
+                Vec3 forward = forwardWorld();
+                state.autopilotStep(ap.x, ap.y, ap.z, vel.x, vel.y, vel.z,
+                        forward == null ? 1.0D : forward.x,
+                        forward == null ? 0.0D : forward.z);
                 applyControl(state);
             }
             if (state != null) {
@@ -2934,6 +3150,10 @@ public final class VsPilot {
         interiorOffsetY = Integer.MIN_VALUE;
         interiorOffsetZ = Integer.MIN_VALUE;
         assembledPos = Vec3.ZERO;
+        bowLatched = false;
+        bowLocalX = 1.0D;
+        bowLocalZ = 0.0D;
+        helmWatchdogTicks = 0;
         unstaticTicks = 0;
         pendingShip = null;
         pendingThruster = null;
@@ -3523,7 +3743,7 @@ public final class VsPilot {
         String result = launch(level, blocks, shipState, core);
         if (thruster != null) {
             thruster.setPower(100);
-            thruster.setThrottle(0, 0, 1);
+            thruster.setHelm(1, 0, 0);
         }
         return result + " | 推力 +Z 全速 | " + sample + " | " + water
                 + " | 装配后立即｜" + floodProbe(level, shipState);

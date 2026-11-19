@@ -62,26 +62,10 @@ public final class CampaignManager {
         // 1) 出发站 = 船现在停靠的站（第一次是主站，之后是本轮站立在副本顶部）。
         //    离站前把对接口舱口都关上，否则装成物理船后艇顶是个洞。
         com.opamb.barotrauma.world.DockingBay.Site originSite = currentSite(deep, state);
-        // 商店"送至潜艇"的订购货：离港装配前送进潜艇货柜（原作在起航时交付）。
-        // 显式传深海维度 + 这艘船的核心，不能靠乘员当前所在的位置猜。
-        BlockPos originCore = starterCorePos(deep, originSite);
-        BlockPos deliveryAnchor = originCore != null ? originCore
-                : new BlockPos(originSite.x(), MissionInstance.ANCHOR_Y, originSite.z());
-        // 从无人航路点直接续航时船还是物理船，世界里没有方块核心：用船坞里的
-        // 核心坐标，shipContainers 才会按物理船几何扫货柜；否则货柜扫不到，
-        // "送至潜艇"的货会一直留在待交付列表（背包满时尤其明显）。
-        if (VsState.active() && com.opamb.barotrauma.ship.vs.VsPilot.activeLevel() == deep) {
-            BlockPos assemblyCore = com.opamb.barotrauma.ship.vs.VsPilot.corePos();
-            BlockPos yardCore = assemblyCore == null ? null
-                    : com.opamb.barotrauma.ship.vs.VsPilot.toYard(assemblyCore);
-            if (yardCore != null) {
-                deliveryAnchor = yardCore;
-            }
-        }
-        // 按待交付订单的 UUID 遍历（含已下线的玩家）：下单后退出的人也要把货送进船柜，
-        // 只有背包回退需要在线玩家对象。
-        com.opamb.barotrauma.station.StoreService.deliverPendingOnDeparture(
-                deep, deliveryAnchor, players);
+        // 商店"送至潜艇"的订购货不在这里送：原作是关卡加载后
+        // （SinglePlayerCampaign.Start -> CargoManager.CreatePurchasedItems）才送进货舱；
+        // 早于船传送会把散货落在出发站（2026-11-19 存档实测：出发站留下
+        // 2 件玻璃潜水服 + 1 个装 naloxone 的金属箱）。调用点移到玩家登艇之后。
         com.opamb.barotrauma.world.DockingBay.close(deep);
 
         // 2) 船还是方块就先在出发站装配成 VS2 刚体；已经物理化就跳过。
@@ -202,6 +186,15 @@ public final class CampaignManager {
             BarotraumaMod.LOGGER.info("[campaign] 传送 {} -> {}", online.getGameProfile().getName(), pos);
             online.sendSystemMessage(Component.translatable("campaign.barotrauma.boarded"));
         }
+        // 商店"送至潜艇"：原作在关卡开始（SinglePlayerCampaign.Start ->
+        // CargoManager.CreatePurchasedItems）才送进货舱。这里等船传送到副本、
+        // 玩家登艇之后再送：货架按物理船快照扫，散货落在副本里的船核心附近。
+        BlockPos deliveryAnchor = com.opamb.barotrauma.ship.vs.VsPilot.corePos();
+        if (deliveryAnchor == null) {
+            deliveryAnchor = new BlockPos(destSite.x(), MissionInstance.ANCHOR_Y, destSite.z());
+        }
+        com.opamb.barotrauma.station.StoreService.deliverPendingOnDeparture(
+                deep, deliveryAnchor, players);
         // 任务接取/装货必须等玩家进艇之后再执行：散箱是按玩家脚边 + 船核心偏移生成的，
         // 早于传送会把箱子落在出发站（用户实测“三箱货不知道放哪去了”）。
         if (!booked.isEmpty()) {

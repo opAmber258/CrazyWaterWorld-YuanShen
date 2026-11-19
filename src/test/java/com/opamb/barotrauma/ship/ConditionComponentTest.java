@@ -72,7 +72,8 @@ class ConditionComponentTest {
         ConditionComponent condition = new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 0.8D);
         assertEquals(1.0D, condition.powerPenalty(), 1.0E-9D);
         condition.damage(70.0D); // 30% 耐久
-        assertEquals(1.3125D, condition.powerPenalty(), 1.0E-9D);
+        // 原作 Repairable.AdjustPowerConsumption：Lerp(1.5, 1, 0.3) = 1.35
+        assertEquals(1.35D, condition.powerPenalty(), 1.0E-9D);
         condition.damage(30.0D); // 0%
         assertEquals(1.5D, condition.powerPenalty(), 1.0E-9D);
     }

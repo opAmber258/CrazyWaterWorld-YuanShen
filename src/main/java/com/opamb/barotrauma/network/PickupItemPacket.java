@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.network;
 
+import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.event.ItemPickupEvents;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -40,12 +41,20 @@ public record PickupItemPacket(int entityId) {
             }
             Entity entity = player.level().getEntity(message.entityId);
             if (!(entity instanceof ItemEntity item) || item.isRemoved() || !item.isAlive()) {
+                BarotraumaMod.LOGGER.info("[pickup] 拒绝 id={}：服务端找不到存活的掉落物实体",
+                        message.entityId());
                 return;
             }
-            if (player.distanceToSqr(item) > MAX_DISTANCE * MAX_DISTANCE) {
+            double distance = player.distanceToSqr(item);
+            if (distance > MAX_DISTANCE * MAX_DISTANCE) {
+                BarotraumaMod.LOGGER.info("[pickup] 拒绝 id={}：距离 {}/{} 格",
+                        message.entityId(), Math.sqrt(distance), MAX_DISTANCE);
                 return;
             }
-            ItemPickupEvents.pickup(player, item);
+            if (!ItemPickupEvents.pickup(player, item)) {
+                BarotraumaMod.LOGGER.info("[pickup] 未进包 id={} item={}：背包/双手格放不下或归属不符",
+                        message.entityId(), item.getItem().getDescriptionId());
+            }
         });
         context.setPacketHandled(true);
     }

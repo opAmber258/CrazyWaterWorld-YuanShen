@@ -90,7 +90,7 @@ public final class ShipSimulation {
             new java.util.HashMap<>();
     private long reactorTick;
     private static final int REACTOR_STALE_TICKS = 40;
-    /** 引擎上报表：格子 → (目标力%, 耗电 kW, 最大推力, 最后上报 tick)。 */
+    /** 引擎上报表：格子 → (目标力%, 耗电 kW, 最大推力, 耐久比例 0..1, 最后上报 tick)。 */
     private final java.util.Map<net.minecraft.core.BlockPos, EngineReport> engines =
             new java.util.HashMap<>();
     /** 推进最多吃几台引擎的推力：超出部分不叠加（和 {@code VsThruster} 的上限一致）。 */
@@ -101,11 +101,13 @@ public final class ShipSimulation {
     private double lastEngineDemand;
     private double lastEngineMaxForce;
 
-    private record EngineReport(double force, double demandKw, double maxForce, long lastSeen) {
+    private record EngineReport(double force, double demandKw, double maxForce,
+                                double condition, long lastSeen) {
     }
 
-    private record ReactorReport(double output, double capacity, double temperature,
-                                 boolean overheated, boolean meltingDown, long lastSeen) {
+    private record ReactorReport(double minOutput, double maxOutput, double capacity,
+                                 double temperature, boolean overheated,
+                                 boolean meltingDown, long lastSeen) {
     }
     /**
      * 排水泵上报表：格子 → (速率, 最后上报 tick)。
@@ -384,11 +386,12 @@ public final class ShipSimulation {
     public void tick(double dt) {
         // 反应堆：方块实体每 tick 上报；超过 40 tick 没上报视为已经拆掉。
         reactorTick++;
-        double reactorOutput = 0.0D;
         double reactorCapacity = 0.0D;
         double temperature = 0.0D;
         boolean overheated = false;
         boolean meltingDown = false;
+        java.util.List<java.util.Map.Entry<net.minecraft.core.BlockPos, ReactorReport>>
+                activeReactors = new java.util.ArrayList<>();
         var reactorIterator = reactors.entrySet().iterator();
         while (reactorIterator.hasNext()) {
             var entry = reactorIterator.next();
@@ -397,7 +400,7 @@ public final class ShipSimulation {
                 reactorIterator.remove();
                 continue;
             }
-            reactorOutput += report.output();
+            activeReactors.add(entry);
             reactorCapacity += report.capacity();
             temperature = Math.max(temperature, report.temperature());
             overheated |= report.overheated();
@@ -491,6 +494,45 @@ public final class ShipSimulation {
                 + (terminalReporting ? 0.0D : machines.sonar() * SONAR_POWER)
                 + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER);
 
+        // 电池“请求”的充电功率：即使当前没有富余也要报给反应堆（原作
+        // Grid.Load 包含 PowerContainer 的充电需求），让自动控堆把目标负载
+        // 抬到 设备负载 + 充电请求；否则堆永远只发刚好够设备的电，电池永远
+        // 等不到富余（用户实测“电池不会充电”）。
+        double rechargeRequest = 0.0D;
+        java.util.Map<net.minecraft.core.BlockPos, Double> rechargeDemand =
+                new java.util.HashMap<>();
+        if (!storages.isEmpty()) {
+            double step = Math.max(dt, 1.0E-9D);
+            for (var entry : storages.entrySet()) {
+                StorageReport report = entry.getValue();
+                if (!storageUsable(report)) {
+                    continue;
+                }
+                double room = report.capacityKwm() - report.chargeKwm();
+                if (room <= 1.0E-9D) {
+                    continue;
+                }
+                // room 是 kW·min，换成本步充满所需的平均功率，再和额定充电功率取小。
+                double demand = Math.min(report.maxRechargeKw(), room * 60.0D / step);
+                rechargeDemand.put(entry.getKey(), demand);
+                rechargeRequest += demand;
+            }
+        }
+
+        // 反应堆出力（原作 GetConnectionPowerOut）：按“剩余需求”出力，并夹在
+        // 本机出力带 [min, max] 里；多台堆按装配坐标顺序依次吃需求。负载含
+        // 电池充电请求，和原作 Grid.Load 一致。负载在带内时输出正好等于负载
+        // （电压 1.0）；负载低于带底时反应堆仍会发到带底，这才是过压的来源。
+        double reactorOutput = 0.0D;
+        double remainingDemand = deviceDemand + rechargeRequest;
+        activeReactors.sort(java.util.Map.Entry.comparingByKey());
+        for (var entry : activeReactors) {
+            ReactorReport report = entry.getValue();
+            double out = Mth.clamp(remainingDemand, report.minOutput(), report.maxOutput());
+            reactorOutput += out;
+            remainingDemand = Math.max(0.0D, remainingDemand - out);
+        }
+
         // 供电不足时电池补差。每块电池的可用输出按原版 PowerContainer 算
         // （低于 10% 时线性降额，并受本步可用能量限制）。
         double batteryOutput = 0.0D;
@@ -519,25 +561,10 @@ public final class ShipSimulation {
 
         // 供电富余时按最大充电功率吸收。只有电池没在放电时才充，避免自充自放。
         double rechargeInput = 0.0D;
-        // 电池“请求”的充电功率：即使当前没有富余也要报给反应堆，让自动控堆
-        // 把目标负载抬到 设备负载+充电请求，否则堆永远只发刚好够设备的电，
-        // 电池永远等不到富余（用户实测“电池不会充电”）。
-        double rechargeRequest = 0.0D;
         java.util.Map<net.minecraft.core.BlockPos, Double> storageIn = java.util.Map.of();
-        if (batteryOutput <= 1.0E-9D && !storages.isEmpty()) {
-            double step = Math.max(dt, 1.0E-9D);
-            for (var entry : storages.entrySet()) {
-                StorageReport report = entry.getValue();
-                if (!storageUsable(report)) {
-                    continue;
-                }
-                double room = report.capacityKwm() - report.chargeKwm();
-                if (room <= 1.0E-9D) {
-                    continue;
-                }
-                // room 是 kW·min，换成本步充满所需的平均功率，再和额定充电功率取小。
-                double demand = Math.min(report.maxRechargeKw(), room * 60.0D / step);
-                rechargeRequest += demand;
+        if (batteryOutput <= 1.0E-9D && !rechargeDemand.isEmpty()) {
+            for (var entry : rechargeDemand.entrySet()) {
+                double demand = entry.getValue();
                 if (reactorOutput > deviceDemand + 1.0E-9D) {
                     if (storageIn.isEmpty()) {
                         storageIn = new java.util.HashMap<>();
@@ -1457,20 +1484,37 @@ public final class ShipSimulation {
         return total;
     }
 
-    /** 反应堆方块实体每 tick 上报一次。 */
+    /** 反应堆方块实体每 tick 上报一次（出力固定，等价于 min=max=outputKw）。 */
     public void reportReactor(net.minecraft.core.BlockPos cell, double outputKw, double capacityKw,
                               double temperature, boolean overheated, boolean meltingDown) {
+        reportReactor(cell, outputKw, outputKw, capacityKw, temperature,
+                overheated, meltingDown);
+    }
+
+    /**
+     * 反应堆方块实体每 tick 上报一次出力带（原作 {@code MinMaxPowerOut}）。
+     * 实际的交付出力由 {@link #tick(double)} 按剩余需求夹到 [min, max] 里。
+     */
+    public void reportReactor(net.minecraft.core.BlockPos cell, double minOutputKw,
+                              double maxOutputKw, double capacityKw, double temperature,
+                              boolean overheated, boolean meltingDown) {
         if (cell == null) {
             return;
         }
+        double min = Math.max(0.0D, minOutputKw);
         reactors.put(cell.immutable(), new ReactorReport(
-                Math.max(0.0D, outputKw), Math.max(0.0D, capacityKw),
+                min, Math.max(min, maxOutputKw), Math.max(0.0D, capacityKw),
                 Math.max(0.0D, temperature), overheated, meltingDown, reactorTick));
     }
 
-    /** 引擎方块实体每 tick 上报一次：目标力（0..100%）、耗电、最大推力。 */
+    /** 引擎方块实体每 tick 上报一次：目标力（0..100%）、耗电、最大推力、耐久比例。 */
     public void reportEngine(net.minecraft.core.BlockPos cell, double force,
                              double demandKw, double maxForce) {
+        reportEngine(cell, force, demandKw, maxForce, 1.0D);
+    }
+
+    public void reportEngine(net.minecraft.core.BlockPos cell, double force,
+                             double demandKw, double maxForce, double condition) {
         if (cell == null) {
             return;
         }
@@ -1478,6 +1522,7 @@ public final class ShipSimulation {
                 Mth.clamp(force, 0.0D, 100.0D),
                 Math.max(0.0D, demandKw),
                 Math.max(0.0D, maxForce),
+                Mth.clamp(condition, 0.0D, 1.0D),
                 engineTick));
     }
 
@@ -1515,6 +1560,73 @@ public final class ShipSimulation {
             sum += powered.get(i);
         }
         return sum;
+    }
+
+    /**
+     * 原作 {@code Engine.Update} 的逐引擎推力之和（原始力单位，未乘 0.1 驾驶系数）。
+     *
+     * <pre>
+     * 每台 = maxforce × 目标推力% × min(电压,2)^(2/3) × lerp(0.5,2,耐久比例)
+     * </pre>
+     *
+     * <p>目标推力用引擎实际插值后的力（{@link EngineReport#force()}），不是面板
+     * 上的目标值；耗电仍按目标值算（和原作 {@code GetCurrentPowerConsumption}
+     * 一致）。电压低于 MinVoltage 0.5 的引擎完全不贡献。最多算 8 台。</p>
+     */
+    public double engineForceRaw() {
+        java.util.List<Double> forces = new java.util.ArrayList<>(engines.size());
+        for (var entry : engines.entrySet()) {
+            EngineReport report = entry.getValue();
+            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS || report.force() <= 0.1D) {
+                continue;
+            }
+            double voltage = consumerVoltage(entry.getKey());
+            if (voltage <= 0.0D) {
+                continue;
+            }
+            // 原作不因为电压低于 MinVoltage 就把这一帧的出力直接清零：
+            // Engine.Update 让 Force 以 10/s 衰减，同时仍然乘 min(Voltage,2)^(2/3)。
+            // 所以这里保留 0.5 以下的电压系数，衰减交给 EngineBlockEntity.currentForce。
+            double voltageFactor = Math.pow(Math.min(voltage, 2.0D), 2.0D / 3.0D);
+            // 原作：num *= MathHelper.Lerp(0.5f, 2f, condition / maxCondition)
+            double conditionFactor = 0.5D + 1.5D * report.condition();
+            forces.add(report.maxForce() * report.force() * voltageFactor * conditionFactor);
+        }
+        forces.sort(java.util.Comparator.reverseOrder());
+        double sum = 0.0D;
+        for (int i = 0; i < forces.size() && i < MAX_ENGINES; i++) {
+            sum += forces.get(i);
+        }
+        return sum;
+    }
+
+    /**
+     * 已安装引擎在装配坐标里的平均位置；没有引擎返回 null。
+     *
+     * <p>物理船的船头方向用它和船核心反推：引擎在船尾，核心指向引擎的
+     * 反方向就是船头。这样换一艘船、或者以后把船横过来搭也能自洽，
+     * 不用在代码里写死 +X。</p>
+     */
+    @javax.annotation.Nullable
+    public double[] engineCentroid() {
+        double x = 0.0D;
+        double y = 0.0D;
+        double z = 0.0D;
+        int count = 0;
+        for (var entry : engines.entrySet()) {
+            if (engineTick - entry.getValue().lastSeen() > ENGINE_STALE_TICKS) {
+                continue;
+            }
+            net.minecraft.core.BlockPos cell = entry.getKey();
+            x += cell.getX() + 0.5D;
+            y += cell.getY() + 0.5D;
+            z += cell.getZ() + 0.5D;
+            count++;
+        }
+        if (count == 0) {
+            return null;
+        }
+        return new double[]{x / count, y / count, z / count};
     }
 
     /** 上一 tick 的引擎总耗电（kW）。 */

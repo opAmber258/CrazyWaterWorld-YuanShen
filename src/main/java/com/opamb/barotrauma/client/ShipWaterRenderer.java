@@ -270,14 +270,16 @@ public final class ShipWaterRenderer {
             return false;
         }
         ShipWaterStatePacket data = state;
-        if (!data.physical() && OceanEnvironment.isInsideStarterSubDryZone(pos)) {
+        if (data.physical()) {
+            // 物理船偏航后只减平移量会算错，交给带实时逆变换的桥接层。
+            return com.opamb.barotrauma.ship.vs.VsClientCompartments
+                    .isInsideCompartment(level, pos, data);
+        }
+        if (OceanEnvironment.isInsideStarterSubDryZone(pos)) {
             return true;
         }
         float[] boxes = data.boxes();
         if (boxes.length < 7) {
-            return false;
-        }
-        if (data.physical() && !lastShipFound) {
             return false;
         }
         double lx = pos.x - lastDeltaX;
@@ -315,15 +317,18 @@ public final class ShipWaterRenderer {
             return false;
         }
         ShipWaterStatePacket data = state;
-        if (!data.physical() && OceanEnvironment.isInsideStarterSubDryZone(pos)) {
+        if (data.physical()) {
+            // 物理船必须用实时逆变换把玩家映射回装配坐标：船偏航后只减
+            // 平移量会把人算到盒子外，舱内走着走着就套上"在海里"的滤镜。
+            return com.opamb.barotrauma.ship.vs.VsClientCompartments
+                    .isInsideDryZone(level, pos, data);
+        }
+        if (OceanEnvironment.isInsideStarterSubDryZone(pos)) {
             // 初始潜艇位置固定，内腔范围也是固定的；水面包只用来提供“内腔灌到多高”。
             // 没有水面包（刚进世界/核心还没扫）时按干燥兜底。
             return isStarterCavityDry(data.boxes(), pos.y);
         }
         if (data.boxes().length < 7) {
-            return false;
-        }
-        if (data.physical() && !lastShipFound) {
             return false;
         }
         double lx = pos.x - lastDeltaX;

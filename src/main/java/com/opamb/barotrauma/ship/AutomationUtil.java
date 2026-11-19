@@ -53,15 +53,23 @@ public final class AutomationUtil {
             return false;
         }
         java.util.Set<Integer> bodies = bodiesAround(ship, cell);
+        // 站在门洞/门格里的玩家常常查不到舱室（门格是水密格，不属于任何水体），
+        // 这时只要人离门很近就直接算“在门口”，否则自动门会在人站着不动时判定
+        // “附近没人”而不开/关人（用户报“门有时候自动识别有问题不会开”）。
+        double doorwaySq = 1.5D * 1.5D;
         for (ServerPlayer player : level.players()) {
             if (player.isSpectator()) {
                 continue;
             }
-            if (player.position().distanceToSqr(center) > rangeSq) {
+            double distanceSq = player.position().distanceToSqr(center);
+            if (distanceSq > rangeSq) {
                 continue;
             }
             int body = playerBody(level, ship, player);
             if (body < 0) {
+                if (distanceSq <= doorwaySq) {
+                    return true;
+                }
                 continue;
             }
             if (!bodies.isEmpty() && !bodies.contains(body)) {

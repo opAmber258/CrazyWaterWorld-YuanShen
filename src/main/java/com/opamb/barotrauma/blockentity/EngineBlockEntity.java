@@ -39,6 +39,8 @@ public class EngineBlockEntity extends BlockEntity
     public static final double MAX_FORCE = 300.0D;
 
     private double lastForce;
+    /** 原作 {@code Engine.Force}：实际推力向目标插值，速度 10/s。 */
+    private double currentForce;
     private double lastSupply;
     private double lastDemandKw;
     private int lastEngineCount;
@@ -71,6 +73,7 @@ public class EngineBlockEntity extends BlockEntity
             ship = com.opamb.barotrauma.ship.ShipCores.stateNear(server, pos, 64.0D);
         }
         if (ship == null) {
+            be.currentForce = 0.0D;
             be.lastForce = 0.0D;
             be.lastSupply = 0.0D;
             be.lastDemandKw = 0.0D;
@@ -79,6 +82,7 @@ public class EngineBlockEntity extends BlockEntity
         }
         BlockPos cell = VsState.active() ? VsPilot.toAssembly(pos) : pos;
         if (!ship.tracksHullBlock(cell)) {
+            be.currentForce = 0.0D;
             be.lastForce = 0.0D;
             be.lastSupply = 0.0D;
             be.lastDemandKw = 0.0D;
@@ -86,28 +90,41 @@ public class EngineBlockEntity extends BlockEntity
             return;
         }
 
-        // 油门停车时目标力 0；有油门时用声纳面板的推力百分比（5..100）。
-        double force = ship.throttled() ? ship.power() : 0.0D;
-        double demand = MAX_POWER_KW * Math.pow(Math.max(0.0D, force) / 100.0D, 1.5D)
+        // 原作 Engine.Update：目标力来自舵台（物理船 = 前进舵令；方块船 = 八向油门）；
+        // 电压低于 MinVoltage 时实际 Force 以 10/s 向 0 插值，但**耗电请求仍按目标力算**
+        // （原作 GetCurrentPowerConsumption 用 targetForce）。不能把目标力也归零：
+        // 那样负载消失→电压回到 1→目标力恢复，会每 tick 抖动。
+        boolean physical = VsState.active() && VsState.activeState() == ship;
+        double targetForce = ship.engineThrustWanted(physical) ? ship.power() : 0.0D;
+        double driveTarget = PowerGrid.canRun(be.lastSupply, be.minVoltage()) ? targetForce : 0.0D;
+        double dt = 1.0D / 20.0D;
+        be.currentForce += (driveTarget - be.currentForce) * (1.0D - Math.exp(-10.0D * dt));
+        if (be.currentForce < 0.01D) {
+            be.currentForce = 0.0D;
+        }
+        // 耗电按目标力算（原作 GetCurrentPowerConsumption 用 targetForce）。
+        double demand = MAX_POWER_KW * Math.pow(Math.max(0.0D, targetForce) / 100.0D, 1.5D)
                 * be.condition.powerPenalty();
         // 耐久：只有在“有油门且上一 tick 确实拿到电”时才劣化；
         // 光看目标推力的话，全船停电时没转的引擎也会掉耐久。
-        boolean running = force > 0.1D
+        boolean running = targetForce > 0.1D
                 && PowerGrid.canRun(be.lastSupply, be.minVoltage());
         if (be.condition.tick(server, running)) {
             be.setChanged();
         }
         if (be.condition.broken()) {
+            be.currentForce = 0.0D;
             be.lastForce = 0.0D;
             be.lastDemandKw = 0.0D;
             be.lastSupply = 0.0D;
-            ship.simulation().reportEngine(cell, 0.0D, 0.0D, MAX_FORCE);
+            ship.simulation().reportEngine(cell, 0.0D, 0.0D, MAX_FORCE, 0.0D);
             ship.simulation().reportConsumer(cell, 0.0D, be.minVoltage(), be.boundBox);
             return;
         }
-        be.lastForce = force;
+        be.lastForce = be.currentForce;
         be.lastDemandKw = demand;
-        ship.simulation().reportEngine(cell, force, demand, MAX_FORCE);
+        ship.simulation().reportEngine(cell, be.currentForce, demand, MAX_FORCE,
+                be.condition.condition() / be.condition.maxCondition());
         ship.simulation().reportConsumer(cell, demand, be.minVoltage(), be.boundBox);
         be.lastSupply = ship.simulation().consumerVoltage(cell);
         be.lastEngineCount = ship.simulation().engineCount();

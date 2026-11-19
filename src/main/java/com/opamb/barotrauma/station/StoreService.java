@@ -493,13 +493,18 @@ public final class StoreService {
     private static Vec3 cargoDropPoint(ServerLevel level, BlockPos shipAnchor,
                                        ServerPlayer player) {
         if (VsState.active()) {
-            // 物理船：用船核心世界坐标（舱内）。不能用订单主人的位置——
-            // 起航交付时主人可能还在另一个维度，货会生成在远处。
+            // 物理船：交付发生在船传送到副本、玩家登艇之后，直接掉在订单主人脚边。
+            // 不能用船核心：核心方块在世界坐标里是实心的，大件/金属箱会生成在核心
+            // 方块内部（2026-11-19 实测：潜水服落在核心坐标，玩家看不见也捡不到）。
+            if (player != null) {
+                return player.position().add(0.0D, 0.2D, 0.0D);
+            }
             Vec3 core = MissionCargo.coreWorld(level);
             if (core != null) {
                 return core;
             }
-            return player.position().add(0.0D, 0.2D, 0.0D);
+            return player != null ? player.position().add(0.0D, 0.2D, 0.0D)
+                    : Vec3.atCenterOf(shipAnchor);
         }
         for (CabinetBlockEntity shelf : MissionCargo.shelvesNear(level, shipAnchor)) {
             BlockPos pos = shelf.getBlockPos();
