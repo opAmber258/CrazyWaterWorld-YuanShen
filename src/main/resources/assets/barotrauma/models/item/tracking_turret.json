@@ -1,8 +1,7 @@
 {
   "parent": "barotrauma:item/turret",
   "textures": {
-    "base": "barotrauma:block/turret_base_tracking",
-    "barrel": "barotrauma:block/turret_barrel",
-    "particle": "barotrauma:block/turret_base_tracking"
+    "atlas": "barotrauma:block/turret_atlas_tracking",
+    "particle": "barotrauma:block/turret_atlas_tracking"
   }
 }

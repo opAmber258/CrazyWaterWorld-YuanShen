@@ -51,9 +51,8 @@ public final class TurretHud implements IGuiOverlay {
             // 先画鼠标拖动光标，炮塔准心随后覆盖上去：图层顺序 = 光标在下、炮台准心在上。
             drawFreeAim(graphics, width, height);
         }
+        TurretClient.ImpactPrediction impact = TurretClient.predictedImpact();
         drawReticle(graphics, centerX, centerY, reticle, ready);
-        TurretClient.ImpactPrediction impact =
-                TurretClient.isTracking() ? TurretClient.predictedImpact() : null;
         if (impact != null) {
             drawTrackingImpact(graphics, width, height, impact);
         }

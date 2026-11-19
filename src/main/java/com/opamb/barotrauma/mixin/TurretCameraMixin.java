@@ -34,8 +34,9 @@ public abstract class TurretCameraMixin {
         }
         setPosition(position);
         // 跟随型炮塔的视角由玩家自己的鼠标控制，不覆盖旋转。
+        // 其他模式直接用炮塔瞄准角，三种挂载操作一致。
         if (!TurretClient.isTracking()) {
-            setRotation(TurretClient.aimYaw(), TurretClient.aimPitch());
+            setRotation(TurretClient.cameraYaw(), TurretClient.cameraPitch());
         }
     }
 }
