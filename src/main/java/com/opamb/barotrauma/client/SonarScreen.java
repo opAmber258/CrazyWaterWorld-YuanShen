@@ -73,7 +73,7 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     // 这里只写设计坐标（leftPos/topPos 恒为 0）。
 
     /** 一次声纳脉冲由内向外扩散的周期（毫秒）。 */
-    private static final float PING_MS = 2600.0F;
+    private static final float PING_MS = 2000.0F;
 
     // ---- 配色 ----
     private static final int PANEL_BG = 0xF01E2420;
@@ -123,6 +123,17 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     private int localTargetX;
     private int localTargetY;
     private int localTargetZ;
+    /** 自动驾驶目标微调的按键重复冷却（tick）。 */
+    private int targetNudgeCooldown;
+    /** 1 = 每 tick 走 1 格（20 格/秒）。 */
+    private static final int TARGET_NUDGE_INTERVAL = 1;
+    private static final int TARGET_NUDGE_STEP = 1;
+    /** 一次连续微调期间锁存的基准方向（世界水平单位向量：船→目标，缺省船头）。 */
+    private boolean nudgeBasisLatched;
+    private float nudgeDirX;
+    private float nudgeDirZ;
+    /** 点云屏幕去重（2px 格）：同一格只画一次，省 GUI 填充调用。 */
+    private int[] pointCells = new int[0];
 
     // ---- 右下圆形按钮的四种状态 ----
     private static final int DOCK_NONE = 0;
@@ -160,9 +171,10 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         double cp = Math.cos(camPitch);
         ModNetwork.send(new SonarPingPacket(menu.sonarPos(), range, mode.id(),
                 (float) (Math.sin(camYaw) * cp), (float) Math.sin(camPitch), (float) (Math.cos(camYaw) * cp)));
-        // 原作声纳的数据刷新很快（网络 0.1s / 10Hz），扫掠只负责"什么时候亮出来"；
-        // 这里同样 10Hz 重新扫描，视觉上仍由 drawScope 的波前控制显现节奏。
-        pingCooldown = 2;
+        // 原作 PingFrequency = 0.5s：0.5 秒扫一次、画面在两次扫描之间保持不动，
+        // 只有扩张的 ping 圆环按帧率平滑动画。之前 10Hz 重扫既让服务端每 0.1 秒
+        // 翻一遍区块（同 JVM 单机时直接拖低帧率），又让点云一直跳。
+        pingCooldown = 10;
     }
 
     // ------------------------------------------------------------------ 键盘（手动模式）
@@ -184,16 +196,36 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
                 headingX = headingY = headingZ = 0;
                 sendHeading(0, 0, 0);
             }
+            // 自动驾驶时 WASD/空格/Shift 微调目标点，不再控制船。
+            nudgeTarget(forward, back, left, right, up, sink);
             return;
         }
 
-        float fwd = (forward ? 1 : 0) - (back ? 1 : 0);
-        float strafe = (right ? 1 : 0) - (left ? 1 : 0);
+        int fwd = (forward ? 1 : 0) - (back ? 1 : 0);
         int dy = (up ? 1 : 0) - (sink ? 1 : 0);
 
+        if (ClientSonarCache.physical()) {
+            // 物理船：W/S = 前进/后退，A/D = 左/右偏航，空格/Shift = 上浮/下潜。
+            // 原作 2D 侧视没有偏航，这是 3D 适配；引擎只沿船头前后出力，不再横移。
+            // 绕世界 +Y 正方向：+1 = 左转（船头 +X 转向 −Z），−1 = 右转。
+            int yaw = (left ? 1 : 0) - (right ? 1 : 0);
+            if (fwd != headingX || yaw != headingZ) {
+                headingX = fwd;
+                headingZ = yaw;
+                sendHeading(fwd, headingY, yaw);
+            }
+            if (dy != headingY) {
+                headingY = dy;
+                sendHeading(headingX, dy, headingZ);
+            }
+            return;
+        }
+
+        // 方块船：保持原来的相机相对八向推力（WASD → 世界 XZ）。
+        int strafe = (right ? 1 : 0) - (left ? 1 : 0);
         int dx;
         int dz;
-        if (fwd == 0.0F && strafe == 0.0F) {
+        if (fwd == 0 && strafe == 0) {
             dx = 0;
             dz = 0;
         } else {
@@ -257,9 +289,16 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         if (!synced && ClientSonarCache.frame() != null) {
             power = ClientSonarCache.power();
             autoMode = ClientSonarCache.autopilot();
-            headingX = ClientSonarCache.headingX();
-            headingY = ClientSonarCache.headingY();
-            headingZ = ClientSonarCache.headingZ();
+            if (ClientSonarCache.physical()) {
+                // 物理船缓存里是“实际船头 ×100”，不是舵令；开屏时舵令从零开始。
+                headingX = 0;
+                headingY = 0;
+                headingZ = 0;
+            } else {
+                headingX = ClientSonarCache.headingX();
+                headingY = ClientSonarCache.headingY();
+                headingZ = ClientSonarCache.headingZ();
+            }
             synced = true;
         }
         int dmx = mouseX;
@@ -631,10 +670,14 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         drawBearings(graphics, cx, cy);
         graphics.fill(cx - 1, cy - 1, cx + 2, cy + 2, 0xFFD8FFE8);
 
-        String headingText = headingX == 0 && headingZ == 0
-                ? (autoMode ? "自动·无航向" : "停车")
-                : headingName(headingX, headingY, headingZ) + " " + String.format("%03d°",
-                        bearingDegrees(headingX, headingZ));
+        String command = ClientSonarCache.physical()
+                ? helmCommandText()
+                : headingName(headingX, headingY, headingZ);
+        // 方位角用服务端回传的实际船头（物理船是朝向向量 ×100；方块船是八向推力）。
+        int fx = ClientSonarCache.headingX();
+        int fz = ClientSonarCache.headingZ();
+        String bearing = fx == 0 && fz == 0 ? "" : String.format(" %03d°", bearingDegrees(fx, fz));
+        String headingText = autoMode ? "自动" + bearing : command + bearing;
         graphics.drawString(font, headingText, cx - font.width(headingText) / 2, cy + SCOPE_R + 4,
                 autoMode ? TARGET_COLOR : 0xFF9FE8C8, false);
         if (ClientSonarCache.hasWaypoint()) {
@@ -651,13 +694,15 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
 
     /** 东南西北四个方位字，跟着视角转——转完也知道哪边是哪儿。 */
     private void drawBearings(GuiGraphics graphics, int cx, int cy) {
-        float[] b = basis();
-        float rx = b[3], rz = b[5], ux = b[6], uz = b[8];
+        // 和箭头一样用顶视罗盘：上 = 相机水平前方，箭头朝上就是"正在往前"。
+        // 不再用 3D basis()，否则 camPitch 会把方位字和箭头一起拉到上下。
+        float cosYaw = Mth.cos(camYaw);
+        float sinYaw = Mth.sin(camYaw);
         String[] names = {"北", "东", "南", "西"};
         int[][] dirs = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
         for (int i = 0; i < 4; i++) {
-            float sr = dirs[i][0] * rx + dirs[i][1] * rz;
-            float su = dirs[i][0] * ux + dirs[i][1] * uz;
+            float sr = dirs[i][0] * -cosYaw + dirs[i][1] * sinYaw;
+            float su = dirs[i][0] * sinYaw + dirs[i][1] * cosYaw;
             double len = Math.sqrt((double) sr * sr + (double) su * su);
             if (len < 0.15D) {
                 continue;
@@ -692,6 +737,35 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         float focal = FIELD_R * 0.95F / 0.57735F;
         float max = Math.max(1.0F, frame.range());
         int fieldSq = FIELD_R * FIELD_R;
+        // 每 2px 一格去重：4096 个点里大量落在同一格，逐点 fill 是 GUI 的主要开销。
+        int cellSpan = FIELD_R + 1;
+        int cellCount = cellSpan * cellSpan;
+        if (pointCells.length < cellCount) {
+            pointCells = new int[cellCount];
+        } else {
+            java.util.Arrays.fill(pointCells, 0, cellCount, 0);
+        }
+
+        // 物理船的船体点是"相对核心"的装配坐标，要按船头旋转才显示转向；
+        // 左舷舰况图用的是原始点，别在这里动 packet 数据。
+        double hullFx = 1.0D;
+        double hullFz = 0.0D;
+        double hullRx = 0.0D;
+        double hullRz = 1.0D;
+        boolean rotateHull = ClientSonarCache.physical();
+        if (rotateHull) {
+            int hx = ClientSonarCache.headingX();
+            int hz = ClientSonarCache.headingZ();
+            double hl = Math.sqrt((double) hx * hx + (double) hz * hz);
+            if (hl > 1.0E-6D) {
+                hullFx = hx / hl;
+                hullFz = hz / hl;
+                hullRx = -hullFz;
+                hullRz = hullFx;
+            } else {
+                rotateHull = false;
+            }
+        }
 
         // 声纳是"发一炮、等回声"：亮点从圆心往外推，推过的地方才亮
         float wavefront = pingProgress();
@@ -701,8 +775,17 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
             int dy = SonarScan.y(point);
             int dz = SonarScan.z(point);
             int type = SonarScan.type(point);
+            // 保持小数坐标：先四舍五入再投影的话，船一转向每个点都会跳一整格，
+            // 声纳里那团绿色船体会抖。
+            double pdx = dx;
+            double pdy = dy;
+            double pdz = dz;
+            if (rotateHull && type == SonarScan.TYPE_HULL) {
+                pdx = dx * hullFx + dz * hullRx;
+                pdz = dx * hullFz + dz * hullRz;
+            }
 
-            float depth = dx * fx + dy * fy + dz * fz + camDistance;
+            float depth = (float) (pdx * fx + pdy * fy + pdz * fz + camDistance);
             if (depth < 2.0F) {
                 continue;
             }
@@ -710,8 +793,8 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
             if (terrainLike && depth < camDistance) {
                 continue;
             }
-            int px = cx + Math.round((dx * rx + dz * rz) * focal / depth);
-            int py = cy - Math.round((dx * ux + dy * uy + dz * uz) * focal / depth);
+            int px = cx + (int) Math.round((pdx * rx + pdz * rz) * focal / depth);
+            int py = cy - (int) Math.round((pdx * ux + pdy * uy + pdz * uz) * focal / depth);
             int ox = px - cx;
             int oy = py - cy;
             if (ox * ox + oy * oy > fieldSq) {
@@ -733,11 +816,17 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
                 }
             }
 
-            float distance = Mth.sqrt(dx * dx + dy * dy + dz * dz);
+            float distance = (float) Math.sqrt(pdx * pdx + pdy * pdy + pdz * pdz);
             float t = Mth.clamp(distance / max, 0.0F, 1.0F);
             // 点画大一点：1 像素在深色底上几乎看不见，糊成一片就没法判断形状
             int size = distance < max * 0.3F ? 3 : 2;
-            graphics.fill(px, py, px + size, py + size, cloudColor(type, t, reveal));
+            int gx = (ox + FIELD_R) >> 1;
+            int gy = (oy + FIELD_R) >> 1;
+            int cell = gy * cellSpan + gx;
+            if (pointCells[cell] == 0) {
+                pointCells[cell] = 1;
+                graphics.fill(px, py, px + size, py + size, cloudColor(type, t, reveal));
+            }
         }
     }
 
@@ -764,18 +853,21 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     }
 
     /** 声纳脉冲的波前：从圆心往外推的几圈，越外越暗。 */
+    /**
+     * 原作 pingCircle：一个从圆心扩张到量程的圆环，透明度随扩散衰减
+     * （alpha = 1 - State，半径 = State × 量程）；后面留一圈很淡的尾迹。
+     */
     private void drawWavefront(GuiGraphics graphics, int cx, int cy) {
         float wavefront = pingProgress();
-        for (int trail = 3; trail >= 0; trail--) {
-            float ratio = wavefront - trail * 0.035F;
-            if (ratio <= 0.02F || ratio > 1.0F) {
-                continue;
-            }
-            int alpha = trail == 0 ? 150 : 46 - trail * 11;
-            if (alpha <= 0) {
-                continue;
-            }
-            ring(graphics, cx, cy, Math.round(ratio * FIELD_R), argb(alpha, 120, 255, 200));
+        int r = Math.round(wavefront * FIELD_R);
+        if (r > 1) {
+            int alpha = (int) ((1.0F - wavefront) * 170.0F);
+            ring(graphics, cx, cy, r, argb(alpha, 150, 240, 255));
+        }
+        int trail = Math.round((wavefront - 0.045F) * FIELD_R);
+        if (trail > 1) {
+            int alpha = (int) ((1.0F - wavefront) * 40.0F);
+            ring(graphics, cx, cy, trail, argb(alpha, 150, 240, 255));
         }
     }
 
@@ -788,27 +880,34 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         return (float) (elapsed % (long) PING_MS) / PING_MS;
     }
 
-    /** 圆心箭头：指向船实际在走的方向。 */
+    /** 圆心箭头：指向船实际朝向（物理船 = 船头；方块船 = 世界推力方向）。 */
     private void drawHeadingArrow(GuiGraphics graphics, int cx, int cy) {
-        if (headingX == 0 && headingY == 0 && headingZ == 0) {
-            graphics.fill(cx - 6, cy - 6, cx - 4, cy + 6, DIM);
-            graphics.fill(cx + 4, cy - 6, cx + 6, cy + 6, DIM);
-            graphics.fill(cx - 6, cy - 6, cx + 6, cy - 4, DIM);
-            graphics.fill(cx - 6, cy + 4, cx + 6, cy + 6, DIM);
+        int dirX = ClientSonarCache.headingX();
+        int dirY = ClientSonarCache.headingY();
+        int dirZ = ClientSonarCache.headingZ();
+        double horizontal = Math.sqrt((double) dirX * dirX + (double) dirZ * dirZ);
+        if (horizontal < 1.0E-6D) {
+            if (dirY == 0) {
+                graphics.fill(cx - 6, cy - 6, cx - 4, cy + 6, DIM);
+                graphics.fill(cx + 4, cy - 6, cx + 6, cy + 6, DIM);
+                graphics.fill(cx - 6, cy - 6, cx + 6, cy - 4, DIM);
+                graphics.fill(cx - 6, cy + 4, cx + 6, cy + 6, DIM);
+            } else {
+                // 方块船纯升降：保留上下小箭头。
+                int dir = dirY >= 0 ? -1 : 1;
+                graphics.fill(cx - 5, cy + dir * 12, cx + 5, cy + dir * 14, ACCENT);
+                graphics.fill(cx - 2, cy + dir * 16, cx + 2, cy + dir * 20, ACCENT);
+            }
             return;
         }
-        float[] b = basis();
-        float sxRight = headingX * b[3] + headingZ * b[5];
-        float sxUp = headingX * b[6] + headingY * b[7] + headingZ * b[8];
-        double len = Math.sqrt((double) sxRight * sxRight + (double) sxUp * sxUp);
-        if (len < 0.15D) {
-            int dir = headingY >= 0 ? -1 : 1;
-            graphics.fill(cx - 5, cy + dir * 12, cx + 5, cy + dir * 14, ACCENT);
-            graphics.fill(cx - 2, cy + dir * 16, cx + 2, cy + dir * 20, ACCENT);
-            return;
-        }
-        double nx = sxRight / len;
-        double ny = -sxUp / len;
+        // 顶视罗盘：只用相机的水平朝向，不把 camPitch 投进去。
+        // 船头对准视线水平前方 = 屏幕上方；相机偏航转多少，箭头才转多少。
+        // 之前用 basis() 把 pitch 也算了：默认 camPitch=0.34 是抬头，
+        // 船头水平向前时投影会落到屏幕下方，看起来就是"往前开却往下画"。
+        float cosYaw = Mth.cos(camYaw);
+        float sinYaw = Mth.sin(camYaw);
+        double nx = (dirX * -cosYaw + dirZ * sinYaw) / horizontal;
+        double ny = -(dirX * sinYaw + dirZ * cosYaw) / horizontal;
         float reach = 26.0F + 30.0F * (power / 100.0F);
         int tipX = cx + (int) Math.round(nx * reach);
         int tipY = cy + (int) Math.round(ny * reach);
@@ -871,9 +970,9 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         if (!has) {
             return;
         }
-        int tx = ClientSonarCache.hasTarget() ? ClientSonarCache.targetX() : localTargetX;
-        int ty = ClientSonarCache.hasTarget() ? ClientSonarCache.targetY() : localTargetY;
-        int tz = ClientSonarCache.hasTarget() ? ClientSonarCache.targetZ() : localTargetZ;
+        int tx = localTarget ? localTargetX : ClientSonarCache.targetX();
+        int ty = localTarget ? localTargetY : ClientSonarCache.targetY();
+        int tz = localTarget ? localTargetZ : ClientSonarCache.targetZ();
 
         float[] b = basis();
         float camDistance = viewRange * 1.5F;
@@ -906,7 +1005,7 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
      */
     private void drawTargetPreview(GuiGraphics graphics, int cx, int cy,
                                    int mouseX, int mouseY, int viewRange) {
-        if (page != 0 || orbiting) {
+        if (page != 0 || orbiting || !autoMode) {
             return;
         }
         int dx = mouseX - cx;
@@ -1007,6 +1106,10 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     }
 
     private void drawManualPanel(GuiGraphics graphics, int x, int y, int mouseX, int mouseY) {
+        if (ClientSonarCache.physical()) {
+            drawPhysicalPanel(graphics, x, y, mouseX, mouseY);
+            return;
+        }
         String[] labels = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
         int[][] dirs = {{0, -1}, {1, -1}, {1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}};
         for (int i = 0; i < 8; i++) {
@@ -1018,7 +1121,7 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
             graphics.fill(bx, by, bx + 38, by + 1, BOX_EDGE);
             graphics.drawCenteredString(font, labels[i], bx + 19, by + 4, on ? 0xFFE8FFE8 : TEXT);
         }
-        String[] vert = {"上浮", "停车", "下潜"};
+        String[] vert = {"上浮", "全停", "下潜"};
         int[] values = {1, 0, -1};
         for (int i = 0; i < 3; i++) {
             int bx = x + 8 + i * 54;
@@ -1034,20 +1137,67 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         graphics.drawString(font, "WASD / 空格 / Shift", x + 8, y + 99, 0xFF5F6A5C, false);
     }
 
+    /**
+     * 物理船手动面板：原作只有“前进/后退 + 压载上浮下潜”；偏航是 3D 适配。
+     * 不再画世界八向——引擎只沿船头推。
+     */
+    private void drawPhysicalPanel(GuiGraphics graphics, int x, int y, int mouseX, int mouseY) {
+        String[] fwdLabels = {"前进", "后退", "停推"};
+        int[] fwdValues = {1, -1, 0};
+        for (int i = 0; i < 3; i++) {
+            int bx = x + 8 + i * 54;
+            int by = y + 42;
+            boolean on = i == 2
+                    ? headingX == 0
+                    : headingX == fwdValues[i];
+            boolean hover = mouseX >= bx && mouseX < bx + 52 && mouseY >= by && mouseY < by + 16;
+            graphics.fill(bx, by, bx + 52, by + 16, on ? BTN_ON : hover ? 0xFF39483A : BTN_BG);
+            graphics.fill(bx, by, bx + 52, by + 1, BOX_EDGE);
+            graphics.drawCenteredString(font, fwdLabels[i], bx + 26, by + 4, on ? 0xFFE8FFE8 : TEXT);
+        }
+        String[] yawLabels = {"左转", "右转", "保持"};
+        int[] yawValues = {1, -1, 0};
+        for (int i = 0; i < 3; i++) {
+            int bx = x + 8 + i * 54;
+            int by = y + 61;
+            boolean on = i == 2
+                    ? headingZ == 0
+                    : headingZ == yawValues[i];
+            boolean hover = mouseX >= bx && mouseX < bx + 52 && mouseY >= by && mouseY < by + 16;
+            graphics.fill(bx, by, bx + 52, by + 16, on ? BTN_ON : hover ? 0xFF39483A : BTN_BG);
+            graphics.fill(bx, by, bx + 52, by + 1, BOX_EDGE);
+            graphics.drawCenteredString(font, yawLabels[i], bx + 26, by + 4, on ? 0xFFE8FFE8 : TEXT);
+        }
+        String[] vert = {"上浮", "全停", "下潜"};
+        int[] values = {1, 0, -1};
+        for (int i = 0; i < 3; i++) {
+            int bx = x + 8 + i * 54;
+            int by = y + 80;
+            boolean on = values[i] == 0
+                    ? (headingX == 0 && headingY == 0 && headingZ == 0)
+                    : headingY == values[i];
+            boolean hover = mouseX >= bx && mouseX < bx + 52 && mouseY >= by && mouseY < by + 16;
+            graphics.fill(bx, by, bx + 52, by + 16, on ? BTN_ON : hover ? 0xFF39483A : BTN_BG);
+            graphics.fill(bx, by, bx + 52, by + 1, BOX_EDGE);
+            graphics.drawCenteredString(font, vert[i], bx + 26, by + 4, on ? 0xFFE8FFE8 : TEXT);
+        }
+        graphics.drawString(font, "W/S 前后 · A/D 转舵 · 空格/Shift", x + 8, y + 99, 0xFF5F6A5C, false);
+    }
+
     private void drawAutoPanel(GuiGraphics graphics, int x, int y, int mouseX, int mouseY) {
         boolean has = ClientSonarCache.hasTarget() || localTarget;
         String line1;
         if (!has) {
             line1 = "目标：未标记";
         } else {
-            int tx = ClientSonarCache.hasTarget() ? ClientSonarCache.targetX() : localTargetX;
-            int ty = ClientSonarCache.hasTarget() ? ClientSonarCache.targetY() : localTargetY;
-            int tz = ClientSonarCache.hasTarget() ? ClientSonarCache.targetZ() : localTargetZ;
+            int tx = localTarget ? localTargetX : ClientSonarCache.targetX();
+            int ty = localTarget ? localTargetY : ClientSonarCache.targetY();
+            int tz = localTarget ? localTargetZ : ClientSonarCache.targetZ();
             double dist = Math.sqrt((double) tx * tx + (double) ty * ty + (double) tz * tz);
             line1 = String.format("目标 %s %03d°  %.0f m", headingName(tx, ty, tz), bearingDegrees(tx, tz), dist);
         }
         graphics.drawString(font, line1, x + 8, y + 44, has ? TARGET_COLOR : DIM, false);
-        graphics.drawString(font, has ? "单击左侧画面可改标记" : "单击左侧画面设置目标",
+        graphics.drawString(font, has ? "单击画面改标记 · WASD/空格/Shift 按船头微调" : "单击画面设置目标",
                 x + 8, y + 56, 0xFF5F6A5C, false);
 
         int bx = x + 8;
@@ -1144,7 +1294,9 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     // ---------------------------------------------------------- 底部提示
 
     private void drawBottomHint(GuiGraphics graphics) {
-        String hint = "拖拽转视角 · 滚轮调速 · 单击画面标记目标";
+        String hint = autoMode
+                ? "拖拽转视角 · 单击画面标记目标 · WASD/空格/Shift 按船头微调"
+                : "拖拽转视角 · 滚轮调速 · 切到自动驾驶后才能单击标记目标";
         graphics.drawString(font, hint, leftPos + LEFT_X, topPos + PANEL_H - 16, 0xFF5F6A5C, false);
     }
 
@@ -1228,6 +1380,27 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         }
         int deg = (int) Math.round(Math.toDegrees(Math.atan2(dx, -dz)));
         return (deg + 360) % 360;
+    }
+
+    /** 物理船舵令文字：前进/后退 + 左/右转 + 上浮/下潜。 */
+    private String helmCommandText() {
+        StringBuilder text = new StringBuilder();
+        if (headingX > 0) {
+            text.append("前进");
+        } else if (headingX < 0) {
+            text.append("后退");
+        }
+        if (headingZ > 0) {
+            text.append(text.length() > 0 ? " + 左转" : "左转");
+        } else if (headingZ < 0) {
+            text.append(text.length() > 0 ? " + 右转" : "右转");
+        }
+        if (headingY > 0) {
+            text.append(text.length() > 0 ? " + 上浮" : "上浮");
+        } else if (headingY < 0) {
+            text.append(text.length() > 0 ? " + 下潜" : "下潜");
+        }
+        return text.length() == 0 ? "停车" : text.toString();
     }
 
     private static String headingName(int dx, int dy, int dz) {
@@ -1338,6 +1511,32 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
                 clearTarget();
                 return true;
             }
+        } else if (ClientSonarCache.physical()) {
+            int[] fwdValues = {1, -1, 0};
+            for (int i = 0; i < 3; i++) {
+                if (inRect(mx, my, x + 8 + i * 54, hy + 42, 52, 16)) {
+                    steer(fwdValues[i], headingY, headingZ);
+                    return true;
+                }
+            }
+            int[] yawValues = {1, -1, 0};
+            for (int i = 0; i < 3; i++) {
+                if (inRect(mx, my, x + 8 + i * 54, hy + 61, 52, 16)) {
+                    steer(headingX, headingY, yawValues[i]);
+                    return true;
+                }
+            }
+            for (int i = 0; i < 3; i++) {
+                if (inRect(mx, my, x + 8 + i * 54, hy + 80, 52, 16)) {
+                    int[] values = {1, 0, -1};
+                    if (values[i] == 0) {
+                        steer(0, 0, 0);
+                    } else {
+                        steer(headingX, values[i], headingZ);
+                    }
+                    return true;
+                }
+            }
         } else {
             for (int i = 0; i < 8; i++) {
                 if (inRect(mx, my, x + 8 + (i % 4) * 40, hy + 42 + (i / 4) * 18, 38, 16)) {
@@ -1417,8 +1616,9 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) { double mx = designX(mouseX); double my = designY(mouseY);
-        // 单击 = 标记目标，两种模式都生效（手动模式下点一下就切自动，省得先去点单选）
-        if (orbiting && !draggedFarEnough && button == 0) {
+        // 只有自动驾驶模式单击才标记目标；手动模式点击只用于转视角，
+        // 避免想拖视角时误设一个目标并把船带偏。
+        if (orbiting && !draggedFarEnough && button == 0 && autoMode) {
             markTargetAt(mx, my);
         }
         orbiting = false;
@@ -1453,10 +1653,79 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         localTargetX = target[0];
         localTargetY = target[1];
         localTargetZ = target[2];
-        autoMode = true;
         ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.SET_AUTOPILOT_TARGET,
                 target[0], target[1], target[2]));
         sendPing();
+    }
+
+    /**
+     * 自动驾驶模式下用 WASD/空格/Shift 微调目标点（每 tick 1 格，约 20 格/秒）。
+     *
+     * <p>W/S 沿<b>船头</b>前后、A/D 沿右舷、空格/Shift 上下，和相机视角无关；
+     * 偏移和点击一样，以声纳扫描中心为基准。</p>
+     *
+     * <p>方向在一次“按住”期间锁存：自动驾驶会边开边转，如果每 tick 都取当前
+     * 船头，按着 W 走出的就是一条跟着船头画的弧线。锁存后一次按键走直线，
+     * 松开再按才取新的船头。</p>
+     */
+    private void nudgeTarget(boolean forward, boolean back, boolean left, boolean right,
+                             boolean up, boolean sink) {
+        if (!autoMode) {
+            return;
+        }
+        int f = (forward ? 1 : 0) - (back ? 1 : 0);
+        int r = (right ? 1 : 0) - (left ? 1 : 0);
+        int v = (up ? 1 : 0) - (sink ? 1 : 0);
+        if (f == 0 && r == 0 && v == 0) {
+            targetNudgeCooldown = 0;
+            nudgeBasisLatched = false;
+            return;
+        }
+        if (!ClientSonarCache.hasTarget() && !localTarget) {
+            return;
+        }
+        // 连续微调时以本地累积值为准：服务端回包是 0.5 秒一次，跟不上每 tick 的步进，
+        // 拿回包当基准会丢步或来回跳。
+        int tx = localTarget ? localTargetX : ClientSonarCache.targetX();
+        int ty = localTarget ? localTargetY : ClientSonarCache.targetY();
+        int tz = localTarget ? localTargetZ : ClientSonarCache.targetZ();
+        if (!nudgeBasisLatched) {
+            // 基准取“船 → 当前目标”的水平方向，而不是船头：自动驾驶时船头
+            // 可能还没转过来，用船头当基准会让 W 把目标往侧面推，船也跟着
+            // 往船头方向扭。目标就在脚下时才退回船头。
+            double hx = tx;
+            double hz = tz;
+            double len = Math.sqrt(hx * hx + hz * hz);
+            if (len < 1.0E-6D) {
+                hx = ClientSonarCache.headingX();
+                hz = ClientSonarCache.headingZ();
+                len = Math.sqrt(hx * hx + hz * hz);
+            }
+            if (len < 1.0E-6D) {
+                hx = Math.sin(camYaw);
+                hz = Math.cos(camYaw);
+                len = 1.0D;
+            }
+            nudgeDirX = (float) (hx / len);
+            nudgeDirZ = (float) (hz / len);
+            nudgeBasisLatched = true;
+        }
+        if (targetNudgeCooldown > 0) {
+            targetNudgeCooldown--;
+            return;
+        }
+        targetNudgeCooldown = TARGET_NUDGE_INTERVAL - 1;
+        // 基准方向 (bx,bz) 的右方是 (-bz,bx)。
+        int dx = (int) Math.round((nudgeDirX * f - nudgeDirZ * r) * TARGET_NUDGE_STEP);
+        int dz = (int) Math.round((nudgeDirZ * f + nudgeDirX * r) * TARGET_NUDGE_STEP);
+        int dy = v * TARGET_NUDGE_STEP;
+        localTarget = true;
+        localTargetX = tx + dx;
+        localTargetY = ty + dy;
+        localTargetZ = tz + dz;
+        ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.SET_AUTOPILOT_TARGET,
+                localTargetX, localTargetY, localTargetZ));
+        // 不再每步发 ping：正常 10Hz 扫描会把新目标带回来，20Hz 补 ping 只是白扫。
     }
 
     /**
@@ -1471,13 +1740,24 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         int cy = topPos + SCOPE_CY;
         float focal = FIELD_R * 0.95F / 0.57735F;
 
+        // 点击按“可视场”半径截断：外圈是装饰环，点在那里时射线角度太宽，
+        // 和量程球的交点会落到船心后面（用户实测“目标跑到身后”）。
+        double ox = mouseX - cx;
+        double oy = mouseY - cy;
+        double radius = Math.sqrt(ox * ox + oy * oy);
+        if (radius > FIELD_R) {
+            double scale = FIELD_R / radius;
+            ox *= scale;
+            oy *= scale;
+        }
+
         float[] b = basis();
         float fx = b[0], fy = b[1], fz = b[2];
         float rx = b[3], ry = b[4], rz = b[5];
         float ux = b[6], uy = b[7], uz = b[8];
 
-        float nx = (float) (mouseX - cx) / focal;
-        float ny = (float) -(mouseY - cy) / focal;
+        float nx = (float) (ox / focal);
+        float ny = (float) (-oy / focal);
         double dx = fx + rx * nx + ux * ny;
         double dy = fy + ry * nx + uy * ny;
         double dz = fz + rz * nx + uz * ny;
@@ -1541,7 +1821,10 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
             double c = camX * camX + camY * camY + camZ * camZ
                     - (double) viewRange * viewRange;
             double disc = bDot * bDot - c;
-            dist = disc >= 0.0D ? -bDot + Math.sqrt(disc) : camDistance - viewRange * 0.5D;
+            // 射线没和量程球相交（极端视角）：取相机前方半个量程的点。
+            // 不能减——减出来会落在船心后面，目标直接跑到玩家身后。
+            dist = disc >= 0.0D ? -bDot + Math.sqrt(disc)
+                    : camDistance + viewRange * 0.5D;
             dist = Math.max(2.0D, dist);
         }
         return new int[]{

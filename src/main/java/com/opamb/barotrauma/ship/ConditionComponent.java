@@ -117,15 +117,19 @@ public final class ConditionComponent {
     }
 
     /**
-     * 原作 {@code Repairable.AdjustPowerConsumption}：低于 80% 时耗电从 1.0
-     * 线性涨到 1.5（越低越费电）。
+     * 原作 {@code Repairable.AdjustPowerConsumption}：耐久低于 RepairThreshold
+     * （默认/引擎都是 80%）时，耗电乘 {@code Lerp(1.5, 1, condition/maxCondition)}。
+     *
+     * <p>是直接按耐久比例插值，不是把 80% 归一到 1.0：耐久 79% 时倍率约 1.105，
+     * 0% 时 1.5；耐久 ≥80% 时不调整。之前写成 {@code 1.5 - 0.5*f/0.8} 会让
+     * 80% 以下少算约 10% 耗电。</p>
      */
     public double powerPenalty() {
         double fraction = fraction();
-        if (fraction >= 0.8D) {
+        if (fraction >= repairThreshold) {
             return 1.0D;
         }
-        return 1.5D - 0.5D * (fraction / 0.8D);
+        return 1.5D - 0.5D * fraction;
     }
 
     public boolean isFull() {

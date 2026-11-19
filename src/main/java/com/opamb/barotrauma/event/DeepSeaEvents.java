@@ -3,6 +3,7 @@ package com.opamb.barotrauma.event;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.opamb.barotrauma.BarotraumaMod;
@@ -35,6 +36,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -151,7 +153,7 @@ public final class DeepSeaEvents {
         boolean docked;
         if (com.opamb.barotrauma.ship.vs.VsState.active()) {
             var ship = com.opamb.barotrauma.ship.vs.VsPilot.shipPosition();
-            var dock = newStarter ? StarterSub.newSpawnPos()
+            var dock = newStarter ? StarterSub.layout(deep).spawn()
                     : (legacyDock ? StarterSub.legacySpawnPos() : StarterSub.spawnPos());
             boolean activeNear = ship != null && ship.distanceToSqr(dock) < 24.0D * 24.0D;
             docked = activeNear || sonarAtDock;
@@ -161,7 +163,7 @@ public final class DeepSeaEvents {
             docked = sonarAtDock;
         }
         if (docked) {
-            var spawn = newStarter ? StarterSub.newSpawnPos()
+            var spawn = newStarter ? StarterSub.layout(deep).spawn()
                     : (legacyDock ? StarterSub.legacySpawnPos() : StarterSub.spawnPos());
             player.teleportTo(deep, spawn.x, spawn.y, spawn.z, 0.0F, 0.0F);
             player.setRespawnPosition(ModDimensions.THE_DEEP, BlockPos.containing(spawn), 0.0F, true, false);
@@ -355,6 +357,23 @@ public final class DeepSeaEvents {
                     ctx.getSource().sendSuccess(() -> Component.literal("已返回主世界"), false);
                     return 1;
                 }))
+                // 新潜艇施工场地：默认 49×65 平台（原作儒艮号 ≈40×13 格，含指挥塔）。
+                .then(Commands.literal("buildplot")
+                        .requires(src -> src.hasPermission(2))
+                        .executes(ctx -> buildPlot(ctx, 49, 65, 24))
+                        .then(Commands.argument("width", IntegerArgumentType.integer(16, 96))
+                                .executes(ctx -> buildPlot(ctx,
+                                        IntegerArgumentType.getInteger(ctx, "width"), 65, 24))
+                                .then(Commands.argument("length", IntegerArgumentType.integer(16, 96))
+                                        .executes(ctx -> buildPlot(ctx,
+                                                IntegerArgumentType.getInteger(ctx, "width"),
+                                                IntegerArgumentType.getInteger(ctx, "length"), 24))
+                                        .then(Commands.argument("height",
+                                                        IntegerArgumentType.integer(8, 64))
+                                                .executes(ctx -> buildPlot(ctx,
+                                                        IntegerArgumentType.getInteger(ctx, "width"),
+                                                        IntegerArgumentType.getInteger(ctx, "length"),
+                                                        IntegerArgumentType.getInteger(ctx, "height")))))))
                 .then(Commands.literal("depth").executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     int meters = ModDimensions.toMeters(player.blockPosition().getY());
@@ -377,6 +396,16 @@ public final class DeepSeaEvents {
                             player.sendSystemMessage(ship.liveReport());
                             return 1;
                         })
+                        .then(Commands.literal("spawn")
+                                .executes(ctx -> spawnShipTemplate(ctx,
+                                        "dugong_custom_20261117", null))
+                                .then(Commands.argument("template", StringArgumentType.word())
+                                        .executes(ctx -> spawnShipTemplate(ctx,
+                                                StringArgumentType.getString(ctx, "template"), null))
+                                        .then(Commands.argument("pos", BlockPosArgument.blockPos())
+                                                .executes(ctx -> spawnShipTemplate(ctx,
+                                                        StringArgumentType.getString(ctx, "template"),
+                                                        BlockPosArgument.getBlockPos(ctx, "pos"))))))
                         .then(Commands.literal("sim")
                                 .then(Commands.argument("seconds", DoubleArgumentType.doubleArg(0.1D, 600.0D))
                                         .executes(ctx -> {
@@ -495,6 +524,96 @@ public final class DeepSeaEvents {
                                                         IntegerArgumentType.getInteger(ctx, "percent"))))))));
     }
 
+    /**
+     * 施工场地：固定建在主世界的<b>天顶</b>，用来搭新潜艇。
+     *
+     * <p>深海维度的世界顶只有 y=16（{@code dimension_type/the_deep}: min_y=-1008,
+     * height=1024），冰层上面没有空间，所以场地固定建在主世界。</p>
+     *
+     * <p>平台不参考地形：主世界在这些坐标上的地形可能整列是空的（高度图回落到
+     * 世界底部），贴地形会变成"在地底挖洞"。这里直接贴建筑上限往下排，净空多少
+     * 就给多少。平台用<b>原版石头</b>，船体扫描只认模组船方块，不会算进新船 hull。</p>
+     */
+    private static int buildPlot(CommandContext<CommandSourceStack> ctx, int width, int length,
+                                 int height) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        ServerLevel level = player.getServer().overworld();
+        // 清空体积太大时服务端要卡好一会：先拦住明显过分的组合。
+        if ((long) width * length * height > 300_000L) {
+            ctx.getSource().sendFailure(Component.literal(
+                    "场地太大（" + width + "×" + length + "×" + height + "）：请减小尺寸，"
+                            + "宽×长×高不超过 30 万格。"));
+            return 0;
+        }
+        // 对齐到偶数，方便左右对称搭建。
+        int centerX = (player.getBlockX() >> 1) << 1;
+        int centerZ = (player.getBlockZ() >> 1) << 1;
+        int halfW = Math.max(8, width / 2);
+        int halfL = Math.max(8, length / 2);
+        // 天顶平台：贴着建筑上限往下留出正好 height 格净空。
+        int floorY = level.getMaxBuildHeight() - height - 2;
+        BlockState floor = Blocks.SMOOTH_STONE.defaultBlockState();
+        BlockState edge = Blocks.POLISHED_ANDESITE.defaultBlockState();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        for (int dx = -halfW; dx <= halfW; dx++) {
+            for (int dz = -halfL; dz <= halfL; dz++) {
+                BlockPos column = new BlockPos(centerX + dx, floorY, centerZ + dz);
+                boolean border = Math.abs(dx) == halfW || Math.abs(dz) == halfL;
+                level.setBlock(column, border ? edge : floor, Block.UPDATE_CLIENTS);
+                for (int dy = 1; dy <= height; dy++) {
+                    BlockPos pos = column.above(dy);
+                    if (!level.getBlockState(pos).isAir()) {
+                        level.setBlock(pos, air, Block.UPDATE_CLIENTS);
+                    }
+                }
+            }
+        }
+        player.teleportTo(level, centerX + 0.5D, floorY + 1.0D, centerZ + 0.5D,
+                player.getYRot(), player.getXRot());
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "施工场地已铺好（主世界）：" + (halfW * 2 + 1) + "×" + (halfL * 2 + 1)
+                        + "，净空 " + height + " 格，平台 y=" + floorY
+                        + "，中心 (" + centerX + ", " + floorY + ", " + centerZ + ")。"
+                        + "参考：原作儒艮号船体 ≈35×8 格、含指挥塔/外挂 ≈40×13 格。"
+                        + "平台是原版石头，不会算进船体；用模组方块搭，放好导航终端后会自动扫描成船。"
+                        + "回深海用 /barotrauma deep。")
+                .withStyle(ChatFormatting.AQUA), false);
+        return 1;
+    }
+
+    /**
+     * {@code /barotrauma ship spawn [template] [pos]}：按结构模板生成一艘方块船。
+     *
+     * <p>默认生成新儒艮级蓝图 {@code dugong_custom_20261117}；模板里的接线盒绑定是
+     * 相对坐标，由 {@code ShipTemplateSpawner} 在放置后补上原点。</p>
+     */
+    private static int spawnShipTemplate(CommandContext<CommandSourceStack> ctx, String name,
+                                         @Nullable BlockPos pos) throws CommandSyntaxException {
+        ServerLevel level;
+        BlockPos origin;
+        if (pos != null) {
+            level = ctx.getSource().getLevel();
+            origin = pos;
+        } else {
+            ServerPlayer player = ctx.getSource().getPlayerOrException();
+            level = player.serverLevel();
+            origin = player.blockPosition();
+        }
+        net.minecraft.resources.ResourceLocation id = name.contains(":")
+                ? new net.minecraft.resources.ResourceLocation(name)
+                : new net.minecraft.resources.ResourceLocation(
+                        com.opamb.barotrauma.BarotraumaMod.MOD_ID, name);
+        if (!com.opamb.barotrauma.ship.ShipTemplateSpawner.spawn(level, origin, id)) {
+            ctx.getSource().sendFailure(Component.literal("找不到结构模板 " + id));
+            return 0;
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "已生成 " + id + "，原点 (" + origin.getX() + ", " + origin.getY() + ", "
+                        + origin.getZ() + ")。导航终端会自动扫成船，稍等几 tick。")
+                .withStyle(ChatFormatting.AQUA), false);
+        return 1;
+    }
+
     /** 已有船状态就直接用，避免每次命令都重扫（重扫会重置模拟）。 */
     private static ShipState ensureState(ShipCoreBlockEntity core, ServerLevel level) {
         ShipState ship = core.state();
@@ -521,7 +640,13 @@ public final class DeepSeaEvents {
             return 0;
         }
         ShipState ship = ensureState(core, player.serverLevel());
-        ship.setThrottle(dx, dy, dz);
+        if (com.opamb.barotrauma.ship.vs.VsState.active()
+                && com.opamb.barotrauma.ship.vs.VsState.activeState() == ship) {
+            // 物理船：dx = 前进/后退，dz = 偏航，dy = 垂直。
+            ship.setHelm(dx, dz, dy);
+        } else {
+            ship.setThrottle(dx, dy, dz);
+        }
         player.sendSystemMessage(Component.literal("推进：" + ship.throttleName())
                 .withStyle(ChatFormatting.AQUA));
         return 1;
@@ -592,6 +717,14 @@ public final class DeepSeaEvents {
         float dirX = ship == null ? 0.0F : ship.throttleX();
         float dirY = ship == null ? 0.0F : ship.throttleY();
         float dirZ = ship == null ? 1.0F : ship.throttleZ();
+        if (com.opamb.barotrauma.ship.vs.VsState.active()) {
+            net.minecraft.world.phys.Vec3 forward = com.opamb.barotrauma.ship.vs.VsPilot.forwardWorld();
+            if (forward != null) {
+                dirX = (float) forward.x;
+                dirY = 0.0F;
+                dirZ = (float) forward.z;
+            }
+        }
 
         long start = System.nanoTime();
         SonarScan.Frame frame = SonarScan.scan(level, center, range, hull, player, mode, dirX, dirY, dirZ);
@@ -766,13 +899,15 @@ public final class DeepSeaEvents {
             ctx.getSource().sendFailure(Component.literal("现在没有物理船（先 /barotrauma ship vs launch）"));
             return 0;
         }
-        VsPilot.thruster().setThrottle(dx, dy, dz);
+        // 物理船语义：dx = 前进/后退，dz = 偏航，dy = 垂直。
+        VsPilot.thruster().setHelm(dx, dz, dy);
         // 面板上的推力来自 ShipState，控制台改推力也要同步过去，否则面板显示 0 实际在推
         ShipState ship = VsPilot.state();
         if (ship != null) {
-            ship.setThrottle(dx, dy, dz);
+            ship.setHelm(dx, dz, dy);
         }
-        ctx.getSource().sendSuccess(() -> Component.literal("物理船推力 (" + dx + "," + dy + "," + dz + ")"), false);
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                "物理船舵令 (前进 " + dx + ", 偏航 " + dz + ", 垂直 " + dy + ")"), false);
         return 1;
     }
 

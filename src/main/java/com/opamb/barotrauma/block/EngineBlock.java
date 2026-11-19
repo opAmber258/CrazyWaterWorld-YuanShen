@@ -105,7 +105,19 @@ public class EngineBlock extends Block implements EntityBlock {
 
     public static final EnumProperty<Part> PART = EnumProperty.create("part", Part.class);
 
-    private static final VoxelShape SHAPE = Shapes.block();
+    /**
+     * 整台机器外圈碰撞内缩量。
+     *
+     * <p>引擎后两排本身就是船尾船壳，三面都和船壳板齐平；碰撞若按整格贴死，
+     * 玩家站在最前排顶上、贴着舱壁时会被两块碰撞体夹在接缝里，船体一动就
+     * 被挤出船壳（用户实测“在引擎上站着能卡出舱壁”）。外圈留 1px 缝后，
+     * 接缝不再能卡住实体；内部相邻格之间不缩，不会多出可掉落的缝。</p>
+     */
+    private static final double EDGE_INSET = 1.0D / 16.0D;
+
+    /** 每面朝向 × 每段的外圈碰撞形状（18 段 × 4 个水平朝向，静态预计算）。 */
+    private static final VoxelShape[][] SHAPES = buildShapes();
+
     private static final ThreadLocal<Boolean> REMOVING = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     public EngineBlock(Properties properties) {
@@ -242,13 +254,61 @@ public class EngineBlock extends Block implements EntityBlock {
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
                                CollisionContext context) {
-        return SHAPE;
+        return shapeOf(state);
     }
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos,
                                         CollisionContext context) {
-        return SHAPE;
+        return shapeOf(state);
+    }
+
+    /** 当前段/朝向的外圈碰撞形状。 */
+    private static VoxelShape shapeOf(BlockState state) {
+        return SHAPES[state.getValue(FACING).ordinal()][state.getValue(PART).ordinal()];
+    }
+
+    private static VoxelShape[][] buildShapes() {
+        VoxelShape[][] shapes = new VoxelShape[Direction.values().length][];
+        for (Direction facing : Direction.Plane.HORIZONTAL) {
+            VoxelShape[] byPart = new VoxelShape[Part.values().length];
+            for (Part part : Part.values()) {
+                byPart[part.ordinal()] = buildShape(part, facing);
+            }
+            shapes[facing.ordinal()] = byPart;
+        }
+        return shapes;
+    }
+
+    private static VoxelShape buildShape(Part part, Direction facing) {
+        Direction axis = facing.getClockWise();
+        double[] box = {0.0D, 0.0D, 0.0D, 1.0D, 1.0D, 1.0D};
+        // 列：最左/最右两列各缩掉朝外的一面；中间列和内部相邻面保持整格。
+        if (part.column() == 0) {
+            inset(box, axis.getOpposite());
+        } else if (part.column() == 2) {
+            inset(box, axis);
+        }
+        // 层：最前/最后两层的端面朝外（最后层的背面就是船尾船壳）。
+        if (part.layer() == 0) {
+            inset(box, facing);
+        } else if (part.layer() == 2) {
+            inset(box, facing.getOpposite());
+        }
+        // 只缩水平面；上下保持 0..1，站在引擎顶上不会往下陷。
+        return Shapes.box(box[0], box[1], box[2], box[3], box[4], box[5]);
+    }
+
+    private static void inset(double[] box, Direction side) {
+        switch (side) {
+            case WEST -> box[0] += EDGE_INSET;
+            case EAST -> box[3] -= EDGE_INSET;
+            case NORTH -> box[2] += EDGE_INSET;
+            case SOUTH -> box[5] -= EDGE_INSET;
+            default -> {
+                // 水平多方块只在水平面缩边；上下面不动。
+            }
+        }
     }
 
     @Override

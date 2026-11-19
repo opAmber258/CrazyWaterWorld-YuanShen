@@ -124,8 +124,40 @@ class ReactorStateTest {
     void 最佳与允许裂变区随燃料变化() {
         assertTrue(ReactorState.optimalFissionMin(100.0D) <= ReactorState.optimalFissionMax(100.0D));
         assertTrue(ReactorState.allowedFissionMin(100.0D) <= ReactorState.allowedFissionMax(100.0D));
-        assertEquals(100.0D, ReactorState.allowedFissionMax(400.0D), 1.0E-6);
-        assertEquals(0.0D, ReactorState.allowedFissionMax(0.0D), 1.0E-6);
+        // 原作：optimal = [30, fuel-20]，allowed = [20, fuel]（技能按 0 算）。
+        assertEquals(30.0D, ReactorState.optimalFissionMin(100.0D), 1.0E-6D);
+        assertEquals(80.0D, ReactorState.optimalFissionMax(100.0D), 1.0E-6D);
+        assertEquals(20.0D, ReactorState.allowedFissionMin(100.0D), 1.0E-6D);
+        assertEquals(100.0D, ReactorState.allowedFissionMax(100.0D), 1.0E-6D);
+        assertEquals(400.0D, ReactorState.allowedFissionMax(400.0D), 1.0E-6D);
+        assertEquals(0.0D, ReactorState.allowedFissionMax(0.0D), 1.0E-6D);
+    }
+
+    @Test
+    void 输出按涡轮出力带夹带需求() {
+        ReactorState state = new ReactorState();
+        state.setAutoTemp(false);
+        state.setPowerOn(true);
+        state.setTargetFission(50.0D);
+        state.setTargetTurbine(50.0D);
+        // 负载 0 时 CorrectTurbine 会掉到 0，出力带就是涡轮 ±1%。
+        tick(state, 30.0D, 100.0D, 0.0D);
+        assertTrue(state.minOutputKw() > 2000.0D, "带底 " + state.minOutputKw());
+
+        // 需求在带内 → 输出正好等于需求（原作 GetConnectionPowerOut）。
+        state.tick(DT, 100.0D, 2500.0D);
+        assertEquals(2500.0D, state.outputKw(), 80.0D);
+
+        // 需求为 0 → 只发到带底，不是 0，也不是涡轮额定的 2500。
+        state.tick(DT, 100.0D, 0.0D);
+        assertEquals(state.minOutputKw(), state.outputKw(), 1.0E-6D);
+        assertTrue(state.outputKw() > 2300.0D && state.outputKw() < 2500.0D,
+                "带底应略低于涡轮 50%，实际 " + state.outputKw());
+
+        // 需求远高于带顶 → 只发到带顶。
+        state.tick(DT, 100.0D, 5000.0D);
+        assertEquals(state.maxOutputKw(), state.outputKw(), 1.0E-6D);
+        assertTrue(state.outputKw() < 2600.0D, "带顶应略高于涡轮 50%，实际 " + state.outputKw());
     }
 
     @Test

@@ -68,9 +68,13 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
         boolean open = state.getValue(BulkheadDoorBlock.OPEN);
         boolean want = open;
         if (be.automation == AutomationMode.MOTION) {
+            // 原作自动关门：运动探测器 + OrComponent TimeFrame=4
+            // （Content/Items/Assemblies/AutoClosingDoor.xml，说明是
+            // "closes automatically if nobody is around for 4 seconds"）。
+            // 没人后保持 4 秒再关，对应 80 tick。
             boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
             if (near) {
-                be.motionHold = 40;
+                be.motionHold = 80;
             } else if (be.motionHold > 0) {
                 be.motionHold--;
             }

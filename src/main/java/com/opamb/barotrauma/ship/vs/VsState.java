@@ -62,6 +62,16 @@ public final class VsState {
                                                     net.minecraft.world.phys.Vec3 pos) {
             return null;
         }
+
+        /**
+         * 位置所在舱室的下标（和 {@link com.opamb.barotrauma.ship.ShipState#compartmentAt} 一致）。
+         *
+         * @return null = 没有物理船/无法判定；-1 = 在物理船上但不在任何舱室里
+         */
+        default Integer compartmentIndex(net.minecraft.world.level.Level level,
+                                          net.minecraft.world.phys.Vec3 pos) {
+            return null;
+        }
     }
 
     /** 物理船上新放方块：写进靠港还原快照。由 {@link VsPilot} 提供。 */
@@ -164,6 +174,17 @@ public final class VsState {
                                                  net.minecraft.world.phys.Vec3 pos) {
         CompartmentQuery query = compartmentQuery;
         return query == null ? null : query.isInsideCompartmentGeometry(level, pos);
+    }
+
+    /**
+     * 位置所在物理船舱室的下标。
+     *
+     * @return null = 没有物理船/无法判定；-1 = 在物理船上但不在任何舱室里
+     */
+    public static Integer queryCompartmentIndex(net.minecraft.world.level.Level level,
+                                                net.minecraft.world.phys.Vec3 pos) {
+        CompartmentQuery query = compartmentQuery;
+        return query == null ? null : query.compartmentIndex(level, pos);
     }
 
     private static volatile int offsetX;

@@ -32,8 +32,23 @@ public final class ShipSimulation {
      */
     public static final double NEUTRAL_WATER_RATIO = 0.07D;
 
-    private static final double O2_PER_GENERATOR = 700.0D;
-    private static final double CREW_OXYGEN = 700.0D;
+    /**
+     * 制氧机满电压（V=1）时的产氧量，单位/秒。
+     *
+     * <p>原作 {@code OxygenGenerator}：{@code GeneratedAmount=400}，乘 100 再按电压
+     * 钳到 2，即 40,000 原始单位/秒。原作 {@code Hull.Volume} 是像素面积，1 格 ≈
+     * 97.8 原始像素边长 → 面积 ≈ 9,564；本模组 1 格 = 100 单位，所以折算系数约
+     * 95.64：40,000 / 95.64 ≈ 418。</p>
+     */
+    public static final double O2_GENERATOR_OUTPUT = 418.0D;
+    /**
+     * 一个乘员每秒吸走的舱室氧气。
+     *
+     * <p>原作 {@code Hull.OxygenConsumptionSpeed = 700}/秒，按同一系数折算 ≈ 7.32。</p>
+     */
+    public static final double O2_BREATH_RATE = 7.32D;
+    /** 每个舱室每秒自然损耗（原作 {@code Hull}: {@code Oxygen -= 0.3f * dt}，折算 ≈ 0.0031）。 */
+    private static final double O2_DECAY_RATE = 0.0031D;
     private static final double PUMP_RATE = 600.0D;
     private static final double PUMP_POWER = 300.0D;
     /** 声纳台耗电：wiki 的 Navigation Terminal / Sonar Monitor 都是 100。 */
@@ -75,7 +90,7 @@ public final class ShipSimulation {
             new java.util.HashMap<>();
     private long reactorTick;
     private static final int REACTOR_STALE_TICKS = 40;
-    /** 引擎上报表：格子 → (目标力%, 耗电 kW, 最大推力, 最后上报 tick)。 */
+    /** 引擎上报表：格子 → (目标力%, 耗电 kW, 最大推力, 耐久比例 0..1, 最后上报 tick)。 */
     private final java.util.Map<net.minecraft.core.BlockPos, EngineReport> engines =
             new java.util.HashMap<>();
     /** 推进最多吃几台引擎的推力：超出部分不叠加（和 {@code VsThruster} 的上限一致）。 */
@@ -86,11 +101,13 @@ public final class ShipSimulation {
     private double lastEngineDemand;
     private double lastEngineMaxForce;
 
-    private record EngineReport(double force, double demandKw, double maxForce, long lastSeen) {
+    private record EngineReport(double force, double demandKw, double maxForce,
+                                double condition, long lastSeen) {
     }
 
-    private record ReactorReport(double output, double capacity, double temperature,
-                                 boolean overheated, boolean meltingDown, long lastSeen) {
+    private record ReactorReport(double minOutput, double maxOutput, double capacity,
+                                 double temperature, boolean overheated,
+                                 boolean meltingDown, long lastSeen) {
     }
     /**
      * 排水泵上报表：格子 → (速率, 最后上报 tick)。
@@ -102,6 +119,34 @@ public final class ShipSimulation {
     private final java.util.Map<net.minecraft.core.BlockPos, PumpReport> pumps = new java.util.HashMap<>();
     private long pumpTick;
     private static final int PUMP_STALE_TICKS = 40;
+
+    /**
+     * 制氧机上报表：格子 → 当前输出（单位/秒，已含电压与耐久）。
+     *
+     * <p>方块实体自己算 {@code min(电压,2) × GeneratedAmount × 100 × (耐久比)²} 并折算成
+     * 本模组单位；这里只负责把多台机器的流量加起来。</p>
+     */
+    private final java.util.Map<net.minecraft.core.BlockPos, OxygenSourceReport> oxygenSources =
+            new java.util.HashMap<>();
+    private long oxygenSourceTick;
+    private static final int OXYGEN_SOURCE_STALE_TICKS = 40;
+
+    private record OxygenSourceReport(double flow, long lastSeen) {
+    }
+
+    /**
+     * 通风口上报表：格子 → (所在舱室下标, 是否在工作)。
+     *
+     * <p>对应原作 {@code Vent}：泡在水里就不送氧（{@code item.InWater} 时不开）。制氧机
+     * 按"有通风口的舱室"体积分配流量，和原作 {@code GetVents} 按 hull volume 分一致。</p>
+     */
+    private final java.util.Map<net.minecraft.core.BlockPos, VentReport> vents =
+            new java.util.HashMap<>();
+    private long ventTick;
+    private static final int VENT_STALE_TICKS = 40;
+
+    private record VentReport(int compartment, boolean active, long lastSeen) {
+    }
 
     private record PumpReport(double rate, double requestedRate, long lastSeen, boolean ballast,
                               boolean keepBelowDoor, double ballastTarget) {
@@ -217,6 +262,10 @@ public final class ShipSimulation {
             ShipGeometry.Compartment compartment = compartments.get(i);
             volumes[i] = compartment.volume();
             water[i] = compartment.waterBlocks() * UNITS_PER_BLOCK;
+            // 满氧起手是刻意对齐原作：Hull.cs 里没有 oxygen 属性时
+            // `hull.Oxygen = hull.Volume`（100%）。所以"不装制氧机也有氧气"不是漏氧，
+            // 只有乘员呼吸（7.32/秒/人）和自然损耗（0.0031/秒）会让它下降；
+            // 需要无氧开局的硬核玩法时再改这里（用户 2026-11-17 选定保持原作）。
             oxygen[i] = compartments.get(i).volume() * UNITS_PER_BLOCK;
         }
         this.machines = machines;
@@ -337,11 +386,12 @@ public final class ShipSimulation {
     public void tick(double dt) {
         // 反应堆：方块实体每 tick 上报；超过 40 tick 没上报视为已经拆掉。
         reactorTick++;
-        double reactorOutput = 0.0D;
         double reactorCapacity = 0.0D;
         double temperature = 0.0D;
         boolean overheated = false;
         boolean meltingDown = false;
+        java.util.List<java.util.Map.Entry<net.minecraft.core.BlockPos, ReactorReport>>
+                activeReactors = new java.util.ArrayList<>();
         var reactorIterator = reactors.entrySet().iterator();
         while (reactorIterator.hasNext()) {
             var entry = reactorIterator.next();
@@ -350,7 +400,7 @@ public final class ShipSimulation {
                 reactorIterator.remove();
                 continue;
             }
-            reactorOutput += report.output();
+            activeReactors.add(entry);
             reactorCapacity += report.capacity();
             temperature = Math.max(temperature, report.temperature());
             overheated |= report.overheated();
@@ -437,12 +487,51 @@ public final class ShipSimulation {
         // 计一遍（会变成 210 kW）；还没接入上报的旧船才用固定负载兜底。
         boolean terminalReporting = lastTerminalTick != Long.MIN_VALUE
                 && consumerTick - lastTerminalTick <= CONSUMER_STALE_TICKS;
-        // 制氧机将来作为 PowerConsumer 自己上报 1000 kW，这里不能再按
-        // machines.oxygen() 计一遍——两边都算就是双计。该字段现在恒 0，
-        // 这条旧路径直接去掉。
+        // 制氧机自己作为 PowerConsumer 上报 1000 kW
+        // （OxygenGeneratorBlockEntity.POWER_KW），这里不能再按 machines.oxygen()
+        // 计一遍——两边都算就是双计。
         double deviceDemand = (consumers.isEmpty() ? legacyDemand : consumerDemand)
                 + (terminalReporting ? 0.0D : machines.sonar() * SONAR_POWER)
                 + (airlockPhase == AirlockPhase.CLOSED ? 0.0D : AIRLOCK_POWER);
+
+        // 电池“请求”的充电功率：即使当前没有富余也要报给反应堆（原作
+        // Grid.Load 包含 PowerContainer 的充电需求），让自动控堆把目标负载
+        // 抬到 设备负载 + 充电请求；否则堆永远只发刚好够设备的电，电池永远
+        // 等不到富余（用户实测“电池不会充电”）。
+        double rechargeRequest = 0.0D;
+        java.util.Map<net.minecraft.core.BlockPos, Double> rechargeDemand =
+                new java.util.HashMap<>();
+        if (!storages.isEmpty()) {
+            double step = Math.max(dt, 1.0E-9D);
+            for (var entry : storages.entrySet()) {
+                StorageReport report = entry.getValue();
+                if (!storageUsable(report)) {
+                    continue;
+                }
+                double room = report.capacityKwm() - report.chargeKwm();
+                if (room <= 1.0E-9D) {
+                    continue;
+                }
+                // room 是 kW·min，换成本步充满所需的平均功率，再和额定充电功率取小。
+                double demand = Math.min(report.maxRechargeKw(), room * 60.0D / step);
+                rechargeDemand.put(entry.getKey(), demand);
+                rechargeRequest += demand;
+            }
+        }
+
+        // 反应堆出力（原作 GetConnectionPowerOut）：按“剩余需求”出力，并夹在
+        // 本机出力带 [min, max] 里；多台堆按装配坐标顺序依次吃需求。负载含
+        // 电池充电请求，和原作 Grid.Load 一致。负载在带内时输出正好等于负载
+        // （电压 1.0）；负载低于带底时反应堆仍会发到带底，这才是过压的来源。
+        double reactorOutput = 0.0D;
+        double remainingDemand = deviceDemand + rechargeRequest;
+        activeReactors.sort(java.util.Map.Entry.comparingByKey());
+        for (var entry : activeReactors) {
+            ReactorReport report = entry.getValue();
+            double out = Mth.clamp(remainingDemand, report.minOutput(), report.maxOutput());
+            reactorOutput += out;
+            remainingDemand = Math.max(0.0D, remainingDemand - out);
+        }
 
         // 供电不足时电池补差。每块电池的可用输出按原版 PowerContainer 算
         // （低于 10% 时线性降额，并受本步可用能量限制）。
@@ -472,25 +561,10 @@ public final class ShipSimulation {
 
         // 供电富余时按最大充电功率吸收。只有电池没在放电时才充，避免自充自放。
         double rechargeInput = 0.0D;
-        // 电池“请求”的充电功率：即使当前没有富余也要报给反应堆，让自动控堆
-        // 把目标负载抬到 设备负载+充电请求，否则堆永远只发刚好够设备的电，
-        // 电池永远等不到富余（用户实测“电池不会充电”）。
-        double rechargeRequest = 0.0D;
         java.util.Map<net.minecraft.core.BlockPos, Double> storageIn = java.util.Map.of();
-        if (batteryOutput <= 1.0E-9D && !storages.isEmpty()) {
-            double step = Math.max(dt, 1.0E-9D);
-            for (var entry : storages.entrySet()) {
-                StorageReport report = entry.getValue();
-                if (!storageUsable(report)) {
-                    continue;
-                }
-                double room = report.capacityKwm() - report.chargeKwm();
-                if (room <= 1.0E-9D) {
-                    continue;
-                }
-                // room 是 kW·min，换成本步充满所需的平均功率，再和额定充电功率取小。
-                double demand = Math.min(report.maxRechargeKw(), room * 60.0D / step);
-                rechargeRequest += demand;
+        if (batteryOutput <= 1.0E-9D && !rechargeDemand.isEmpty()) {
+            for (var entry : rechargeDemand.entrySet()) {
+                double demand = entry.getValue();
                 if (reactorOutput > deviceDemand + 1.0E-9D) {
                     if (storageIn.isEmpty()) {
                         storageIn = new java.util.HashMap<>();
@@ -555,26 +629,53 @@ public final class ShipSimulation {
         lastRatio = Math.min(1.0D, lastVoltage);
         double ratio = lastRatio;
 
-        // 制氧：按舱室体积分配
-        int totalVolume = 0;
-        for (int volume : volumes) {
-            totalVolume += volume;
-        }
-        if (totalVolume > 0 && machines.oxygen() > 0) {
-            double produced = machines.oxygen() * O2_PER_GENERATOR * ratio * dt;
-            for (int i = 0; i < oxygen.length; i++) {
-                oxygen[i] += produced * volumes[i] / (double) totalVolume;
+        // 制氧：制氧机把流量按"有通风口的舱室"体积分配（原作 GetVents 按 hull volume 分）。
+        // 没有通风口的舱室拿不到氧——这就是原作"制氧机停机/管路断了 → 舱室变闷"的来源。
+        oxygenSourceTick++;
+        double oxygenFlow = 0.0D;
+        var oxygenSourceIterator = oxygenSources.entrySet().iterator();
+        while (oxygenSourceIterator.hasNext()) {
+            var entry = oxygenSourceIterator.next();
+            if (oxygenSourceTick - entry.getValue().lastSeen() > OXYGEN_SOURCE_STALE_TICKS) {
+                oxygenSourceIterator.remove();
+                continue;
             }
+            oxygenFlow += entry.getValue().flow();
         }
-        // 乘员消耗（一个人，从最大的舱室扣——M3 先不追踪玩家位置）
-        int largest = -1;
-        for (int i = 0; i < volumes.length; i++) {
-            if (largest < 0 || volumes[i] > volumes[largest]) {
-                largest = i;
+        ventTick++;
+        int ventedVolume = 0;
+        int[] ventedVolumes = new int[oxygen.length];
+        var ventIterator = vents.entrySet().iterator();
+        while (ventIterator.hasNext()) {
+            var entry = ventIterator.next();
+            VentReport report = entry.getValue();
+            if (ventTick - report.lastSeen() > VENT_STALE_TICKS) {
+                ventIterator.remove();
+                continue;
             }
+            int compartment = report.compartment();
+            if (!report.active() || compartment < 0 || compartment >= oxygen.length
+                    || ventedVolumes[compartment] > 0) {
+                continue;
+            }
+            ventedVolumes[compartment] = volumes[compartment];
+            ventedVolume += volumes[compartment];
         }
-        if (largest >= 0) {
-            oxygen[largest] = Math.max(0.0D, oxygen[largest] - CREW_OXYGEN * dt);
+        if (oxygenFlow > 0.0D) {
+            if (ventedVolume > 0) {
+                for (int i = 0; i < oxygen.length; i++) {
+                    if (ventedVolumes[i] <= 0) {
+                        continue;
+                    }
+                    oxygen[i] += oxygenFlow * dt * ventedVolumes[i] / (double) ventedVolume;
+                }
+            }
+            // 没有（可用的）通风口 → 这艘船拿不到制氧机的氧，对应原作"管路没接"。
+        }
+        // 自然损耗 + 容量钳制（原作 Hull.Oxygen 钳在 0..Volume）。
+        for (int i = 0; i < oxygen.length; i++) {
+            double capacity = volumes[i] * UNITS_PER_BLOCK;
+            oxygen[i] = Math.max(0.0D, Math.min(capacity, oxygen[i] - O2_DECAY_RATE * dt));
         }
 
         // 水泵：抽舱室的水，或者往压载舱注水
@@ -1090,6 +1191,12 @@ public final class ShipSimulation {
             boolean aHigh = diff > 0.0D;
             int high = aHigh ? a : b;
             int low = aHigh ? b : a;
+            // 水不会自己爬上门：来水侧的水面在门格底面以下时，门开在水面之上，
+            // 不该进水。压载舱的注水上限正好停在舱口底面（keepBelowDoor），
+            // 没有这一条时 DoorLink 会把压载水一路搬进引擎舱（用户实测）。
+            if (levels.get(high) <= link.cell().getY() + 0.02D) {
+                continue;
+            }
             // 想把水位差抹平需要搬的量（按两侧格子数估算）；不够一格时按比例。
             double highCells = Math.max(1, bodyVolume(high));
             double lowCells = Math.max(1, bodyVolume(low));
@@ -1193,6 +1300,28 @@ public final class ShipSimulation {
 
     public void setPumpOut(boolean pumpOut) {
         this.pumpOut = pumpOut;
+    }
+
+    /**
+     * 换几何后按格子恢复舱室氧气。
+     *
+     * <p>和 {@link #seedWaterByCell} 同一个用途：开门/破洞/拆方块都会重扫并重建
+     * {@link ShipSimulation}，不搬氧气就会回满。空 map（新船/旧船没有记录）时保留
+     * 构造函数给的满氧。</p>
+     */
+    public void seedOxygenByCell(java.util.Map<net.minecraft.core.BlockPos, Double> byCell,
+                                 ShipGeometry.Result next) {
+        if (byCell == null || byCell.isEmpty() || next == null) {
+            return;
+        }
+        List<ShipGeometry.Compartment> sealed = next.compartments();
+        for (int i = 0; i < oxygen.length && i < sealed.size(); i++) {
+            double sum = 0.0D;
+            for (net.minecraft.core.BlockPos cell : sealed.get(i).cells()) {
+                sum += byCell.getOrDefault(cell, 0.0D);
+            }
+            oxygen[i] = Math.max(0.0D, Math.min(volumes[i] * UNITS_PER_BLOCK, sum));
+        }
     }
 
     /**
@@ -1355,20 +1484,37 @@ public final class ShipSimulation {
         return total;
     }
 
-    /** 反应堆方块实体每 tick 上报一次。 */
+    /** 反应堆方块实体每 tick 上报一次（出力固定，等价于 min=max=outputKw）。 */
     public void reportReactor(net.minecraft.core.BlockPos cell, double outputKw, double capacityKw,
                               double temperature, boolean overheated, boolean meltingDown) {
+        reportReactor(cell, outputKw, outputKw, capacityKw, temperature,
+                overheated, meltingDown);
+    }
+
+    /**
+     * 反应堆方块实体每 tick 上报一次出力带（原作 {@code MinMaxPowerOut}）。
+     * 实际的交付出力由 {@link #tick(double)} 按剩余需求夹到 [min, max] 里。
+     */
+    public void reportReactor(net.minecraft.core.BlockPos cell, double minOutputKw,
+                              double maxOutputKw, double capacityKw, double temperature,
+                              boolean overheated, boolean meltingDown) {
         if (cell == null) {
             return;
         }
+        double min = Math.max(0.0D, minOutputKw);
         reactors.put(cell.immutable(), new ReactorReport(
-                Math.max(0.0D, outputKw), Math.max(0.0D, capacityKw),
+                min, Math.max(min, maxOutputKw), Math.max(0.0D, capacityKw),
                 Math.max(0.0D, temperature), overheated, meltingDown, reactorTick));
     }
 
-    /** 引擎方块实体每 tick 上报一次：目标力（0..100%）、耗电、最大推力。 */
+    /** 引擎方块实体每 tick 上报一次：目标力（0..100%）、耗电、最大推力、耐久比例。 */
     public void reportEngine(net.minecraft.core.BlockPos cell, double force,
                              double demandKw, double maxForce) {
+        reportEngine(cell, force, demandKw, maxForce, 1.0D);
+    }
+
+    public void reportEngine(net.minecraft.core.BlockPos cell, double force,
+                             double demandKw, double maxForce, double condition) {
         if (cell == null) {
             return;
         }
@@ -1376,6 +1522,7 @@ public final class ShipSimulation {
                 Mth.clamp(force, 0.0D, 100.0D),
                 Math.max(0.0D, demandKw),
                 Math.max(0.0D, maxForce),
+                Mth.clamp(condition, 0.0D, 1.0D),
                 engineTick));
     }
 
@@ -1413,6 +1560,73 @@ public final class ShipSimulation {
             sum += powered.get(i);
         }
         return sum;
+    }
+
+    /**
+     * 原作 {@code Engine.Update} 的逐引擎推力之和（原始力单位，未乘 0.1 驾驶系数）。
+     *
+     * <pre>
+     * 每台 = maxforce × 目标推力% × min(电压,2)^(2/3) × lerp(0.5,2,耐久比例)
+     * </pre>
+     *
+     * <p>目标推力用引擎实际插值后的力（{@link EngineReport#force()}），不是面板
+     * 上的目标值；耗电仍按目标值算（和原作 {@code GetCurrentPowerConsumption}
+     * 一致）。电压低于 MinVoltage 0.5 的引擎完全不贡献。最多算 8 台。</p>
+     */
+    public double engineForceRaw() {
+        java.util.List<Double> forces = new java.util.ArrayList<>(engines.size());
+        for (var entry : engines.entrySet()) {
+            EngineReport report = entry.getValue();
+            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS || report.force() <= 0.1D) {
+                continue;
+            }
+            double voltage = consumerVoltage(entry.getKey());
+            if (voltage <= 0.0D) {
+                continue;
+            }
+            // 原作不因为电压低于 MinVoltage 就把这一帧的出力直接清零：
+            // Engine.Update 让 Force 以 10/s 衰减，同时仍然乘 min(Voltage,2)^(2/3)。
+            // 所以这里保留 0.5 以下的电压系数，衰减交给 EngineBlockEntity.currentForce。
+            double voltageFactor = Math.pow(Math.min(voltage, 2.0D), 2.0D / 3.0D);
+            // 原作：num *= MathHelper.Lerp(0.5f, 2f, condition / maxCondition)
+            double conditionFactor = 0.5D + 1.5D * report.condition();
+            forces.add(report.maxForce() * report.force() * voltageFactor * conditionFactor);
+        }
+        forces.sort(java.util.Comparator.reverseOrder());
+        double sum = 0.0D;
+        for (int i = 0; i < forces.size() && i < MAX_ENGINES; i++) {
+            sum += forces.get(i);
+        }
+        return sum;
+    }
+
+    /**
+     * 已安装引擎在装配坐标里的平均位置；没有引擎返回 null。
+     *
+     * <p>物理船的船头方向用它和船核心反推：引擎在船尾，核心指向引擎的
+     * 反方向就是船头。这样换一艘船、或者以后把船横过来搭也能自洽，
+     * 不用在代码里写死 +X。</p>
+     */
+    @javax.annotation.Nullable
+    public double[] engineCentroid() {
+        double x = 0.0D;
+        double y = 0.0D;
+        double z = 0.0D;
+        int count = 0;
+        for (var entry : engines.entrySet()) {
+            if (engineTick - entry.getValue().lastSeen() > ENGINE_STALE_TICKS) {
+                continue;
+            }
+            net.minecraft.core.BlockPos cell = entry.getKey();
+            x += cell.getX() + 0.5D;
+            y += cell.getY() + 0.5D;
+            z += cell.getZ() + 0.5D;
+            count++;
+        }
+        if (count == 0) {
+            return null;
+        }
+        return new double[]{x / count, y / count, z / count};
     }
 
     /** 上一 tick 的引擎总耗电（kW）。 */
@@ -1508,6 +1722,55 @@ public final class ShipSimulation {
         }
         BoxReport report = boxes.get(box);
         return report != null && report.condition() > 0.0D;
+    }
+
+    /* ------------------------------------------------------- 制氧 / 通风 */
+
+    /** 制氧机每 tick 上报当前产氧量（单位/秒，电压和耐久已由方块实体折算）。 */
+    public void reportOxygenSource(net.minecraft.core.BlockPos cell, double flow) {
+        if (cell == null) {
+            return;
+        }
+        oxygenSources.put(cell.immutable(), new OxygenSourceReport(
+                Math.max(0.0D, flow), oxygenSourceTick));
+    }
+
+    /**
+     * 通风口每 tick 上报：服务哪个舱室、当前能不能送氧。
+     *
+     * @param active 泡水（原作 {@code item.InWater}）时为 false，此时不往舱室送氧
+     */
+    public void reportVent(net.minecraft.core.BlockPos cell, int compartment, boolean active) {
+        if (cell == null) {
+            return;
+        }
+        vents.put(cell.immutable(), new VentReport(compartment, active, ventTick));
+    }
+
+    /** 某个舱室当前的氧气单位数（满 = 舱容×100）。 */
+    public double oxygenUnits(int compartment) {
+        return compartment < 0 || compartment >= oxygen.length ? 0.0D : oxygen[compartment];
+    }
+
+    /** 某个舱室的氧气百分比 0..100。 */
+    public double oxygenPercent(int compartment) {
+        if (compartment < 0 || compartment >= oxygen.length || volumes[compartment] <= 0) {
+            return 0.0D;
+        }
+        return oxygen[compartment] / (volumes[compartment] * UNITS_PER_BLOCK) * 100.0D;
+    }
+
+    /**
+     * 一个乘员在 {@code compartment} 里呼吸 {@code dtSeconds} 秒，扣该舱室氧气。
+     *
+     * <p>原作 {@code Character.UpdateOxygen}：头部不在水里、且自身可用氧低于舱室
+     * 百分比时，{@code hull.Oxygen -= Hull.OxygenConsumptionSpeed * dt}。</p>
+     */
+    public void breathe(int compartment, double dtSeconds) {
+        if (compartment < 0 || compartment >= oxygen.length || dtSeconds <= 0.0D) {
+            return;
+        }
+        oxygen[compartment] = Math.max(0.0D, oxygen[compartment] - O2_BREATH_RATE * dtSeconds);
     }
 
     /** 上一 tick 电池总输出（kW）。 */

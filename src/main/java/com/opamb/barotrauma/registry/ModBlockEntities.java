@@ -91,6 +91,20 @@ public final class ModBlockEntities {
                             ModBlocks.DECONSTRUCTOR.get())
                     .build(null));
 
+    /** 制氧机（临时单格版本）：5 个氧气瓶槽 + 向船电网登记制氧量。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.OxygenGeneratorBlockEntity>> OXYGEN_GENERATOR =
+            BLOCK_ENTITIES.register("oxygen_generator", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.OxygenGeneratorBlockEntity::new,
+                            ModBlocks.OXYGEN_GENERATOR.get())
+                    .build(null));
+
+    /** 通风口（临时单格版本）：只把所在舱室登记到氧气分配里。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.VentBlockEntity>> VENT =
+            BLOCK_ENTITIES.register("vent", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.VentBlockEntity::new,
+                            ModBlocks.VENT.get())
+                    .build(null));
+
     /** 潜渊症容器：钢柜/带窗钢柜/货架/潜水服柜/氧气瓶架共用一套方块实体。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.CabinetBlockEntity>> CABINET =
             BLOCK_ENTITIES.register("cabinet", () -> BlockEntityType.Builder

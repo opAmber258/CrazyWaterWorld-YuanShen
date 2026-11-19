@@ -127,6 +127,18 @@ public final class ShipWaterStateBuilder {
             }
             int wet = la > lb ? a : b;
             int dry = la > lb ? b : a;
+            // 两侧都干时 bodyLevel 仍会差一个"舱底高度"，只凭水位差会把干舱之间
+            // 开着门的门格画成进水水柱（用户实测引擎室门"老是漏水"）。必须有水
+            // 从高的一侧流过来才算；外海（SEA_BODY）是无限水源，不用查水量。
+            if (wet != ShipGeometry.SEA_BODY
+                    && state.simulation().bodyWater(wet) <= 0.05D) {
+                continue;
+            }
+            // 来水侧的水面在门格底面以下：门开在水面之上，不画水柱。
+            if (wet != ShipGeometry.SEA_BODY
+                    && state.simulation().bodyLevel(wet) <= link.cell().getY() + 0.02D) {
+                continue;
+            }
             if (dry < 0 || dry >= bodyBox.length || bodyBox[dry] < 0
                     || bodyBox[dry] >= boxes.size()) {
                 continue;

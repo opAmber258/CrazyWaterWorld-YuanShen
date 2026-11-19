@@ -103,9 +103,15 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
             }
             // 物理船必须有声纳核心：核心被拆后不能再操舵/控泵。
             if (terminal == null && com.opamb.barotrauma.ship.vs.VsState.active()) {
+                if (action == SET_HEADING) {
+                    BarotraumaMod.LOGGER.info("[helm] 拒绝 SET_HEADING：物理船没有声纳核心");
+                }
                 return;
             }
             if (terminal != null && terminal.condition() <= 0.0D) {
+                if (action == SET_HEADING) {
+                    BarotraumaMod.LOGGER.info("[helm] 拒绝 SET_HEADING：终端耐久为 0");
+                }
                 return;
             }
             // 原作 Powered.HasPower：电压低于 MinVoltage 0.5 时导航台完全不能用。
@@ -123,16 +129,45 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                     ? ship.simulation().consumerVoltage(terminalCell)
                     : ship.simulation().voltage();
             if (terminalVoltage < ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE) {
+                if (action == SET_HEADING) {
+                    BarotraumaMod.LOGGER.info("[helm] 拒绝 SET_HEADING：终端电压 {} < {}",
+                            terminalVoltage, ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE);
+                }
                 return;
+            }
+            // 物理船：x = 前进/后退，z = 偏航，y = 垂直；方块船仍是世界八向。
+            boolean physical = com.opamb.barotrauma.ship.vs.VsState.active()
+                    && com.opamb.barotrauma.ship.vs.VsState.activeState() == ship;
+            if (action == SET_HEADING) {
+                BarotraumaMod.LOGGER.info("[helm] SET_HEADING a={} b={} c={} physical={} volt={}",
+                        a, b, c, physical, terminalVoltage);
             }
             switch (action) {
                 case PUMP_OUT -> ship.simulation().setPumpOut(true);
                 case PUMP_IN -> ship.simulation().setPumpOut(false);
                 case AIRLOCK_DRAIN -> ship.simulation().requestDrain();
                 case AIRLOCK_FLOOD -> ship.simulation().requestFlood();
-                case THROTTLE_FORWARD -> ship.setThrottle(0, 0, 1);
-                case STOP -> ship.setThrottle(0, 0, 0);
-                case SET_HEADING -> ship.setThrottle(clampAxis(a), clampAxis(b), clampAxis(c));
+                case THROTTLE_FORWARD -> {
+                    if (physical) {
+                        ship.setHelm(1, 0, 0);
+                    } else {
+                        ship.setThrottle(0, 0, 1);
+                    }
+                }
+                case STOP -> {
+                    if (physical) {
+                        ship.setHelm(0, 0, 0);
+                    } else {
+                        ship.setThrottle(0, 0, 0);
+                    }
+                }
+                case SET_HEADING -> {
+                    if (physical) {
+                        ship.setHelm(clampAxis(a), clampAxis(c), clampAxis(b));
+                    } else {
+                        ship.setThrottle(clampAxis(a), clampAxis(b), clampAxis(c));
+                    }
+                }
                 case SET_POWER -> ship.setPower(a);
                 case SET_AUTOPILOT -> ship.setAutopilotHold(a != 0);
                 case SET_AUTOPILOT_TARGET -> {
@@ -147,8 +182,16 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                                     com.opamb.barotrauma.ship.vs.VsState.offsetY(),
                                     com.opamb.barotrauma.ship.vs.VsState.offsetZ());
                         }
-                    } else if (core != null) {
-                        base = core.getBlockPos();
+                    } else {
+                        // 方块船的声纳扫描中心是"声纳/导航终端方块本身"（见 SonarPingPacket），
+                        // 不是船核心。客户端发来的 a/b/c 是相对扫描中心的偏移，这里必须
+                        // 用同一个基准，否则目标会整体偏出好几格。
+                        var sonarState = level.getBlockState(corePos);
+                        if (sonarState.is(com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get())
+                                || sonarState.is(com.opamb.barotrauma.registry.ModShipBlocks
+                                .NAVIGATION_TERMINAL.get())) {
+                            base = corePos;
+                        }
                     }
                     ship.setAutopilotTarget(base.offset(a, b, c));
                 }

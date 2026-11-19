@@ -39,8 +39,13 @@ public final class ShipSavedData extends SavedData {
     public static final String NAME = "barotrauma_ships";
 
     private boolean starterClaimed;
-    /** 新世界改用用户搭的儒艮号（5×9×17，站外侧）作为出生潜艇。旧存档默认 false。 */
-    private boolean starterLayoutNew;
+    /**
+     * 出生潜艇布局版本：0=老 9×5×15 小艇，1=旧儒艮号（17×9×5），
+     * 2=新儒艮号蓝图 {@code dugong_custom_20261117}（35×14×13）。
+     *
+     * <p>旧存档只有布尔 {@code starterLayoutNew}，读档时迁移成 1。</p>
+     */
+    private int starterLayout;
 
     @Nullable
     private AssembledShip assembled;
@@ -62,12 +67,18 @@ public final class ShipSavedData extends SavedData {
     }
 
     public boolean starterLayoutNew() {
-        return starterLayoutNew;
+        return starterLayout > 0;
     }
 
-    public void markStarterLayoutNew() {
-        if (!starterLayoutNew) {
-            starterLayoutNew = true;
+    /** 出生潜艇布局版本（0/1/2，见 {@link com.opamb.barotrauma.world.StarterSub.Layout}）。 */
+    public int starterLayoutVersion() {
+        return starterLayout;
+    }
+
+    public void setStarterLayoutVersion(int version) {
+        int clamped = net.minecraft.util.Mth.clamp(version, 0, 2);
+        if (starterLayout != clamped) {
+            starterLayout = clamped;
             setDirty();
         }
     }
@@ -215,7 +226,9 @@ public final class ShipSavedData extends SavedData {
     @Override
     public CompoundTag save(CompoundTag tag) {
         tag.putBoolean("starterClaimed", starterClaimed);
-        tag.putBoolean("starterLayoutNew", starterLayoutNew);
+        tag.putInt("starterLayout", starterLayout);
+        // 旧版本字段继续写，防止旧分支读新档时把船当成老小艇。
+        tag.putBoolean("starterLayoutNew", starterLayout > 0);
         if (assembled != null) {
             tag.put("assembled", assembled.save());
         }
@@ -225,7 +238,10 @@ public final class ShipSavedData extends SavedData {
     private static ShipSavedData load(CompoundTag tag, ServerLevel level) {
         ShipSavedData data = new ShipSavedData();
         data.starterClaimed = tag.getBoolean("starterClaimed");
-        data.starterLayoutNew = tag.getBoolean("starterLayoutNew");
+        // 旧档没有版本号：starterLayoutNew=true 就是旧儒艮号（1）。
+        data.starterLayout = tag.contains("starterLayout", Tag.TAG_INT)
+                ? tag.getInt("starterLayout")
+                : (tag.getBoolean("starterLayoutNew") ? 1 : 0);
         if (tag.contains("assembled", Tag.TAG_COMPOUND)) {
             HolderGetter<Block> blocks = level.registryAccess().lookupOrThrow(Registries.BLOCK);
             data.assembled = AssembledShip.load(tag.getCompound("assembled"), blocks);
