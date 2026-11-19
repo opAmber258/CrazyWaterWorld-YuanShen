@@ -10,12 +10,14 @@ triggers:
   - "粒子束"
   - "跟随炮台"
   - "自由瞄准"
+  - "炮塔模型"
+  - "旋转基座"
 edges:
   - target: patterns/blockbench-modeling.md
     condition: when changing the turret block model or barrel rendering geometry
   - target: patterns/run-tests.md
     condition: when verifying the turret change beyond a compile
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 mex:
   id: mx_01M7M7HRZYXWEE1W4VEB95FRVX
   type: pattern
@@ -72,7 +74,23 @@ mex:
    HULL_BREACHED / GLASS / STRUCTURE / SEABED / MISS）。破口方块碰撞为空，COLLIDER 射线会穿过去，
    必须再用 `ClipContext.Block.OUTLINE` 扫一次（`HullBlock#getShape` 在 breached 时仍返回整格）。
    各分支的特效、声音和 hitmarker 见 `TurretClient#spawnImpactEffects`。
-8. **右键瞄准（ADS）**：按住 `keyUse` 进入，FOV ×0.55、普通炮塔鼠标增益 ×0.35，
+8. **三段式模型（v2）**：`art/models/turret_20261119/` 提供固定底座 / 水平旋转基座 /
+   俯仰炮管三组。固定底座导出为 Java 方块模型（只含 `base` 组），旋转基座与炮管由
+   `TurretRenderer` 用 BER 绘制：yaw 只转基座，炮管再叠 pitch，后坐沿局部 -Z。
+   轴心仍是 `PIVOT_Y=0.75`（模型 y=12），炮口 `MUZZLE_LENGTH=1.14`（模型 z=26.24），
+   与弹道/落点预判共用，不要各改一份。
+   贴图是一张 512×256 的 8×4 瓦片图集：20 种零件各占一块 64×64 瓦片（同型号共享），
+   瓦片内分 top / Z 面 / X 面三个 32×32 象限，所以每个面取的是不同像素区域，不是整图重复。
+   三种炮塔用 `turret_atlas` / `turret_atlas_freeaim` / `turret_atlas_tracking` 三张同版式图集。
+   新增/改形 cube 时先给它分配瓦片号，再同步 `TILE_STYLES`、`TurretRenderer` 的瓦片号和
+   `reference/palette.json`。
+9. **挂载面（MOUNT）**：`TurretBlock.MOUNT` 六向表示“离开支撑方块”的方向；
+   落地/吊顶/四面墙共用世界 yaw/pitch 和同一套操作，只改底座模型、相机高度和俯仰窗口：
+   地板 `-89..+20`、吊顶 `-20..+89`、墙面 `-80..+80`。墙面/吊顶底座是贴面法兰
+   （墙：竖向短颈；顶：细主轴），不是水平托架；blockstate 每个 mount×facing 都有变体。
+   BER 用组级透明度做近处淡出：炮管/转盘各自取本组 cube 到相机的最小 AABB 距离，
+   整组一起淡出；固定底座是方块模型，不参与淡出。
+10. **右键瞄准（ADS）**：按住 `keyUse` 进入，FOV ×0.55、普通炮塔鼠标增益 ×0.35，
    `aimBlend` 每帧插值；左键开火（`startAttack`）。跟随炮塔的视角中心是鼠标十字，
    瞄准时把它的 alpha 压到 35%，把画面让给炮塔落点括号。
    HUD 的世界点投影和自由光标换算必须用 `effectiveFov()`，否则缩放后括号会错位。
@@ -80,6 +98,15 @@ mex:
 ## Gotchas
 
 - 炮管伸出方块 1.14 格且要随 yaw/pitch 旋转，**不能**放进方块模型（超出 0…16 会被裁切），只能走 BER。
+- 三段式模型的旋转基座也必须走 BER，不能留在方块模型里；方块模型只保留 `base` 组。
+- 运行时 Java 模型 UV 一律 0…16：512×256 图集里 u 按 32px/单位、v 按 16px/单位归一化。
+  用像素坐标（0..512/0..256）写 item/block JSON 会被原版当成超界 UV，表现为贴图被裁成一条。
+- 瓦片号、象限 UV、`TurretRenderer` 的 `boxPx(..., tile)` 三处必须同步；只改一边会出现
+  “底座对、旋转部件错位/整面同图”的贴图。
+- 固定底座是方块模型，**无法**跟随 BER 透明度淡出；近处挡视野时只能把底座几何搬进 BER
+  或做额外的客户端方块渲染过滤。当前淡出只覆盖转盘和炮管。
+- 挂载面只改底座/相机高度/俯仰窗口，不要把它写成安装面局部坐标系：那会让墙面/吊顶的
+  yaw/pitch 方向反转，用户明确要求三种挂载操作一致。
 - 相机眼位 `EYE_HEIGHT`（0.5+0.55=1.05）比炮口高 0.3 格；从相机发射粒子会糊在镜头前挡视线。
 - 原版没有又细又不带火焰的粒子：`END_ROD` 光晕偏粗，`CRIT` 受重力会下垂，所以用自定义粒子把
   `quadSize` 压到 0.03，并覆写 `getLightColor` 返回满亮度。
@@ -116,6 +143,8 @@ mex:
 - [ ] 水下能看到白蓝能量核心 + 气泡尾；空气/水下命中、破口、舷窗、海床分支可肉眼区分
 - [ ] 右键瞄准：FOV 缩到 55%，准心收拢；跟随炮塔的鼠标十字 alpha 降到 35%，松开恢复
 - [ ] 瞄准时 HUD 落点括号仍与实际命中一致（缩放后投影不能错位）
+- [ ] 六面挂载：底座贴原生面、不浮空；拆支撑会掉落；三种挂载鼠标方向一致
+- [ ] 相机贴近炮管/转盘时整组淡出，不出现“末端透明、前端挡视野”
 
 ## Debug
 

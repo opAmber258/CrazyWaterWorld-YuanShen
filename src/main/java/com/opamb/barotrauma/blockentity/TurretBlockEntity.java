@@ -38,8 +38,8 @@ import java.util.UUID;
  * 这个角度」和「开火」，角度按每 tick 最大转速截断，射线命中也在服务端算。
  * 炮管渲染读同步过来的 yaw/pitch。</p>
  *
- * <p>视角：{@link #eyePosition()} 同时是相机位置和射线起点，所以准星中心和
- * 弹道严格重合（炮管轴线在视点下方 0.17 格，只是视觉上略低）。</p>
+ * <p>相机在客户端 {@code TurretClient.cameraPosition()}，弹道起点是
+ * {@link #muzzlePosition()}；两者不共线，HUD 落点括号负责显示真实弹道。</p>
  */
 public class TurretBlockEntity extends BlockEntity {
 
@@ -55,8 +55,17 @@ public class TurretBlockEntity extends BlockEntity {
     /** 客户端每秒最大转动（度），供 HUD/输入层换算每帧上限。 */
     public static final float MAX_TURN_PER_SECOND = MAX_TURN_PER_TICK * 20.0F;
 
-    public static final float MIN_PITCH = -55.0F;
-    public static final float MAX_PITCH = 55.0F;
+    /** 兜底值；实际每座炮塔按 MOUNT 走 {@link #minPitch(BlockState)} / {@link #maxPitch(BlockState)}。 */
+    public static final float MIN_PITCH = -89.0F;
+    public static final float MAX_PITCH = 89.0F;
+
+    /** 世界 pitch：正=向下，和落地炮塔完全一致，不做安装面局部轴转换。 */
+    public static final float FLOOR_MIN_PITCH = -89.0F;
+    public static final float FLOOR_MAX_PITCH = 20.0F;
+    public static final float CEILING_MIN_PITCH = -10.0F;
+    public static final float CEILING_MAX_PITCH = 89.0F;
+    public static final float WALL_MIN_PITCH = -80.0F;
+    public static final float WALL_MAX_PITCH = 80.0F;
 
     /** 操作者离炮塔的最远距离（格）。 */
     public static final double MAX_OPERATOR_DISTANCE = 6.0D;
@@ -91,8 +100,67 @@ public class TurretBlockEntity extends BlockEntity {
     public TurretBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TURRET.get(), pos, state);
         this.yaw = initialYaw(state);
+        this.pitch = initialPitch(state);
         this.prevYaw = this.yaw;
         this.prevPitch = this.pitch;
+    }
+
+    /** 所有挂载都从水平中位起步，操作和落地炮塔一致。 */
+    private static float initialPitch(BlockState state) {
+        return 0.0F;
+    }
+
+    /** 安装面朝向；旧存档没有 MOUNT 时按落地处理。 */
+    public static Direction mount(BlockState state) {
+        return state.hasProperty(TurretBlock.MOUNT)
+                ? state.getValue(TurretBlock.MOUNT)
+                : Direction.UP;
+    }
+
+    public static float minPitch(BlockState state) {
+        Direction mount = mount(state);
+        if (mount == Direction.DOWN) {
+            return CEILING_MIN_PITCH;
+        }
+        return mount.getAxis().isHorizontal() ? WALL_MIN_PITCH : FLOOR_MIN_PITCH;
+    }
+
+    public static float maxPitch(BlockState state) {
+        Direction mount = mount(state);
+        if (mount == Direction.DOWN) {
+            return CEILING_MAX_PITCH;
+        }
+        return mount.getAxis().isHorizontal() ? WALL_MAX_PITCH : FLOOR_MAX_PITCH;
+    }
+
+    public float minPitch() {
+        return minPitch(getBlockState());
+    }
+
+    public float maxPitch() {
+        return maxPitch(getBlockState());
+    }
+
+    /** 转盘轴仍是世界 Y；yaw 和落地炮塔一样整圈。 */
+    public static float clampYaw(BlockState state, float yaw) {
+        return Mth.wrapDegrees(yaw);
+    }
+
+
+    private static float yawForDirection(Direction direction) {
+        if (direction == Direction.SOUTH) {
+            return 0.0F;
+        }
+        if (direction == Direction.WEST) {
+            return 90.0F;
+        }
+        if (direction == Direction.NORTH) {
+            return 180.0F;
+        }
+        if (direction == Direction.EAST) {
+            return -90.0F;
+        }
+        return 0.0F;
     }
 
     private static float initialYaw(BlockState state) {
@@ -101,20 +169,7 @@ public class TurretBlockEntity extends BlockEntity {
         }
         // 用 if 链而不是 enum switch：switch 会生成 TurretBlockEntity$1 合成类，
         // 开发环境热替换/增量编译时曾出现合成类加载不到（NoClassDefFoundError）。
-        Direction facing = state.getValue(TurretBlock.FACING);
-        if (facing == Direction.SOUTH) {
-            return 0.0F;
-        }
-        if (facing == Direction.WEST) {
-            return 90.0F;
-        }
-        if (facing == Direction.NORTH) {
-            return 180.0F;
-        }
-        if (facing == Direction.EAST) {
-            return -90.0F;
-        }
-        return 0.0F;
+        return yawForDirection(state.getValue(TurretBlock.FACING));
     }
 
     // ---- 状态读取 ----
@@ -143,14 +198,8 @@ public class TurretBlockEntity extends BlockEntity {
         return operatorEntityId;
     }
 
-    /** 视点（相机位置）：方块中心上方 0.42 格。弹道起点是 {@link #muzzlePosition()}。 */
-    public Vec3 eyePosition() {
-        BlockPos pos = getBlockPos();
-        return new Vec3(pos.getX() + 0.5D, pos.getY() + 0.5D + EYE_HEIGHT, pos.getZ() + 0.5D);
-    }
-
-    /** 当前瞄准单位向量（MC 约定：yaw 0 = 南，pitch 正值看下）。 */
-    public Vec3 lookVector() {
+    /** 局部瞄准单位向量（yaw 0 = +Z，pitch 正 = -Y）。 */
+    public static Vec3 localLookVector(float yaw, float pitch) {
         double yawRad = Math.toRadians(yaw);
         double pitchRad = Math.toRadians(pitch);
         return new Vec3(
@@ -159,15 +208,33 @@ public class TurretBlockEntity extends BlockEntity {
                 Math.cos(yawRad) * Math.cos(pitchRad));
     }
 
-    /** 炮口世界坐标：方块中心 + 枢轴高度，再沿瞄准方向伸出炮管长度。 */
+    /** 世界瞄准方向：仍然是世界 yaw/pitch，安装面只影响放置外观。 */
+    public Vec3 lookVector() {
+        return localLookVector(yaw, pitch);
+    }
+
+    public static Vec3 lookVector(BlockState state, float yaw, float pitch) {
+        return localLookVector(yaw, pitch);
+    }
+
+    /** 炮口世界坐标：枢轴 + 沿瞄准方向伸出炮管长度。 */
     public Vec3 muzzlePosition() {
-        return muzzlePosition(getBlockPos(), lookVector());
+        return muzzlePosition(getBlockState(), getBlockPos(), lookVector());
+    }
+
+    /** 所有挂载共用同一个枢轴：方块中心 y=0.75，操作/弹道和落地炮塔完全一致。 */
+    public static Vec3 pivotOffset(BlockState state) {
+        return new Vec3(0.5D, PIVOT_Y, 0.5D);
+    }
+
+    public static Vec3 pivotPosition(BlockState state, BlockPos pos) {
+        Vec3 offset = pivotOffset(state);
+        return new Vec3(pos.getX() + offset.x, pos.getY() + offset.y, pos.getZ() + offset.z);
     }
 
     /** 供客户端按本地瞄准角算炮口的同一套公式（服务端/客户端弹道必须同源）。 */
-    public static Vec3 muzzlePosition(BlockPos pos, Vec3 direction) {
-        Vec3 pivot = new Vec3(pos.getX() + 0.5D, pos.getY() + PIVOT_Y, pos.getZ() + 0.5D);
-        return pivot.add(direction.scale(MUZZLE_LENGTH));
+    public static Vec3 muzzlePosition(BlockState state, BlockPos pos, Vec3 direction) {
+        return pivotPosition(state, pos).add(direction.scale(MUZZLE_LENGTH));
     }
 
     // ---- 进入 / 退出 ----
@@ -278,8 +345,8 @@ public class TurretBlockEntity extends BlockEntity {
                 || !isOperator(player) || !withinReach(player)) {
             return;
         }
-        aimTargetYaw = Mth.wrapDegrees(targetYaw);
-        aimTargetPitch = Mth.clamp(targetPitch, MIN_PITCH, MAX_PITCH);
+        aimTargetYaw = clampYaw(getBlockState(), targetYaw);
+        aimTargetPitch = Mth.clamp(targetPitch, minPitch(getBlockState()), maxPitch(getBlockState()));
         aimTargetSet = true;
     }
 
@@ -293,8 +360,8 @@ public class TurretBlockEntity extends BlockEntity {
             aimTargetSet = false;
             return;
         }
-        applyAim(Mth.wrapDegrees(yaw + deltaYaw),
-                Mth.clamp(pitch + deltaPitch, MIN_PITCH, MAX_PITCH));
+        applyAim(clampYaw(getBlockState(), yaw + deltaYaw),
+                Mth.clamp(pitch + deltaPitch, minPitch(getBlockState()), maxPitch(getBlockState())));
         setChanged();
         broadcastState();
     }

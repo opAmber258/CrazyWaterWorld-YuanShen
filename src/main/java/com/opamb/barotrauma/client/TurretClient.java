@@ -102,6 +102,7 @@ public final class TurretClient {
      */
     private static final int SHOT_SLOTS = 8;
 
+
     private static boolean active;
     @Nullable
     private static BlockPos activePos;
@@ -236,15 +237,63 @@ public final class TurretClient {
         return cursorPitch;
     }
 
-    /** 相机位置 = 服务端射线起点，保证准星中心就是弹道。 */
+    /**
+     * 相机位置：枢轴正上方（吊顶在下方），yaw/pitch 直接使用炮塔瞄准角。
+     * 三种挂载共用同一套操作；安装面只改底座外观和相机高度。
+     */
     @Nullable
     public static Vec3 cameraPosition() {
         if (!active || activePos == null) {
             return null;
         }
-        return new Vec3(activePos.getX() + 0.5D,
-                activePos.getY() + 0.5D + TurretBlockEntity.EYE_HEIGHT,
-                activePos.getZ() + 0.5D);
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) {
+            return null;
+        }
+        BlockState state = minecraft.level.getBlockState(activePos);
+        Vec3 pivot = TurretBlockEntity.pivotPosition(state, activePos);
+        double y = TurretBlockEntity.mount(state) == net.minecraft.core.Direction.DOWN
+                ? activePos.getY() + 0.15D
+                : activePos.getY() + 0.5D + TurretBlockEntity.EYE_HEIGHT;
+        return new Vec3(pivot.x, y, pivot.z);
+    }
+
+    /** 世界瞄准方向；安装面只影响放置外观，不改变操作。 */
+    private static Vec3 aimDirection() {
+        return lookVector(aimYaw, aimPitch);
+    }
+
+    /** 相机角度 = 炮塔瞄准角，和落地炮塔完全一致。 */
+    public static float cameraYaw() {
+        return aimYaw;
+    }
+
+    public static float cameraPitch() {
+        return aimPitch;
+    }
+
+    private static float clampAimYaw(float yaw) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level != null && activePos != null) {
+            return TurretBlockEntity.clampYaw(minecraft.level.getBlockState(activePos), yaw);
+        }
+        return Mth.wrapDegrees(yaw);
+    }
+
+    private static float pitchMin() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level != null && activePos != null) {
+            return TurretBlockEntity.minPitch(minecraft.level.getBlockState(activePos));
+        }
+        return TurretBlockEntity.MIN_PITCH;
+    }
+
+    private static float pitchMax() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level != null && activePos != null) {
+            return TurretBlockEntity.maxPitch(minecraft.level.getBlockState(activePos));
+        }
+        return TurretBlockEntity.MAX_PITCH;
     }
 
     // ---- 服务端状态 ----
@@ -327,10 +376,7 @@ public final class TurretClient {
         aimArmed = false;
         aimBlend = 0.0F;
         renderedFov = Float.NaN;
-        // 退出时丢掉所有未飞完的弹道，避免下次进入炮塔时从旧弹道继续冒气泡。
-        for (TurretShotFx shot : SHOTS) {
-            shot.clear();
-        }
+        // 不要清掉在飞的炮弹：退出炮塔后它们还要继续飞完并结算命中特效。
         hitMarkerTicks = 0;
         hitMarkerKind = HitKind.MISS;
         freeAim = false;
@@ -406,9 +452,9 @@ public final class TurretClient {
         lastTurnNanos = now;
         float maxDelta = TurretBlockEntity.MAX_TURN_PER_SECOND * deltaSeconds;
 
-        aimYaw = Mth.wrapDegrees(aimYaw + Mth.clamp(rawYaw, -maxDelta, maxDelta));
+        aimYaw = clampAimYaw(aimYaw + Mth.clamp(rawYaw, -maxDelta, maxDelta));
         aimPitch = Mth.clamp(aimPitch + Mth.clamp(rawPitch, -maxDelta, maxDelta),
-                TurretBlockEntity.MIN_PITCH, TurretBlockEntity.MAX_PITCH);
+                pitchMin(), pitchMax());
     }
 
     /**
@@ -429,8 +475,8 @@ public final class TurretClient {
         cursorYaw = Mth.clamp(cursorYaw, -maxYaw, maxYaw);
         cursorPitch = Mth.clamp(cursorPitch, -maxPitch, maxPitch);
         cursorPitch = Mth.clamp(cursorPitch,
-                TurretBlockEntity.MIN_PITCH - aimPitch,
-                TurretBlockEntity.MAX_PITCH - aimPitch);
+                pitchMin() - aimPitch,
+                pitchMax() - aimPitch);
     }
 
     /**
@@ -472,9 +518,8 @@ public final class TurretClient {
         float stepYaw = cursorYaw * scale;
         float stepPitch = cursorPitch * scale;
 
-        aimYaw = Mth.wrapDegrees(aimYaw + stepYaw);
-        float newPitch = Mth.clamp(aimPitch + stepPitch,
-                TurretBlockEntity.MIN_PITCH, TurretBlockEntity.MAX_PITCH);
+        aimYaw = clampAimYaw(aimYaw + stepYaw);
+        float newPitch = Mth.clamp(aimPitch + stepPitch, pitchMin(), pitchMax());
         float appliedPitch = newPitch - aimPitch;
         aimPitch = newPitch;
 
@@ -492,7 +537,7 @@ public final class TurretClient {
      * 炮口位置；落点与落点预判共用同一次 {@code raycastImpact}。</p>
      */
     private static void startBeam() {
-        Vec3 direction = lookVector(aimYaw, aimPitch);
+        Vec3 direction = aimDirection();
         Vec3 origin = turretMuzzle(direction);
         ImpactPrediction impact = origin == null ? null : raycastImpact(origin, direction);
         if (origin == null || impact == null) {
@@ -572,7 +617,12 @@ public final class TurretClient {
     /** 炮口世界坐标：与服务端 {@code TurretBlockEntity#muzzlePosition} 同一套公式。 */
     @Nullable
     private static Vec3 turretMuzzle(Vec3 direction) {
-        return activePos == null ? null : TurretBlockEntity.muzzlePosition(activePos, direction);
+        Minecraft minecraft = Minecraft.getInstance();
+        if (activePos == null || minecraft.level == null) {
+            return null;
+        }
+        return TurretBlockEntity.muzzlePosition(
+                minecraft.level.getBlockState(activePos), activePos, direction);
     }
 
     /** 每帧推进所有在飞的炮弹特效。 */
@@ -850,10 +900,10 @@ public final class TurretClient {
      */
     @Nullable
     public static ImpactPrediction predictedImpact() {
-        if (!active || !tracking) {
+        if (!active) {
             return null;
         }
-        Vec3 direction = lookVector(aimYaw, aimPitch);
+        Vec3 direction = aimDirection();
         Vec3 origin = turretMuzzle(direction);
         if (origin == null) {
             return null;
@@ -1070,8 +1120,9 @@ public final class TurretClient {
 
     @SubscribeEvent
     public static void onCameraAngles(ViewportEvent.ComputeCameraAngles event) {
-        // 地波独立于炮塔状态推进：退出炮塔后剩下的半圈也会自己扩散完。
+        // 地波和在飞的炮弹都独立于炮塔状态推进：退出炮塔后剩下的半圈/半发也要飞完。
         TurretGroundWave.tickFrame();
+        tickBeam();
         if (!active) {
             return;
         }
@@ -1087,7 +1138,6 @@ public final class TurretClient {
             cursorPitch *= ratio;
             clampCursor();
         }
-        tickBeam();
         if (tracking) {
             // 视角就是玩家自己的（原版鼠标视角），这里只让炮塔准心限速追过去。
             stepTracking(event.getYaw(), event.getPitch());
@@ -1098,8 +1148,12 @@ public final class TurretClient {
         if (freeAim) {
             stepFreeAim();
         }
-        event.setYaw(aimYaw);
-        event.setPitch(aimPitch);
+        float camYaw = cameraYaw();
+        float camPitch = cameraPitch();
+        viewYaw = camYaw;
+        viewPitch = camPitch;
+        event.setYaw(camYaw);
+        event.setPitch(camPitch);
         event.setRoll(0.0F);
     }
 
@@ -1114,11 +1168,10 @@ public final class TurretClient {
         float maxStep = TRACKING_MAX_SPEED * deltaSeconds;
         float stepYaw = Mth.clamp(Mth.wrapDegrees(targetYaw - aimYaw), -maxStep, maxStep);
         float stepPitch = Mth.clamp(
-                Mth.clamp(targetPitch, TurretBlockEntity.MIN_PITCH, TurretBlockEntity.MAX_PITCH) - aimPitch,
+                Mth.clamp(targetPitch, pitchMin(), pitchMax()) - aimPitch,
                 -maxStep, maxStep);
-        aimYaw = Mth.wrapDegrees(aimYaw + stepYaw);
-        aimPitch = Mth.clamp(aimPitch + stepPitch,
-                TurretBlockEntity.MIN_PITCH, TurretBlockEntity.MAX_PITCH);
+        aimYaw = clampAimYaw(aimYaw + stepYaw);
+        aimPitch = Mth.clamp(aimPitch + stepPitch, pitchMin(), pitchMax());
     }
 
     @SubscribeEvent
