@@ -1,0 +1,94 @@
+{
+  "asset": "periscope",
+  "identifier": "periscope",
+  "date": "2026-11-20",
+  "status": "complete",
+  "status_reason": "美术侧交付齐备（java_block 口径：bbmodel + 贴图 + 四向预览 + 说明文件）。Java 方块模型 JSON 因旋转超限/多轴而未随附，见 limitations。",
+  "creation_source": "人工（Han-xing-official）",
+  "contributors": {
+    "human": ["Han-xing-official"],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线渲染校验、文档与登记起草；未参与几何、UV、贴图、预览制作"
+      }
+    ],
+    "division": "几何、UV、贴图绘制、预览截图全部人工完成；AI 仅做交付打包与离线校验。"
+  },
+  "display_name_zh": "潜望镜",
+  "display_name_en": "Periscope",
+  "prototyping_note": "原版条目 entityname.periscope（潜望镜 / Periscope）。本机无游戏目录，未直接核验 XML，评选前可复核。同批配套资产见 periscope_stand_20261120/（独立 PR）。",
+  "production": {
+    "model_format": "java_block",
+    "bbmodel_format_version": "5.0",
+    "blockbench": "5.x（作者 2026-11-20 编辑并保存）",
+    "textures_embedded": true,
+    "registered_type": "方块"
+  },
+  "counts": {
+    "cubes": 43,
+    "declared_faces": 258,
+    "groups": 14,
+    "bones": 0,
+    "animations": 0,
+    "hidden_elements": 0,
+    "rotated_cubes": 28,
+    "multi_axis_rotated": 4,
+    "over_limit_angle_rotated": 12,
+    "zero_thickness_planes": 2
+  },
+  "bounds_blockbench_units": {
+    "min": [3.5, 4, -1.822],
+    "max": [12.5, 25, 15.5],
+    "size": [9.0, 21.0, 17.322]
+  },
+  "dimensions_blocks_at_16_units_per_block": [0.5625, 1.3125, 1.0826],
+  "cost": {
+    "texture": "128x64 RGBA",
+    "texture_pixels": 8192,
+    "transparent_pixels": 6214
+  },
+  "checks": [
+    { "name": "naming_convention", "pass": true, "detail": "periscope = 潜望镜 Periscope（原版条目 entityname.periscope）；目录 periscope_20261120。" },
+    { "name": "deliverable_set", "pass": true, "detail": "java_block 口径：bbmodel + _tex.png + 四向预览 + README/validation/structure_audit + reference。" },
+    { "name": "preview_geometry_consistency", "pass": true, "detail": "离线渲染器（ZYX 欧拉序）复算包围盒并渲染比对预览特征。" },
+    { "name": "texture_power_of_two", "pass": true, "detail": "128×64，双轴均为 2 的幂。" },
+    { "name": "texture_true_transparency", "pass": true, "detail": "RGBA8，透明像素 alpha=0（6214/8192），无半透明噪点。" },
+    { "name": "texture_matches_embedded", "pass": true, "detail": "periscope_tex.png 与 bbmodel 内嵌贴图逐字节一致。" },
+    { "name": "preview_dimensions", "pass": true, "detail": "4 张预览均 1200×900，纯黑底、无网格无 UI。" },
+    { "name": "no_hidden_geometry", "pass": true, "detail": "0 个隐藏元素、0 个隐藏分组。" },
+    { "name": "no_unused_cubes", "pass": true, "detail": "43 个 cube 全部参与几何。" },
+    { "name": "bbmodel_reopens", "pass": true, "detail": "作者于 2026-11-20 在 Blockbench 5.x 中编辑并保存。" }
+  ],
+  "errors": [],
+  "warnings": [
+    { "code": "ROTATION_OVER_LIMIT", "detail": "28/43 cube 带旋转，含 12 个超限单轴角度与 4 个多轴自由旋转，超出 1.20.1 原版 Java 模型 JSON 限制；接入前需集成侧确认目标格式（参照电池（设备）的 GeckoLib geo 先例）。" },
+    { "code": "ZERO_THICKNESS_PLANES", "detail": "2 个零厚度面片（4×3×0 与 0×2×2）。" },
+    { "code": "DISPLAY_SETTINGS_PRESENT", "detail": "工程带 display 设置；方块渲染路径不需要，保留不影响导出。" },
+    { "code": "INFORMAL_NAMES", "detail": "分组命名含随意中文名（贴皮/掌舵/挂件/上箱子等），均为参与几何的正式对象，不影响导出。" }
+  ],
+  "previews": {
+    "method": "作者在 Blockbench 视口手动截图导出（约定 3.3 交互环境例外）；reference/ 内脚本为交付后自建校验工具，不用于产出预览",
+    "files": [
+      { "file": "preview_front.png", "view": "正视（正交）", "size": [1200, 900] },
+      { "file": "preview_back.png", "view": "背视（正交）", "size": [1200, 900] },
+      { "file": "preview_side.png", "view": "侧视（正交）", "size": [1200, 900] },
+      { "file": "preview_oblique.png", "view": "斜视（透视）", "size": [1200, 900] }
+    ]
+  },
+  "runtime": {
+    "integrated": false,
+    "in_game_verified": false,
+    "note": "美术资产交付，未修改 src/main/resources，未注册方块，未启动 Minecraft 客户端。"
+  },
+  "limitations": [
+    "Java 方块模型 JSON 未随附：旋转含超限角度与多轴自由旋转，超出 1.20.1 原版 JSON 表达范围，待集成侧确认目标格式后用 Blockbench 原生导出。",
+    "潜望镜与底座的组合安装/旋转逻辑（方块实体）由集成侧实现。",
+    "无动画。"
+  ],
+  "manual_acceptance": {
+    "bbmodel_reopens": "pass — 作者在 Blockbench 5.x 中编辑并保存工程（2026-11-20）",
+    "notes": "离线渲染器比对结论与作者预览一致；如需人工复核可运行 reference/ 内脚本。"
+  }
+}
