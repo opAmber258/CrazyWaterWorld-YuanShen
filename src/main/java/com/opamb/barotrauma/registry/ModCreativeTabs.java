@@ -115,6 +115,9 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.FREE_AIM_TURRET.get());
                         // 跟随炮塔原型：视角自由，炮塔准心追视角
                         output.accept(ModItems.TRACKING_TURRET.get());
+                        // 瞄准站 + 绑定器：把站台绑到炮塔，右键站台远程接管瞄准
+                        output.accept(ModItems.TURRET_STATION.get());
+                        output.accept(ModItems.TURRET_BINDER.get());
                         // 耐久调节器：直接推设备耐久，验收修理窗口/损坏状态用
                         output.accept(ModItems.CONDITION_TOOL.get());
                     })

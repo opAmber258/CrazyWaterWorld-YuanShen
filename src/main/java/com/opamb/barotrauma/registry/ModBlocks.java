@@ -10,6 +10,7 @@ import com.opamb.barotrauma.block.IronLadderBlock;
 import com.opamb.barotrauma.block.MissionTerminalBlock;
 import com.opamb.barotrauma.block.TrackingTurretBlock;
 import com.opamb.barotrauma.block.TurretBlock;
+import com.opamb.barotrauma.block.TurretStationBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -252,6 +253,17 @@ public final class ModBlocks {
     /** 跟随炮塔（原型）：视角自由，炮塔准心限速追视角中心。 */
     public static final RegistryObject<Block> TRACKING_TURRET = BLOCKS.register("tracking_turret",
             () -> new TrackingTurretBlock(turretProperties()));
+
+    /** 炮塔瞄准站（开发者工具）：绑定炮塔后右键接管瞄准视角。 */
+    public static final RegistryObject<Block> TURRET_STATION = BLOCKS.register("turret_station",
+            () -> new TurretStationBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(3.0F, 6.0F)
+                    .sound(SoundType.METAL)
+                    // 控制台不是整格方块（潜望柱/斜面收边），关掉遮挡剔除
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
 
     private static BlockBehaviour.Properties turretProperties() {
         return BlockBehaviour.Properties.of()

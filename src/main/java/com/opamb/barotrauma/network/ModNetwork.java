@@ -16,7 +16,8 @@ public final class ModNetwork {
     // 16：修理改为独立窗口（RepairMenu）：START/QTE/STOP，进度在服务端按 tick 推进。
     // 17：加工台制作/取消改走独立包（原版按钮编号只有 1 字节，装不下配方下标 + 数量）。
     // 18：炮塔原型新增瞄准/开火/退出/状态同步包（在 17 基础上追加）。
-    private static final String PROTOCOL = "18";
+    // 19：TurretStatePacket 增加 fromStation（瞄准站遥控标记），客户端命中预判据此处理操作者本体。
+    private static final String PROTOCOL = "19";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);

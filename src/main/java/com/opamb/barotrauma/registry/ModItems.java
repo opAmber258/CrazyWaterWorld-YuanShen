@@ -9,6 +9,7 @@ import com.opamb.barotrauma.item.GuitarItem;
 import com.opamb.barotrauma.item.InstrumentItem;
 import com.opamb.barotrauma.item.MedicalDebuggerItem;
 import com.opamb.barotrauma.item.OxygenTankItem;
+import com.opamb.barotrauma.item.TurretBinderItem;
 import com.opamb.barotrauma.item.WeldingToolItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -165,6 +166,14 @@ public final class ModItems {
     /** 跟随炮塔（原型，开发者工具）：视角自由，炮塔准心限速追视角中心。 */
     public static final RegistryObject<Item> TRACKING_TURRET =
             blockItem("tracking_turret", ModBlocks.TRACKING_TURRET);
+
+    /** 炮塔瞄准站（开发者工具）：右键接管已绑定炮塔的瞄准视角。 */
+    public static final RegistryObject<Item> TURRET_STATION =
+            blockItem("turret_station", ModBlocks.TURRET_STATION);
+
+    /** 炮台绑定器（开发者工具）：右键炮塔与瞄准站两端绑定；手持时显示所有绑定连线。 */
+    public static final RegistryObject<Item> TURRET_BINDER = ITEMS.register("turret_binder",
+            () -> new TurretBinderItem(new Item.Properties().stacksTo(1)));
 
 
     // ---- 任务/经济 ----

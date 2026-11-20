@@ -12,17 +12,20 @@ triggers:
   - "自由瞄准"
   - "炮塔模型"
   - "旋转基座"
+  - "瞄准站"
+  - "炮台绑定器"
+  - "炮塔绑定"
 edges:
   - target: patterns/blockbench-modeling.md
     condition: when changing the turret block model or barrel rendering geometry
   - target: patterns/run-tests.md
     condition: when verifying the turret change beyond a compile
-last_updated: 2026-11-19
+last_updated: 2026-11-20
 mex:
   id: mx_01M7M7HRZYXWEE1W4VEB95FRVX
   type: pattern
   status: promoted
-  revision: 3
+  revision: 5
   title: turret-aim-modes
   relations:
     - type: related_to
@@ -57,7 +60,8 @@ mex:
 2. **每帧推进的逻辑放 `ViewportEvent.ComputeCameraAngles`**（`GameRenderer.renderLevel` 每帧一次）：
    自由瞄准的限速跟随 `stepFreeAim`、跟随模式的 `stepTracking`、粒子束 `tickBeam` 都在这里。
    `ClientTickEvent` 只有 20 Hz，放那儿会“一卡一卡”。
-3. 弹道起点统一用 `TurretBlockEntity.muzzlePosition()`：`PIVOT_Y = 0.75` + `MUZZLE_LENGTH = 1.14`。
+3. 弹道起点统一用 `TurretBlockEntity.muzzlePosition()`：几何来自方块 `TurretSpec`
+   （当前默认 `pivotY = 0.75`、`muzzleLength = 1.14`），服务端/客户端/粒子三处同源。
    服务端 `fire()`、客户端 `predictedImpact()`、粒子束三处共用，别各写一份。
 4. 落点预判返回 `ImpactPrediction(point, halfWidth, halfHeight, kind)`：实体取包围盒，方块按 1×1；
    `TurretHud` 按透视把半宽/半高投成像素，竖边限制 3…7 px、横边至少 3× 竖边、上限 34 px。
@@ -77,8 +81,8 @@ mex:
 8. **三段式模型（v2）**：`art/models/turret_20261119/` 提供固定底座 / 水平旋转基座 /
    俯仰炮管三组。固定底座导出为 Java 方块模型（只含 `base` 组），旋转基座与炮管由
    `TurretRenderer` 用 BER 绘制：yaw 只转基座，炮管再叠 pitch，后坐沿局部 -Z。
-   轴心仍是 `PIVOT_Y=0.75`（模型 y=12），炮口 `MUZZLE_LENGTH=1.14`（模型 z=26.24），
-   与弹道/落点预判共用，不要各改一份。
+   轴心仍是 `TurretSpec.DEFAULT` 的 `pivotY=0.75`（模型 y=12），炮口 `muzzleLength=1.14`
+   （模型 z=26.24），与弹道/落点预判共用，不要各改一份。
    贴图是一张 512×256 的 8×4 瓦片图集：20 种零件各占一块 64×64 瓦片（同型号共享），
    瓦片内分 top / Z 面 / X 面三个 32×32 象限，所以每个面取的是不同像素区域，不是整图重复。
    三种炮塔用 `turret_atlas` / `turret_atlas_freeaim` / `turret_atlas_tracking` 三张同版式图集。
@@ -94,6 +98,48 @@ mex:
    `aimBlend` 每帧插值；左键开火（`startAttack`）。跟随炮塔的视角中心是鼠标十字，
    瞄准时把它的 alpha 压到 35%，把画面让给炮塔落点括号。
    HUD 的世界点投影和自由光标换算必须用 `effectiveFov()`，否则缩放后括号会错位。
+11. **瞄准站 + 炮台绑定器（开发者工具）**：`TurretStationBlock` 只存一个 `TurretPos`
+   （BE 的 long NBT），右键站台时服务端校验并调用
+   `TurretBlockEntity.enterFromStation(player, stationPos)`。相机仍在炮塔本体位，
+   操作/准心/落点预判与直接进炮塔完全一致；唯一区别是炮塔 BE 记一个**临时**
+   `operatorAnchor`（不存档），`withinReach()` / `serverTick` 在锚点存在时跳过 6 格距离，
+   改为每 tick 校验“站台还在且仍绑定本炮塔”，站被拆/改绑立即退出。
+   - 绑定由 `TurretBinderItem` 两端完成：右键炮塔/站台记录一端，再右键另一端写入站台 BE；
+     待绑定是服务端内存 `Map<UUID, Pending>`（2 分钟过期），只允许同维度、一端炮塔一端站台，
+     距离不限；潜行右键站台解绑。
+   - 站台 BE 必须覆盖 `getUpdateTag()`/`getUpdatePacket()` 并在 `setChanged()` 里
+     `sendBlockUpdated`，否则客户端要等区块重载才看到绑定。
+   - `TurretBinderRenderer` 在手持绑定器时每 10 tick 扫描已加载区块，取站台 BE 的
+     `TurretPos` 画带下垂的线缆；绿=炮塔存在、琥珀=目标区块未加载、红=目标已不是炮塔。
+   - 同一渲染器还用 64 格准星射线找“已绑定的方块”：指向站台 → 描边它的炮塔；指向炮塔 →
+     描边所有绑定它的站台。描边用 `NO_DEPTH_TEST` 的 lines（隔墙可见）+ 外圈淡晕，
+     脉冲呼吸；炮塔视角里跳过（准星是炮塔相机，不是玩家身体视角）。
+   - 站台可能离炮塔超过 128 格，`enter`/`clearOperator`/`setRemoved` 必须把
+     `TurretStatePacket` **直接发给占用者**，不能只靠 `broadcastState()` 的 128 格半径。
+   - `TurretStatePacket` 带 `fromStation`（协议 18→19）：客户端命中预判据此决定是否把
+     操作者本体算作合法目标；直连炮塔排除自己，站台遥控包含自己。
+   - 炮塔/站台视角强制 `THIRD_PERSON_BACK`：第一人称会剔除本机玩家模型，看起来像“人消失”。
+     `Camera#setup` 尾部仍把相机覆盖到炮塔，第三人称只负责保留本体渲染；退出恢复原相机类型。
+12. **炮塔伤害玩家**：`findTarget()` 不再排除操作者——站台遥控时本体留在站台，可能正好在
+    炮口线上；所有存活、非旁观 `LivingEntity` 都是候选。普通玩家仍走
+    `target.hurt(playerAttack(operator), 12)` → 医疗系统转换；创造模式下原版 `hurt` 会在
+    事件前拒绝，检测到 `!damaged && targetPlayer.isCreative() && hurtTime <= 0` 时调用
+    `MedicalEvents.applyDirectDamage()`（近战通用：躯干钝器伤 + 50% 概率出血），
+    这样创造模式单机也能验收“炮塔打玩家”。`hurtTime` 检查防止绕过原版无敌帧双倍结算。
+
+## 模块边界（换模型 / 2×2·3×3 时只动这些）
+
+- `block/TurretSpec`：尺寸（sizeX/sizeZ）、轴心、炮口长度、相机高度、三种挂载的俯仰窗口。
+  改 2×2/3×3 时覆盖 `TurretBlock#spec()` 即可；`TurretBlockEntity` 的 `minPitch/maxPitch`、
+  `pivotPosition`、`muzzlePosition`、`cameraPosition` 全部读它。
+- `client/TurretModels`：图集、turntable/barrel 的 cube 数组、图集 UV 布局。
+  换模型只改这里 + 对应 png/json；`TurretRenderer` 只负责 yaw/pitch、后坐、近处淡出。
+- **不要在瞄准/开火/相机/HUD 里写回 0.5、0.75、1.14 这类几何常数**；服务端弹道、
+  客户端落点预判、粒子起点必须继续共用 `muzzlePosition()`。
+- 多块预留：`TurretSpec.sizeX/sizeZ`；`TurretBlockEntity.masterPos()` 把任意一块换到主方块，
+  `at(level,pos)` 统一解析；瞄准站和绑定器已经按主坐标存储/绘制高亮。
+- 换模型后验收：三种炮塔能进/瞄/开火/退出；相机高度、炮口粒子、落点括号、近处淡出
+  都跟随新 spec；`getRenderBoundingBox()` 覆盖新模型范围（2×2/3×3 必须检查，否则边缘会整根剔除）。
 
 ## Gotchas
 
@@ -131,6 +177,28 @@ mex:
 - 服务端 aim() 每 tick 最多转 6°，客户端 fire 用的是本地当帧角度且 `TurretFirePacket` 不带角度；
   快速甩炮时服务端可能滞后 1 tick（48 格处约数格偏差）。要彻底对齐需让 fire 包携带角度并 bump 协议。
 - 客户端粒子只有本机可见；要让其他玩家看到弹道，需要新增服务端广播包。
+- 瞄准站绑定是**单向**的（站台存炮塔坐标），不要为了“查所有绑定”在炮塔里存站台列表：
+  一个炮塔可以接多个站台，反向列表只会增加同步/清理负担；客户端连线靠扫描站台 BE。
+- 站台没有 ticker，绑定变化只靠 `setChanged()` → `sendBlockUpdated` 同步；漏掉这步
+  绑定器连线要等区块重载才刷新，右键进入却已经生效，表现会像“绑定丢了”。
+- 读目标方块前必须 `level.hasChunkAt(pos)`；`getBlockEntity` 在未加载区块会同步加载，
+  客户端画线/服务端校验都不能为了一个坐标把区块拉起来。
+- **Forge 1.20.1 的方块交互顺序是「方块 use → 物品 useOn」**（潜行时跳过方块 use），
+  和原版“物品优先”相反。绑定器这类工具必须在 `TurretBlock.use` / `TurretStationBlock.use`
+  里检测手持物品并返回 `PASS`，否则右键只会触发方块自己的进入/未绑定提示，物品的
+  `useOn` 永远不执行。客户端 `MultiPlayerGameMode` 也是同一顺序，两边都要让位。
+- 站台操作距离不限是用户定稿（2026-11-19）：如果炮塔区块在客户端没加载，相机不能丢进虚空，
+  `TurretClient.onState` 会直接回 `TurretExitPacket`；不要改成自动加载/强加载。
+- 站台方块正面朝 +Z（south），blockstate 用 south=0°/west=90°/north=180°/east=270°；
+  改模型朝向时和 `FACING` 一起改，否则屏幕会背对玩家。
+- 瞄准站是落地控制台：`getStateForPlacement` / `canSurvive` 要求下方完整可站立面，
+  下方被拆会掉落；要支持贴墙/吊顶时应该另做模型和挂载属性，不要直接放宽支撑检查。
+- 炮塔 `findTarget()` 不能把操作者排除掉：站台模式下本体在别处，排除后单机永远无法验收
+  “炮塔打玩家”；只有直连炮塔时排除自己才说得通，统一包含更简单。
+- 创造模式玩家走 `MedicalEvents.applyDirectDamage()` 前必须同时检查 `!damaged` 和
+  `hurtTime <= 0`：只看创造标志会在无敌帧里每发都重复注入病症。
+- 绑定器描边的准星射线是玩家身体视角（`getEyePosition/getViewVector`）；炮塔视角里必须跳过，
+  否则准星在炮塔相机、射线却从站台身体发出，会描错方块。
 - `runClient` 运行期间不要跑 Gradle：会重写 `build/classes` 并触发 `NoClassDefFoundError`。
 
 ## Verify
@@ -145,6 +213,13 @@ mex:
 - [ ] 瞄准时 HUD 落点括号仍与实际命中一致（缩放后投影不能错位）
 - [ ] 六面挂载：底座贴原生面、不浮空；拆支撑会掉落；三种挂载鼠标方向一致
 - [ ] 相机贴近炮管/转盘时整组淡出，不出现“末端透明、前端挡视野”
+- [ ] 绑定器：炮塔→站台、站台→炮塔两种顺序都能绑定；同类型两端被拒绝；跨维度被拒绝
+- [ ] 瞄准站：未绑定时右键只提示；绑定后右键进入同一套炮塔视角，左 Shift 退出
+- [ ] 站台绑定/解绑后手持绑定器，连线 10 tick 内刷新；拆站台/拆炮塔后占用者自动退出
+- [ ] 超过 128 格远的站台仍能进入/退出（状态包直发占用者）
+- [ ] 瞄准时本机玩家模型仍留在原地可见（第三人称），退出后恢复原来的第一/第三人称
+- [ ] 炮塔能打中其他玩家和操作者本体；创造模式下目标也能看到病症/出血反馈
+- [ ] 手持绑定器指向已绑定的瞄准站/炮塔：另一端 64 格内出现脉冲发光描边，隔墙可见
 
 ## Debug
 

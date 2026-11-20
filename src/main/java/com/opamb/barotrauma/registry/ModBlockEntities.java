@@ -9,6 +9,7 @@ import com.opamb.barotrauma.blockentity.NavigationTerminalBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.blockentity.SmallPumpBlockEntity;
 import com.opamb.barotrauma.blockentity.SonarBlockEntity;
+import com.opamb.barotrauma.blockentity.TurretStationBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
@@ -123,6 +124,12 @@ public final class ModBlockEntities {
                             ModBlocks.TURRET.get(),
                             ModBlocks.FREE_AIM_TURRET.get(),
                             ModBlocks.TRACKING_TURRET.get())
+                    .build(null));
+
+    /** 炮塔瞄准站：只存绑定的炮塔坐标，同步给客户端画绑定连线。 */
+    public static final RegistryObject<BlockEntityType<TurretStationBlockEntity>> TURRET_STATION =
+            BLOCK_ENTITIES.register("turret_station", () -> BlockEntityType.Builder
+                    .of(TurretStationBlockEntity::new, ModBlocks.TURRET_STATION.get())
                     .build(null));
 
     // 船核心方块已经合并进声纳台（SonarBlockEntity extends ShipCoreBlockEntity），
