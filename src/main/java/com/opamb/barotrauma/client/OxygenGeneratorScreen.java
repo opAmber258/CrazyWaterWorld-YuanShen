@@ -1,0 +1,120 @@
+package com.opamb.barotrauma.client;
+
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
+import com.opamb.barotrauma.menu.OxygenGeneratorMenu;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
+
+/**
+ * 制氧机面板，照原作 {@code OxygenGenerator} 的五格容器布局：
+ *
+ * <pre>
+ *   产氧: 418 单位/秒
+ *   电压: 1.00
+ *   耐久: 100%
+ *   接线盒: 默认总线
+ *   [氧气瓶][氧气瓶][    ][焊接油箱][    ]
+ * </pre>
+ *
+ * <p>没有开关：通电就工作。槽里的氧气瓶/焊接油箱会被持续充气（每秒 2 点耐久）。</p>
+ */
+public class OxygenGeneratorScreen extends ScaledContainerScreen<OxygenGeneratorMenu> {
+
+    private static final int W = 224;
+    private static final int H = 292;
+
+    private static final int BG = 0xF0141B16;
+    private static final int EDGE = 0xFF3B463C;
+    private static final int TEXT = 0xFFD8D2BF;
+    private static final int DIM = 0xFF7C8478;
+    private static final int ACCENT = 0xFFE0762F;
+    private static final int GREEN = 0xFF6FD07A;
+    private static final int RED = 0xFFC8483C;
+    private static final int YELLOW = 0xFFD8B44A;
+
+    public OxygenGeneratorScreen(OxygenGeneratorMenu menu, Inventory inventory, Component title) {
+        super(menu, inventory, title);
+        this.imageWidth = W;
+        this.imageHeight = H;
+    }
+
+    @Override
+    protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
+        graphics.drawString(font, title, 10, 8, ACCENT, false);
+    }
+
+    @Override
+    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+        int x = leftPos;
+        int y = topPos;
+        graphics.fill(x, y, x + W, y + H, BG);
+        graphics.fill(x, y, x + W, y + 1, EDGE);
+        graphics.fill(x, y + H - 1, x + W, y + H, EDGE);
+        graphics.fill(x, y, x + 1, y + H, EDGE);
+        graphics.fill(x + W - 1, y, x + W, y + H, EDGE);
+
+        int flowRaw = Math.max(0, menu.data().get(OxygenGeneratorMenu.DATA_FLOW));
+        int voltageRaw = menu.data().get(OxygenGeneratorMenu.DATA_VOLTAGE);
+        int conditionRaw = menu.data().get(OxygenGeneratorMenu.DATA_CONDITION);
+        boolean bound = menu.data().get(OxygenGeneratorMenu.DATA_BOUND) != 0;
+        double voltage = voltageRaw / 100.0D;
+
+        graphics.drawString(font, Component.translatable(
+                        "gui.barotrauma.oxygen_generator.flow",
+                        String.format("%.0f", flowRaw / 10.0D)),
+                x + 12, y + 76, flowRaw > 0 ? GREEN : DIM, false);
+        int voltageColor = voltage >= 0.5D ? GREEN : voltage > 0.1D ? YELLOW : RED;
+        graphics.drawString(font, Component.translatable(
+                        "gui.barotrauma.oxygen_generator.voltage", String.format("%.2f", voltage)),
+                x + 12, y + 92, voltageColor, false);
+        if (conditionRaw <= 0) {
+            graphics.drawString(font, Component.translatable(
+                            "gui.barotrauma.oxygen_generator.broken"),
+                    x + 12, y + 108, RED, false);
+        } else {
+            graphics.drawString(font, Component.translatable(
+                            "gui.barotrauma.oxygen_generator.condition",
+                            String.valueOf(Math.round(conditionRaw / 10.0D))),
+                    x + 12, y + 108, DIM, false);
+        }
+        graphics.drawString(font, Component.translatable(bound
+                        ? "gui.barotrauma.oxygen_generator.bound"
+                        : "gui.barotrauma.oxygen_generator.bus"),
+                x + 12, y + 124, bound ? GREEN : DIM, false);
+
+        graphics.drawString(font, Component.translatable(
+                        "gui.barotrauma.oxygen_generator.hint"),
+                x + 12, y + 152, DIM, false);
+        graphics.drawString(font, Component.translatable(
+                        "gui.barotrauma.oxygen_generator.hint_vent"),
+                x + 12, y + 166, DIM, false);
+
+        // 五个瓶槽底纹
+        for (int i = 0; i < 5; i++) {
+            slotBg(graphics, x + OxygenGeneratorMenu.TANK_ROW_X + i * OxygenGeneratorMenu.TANK_PITCH - 1,
+                    y + OxygenGeneratorMenu.TANK_ROW_Y - 1);
+        }
+        // 快捷栏槽位底纹；上面那 27 格是"装备背包区"，由 BagOverlay 整块画。
+        for (int col = 0; col < 9; col++) {
+            slotBg(graphics, x + OxygenGeneratorMenu.INV_AREA_X + col * 18 - 1,
+                    y + OxygenGeneratorMenu.INV_AREA_Y + 58 - 1);
+        }
+        if (minecraft != null && minecraft.player != null) {
+            com.opamb.barotrauma.equipment.BagSlots.rebuildClientAt(menu, minecraft.player,
+                    OxygenGeneratorMenu.INV_START, OxygenGeneratorMenu.INV_AREA_X,
+                    OxygenGeneratorMenu.INV_AREA_Y, OxygenGeneratorMenu.INV_AREA_W,
+                    OxygenGeneratorMenu.INV_AREA_H);
+            com.opamb.barotrauma.client.equipment.BagOverlay.renderIn(graphics, x, y,
+                    minecraft.player, OxygenGeneratorMenu.INV_AREA_X,
+                    OxygenGeneratorMenu.INV_AREA_Y, OxygenGeneratorMenu.INV_AREA_W,
+                    OxygenGeneratorMenu.INV_AREA_H);
+            com.opamb.barotrauma.client.equipment.HandsSlotOverlay.renderIn(graphics, menu, x, y);
+        }
+    }
+
+    private void slotBg(GuiGraphics graphics, int x, int y) {
+        graphics.fill(x, y, x + 18, y + 18, 0xFF8B8B8B);
+        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF373737);
+    }
+}

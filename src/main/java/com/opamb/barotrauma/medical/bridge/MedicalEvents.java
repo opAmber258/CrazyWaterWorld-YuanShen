@@ -146,35 +146,15 @@ public final class MedicalEvents {
             container.clearVitalityOverride();
         }
         // 氧气模型（原作 CharacterHealth.UpdateOxygen）：不再用原版空气值/氧气条。
-        // 有可用氧 → oxygenlow 每秒 -10；无可用氧（潜水服没瓶、泡在海里、真实水里）
-        // → 每秒 +5。强度 100 时对应原作 OxygenAmount=0，开始按 50..200 档扣活力。
+        // 可用氧 ≥ InsufficientOxygenThreshold(30) → oxygenlow 每秒 -10；不足 → +5。
+        // 可用氧来自潜水服瓶/所在船舱室的氧气百分比/是否泡在海里。
+        // 强度 100 时对应原作 OxygenAmount=0，开始按 50..200 档扣活力。
+        double availableOxygen = com.opamb.barotrauma.ship.ShipBreathing.availableOxygen(player);
         container.addStrength(AfflictionType.OXYGEN_LOW, null,
-                oxygenAvailable(player) ? -OXYGEN_RECOVERY_PER_SECOND : OXYGEN_DRAIN_PER_SECOND);
+                availableOxygen >= com.opamb.barotrauma.ship.ShipBreathing.INSUFFICIENT_OXYGEN
+                        ? -OXYGEN_RECOVERY_PER_SECOND : OXYGEN_DRAIN_PER_SECOND);
         container.tickSecond();
         updateLifeState(player, container);
-    }
-
-    /**
-     * 当前有没有可用氧（原作 {@code OxygenAvailable} 的布尔近似）。
-     *
-     * <ul>
-     *   <li>潜水服：只看内部氧气瓶——原作 {@code OxygenAvailable="-100" UseHullOxygen="false"}
-     *       把可用氧压到 0，瓶子的 {@code OxygenAvailable="1000"} 才顶回来；</li>
-     *   <li>没穿服：泡在（空气）海里或真实水里就没有可用氧；干舱/哨站/陆地正常；</li>
-     *   <li>水下呼吸药水/创造/旁观：视为有氧（原版没有对应物，沿用 MC 语义）。</li>
-     * </ul>
-     */
-    private static boolean oxygenAvailable(Player player) {
-        if (player.isCreative() || player.isSpectator()
-                || player.hasEffect(MobEffects.WATER_BREATHING)) {
-            return true;
-        }
-        if (com.opamb.barotrauma.equipment.EquipmentData.hasDivingSuit(player)) {
-            return com.opamb.barotrauma.equipment.EquipmentEffects.hasUsableSuitTank(player);
-        }
-        return !player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
-                && !com.opamb.barotrauma.world.OceanEnvironment.isOceanWaterAt(
-                        player.level(), player.getEyePosition());
     }
 
     /**

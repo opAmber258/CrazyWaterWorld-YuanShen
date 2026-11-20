@@ -30,34 +30,82 @@ public final class VsClientCompartments {
      * @param data 客户端最近收到的水面状态包；{@code null}/方块船/找不到船都返回 false
      */
     public static boolean isInsideCompartment(Level level, Vec3 pos, ShipWaterStatePacket data) {
-        if (pos == null || data == null || !(level instanceof ClientLevel clientLevel)) {
+        double[] local = toLocal(level, pos, data);
+        if (local == null) {
             return false;
         }
         float[] boxes = data.boxes();
+        for (int i = 0; i + 6 < boxes.length; i += 7) {
+            if (local[0] >= boxes[i] && local[0] <= boxes[i + 3] + 1.0F
+                    && local[1] >= boxes[i + 1] && local[1] <= boxes[i + 4] + 1.0F
+                    && local[2] >= boxes[i + 2] && local[2] <= boxes[i + 5] + 1.0F) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 世界坐标 → 水盒坐标（装配坐标）。
+     *
+     * <p>必须用实时逆变换：只减平移量在偏航非零时会把整艘船算错，
+     * 舱内位置会跑到盒子外，客户端就会误判成“在海里”（用户实测的干舱滤镜）。</p>
+     */
+    private static double[] toLocal(Level level, Vec3 pos, ShipWaterStatePacket data) {
+        if (pos == null || data == null || !(level instanceof ClientLevel clientLevel)) {
+            return null;
+        }
+        float[] boxes = data.boxes();
         if (!data.physical() || data.shipId() < 0 || boxes.length < 7) {
-            return false;
+            return null;
         }
         ClientShip ship = findShip(clientLevel, data.shipId());
         if (ship == null) {
-            return false;
+            return null;
         }
         ShipTransform transform = ship.getTransform();
         Vector3dc positionInShip = transform.getPositionInShip();
-        Vector3d local;
         try {
-            local = new Matrix4d(transform.getShipToWorld()).invert()
+            Vector3d local = new Matrix4d(transform.getShipToWorld()).invert()
                     .transformPosition(new Vector3d(pos.x, pos.y, pos.z), new Vector3d());
+            // 水盒是装配坐标：world = shipToWorld * (box + positionInShip - anchor)。
+            return new double[]{
+                    local.x - positionInShip.x() + data.anchorX(),
+                    local.y - positionInShip.y() + data.anchorY(),
+                    local.z - positionInShip.z() + data.anchorZ()};
         } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * 客户端物理船：这个位置是否在未进水的舱室里。
+     *
+     * <p>和 {@code ShipWaterRenderer} 的盒内逻辑一致（干燥盒顶 +1、湿盒要高于
+     * 水面），但坐标用实时逆变换，偏航后也不会把整艘船算错。</p>
+     */
+    public static boolean isInsideDryZone(Level level, Vec3 pos, ShipWaterStatePacket data) {
+        double[] local = toLocal(level, pos, data);
+        if (local == null) {
             return false;
         }
-        // 水盒是装配坐标：world = shipToWorld * (box + positionInShip - anchor)。
-        double lx = local.x - positionInShip.x() + data.anchorX();
-        double ly = local.y - positionInShip.y() + data.anchorY();
-        double lz = local.z - positionInShip.z() + data.anchorZ();
+        float[] boxes = data.boxes();
+        double px = local[0];
+        double py = local[1];
+        double pz = local[2];
         for (int i = 0; i + 6 < boxes.length; i += 7) {
-            if (lx >= boxes[i] && lx <= boxes[i + 3] + 1.0F
-                    && ly >= boxes[i + 1] && ly <= boxes[i + 4] + 1.0F
-                    && lz >= boxes[i + 2] && lz <= boxes[i + 5] + 1.0F) {
+            float minX = boxes[i];
+            float minY = boxes[i + 1];
+            float minZ = boxes[i + 2];
+            float maxX = boxes[i + 3] + 1.0F;
+            float maxY = boxes[i + 4] + 1.0F;
+            float maxZ = boxes[i + 5] + 1.0F;
+            float surface = boxes[i + 6];
+            boolean dryBox = surface <= minY + 0.01F;
+            float top = maxY + (dryBox ? 1.0F : 0.0F);
+            if (px >= minX && px <= maxX && py >= minY && py <= top
+                    && pz >= minZ && pz <= maxZ
+                    && (dryBox || py > surface + 0.01F)) {
                 return true;
             }
         }

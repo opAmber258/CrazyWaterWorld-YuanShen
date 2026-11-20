@@ -16,8 +16,10 @@ public final class ModNetwork {
     // 16：修理改为独立窗口（RepairMenu）：START/QTE/STOP，进度在服务端按 tick 推进。
     // 17：加工台制作/取消改走独立包（原版按钮编号只有 1 字节，装不下配方下标 + 数量）。
     // 18：炮塔原型新增瞄准/开火/退出/状态同步包（在 17 基础上追加）。
-    // 19：TurretStatePacket 增加 fromStation（瞄准站遥控标记），客户端命中预判据此处理操作者本体。
-    private static final String PROTOCOL = "19";
+    // 19：右键拾取改走实体 id 包；物理船方块右键改走船坞坐标包（制氧 WIP 分支）。
+    // 20：合并后两批包同时存在，统一升到 20，避免与只含其中一批的开发构建混连。
+    // 21：TurretStatePacket 增加 fromStation（瞄准站遥控标记），客户端命中预判据此处理操作者本体。
+    private static final String PROTOCOL = "21";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -132,6 +134,12 @@ CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(TurretStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretStatePacket::encode).decoder(TurretStatePacket::decode)
                 .consumerNetworkThread(TurretStatePacket::handle).add();
+        CHANNEL.messageBuilder(PickupItemPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(PickupItemPacket::encode).decoder(PickupItemPacket::decode)
+                .consumerNetworkThread(PickupItemPacket::handle).add();
+        CHANNEL.messageBuilder(ShipUseBlockPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipUseBlockPacket::encode).decoder(ShipUseBlockPacket::decode)
+                .consumerNetworkThread(ShipUseBlockPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

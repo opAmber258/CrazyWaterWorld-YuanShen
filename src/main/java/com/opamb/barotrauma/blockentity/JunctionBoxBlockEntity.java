@@ -24,8 +24,9 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * 接线盒方块实体：耐久、过压/泡水损坏、向船电网登记。
  *
  * <p>对应原版 {@code PowerTransfer}：电网耗电 0，只作为分线节点和故障点。
- * 通电自然衰减 0.1/s（120–720 秒宽限后），泡水通电 0.25/s，电压超过 1.7
- * 时 10/s。耐久归零后盒子失效，绑在它上面的设备拿不到电。</p>
+ * 通电自然衰减 0.1/s（120–720 秒宽限后），泡水通电 0.25/s；电压超过 1.7
+ * 时按原作的随机过压损伤（每 tick 1% 概率，满耐久期望约 2.5/s），不是固定
+ * 10/s。耐久归零后盒子失效，绑在它上面的设备拿不到电。</p>
  */
 public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget, GeoBlockEntity {
 
@@ -33,10 +34,10 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
     private static final double DECAY_POWERED = 0.1D;
     /** 泡水通电衰减速度（/秒）。 */
     private static final double DECAY_SUBMERGED = 0.25D;
-    /** 过压衰减速度（/秒）。 */
-    private static final double DECAY_OVERVOLTAGE = 10.0D;
     /**
-     * 过压阈值：原版 vanilla 潜艇（Dugong.sub）是 1.7，代码默认 2.0。
+     * 过压阈值：Dugong/Orca 等原版潜艇的接线盒实例把
+     * {@code PowerTransfer.OverloadVoltage} 覆盖成 1.7（prefab 默认 2.0）。
+     * 本模组的起始船是儒艮级，按实船用 1.7。
      *
      * <p>全仓只有这一份阈值；判定统一走 {@link PowerGrid#overvoltage}。</p>
      */
@@ -105,7 +106,16 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
             // 阈值判定走 PowerGrid，别在这里再写一份比较：两边各一份的话，
             // 以后调阈值只会改到其中一处。
             if (PowerGrid.overvoltage(voltage, OVERVOLTAGE)) {
-                be.condition -= DECAY_OVERVOLTAGE / 20.0D;
+                // 原作 PowerTransfer.UpdateOvervoltage：每帧 1% 概率扣
+                // deltaTime × Rand(10,500) × Lerp(5,1,condition/maxCondition)。
+                // 20Hz 下 1% 概率 + dt=1/20，每秒期望和原作 60Hz 一致
+                // （满耐久约 2.5/s，不是固定 10/s 十秒全烧）。
+                if (level.random.nextFloat() < 0.01F) {
+                    double fraction = Mth.clamp(be.condition / 100.0D, 0.0D, 1.0D);
+                    double scale = 5.0D - 4.0D * fraction;
+                    be.condition -= (1.0D / 20.0D)
+                            * (10.0D + level.random.nextDouble() * 490.0D) * scale;
+                }
             }
         }
         be.condition = Mth.clamp(be.condition, 0.0D, 100.0D);

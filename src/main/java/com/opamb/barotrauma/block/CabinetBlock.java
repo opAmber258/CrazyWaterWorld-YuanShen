@@ -473,6 +473,13 @@ public class CabinetBlock extends Block implements EntityBlock {
             return Shapes.empty();
         }
         float localTop = Math.min(remain, 16.0F) / 16.0F;
+        // 顶层分片补齐到整格：原作柜子 38.66px 高、舱内约 48px，角色（~42px）根本
+        // 钻不进柜顶那 9px 的缝；MC 角色 AABB 更小，会把柜顶当可站立面，跳上去
+        // 卡进天花板格，而且那格是实心柜体、不在任何舱室里 → 被判成舱外，出游泳
+        // 姿势。补满整格等于"柜顶不可站立"，和原作手感一致（用户实测气闸柜子）。
+        if (part == kind.cells() - 1) {
+            localTop = 1.0F;
+        }
         double d = kind.depth() / 16.0D;              // 模型深度（格）
         double x0 = 0.0D;
         double x1 = 1.0D;

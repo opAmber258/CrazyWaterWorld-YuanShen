@@ -36,17 +36,19 @@ public class SmallPumpBlock extends DrainPumpBlock {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     /**
-     * 紧贴模型外形的碰撞：模型实际只占 x 2.55..13.45、y 0..5.93、z 5.78..10.22 像素。
-     * 之前用 12×12×12 的方块套，泵周围一圈都是"撞空气"，现在按模型包围盒收紧。
+     * 紧贴模型**高度**、但占满整格 footprint 的低平台（6px）。
+     *
+     * <p>2026-11-19 用户实测：站在引擎旁边这个小泵上，开船时会被挤到船壳外掉海里。
+     * 小泵原来只有模型那么宽的一条窄台（0.68×0.28 格），人站上去大半个脚掌悬空，
+     * 又正好卡在船壳/引擎的夹角里，VS2 的船体碰撞解算会把人往外挤。舱口那块
+     * 1px 板之所以没这个问题，是因为它 footprint 是满格的。</p>
+     *
+     * <p>改成满格 footprint、高度仍按模型（5.93px）：从任何方向都能直接踩上去
+     *（自动上台阶 0.6 &gt; 0.37），人不会再站在一条悬空窄台上。</p>
      */
-    private static final VoxelShape SHAPE_NS = Shapes.box(
-            2.55D / 16.0D, 0.0D, 5.78D / 16.0D,
-            13.45D / 16.0D, 5.93D / 16.0D, 10.22D / 16.0D);
-
-    /** 东西朝向：把南北朝向的包围盒绕方块中心转 90°，x/z 尺寸互换。 */
-    private static final VoxelShape SHAPE_EW = Shapes.box(
-            5.78D / 16.0D, 0.0D, 2.55D / 16.0D,
-            10.22D / 16.0D, 5.93D / 16.0D, 13.45D / 16.0D);
+    private static final VoxelShape SHAPE = Shapes.box(
+            0.0D, 0.0D, 0.0D,
+            1.0D, 5.93D / 16.0D, 1.0D);
 
     public SmallPumpBlock(Properties properties) {
         super(properties);
@@ -75,7 +77,7 @@ public class SmallPumpBlock extends DrainPumpBlock {
     }
 
     private static VoxelShape shape(BlockState state) {
-        return state.getValue(FACING).getAxis() == Direction.Axis.Z ? SHAPE_NS : SHAPE_EW;
+        return SHAPE;
     }
 
     @Nullable

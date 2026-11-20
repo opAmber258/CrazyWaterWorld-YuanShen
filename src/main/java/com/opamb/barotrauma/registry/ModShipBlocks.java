@@ -257,6 +257,8 @@ public final class ModShipBlocks {
                 || block == ModBlocks.BATTERY.get()
                 || block == ModBlocks.FABRICATOR.get()
                 || block == ModBlocks.DECONSTRUCTOR.get()
+                || block == ModBlocks.OXYGEN_GENERATOR.get()
+                || block == ModBlocks.VENT.get()
                 || block == ModBlocks.REACTOR.get()
                 || block == ModBlocks.ENGINE.get()
                 || block == SONAR.get()
@@ -288,6 +290,8 @@ public final class ModShipBlocks {
                 || block == ModBlocks.BATTERY.get()
                 || block == ModBlocks.FABRICATOR.get()
                 || block == ModBlocks.DECONSTRUCTOR.get()
+                || block == ModBlocks.OXYGEN_GENERATOR.get()
+                || block == ModBlocks.VENT.get()
                 // 容器家具也要跟船走，否则装配后钢柜/货架留在码头原地。
                 || block == ModBlocks.MEDIUM_STEEL_CABINET.get()
                 || block == ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get()
@@ -328,6 +332,19 @@ public final class ModShipBlocks {
     /** 能不能被砸、被焊：声纳和普通方块都不行。 */
     public static boolean isRepairableHull(BlockState state) {
         return maxHealth(state) > 0.0F;
+    }
+
+    /**
+     * 划分“船壳以内 / 船外空气”时算不算壳体。
+     *
+     * <p>除了可修理船壳和门/舱口，<b>引擎也算</b>：3×2×3 的引擎后两排本身就是
+     * 船尾船壳，如果只把船壳板当墙，外海会从引擎格“穿”进引擎舱，把这间舱
+     * 标成船外空气（进水比例/破口方向都会跟着错）。</p>
+     */
+    public static boolean sealsHull(BlockState state) {
+        return isRepairableHull(state)
+                || isDoorway(state)
+                || state.is(ModBlocks.ENGINE.get());
     }
 
     private static BlockBehaviour.Properties metal() {

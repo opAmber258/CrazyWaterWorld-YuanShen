@@ -98,20 +98,27 @@ public final class OceanEnvironment {
             return false;
         }
         // 新世界船在 -76；旧存档没迁移，船还在 -78，两个盒子都认一下。
-        // 儒艮号（新世界布局）在站外侧，单独一个盒子。
-        return insideSubBox(pos, StarterSub.ORIGIN_Y)
-                || insideSubBox(pos, StarterSub.LEGACY_ORIGIN_Y)
-                || insideNewSubBox(pos);
+        // 儒艮号（旧/新两代蓝图）在站外侧，按布局表逐个盒子兜底。
+        if (insideSubBox(pos, StarterSub.ORIGIN_Y)
+                || insideSubBox(pos, StarterSub.LEGACY_ORIGIN_Y)) {
+            return true;
+        }
+        for (StarterSub.Layout layout : StarterSub.Layout.values()) {
+            if (layout.dugong() && insideDugongBox(pos, layout)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    /** 儒艮号（站外侧 5×9×17）的内腔兜底干燥区。 */
-    private static boolean insideNewSubBox(Vec3 pos) {
-        return pos.x > StarterSub.NEW_ORIGIN_X
-                && pos.x < StarterSub.NEW_ORIGIN_X + StarterSub.NEW_SIZE_X - 1
-                && pos.y >= StarterSub.NEW_ORIGIN_Y + 1
-                && pos.y < StarterSub.NEW_ORIGIN_Y + StarterSub.NEW_SIZE_Y - 0.5D
-                && pos.z > StarterSub.NEW_ORIGIN_Z
-                && pos.z < StarterSub.NEW_ORIGIN_Z + StarterSub.NEW_SIZE_Z - 1;
+    /** 儒艮号（任何一版布局）的内腔兜底干燥区。 */
+    private static boolean insideDugongBox(Vec3 pos, StarterSub.Layout layout) {
+        return pos.x > layout.originX
+                && pos.x < layout.originX + layout.sizeX - 1
+                && pos.y >= layout.originY + 1
+                && pos.y < layout.originY + layout.sizeY - 0.5D
+                && pos.z > layout.originZ
+                && pos.z < layout.originZ + layout.sizeZ - 1;
     }
 
     private static boolean insideSubBox(Vec3 pos, int originY) {
