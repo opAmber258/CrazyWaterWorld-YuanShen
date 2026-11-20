@@ -25,10 +25,15 @@ public final class ShipTemplateSpawner {
     private ShipTemplateSpawner() {
     }
 
+    /** 模板是否存在（生成前先验证，避免先清空区域再发现模板缺失）。 */
+    public static boolean exists(ServerLevel level, ResourceLocation templateId) {
+        return level.getStructureManager().get(templateId).isPresent();
+    }
+
     /**
      * 在 {@code origin}（模板最小角）生成模板。
      *
-     * @return 模板不存在时返回 false
+     * @return 模板不存在或放置失败时返回 false
      */
     public static boolean spawn(ServerLevel level, BlockPos origin, ResourceLocation templateId) {
         StructureTemplate template = level.getStructureManager().get(templateId).orElse(null);
@@ -37,8 +42,12 @@ public final class ShipTemplateSpawner {
         }
         // 3 = UPDATE_NEIGHBORS | UPDATE_CLIENTS：和世界生成时的落块一致，
         // 多格机器的各分段才会在放置时拿到邻居更新。
-        template.placeInWorld(level, origin, origin, new StructurePlaceSettings(),
-                level.random, Block.UPDATE_NEIGHBORS | Block.UPDATE_CLIENTS);
+        boolean placed = template.placeInWorld(level, origin, origin,
+                new StructurePlaceSettings(), level.random,
+                Block.UPDATE_NEIGHBORS | Block.UPDATE_CLIENTS);
+        if (!placed) {
+            return false;
+        }
         rebaseBindings(level, origin, templateId);
         return true;
     }

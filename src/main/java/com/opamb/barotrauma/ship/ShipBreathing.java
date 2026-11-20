@@ -62,7 +62,13 @@ public final class ShipBreathing {
         if (state == null) {
             return null;
         }
-        return new Zone(state, state.compartmentAt(BlockPos.containing(eye)));
+        // 只按“最近核心”找船不够：站在陆地/哨站上、离船核心 10 格也会选中它，
+        // compartmentAt 返回 -1，可用氧被判成 0。只有眼睛真的落在舱室里才算。
+        int compartment = state.compartmentAt(BlockPos.containing(eye));
+        if (compartment < 0) {
+            return null;
+        }
+        return new Zone(state, compartment);
     }
 
     /**

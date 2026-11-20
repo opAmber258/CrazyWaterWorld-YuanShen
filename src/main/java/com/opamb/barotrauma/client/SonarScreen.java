@@ -134,6 +134,12 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     private float nudgeDirZ;
     /** 点云屏幕去重（2px 格）：同一格只画一次，省 GUI 填充调用。 */
     private int[] pointCells = new int[0];
+    /** 上一次键盘发出的舵令轴：松开时只清键盘控制过的轴，别覆盖面板按钮的舵令。 */
+    private int keyHelmFwd;
+    private int keyHelmYaw;
+    private int keyHelmDx;
+    private int keyHelmDz;
+    private int keyHelmDy;
 
     // ---- 右下圆形按钮的四种状态 ----
     private static final int DOCK_NONE = 0;
@@ -209,14 +215,23 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
             // 原作 2D 侧视没有偏航，这是 3D 适配；引擎只沿船头前后出力，不再横移。
             // 绕世界 +Y 正方向：+1 = 左转（船头 +X 转向 −Z），−1 = 右转。
             int yaw = (left ? 1 : 0) - (right ? 1 : 0);
-            if (fwd != headingX || yaw != headingZ) {
-                headingX = fwd;
-                headingZ = yaw;
-                sendHeading(fwd, headingY, yaw);
+            // 只在“键盘轴”变化时发送。松开时只清键盘控制过的轴，不能把面板
+            // 按钮刚点出来的舵令一起清掉（否则左转按钮只生效一个 tick）。
+            if (fwd != keyHelmFwd || yaw != keyHelmYaw) {
+                int outFwd = fwd != 0 ? fwd : (keyHelmFwd != 0 ? 0 : headingX);
+                int outYaw = yaw != 0 ? yaw : (keyHelmYaw != 0 ? 0 : headingZ);
+                keyHelmFwd = fwd;
+                keyHelmYaw = yaw;
+                if (outFwd != headingX || outYaw != headingZ) {
+                    steer(outFwd, headingY, outYaw);
+                }
             }
-            if (dy != headingY) {
-                headingY = dy;
-                sendHeading(headingX, dy, headingZ);
+            if (dy != keyHelmDy) {
+                int outDy = dy != 0 ? dy : (keyHelmDy != 0 ? 0 : headingY);
+                keyHelmDy = dy;
+                if (outDy != headingY) {
+                    steer(headingX, outDy, headingZ);
+                }
             }
             return;
         }
@@ -237,14 +252,21 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
             dz = Math.abs(wz) > 0.38F ? (wz > 0 ? 1 : -1) : 0;
         }
 
-        if (dx != headingX || dz != headingZ) {
-            headingX = dx;
-            headingZ = dz;
-            sendHeading(dx, headingY, dz);
+        if (dx != keyHelmDx || dz != keyHelmDz) {
+            int outX = dx != 0 ? dx : (keyHelmDx != 0 ? 0 : headingX);
+            int outZ = dz != 0 ? dz : (keyHelmDz != 0 ? 0 : headingZ);
+            keyHelmDx = dx;
+            keyHelmDz = dz;
+            if (outX != headingX || outZ != headingZ) {
+                steer(outX, headingY, outZ);
+            }
         }
-        if (dy != headingY) {
-            headingY = dy;
-            sendHeading(headingX, dy, headingZ);
+        if (dy != keyHelmDy) {
+            int outDy = dy != 0 ? dy : (keyHelmDy != 0 ? 0 : headingY);
+            keyHelmDy = dy;
+            if (outDy != headingY) {
+                steer(headingX, outDy, headingZ);
+            }
         }
     }
 
@@ -970,9 +992,9 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         if (!has) {
             return;
         }
-        int tx = localTarget ? localTargetX : ClientSonarCache.targetX();
-        int ty = localTarget ? localTargetY : ClientSonarCache.targetY();
-        int tz = localTarget ? localTargetZ : ClientSonarCache.targetZ();
+        int tx = ClientSonarCache.hasTarget() ? ClientSonarCache.targetX() : localTargetX;
+        int ty = ClientSonarCache.hasTarget() ? ClientSonarCache.targetY() : localTargetY;
+        int tz = ClientSonarCache.hasTarget() ? ClientSonarCache.targetZ() : localTargetZ;
 
         float[] b = basis();
         float camDistance = viewRange * 1.5F;
@@ -1190,9 +1212,9 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         if (!has) {
             line1 = "目标：未标记";
         } else {
-            int tx = localTarget ? localTargetX : ClientSonarCache.targetX();
-            int ty = localTarget ? localTargetY : ClientSonarCache.targetY();
-            int tz = localTarget ? localTargetZ : ClientSonarCache.targetZ();
+            int tx = ClientSonarCache.hasTarget() ? ClientSonarCache.targetX() : localTargetX;
+            int ty = ClientSonarCache.hasTarget() ? ClientSonarCache.targetY() : localTargetY;
+            int tz = ClientSonarCache.hasTarget() ? ClientSonarCache.targetZ() : localTargetZ;
             double dist = Math.sqrt((double) tx * tx + (double) ty * ty + (double) tz * tz);
             line1 = String.format("目标 %s %03d°  %.0f m", headingName(tx, ty, tz), bearingDegrees(tx, tz), dist);
         }
@@ -1661,12 +1683,10 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     /**
      * 自动驾驶模式下用 WASD/空格/Shift 微调目标点（每 tick 1 格，约 20 格/秒）。
      *
-     * <p>W/S 沿<b>船头</b>前后、A/D 沿右舷、空格/Shift 上下，和相机视角无关；
-     * 偏移和点击一样，以声纳扫描中心为基准。</p>
-     *
-     * <p>方向在一次“按住”期间锁存：自动驾驶会边开边转，如果每 tick 都取当前
-     * 船头，按着 W 走出的就是一条跟着船头画的弧线。锁存后一次按键走直线，
-     * 松开再按才取新的船头。</p>
+     * <p>W/S 沿“船→目标”方向前后、A/D 垂直、空格/Shift 上下；方向在一次
+     * “按住”期间锁存。发送的是**世界坐标增量**（NUDGE_AUTOPILOT_TARGET），
+     * 不是相对扫描中心的偏移——船移动后旧偏移会被服务端解释成另一个世界点，
+     * 目标就会跟着船漂。</p>
      */
     private void nudgeTarget(boolean forward, boolean back, boolean left, boolean right,
                              boolean up, boolean sink) {
@@ -1684,11 +1704,11 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         if (!ClientSonarCache.hasTarget() && !localTarget) {
             return;
         }
-        // 连续微调时以本地累积值为准：服务端回包是 0.5 秒一次，跟不上每 tick 的步进，
-        // 拿回包当基准会丢步或来回跳。
-        int tx = localTarget ? localTargetX : ClientSonarCache.targetX();
-        int ty = localTarget ? localTargetY : ClientSonarCache.targetY();
-        int tz = localTarget ? localTargetZ : ClientSonarCache.targetZ();
+        // 基准优先用服务端回包（0.5 秒一次，表示当前世界目标相对当前中心的位置）；
+        // 刚点完、回包还没到时才用本地值。
+        int tx = ClientSonarCache.hasTarget() ? ClientSonarCache.targetX() : localTargetX;
+        int ty = ClientSonarCache.hasTarget() ? ClientSonarCache.targetY() : localTargetY;
+        int tz = ClientSonarCache.hasTarget() ? ClientSonarCache.targetZ() : localTargetZ;
         if (!nudgeBasisLatched) {
             // 基准取“船 → 当前目标”的水平方向，而不是船头：自动驾驶时船头
             // 可能还没转过来，用船头当基准会让 W 把目标往侧面推，船也跟着
@@ -1723,9 +1743,10 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         localTargetX = tx + dx;
         localTargetY = ty + dy;
         localTargetZ = tz + dz;
-        ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.SET_AUTOPILOT_TARGET,
-                localTargetX, localTargetY, localTargetZ));
-        // 不再每步发 ping：正常 10Hz 扫描会把新目标带回来，20Hz 补 ping 只是白扫。
+        // 增量加在服务端保存的目标世界坐标上，船移动不会让目标漂。
+        ModNetwork.send(new ShipActionPacket(menu.sonarPos(),
+                ShipActionPacket.NUDGE_AUTOPILOT_TARGET, dx, dy, dz));
+        // 不再每步发 ping：正常 0.5 秒扫描会把新目标带回来，20Hz 补 ping 只是白扫。
     }
 
     /**

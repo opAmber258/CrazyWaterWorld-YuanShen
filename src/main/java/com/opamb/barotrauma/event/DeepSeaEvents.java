@@ -397,6 +397,7 @@ public final class DeepSeaEvents {
                             return 1;
                         })
                         .then(Commands.literal("spawn")
+                                .requires(src -> src.hasPermission(2))
                                 .executes(ctx -> spawnShipTemplate(ctx,
                                         "dugong_custom_20261117", null))
                                 .then(Commands.argument("template", StringArgumentType.word())

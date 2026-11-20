@@ -510,26 +510,33 @@ public final class StarterSub {
                 level.getChunk(cx, cz);
             }
         }
+        // 先验证模板再清空：模板缺失时清掉 35×14×13 的既有方块且重试也恢复不了。
+        if (!ShipTemplateSpawner.exists(level, DUGONG_V2_TEMPLATE)) {
+            BarotraumaMod.LOGGER.error("[Barotrauma] 找不到儒艮号结构模板 {}，已取消生成（未清空区域）",
+                    DUGONG_V2_TEMPLATE);
+            return null;
+        }
         for (BlockPos pos : BlockPos.betweenClosed(origin,
                 origin.offset(NEW_SIZE_X - 1, NEW_SIZE_Y - 1, NEW_SIZE_Z - 1))) {
             level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2);
         }
         if (!ShipTemplateSpawner.spawn(level, origin, DUGONG_V2_TEMPLATE)) {
-            BarotraumaMod.LOGGER.error("[Barotrauma] 找不到儒艮号结构模板 {}", DUGONG_V2_TEMPLATE);
+            BarotraumaMod.LOGGER.error("[Barotrauma] 儒艮号结构模板放置失败 {}", DUGONG_V2_TEMPLATE);
             return null;
         }
         // 老蓝图里驾驶舱可能还是声纳台；放完立刻换成导航终端并补齐 3 格高驾驶室顶层。
         convertStarterConsole(level, Layout.DUGONG_V2);
         ensureConsoleTopRow(level);
 
-        com.opamb.barotrauma.data.ShipSavedData data =
-                com.opamb.barotrauma.data.ShipSavedData.get(level);
-        data.setStarterLayoutVersion(Layout.DUGONG_V2.version);
-        data.markStarterClaimed();
         BlockPos corePos = newCorePos();
         level.getChunk(corePos.getX() >> 4, corePos.getZ() >> 4);
         if (level.getBlockEntity(corePos) instanceof ShipCoreBlockEntity core) {
             core.rescan(level);
+            // 核心确认存在后才提交“已认领”，否则下次登录会跳过重建。
+            com.opamb.barotrauma.data.ShipSavedData data =
+                    com.opamb.barotrauma.data.ShipSavedData.get(level);
+            data.setStarterLayoutVersion(Layout.DUGONG_V2.version);
+            data.markStarterClaimed();
             BarotraumaMod.LOGGER.info("[Barotrauma] 儒艮号已生成：core={} 范围 {}x{}x{}",
                     corePos, NEW_SIZE_X, NEW_SIZE_Y, NEW_SIZE_Z);
             return core;
