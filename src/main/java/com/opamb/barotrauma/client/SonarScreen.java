@@ -185,6 +185,21 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
 
     // ------------------------------------------------------------------ 键盘（手动模式）
 
+    /**
+     * 忘掉“键盘发过哪些轴”的记录。
+     *
+     * <p>舵令被别的逻辑清零（开屏首次同步、关自动驾驶）时必须一起清：否则按着的
+     * 键会被当成“已经发过”，松手时算出的停止舵令和已清零的 heading 相同而被
+     * 跳过，船会保持最后一档一直开。</p>
+     */
+    private void resetKeyHelm() {
+        keyHelmFwd = 0;
+        keyHelmYaw = 0;
+        keyHelmDy = 0;
+        keyHelmDx = 0;
+        keyHelmDz = 0;
+    }
+
     private void pollKeys() {
         if (minecraft == null || minecraft.getWindow() == null) {
             return;
@@ -316,6 +331,9 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
                 headingX = 0;
                 headingY = 0;
                 headingZ = 0;
+                // 清舵令时也要忘掉键盘记录：否则首帧之前发出去的前进会被当成
+                // “已经发过”，松手时 outFwd == headingX 跳过停止包，船一直开。
+                resetKeyHelm();
             } else {
                 headingX = ClientSonarCache.headingX();
                 headingY = ClientSonarCache.headingY();
@@ -1882,6 +1900,8 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         autoMode = auto;
         if (!auto) {
             headingX = headingY = headingZ = 0;
+            // 回到手动时同样要忘掉键盘记录，否则按着的键要松开再按才生效。
+            resetKeyHelm();
         }
         ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.SET_AUTOPILOT, auto ? 1 : 0));
         sendPing();

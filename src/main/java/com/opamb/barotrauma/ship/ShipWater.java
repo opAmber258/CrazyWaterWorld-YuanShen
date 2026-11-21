@@ -54,6 +54,11 @@ public final class ShipWater {
         if (field == null) {
             return 0;
         }
+        // 深海维度是刻意设计的“空气海域”：不允许写入真实水方块（会变成无限水、
+        // 海绵失效）。需要清理旧存档遗留的水块走 clear()，这里只负责新增/清除。
+        if (level.dimension().equals(com.opamb.barotrauma.world.ModDimensions.THE_DEEP)) {
+            return 0;
+        }
         for (Room room : rooms) {
             for (BlockPos pos : room.cells) {
                 BlockState state = level.getBlockState(pos);

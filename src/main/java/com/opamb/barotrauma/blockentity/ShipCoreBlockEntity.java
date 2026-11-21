@@ -83,6 +83,8 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     @Nullable
     private Float pendingBallastMax;
     private long lastTickGameTime = Long.MIN_VALUE;
+    /** 上次标脏时的存档签名（水量 + 压载标定）；每 40 tick 比一次。 */
+    private long lastPersistedSignature = Long.MIN_VALUE;
     /** 方块船的水面同步计时。 */
     private long lastWaterSyncGameTime = Long.MIN_VALUE;
     /** 船壳耐久同步计时（受击/焊接时立即发，平时低频刷新）。 */
@@ -202,6 +204,15 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             be.state.tickLeaks(0.1D);
             // 逐格场：重力下落 + 开门/舱口压力流
             be.state.simulation().tickWaterFlow(0.1D);
+            // 水量/压载标定变了必须标脏：未标脏的区块可能被存档跳过，
+            // 重进世界会把进水清空。每 40 tick 比一次签名，避免每 tick 写盘。
+            if (now % 40L == 0L) {
+                long signature = be.persistenceSignature();
+                if (signature != be.lastPersistedSignature) {
+                    be.lastPersistedSignature = signature;
+                    be.setChanged();
+                }
+            }
             // 方块船移动已关闭（用户实测"方块船太烂：移动时找不到声纳、乱闪"）。
             // 主路径是 VS2 物理船（`/barotrauma ship vs launch`）。代码保留，以后做
             // "服务端整格 + 客户端插值"的自研移动层时再启用。
@@ -608,6 +619,23 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
 
     // ------------------------------------------------------------------ 持久化
 
+    /**
+     * 存档相关状态的粗签名：逐格水量 + 压载标定。
+     *
+     * <p>只用来判断“这 40 tick 里需不需要标脏”，不做精确比较：水量按 0.5 单位、
+     * 标定按 1% 取整。</p>
+     */
+    private long persistenceSignature() {
+        if (state == null) {
+            return 0L;
+        }
+        long signature = Math.round(state.simulation().waterTotal() * 2.0D);
+        signature = signature * 31L + (state.simulation().ballastPrimed() ? 1L : 0L);
+        signature = signature * 31L + Math.round(state.simulation().ballastNeutral() * 100.0D);
+        signature = signature * 31L + Math.round(state.simulation().ballastMaxPercent() * 100.0D);
+        return signature;
+    }
+
     /** 方块船的耐久随区块存档：世界重开后 partial damage 不再清零。 */
     @Override
     protected void saveAdditional(CompoundTag tag) {
@@ -622,6 +650,31 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             tag.putBoolean("BarotraumaBallastPrimed", state.simulation().ballastPrimed());
             tag.putFloat("BarotraumaBallastNeutral", (float) state.simulation().ballastNeutral());
             tag.putFloat("BarotraumaBallastMax", (float) state.simulation().ballastMaxPercent());
+        } else if (pendingWater != null) {
+            // 首次重扫之前就被写盘：把 load 读进来的待恢复水量/压载标定原样写回，
+            // 否则这一轮存档之后这些值就永久丢了。
+            net.minecraft.nbt.ListTag water = new net.minecraft.nbt.ListTag();
+            for (java.util.Map.Entry<BlockPos, Double> entry : pendingWater.entrySet()) {
+                double units = entry.getValue() == null ? 0.0D : entry.getValue();
+                if (units <= 0.005D) {
+                    continue;
+                }
+                CompoundTag item = new CompoundTag();
+                item.putLong("Pos", entry.getKey().asLong());
+                item.putFloat("Units", (float) Math.min(
+                        com.opamb.barotrauma.ship.water.ShipFluidField.MAX_CELL_WATER, units));
+                water.add(item);
+            }
+            tag.put("BarotraumaWater", water);
+            if (pendingBallastPrimed != null) {
+                tag.putBoolean("BarotraumaBallastPrimed", pendingBallastPrimed);
+            }
+            if (pendingBallastNeutral != null) {
+                tag.putFloat("BarotraumaBallastNeutral", pendingBallastNeutral);
+            }
+            if (pendingBallastMax != null) {
+                tag.putFloat("BarotraumaBallastMax", pendingBallastMax);
+            }
         }
         condition.save(tag, "Condition");
         if (boundBox != null) {

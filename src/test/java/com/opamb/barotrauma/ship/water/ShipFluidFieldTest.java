@@ -79,6 +79,23 @@ class ShipFluidFieldTest {
     }
 
     @Test
+    @DisplayName("满舱溢流也受每道门每步的流量预算限制")
+    void overflowRespectsGateBudget() {
+        BlockPos left = new BlockPos(0, 0, 0);
+        BlockPos right = new BlockPos(1, 0, 0);
+        ShipFluidField field = ShipFluidField.of(List.of(
+                cell(0, 0, 0, 0), cell(1, 0, 0, 1)),
+                List.of(new ShipFluidField.Gate(left, right, true)), 2);
+        // 先把左舱灌满，再灌 1000 单位：溢流只能按门的预算过去。
+        field.inject(left, ShipFluidField.MAX_CELL_WATER);
+        double added = field.injectFlood(0, 1000.0D, 25.0D);
+
+        assertEquals(25.0D, added, 1.0E-6D, "溢流超过门的每步预算的部分不应计入");
+        assertEquals(25.0D, field.waterAt(right), 1.0E-6D,
+                "开着的门每步最多带预算那么多水到隔壁舱");
+    }
+
+    @Test
     @DisplayName("两侧同时向中间灌水不会把中间格灌到 100 以上")
     void multipleInflowsRespectCellCapacity() {
         ShipFluidField field = ShipFluidField.of(List.of(

@@ -355,13 +355,16 @@ public final class ShipSimulation {
                 // 有破口信息时，没有洞的空腔不进水；只有调用方完全没给破口
                 // （旧存档/测试）才按空腔底部兜底灌水。
                 if (!hasBreachInfo && !seaDoorBodies.contains(body)) {
-                    fluid.injectFlood(body, pocketRate * UNITS_PER_BLOCK * dt);
+                    fluid.injectFlood(body, pocketRate * UNITS_PER_BLOCK * dt,
+                            DOOR_FLOW_PER_CELL * dt);
                 }
                 continue;
             }
             // 本舱灌满后沿开着的舱门/舱口继续往相邻舱溢：破口一直进水时，
             // 水位必须能沿开着的水平舱口继续往上涌，不能把多余的水丢掉。
-            fluid.injectFlood(body, pocketRate / holes * UNITS_PER_BLOCK * dt);
+            // 溢流也受每道门每步的流量预算限制（DOOR_FLOW_PER_CELL * dt）。
+            fluid.injectFlood(body, pocketRate / holes * UNITS_PER_BLOCK * dt,
+                    DOOR_FLOW_PER_CELL * dt);
         }
         refreshWaterAggregates();
     }
@@ -507,6 +510,11 @@ public final class ShipSimulation {
             total += value;
         }
         return total;
+    }
+
+    /** 全船逐格水量合计（单位）；给存档标脏等粗粒度比较用。 */
+    public double waterTotal() {
+        return fluid == null ? 0.0D : fluid.totalWater();
     }
 
     /** 推进一个时间步（秒）。 */
@@ -1407,8 +1415,13 @@ public final class ShipSimulation {
                 continue;
             }
             // 水位要跟机器自己的底面比：相邻格在机器下方时，水位没过邻居
-            // 不代表淹到机器。
-            if (cell.getY() < waterLevelAt(next, breachSources)) {
+            // 不代表淹到机器。空格没有水，levelAt 返回的是格底高度，不能当水位用，
+            // 否则舱里任何地方有 5 单位水，干燥的机器也会被判成浸水。
+            double level = waterLevelAt(next, breachSources);
+            if (level <= next.getY() + 1.0E-6D) {
+                continue;
+            }
+            if (cell.getY() < level) {
                 return true;
             }
         }

@@ -837,6 +837,16 @@ public final class VsPilot {
         double lx = local[0];
         double ly = local[1];
         double lz = local[2];
+        // 服务端有逐格场：直接按格子问，别用发给客户端的水盒。水盒在“盒子数超过
+        // 上限”时会退化成每个水体的包围盒，包围盒会盖住别的舱室的干格，据此判
+        // 干湿会把干舱里的玩家判成泡水（游泳 + 水下滤镜）。
+        if (state != null && state.simulation().fluid() != null) {
+            com.opamb.barotrauma.ship.water.ShipFluidField field = state.simulation().fluid();
+            BlockPos cell = BlockPos.containing(lx, ly, lz);
+            if (field.bodyOf(cell) >= 0) {
+                return ly > field.levelAt(cell) + 0.01D;
+            }
+        }
         float[] boxes = lastWaterPacket.boxes();
         if (boxes.length < 7) {
             return null;
@@ -969,7 +979,10 @@ public final class VsPilot {
                     sonarCoreBlockEntity(level);
             if (terminal != null
                     && player.containerMenu instanceof com.opamb.barotrauma.menu.SonarMenu menu
-                    && menu.sonarPos().equals(terminal.getBlockPos())
+                    // 物理船的声纳界面是用“代理方块”坐标打开的（SonarProxyBlock），
+                    // 和船坞里的终端坐标不是同一个位置；两种都算有效驾驶。
+                    && (menu.sonarPos().equals(terminal.getBlockPos())
+                    || menu.sonarPos().equals(proxyPos))
                     && menu.stillValid(player)) {
                 helmWatchdogTicks = 0;
                 return;

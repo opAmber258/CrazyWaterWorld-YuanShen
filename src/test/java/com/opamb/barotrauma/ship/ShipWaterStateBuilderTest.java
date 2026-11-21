@@ -177,6 +177,44 @@ class ShipWaterStateBuilderTest {
     }
 
     @Test
+    @DisplayName("门格补水只抬门格，门下的干格不能跟着变湿")
+    void doorFillDoesNotRaiseDryCellsBelow() {
+        // 门格 (0,2,0) 属于干舱 body 0，下面 (0,0,0)/(0,1,0) 也是干舱；
+        // (0,2,1) 是进水舱 body 1，灌满后水面到 3.0。
+        ShipGeometry.Compartment dry = new ShipGeometry.Compartment(Set.of(
+                new BlockPos(0, 0, 0), new BlockPos(0, 1, 0), new BlockPos(0, 2, 0)), 0);
+        ShipGeometry.Compartment wet = new ShipGeometry.Compartment(Set.of(
+                new BlockPos(0, 2, 1)), 0);
+        ShipGeometry.Bounds bounds = new ShipGeometry.Bounds(0, 0, 0, 0, 2, 1);
+        ShipGeometry.Result geometry = new ShipGeometry.Result(
+                List.of(dry, wet), List.of(), 0, 4, bounds, Set.of(),
+                List.of(new ShipGeometry.DoorLink(new BlockPos(0, 2, 0), 0, 1, true)),
+                Set.of());
+        ShipState state = new ShipState(geometry, MachineCount.EMPTY);
+        state.simulation().flood(1, 100.0D);
+
+        ShipWaterStatePacket packet = ShipWaterStateBuilder.build(
+                state, 1L, false, 0.0F, 0.0F, 0.0F);
+        float[] boxes = packet.boxes();
+        boolean doorBoxFound = false;
+        for (int i = 0; i + 6 < boxes.length; i += 7) {
+            if (boxes[i] != 0.0F || boxes[i + 2] != 0.0F) {
+                continue;
+            }
+            float minY = boxes[i + 1];
+            float surface = boxes[i + 6];
+            if (minY < 2.0F) {
+                assertTrue(surface <= minY + 0.01F,
+                        "门下干格 (y=" + minY + ") 不能被门格补水抬成湿的");
+            } else {
+                assertEquals(3.0F, surface, 1.0E-4F, "门格自己要画到进水侧水面");
+                doorBoxFound = true;
+            }
+        }
+        assertTrue(doorBoxFound, "门格必须仍然有水体");
+    }
+
+    @Test
     @DisplayName("贴着水体的实心船体格按列补水面，模型边缘不留白")
     void solidNeighbourGetsWaterHoleMergedByColumn() {
         // 舱室两列水 (0,0,0)/(0,1,0)，紧贴它的柜子格 (1,0,0)/(1,1,0) 是 solid。

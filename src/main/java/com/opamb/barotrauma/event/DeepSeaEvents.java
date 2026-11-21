@@ -1056,17 +1056,17 @@ public final class DeepSeaEvents {
                     String.format(java.util.Locale.ROOT, "%.2f", coastSpeed),
                     String.format(java.util.Locale.ROOT, "%.2f", sinking.verticalSpeed()));
 
-            // 水方块可视化：注入 5000 单位（=50 格），应从舱底铺起 50 格水
+            // 深海是刻意设计的空气海域：注水只进逐格场，不写真实水方块。
             ship.simulation().flood(0, 5000.0D);
             int placed = ship.applyWater(deep);
-            int waterCells = 0;
+            double topLevel = 0.0D;
             for (BlockPos cell : ship.compartments().get(0).cells()) {
-                if (deep.getBlockState(cell).is(Blocks.WATER)) {
-                    waterCells++;
-                }
+                topLevel = Math.max(topLevel,
+                        ship.simulation().waterLevelAt(cell, java.util.List.of()));
             }
-            BarotraumaMod.LOGGER.info("[smoketest] water apply -> changed={} waterCells={} (expect 50)",
-                    placed, waterCells);
+            BarotraumaMod.LOGGER.info(
+                    "[smoketest] water -> levelTop={} applyWaterChanged={} (空气海域必须为 0)",
+                    String.format(java.util.Locale.ROOT, "%.2f", topLevel), placed);
 
             // 留给实时 tick 验证：200 tick 后打印状态并关服
             if (smokeCore == null) {

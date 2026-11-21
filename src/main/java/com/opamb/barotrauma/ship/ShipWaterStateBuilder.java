@@ -180,11 +180,11 @@ public final class ShipWaterStateBuilder {
             column.sort((a, b) -> Integer.compare(a.getY(), b.getY()));
             int i = 0;
             while (i < column.size()) {
+                int runFrom = i;
                 int runStart = column.get(i).getY();
                 int runEnd = runStart;
                 double units = 0.0D;
                 float doorFill = Float.NEGATIVE_INFINITY;
-                int boxIndex = boxes.size();
                 i++;
                 units += field.waterAt(column.get(i - 1));
                 doorFill = Math.max(doorFill, doorFills.getOrDefault(column.get(i - 1),
@@ -200,11 +200,6 @@ public final class ShipWaterStateBuilder {
                 int z = column.get(0).getZ();
                 float surface = (float) Math.min(runEnd + 1,
                         runStart + units / ShipFluidField.UNITS_PER_BLOCK);
-                // 开着的门另一侧水位更高：门格画到那一侧的水面，水才会出现在
-                // 门洞里（而不是门另一边凭空涨水位）。
-                if (doorFill > surface) {
-                    surface = (float) Math.min(runEnd + 1, doorFill);
-                }
                 // 归平后一小股水会摊成整间房的薄层（可能只有 0.008 格）。客户端
                 // 把 ≤0.01 的水面当干燥跳过，薄层会完全看不见，所以给有水列一个
                 // 最小可见厚度：水量是真的，只是画出来至少 1/32 格。
@@ -212,11 +207,25 @@ public final class ShipWaterStateBuilder {
                     surface = runStart + MIN_VISIBLE_SURFACE;
                 }
                 surface = quantize(surface);
-                boxes.add(new float[]{x, runStart, z, x, runEnd, z, surface});
-                for (int k = 0; k < column.size(); k++) {
-                    BlockPos cell = column.get(k);
-                    if (cell.getY() >= runStart && cell.getY() <= runEnd) {
-                        boxByCell.put(cell, boxIndex);
+                if (doorFill > surface + 1.0E-4F) {
+                    // 开着的门另一侧水位更高：只抬门格自己那一格的水面。
+                    // 把整段水柱一起抬，会把门下没有水的格子也画成湿的，
+                    // 服务端/客户端的干湿判定跟着错。
+                    for (int k = runFrom; k < i; k++) {
+                        BlockPos cell = column.get(k);
+                        float top = (float) Math.min(cell.getY() + 1, surface);
+                        float fill = doorFills.getOrDefault(cell, Float.NEGATIVE_INFINITY);
+                        if (fill > top) {
+                            top = (float) Math.min(cell.getY() + 1, fill);
+                        }
+                        boxes.add(new float[]{x, cell.getY(), z, x, cell.getY(), z, quantize(top)});
+                        boxByCell.put(cell, boxes.size() - 1);
+                    }
+                } else {
+                    int boxIndex = boxes.size();
+                    boxes.add(new float[]{x, runStart, z, x, runEnd, z, surface});
+                    for (int k = runFrom; k < i; k++) {
+                        boxByCell.put(column.get(k), boxIndex);
                     }
                 }
             }

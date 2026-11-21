@@ -520,6 +520,17 @@ public final class ShipFluidField {
      * 水位就不再涨）。这里把装不下的部分沿 open gate BFS 分给相邻水体。</p>
      */
     public double injectFlood(int body, double units) {
+        return injectFlood(body, units, DOOR_FLOW_PER_CELL);
+    }
+
+    /**
+     * 带“每步每道门流量预算”的溢流注入。
+     *
+     * <p>满舱再进水时，溢流也必须遵守开门的流量上限（和 {@link #flow} 里
+     * {@code DOOR_FLOW_PER_CELL * dt} 一致），否则一个破口能让水无视舱口直接灌满
+     * 隔壁舱。每道门的预算之外的部分留在原舱（表现为这次没进来那么多水）。</p>
+     */
+    public double injectFlood(int body, double units, double gateBudget) {
         if (body < 0 || body >= bodyCount || units <= 1.0E-9D) {
             return 0.0D;
         }
@@ -527,18 +538,32 @@ public final class ShipFluidField {
         double added = 0.0D;
         ArrayDeque<Integer> queue = new ArrayDeque<>();
         Set<Integer> visited = new HashSet<>();
+        // 每个水体这步最多能进多少：起点是全额，跨过一道门后受门的预算限制。
+        Map<Integer, Double> allowance = new HashMap<>();
         queue.add(body);
         visited.add(body);
+        allowance.put(body, units);
         while (!queue.isEmpty() && remaining > 1.0E-6D) {
             int current = queue.poll();
-            double took = addBody(current, remaining, Double.POSITIVE_INFINITY);
+            double allow = Math.min(allowance.getOrDefault(current, units), remaining);
+            double took = addBody(current, allow, Double.POSITIVE_INFINITY);
             remaining -= took;
             added += took;
             if (remaining <= 1.0E-6D) {
                 break;
             }
+            // 本舱没装下的那部分才能继续往外溢，而且每过一道门都要计入门的预算。
+            double excess = allow - took;
+            if (excess <= 1.0E-6D) {
+                continue;
+            }
+            double pass = Math.min(excess, Math.max(0.0D, gateBudget));
+            if (pass <= 1.0E-9D) {
+                continue;
+            }
             for (int next : gateNeighbours[current]) {
                 if (visited.add(next)) {
+                    allowance.put(next, pass);
                     queue.add(next);
                 }
             }
@@ -682,6 +707,15 @@ public final class ShipFluidField {
     public double waterAt(BlockPos pos) {
         Integer idx = pos == null ? null : indexByKey.get(pos.asLong());
         return idx == null ? 0.0D : water[idx];
+    }
+
+    /** 全场水量合计（单位）；给存档标脏等粗粒度比较用。 */
+    public double totalWater() {
+        double sum = 0.0D;
+        for (double value : water) {
+            sum += value;
+        }
+        return sum;
     }
 
     /** 该格的水面高度；空格返回格底 y，场外返回 0。 */
