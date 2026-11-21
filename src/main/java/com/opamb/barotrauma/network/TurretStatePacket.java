@@ -13,8 +13,12 @@ import java.util.function.Supplier;
  *
  * <p>{@code operatorEntityId} 等于本地玩家实体 id 时进入炮塔视角；变回 -1 则强制退出。
  * 其他人的客户端只用 yaw/pitch/cooldown 渲染炮管和后坐。</p>
+ *
+ * <p>{@code fromStation} 表示占用者是通过瞄准站遥控接管：此时操作者本体留在站台，
+ * 客户端命中预判要把自己算进合法目标；直连炮塔时则要把自己排除。</p>
  */
-public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldown, int operatorEntityId) {
+public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldown,
+                                int operatorEntityId, boolean fromStation) {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
@@ -22,11 +26,12 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
         buf.writeFloat(pitch);
         buf.writeVarInt(cooldown);
         buf.writeVarInt(operatorEntityId);
+        buf.writeBoolean(fromStation);
     }
 
     public static TurretStatePacket decode(FriendlyByteBuf buf) {
         return new TurretStatePacket(buf.readBlockPos(), buf.readFloat(), buf.readFloat(),
-                buf.readVarInt(), buf.readVarInt());
+                buf.readVarInt(), buf.readVarInt(), buf.readBoolean());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
+import com.opamb.barotrauma.item.TurretBinderItem;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -43,6 +44,12 @@ import org.jetbrains.annotations.Nullable;
  */
 public class TurretBlock extends BaseEntityBlock {
 
+    /**
+     * 炮塔几何/操作规格。换 2×2 / 3×3 炮塔时由方块类覆盖 {@link #spec()}，
+     * 瞄准、开火、相机和网络逻辑不需要跟着改。
+     */
+    private static final TurretSpec DEFAULT_SPEC = TurretSpec.DEFAULT;
+
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     /**
@@ -66,6 +73,17 @@ public class TurretBlock extends BaseEntityBlock {
         registerDefaultState(stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(MOUNT, Direction.UP));
+    }
+
+    /** 当前方块类型的规格；2×2 / 3×3 子类覆盖这里即可。 */
+    public TurretSpec spec() {
+        return DEFAULT_SPEC;
+    }
+
+    public static TurretSpec spec(BlockState state) {
+        return state.getBlock() instanceof TurretBlock turret
+                ? turret.spec()
+                : DEFAULT_SPEC;
     }
 
     @Override
@@ -194,6 +212,11 @@ public class TurretBlock extends BaseEntityBlock {
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, BlockHitResult hit) {
         if (hand != InteractionHand.MAIN_HAND) {
+            return InteractionResult.PASS;
+        }
+        // Forge 的服务端交互顺序是「方块 use → 物品 useOn」：手持绑定器时必须让位，
+        // 否则右键炮塔会先被当成进入炮塔，绑定器的 useOn 永远不会执行。
+        if (player.getItemInHand(hand).getItem() instanceof TurretBinderItem) {
             return InteractionResult.PASS;
         }
         if (level.isClientSide) {

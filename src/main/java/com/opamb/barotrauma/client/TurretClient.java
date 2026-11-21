@@ -132,6 +132,8 @@ public final class TurretClient {
     private static boolean freeAim;
     /** 当前炮塔是否是跟随型：视角自由移动，炮塔准心限速追视角中心。 */
     private static boolean tracking;
+    /** 是否从瞄准站遥控接管：此时操作者本体在站台，命中预判把自己算作合法目标。 */
+    private static boolean fromStation;
     /** 自由光标相对视角中心的角度偏移（度）：x 右为正，y 下为正。 */
     private static float cursorYaw;
     private static float cursorPitch;
@@ -251,11 +253,7 @@ public final class TurretClient {
             return null;
         }
         BlockState state = minecraft.level.getBlockState(activePos);
-        Vec3 pivot = TurretBlockEntity.pivotPosition(state, activePos);
-        double y = TurretBlockEntity.mount(state) == net.minecraft.core.Direction.DOWN
-                ? activePos.getY() + 0.15D
-                : activePos.getY() + 0.5D + TurretBlockEntity.EYE_HEIGHT;
-        return new Vec3(pivot.x, y, pivot.z);
+        return TurretBlockEntity.cameraPosition(state, activePos);
     }
 
     /** 世界瞄准方向；安装面只影响放置外观，不改变操作。 */
@@ -310,21 +308,29 @@ public final class TurretClient {
         }
         boolean mine = state.operatorEntityId() == minecraft.player.getId();
         if (mine) {
+            // 站台绑定距离不限：炮塔区块没加载时客户端没有方块状态/地形可渲染，
+            // 不能把相机丢进虚空。直接回退出包，服务端会清占用。
+            if (minecraft.level == null || !minecraft.level.hasChunkAt(state.pos())) {
+                ModNetwork.sendToServer(new TurretExitPacket(state.pos()));
+                return;
+            }
             if (!active || activePos == null || !state.pos().equals(activePos)) {
-                activate(state.pos(), state.yaw(), state.pitch());
+                activate(state.pos(), state.yaw(), state.pitch(), state.fromStation());
             } else {
                 // 以服务端冷却为准，避免本地连发被拒。
                 cooldown = Math.max(cooldown, state.cooldown());
+                fromStation = state.fromStation();
             }
         } else if (active && state.pos().equals(activePos)) {
             deactivate(true);
         }
     }
 
-    private static void activate(BlockPos pos, float yaw, float pitch) {
+    private static void activate(BlockPos pos, float yaw, float pitch, boolean remoteStation) {
         Minecraft minecraft = Minecraft.getInstance();
         active = true;
         activePos = pos;
+        fromStation = remoteStation;
         aimYaw = yaw;
         aimPitch = pitch;
         lastSentYaw = yaw;
@@ -351,8 +357,10 @@ public final class TurretClient {
         viewPitch = minecraft.player != null ? minecraft.player.getXRot() : pitch;
         lastTrackNanos = System.nanoTime();
         previousCameraType = minecraft.options.getCameraType();
-        if (previousCameraType != CameraType.FIRST_PERSON) {
-            minecraft.options.setCameraType(CameraType.FIRST_PERSON);
+        // 炮塔相机是遥控视角：强制第三人称，让玩家实体继续留在原地并可见。
+        // 进入第一人称时本机不会渲染自己的模型，看起来就像“人消失了”。
+        if (previousCameraType != CameraType.THIRD_PERSON_BACK) {
+            minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
         }
     }
 
@@ -381,6 +389,7 @@ public final class TurretClient {
         hitMarkerKind = HitKind.MISS;
         freeAim = false;
         tracking = false;
+        fromStation = false;
         cursorYaw = 0.0F;
         cursorPitch = 0.0F;
         followSpeed = 0.0F;
@@ -991,8 +1000,12 @@ public final class TurretClient {
         AABB search = new AABB(origin, end).inflate(1.0D);
         LivingEntity best = null;
         double bestDistance = Double.MAX_VALUE;
+        // 直连炮塔时操作者站在炮座旁，炮口可能插进自己身体：和服务端一样排除自己。
+        // 站台接管时身体在别处，是合法目标。
+        final boolean excludeSelf = !fromStation;
         for (LivingEntity candidate : minecraft.level.getEntitiesOfClass(LivingEntity.class, search,
-                entity -> entity != minecraft.player && entity.isAlive() && !entity.isSpectator())) {
+                entity -> (!excludeSelf || entity != minecraft.player)
+                        && entity.isAlive() && !entity.isSpectator())) {
             Optional<Vec3> hit = candidate.getBoundingBox().inflate(0.25D).clip(origin, end);
             if (hit.isPresent()) {
                 double distance = origin.distanceToSqr(hit.get());
@@ -1050,8 +1063,9 @@ public final class TurretClient {
         if (cooldown > 0) {
             cooldown--;
         }
-        if (minecraft.options.getCameraType() != CameraType.FIRST_PERSON) {
-            minecraft.options.setCameraType(CameraType.FIRST_PERSON);
+        // F5 不能切回第一人称：否则本机模型被剔除，玩家会以为人消失了。
+        if (minecraft.options.getCameraType() != CameraType.THIRD_PERSON_BACK) {
+            minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
         }
 
         if (Math.abs(Mth.wrapDegrees(aimYaw - lastSentYaw)) > 0.05F

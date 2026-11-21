@@ -245,6 +245,30 @@ public final class MedicalEvents {
         updateLifeState(player, container);
     }
 
+    /**
+     * 非原版伤害源的直接命中（目前是炮塔）：原版 {@code Player#hurt} 在创造模式下
+     * 会在事件前就拒绝，医疗转换器根本收不到 {@link LivingDamageEvent}。炮塔作为
+     * 开发者测试武器需要能看到命中效果，因此由调用方确认“确实是创造模式拦截”后，
+     * 直接按近战通用规则注入病症。
+     *
+     * <p>无敌效果等其它原版拒绝路径不在这里绕过——那是玩家/服务器自己开的无敌，
+     * 应保留原版语义。只在服务端调用；目标没有医疗容器时返回 {@code false}。</p>
+     */
+    public static boolean applyDirectDamage(Player player, double amount) {
+        if (player.level().isClientSide() || player.isDeadOrDying() || player.isSpectator()) {
+            return false;
+        }
+        AfflictionContainer container = MedicalCapabilities.container(player);
+        if (container == null) {
+            return false;
+        }
+        List<DamageConversions.Application> plan =
+                DamageConversions.fromGeneric(amount, player.getRandom().nextDouble());
+        apply(container, plan, player);
+        updateLifeState(player, container);
+        return true;
+    }
+
     /** 服务端也要取消“手持药品左键玩家”：客户端取消只影响本地攻击，攻击包仍会到服务端。 */
     @SubscribeEvent
     public static void onAttackEntity(AttackEntityEvent event) {

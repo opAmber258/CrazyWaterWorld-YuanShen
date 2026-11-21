@@ -31,12 +31,12 @@ edges:
   - target: patterns/run-tests.md
     condition: when building or running the verification layers
   - target: patterns/turret-aim-modes.md
-    condition: when changing turret aiming modes, turret camera/input mixins, muzzle-based ballistics, tracer particles, or the impact reticle HUD
+    condition: when changing turret aiming modes, turret camera/input mixins, muzzle-based ballistics, tracer particles, the aiming station / turret binder remote takeover, turret model/spec modularity, or the impact reticle HUD
   - target: patterns/publish.md
     condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-15
+last_updated: 2026-11-20
 ---
 
 # Session Bootstrap
@@ -66,6 +66,19 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 这是随 Git 分享的开工阅读入口，不是自动通知；合作者获取包含本提醒的提交后才能看到。
 
 ## Current Project State
+
+- **炮塔瞄准站 + 炮台绑定器 + 模块化（2026-11-20，任务分支 `feat/turret-station-20261120`）**：
+  新增 `turret_station` 瞄准站（BE 存 `TurretPos`、NBT/客户端同步、右键由服务端校验后 `enterFromStation`）
+  与 `turret_binder` 炮台绑定器（两端绑定/潜行解绑；手持时扫站台 BE 画连线，准星 64 格指向已绑定方块时
+  用 no-depth 脉冲描边另一端）。炮塔 BE 新增临时 `operatorAnchor`：站台接管不限距离但每 tick 校验站台仍绑定，
+  站台拆除/改绑立即退出；进入/强制退出状态包直发占用者（128 格外也能激活）。`TurretStatePacket` 新增
+  `fromStation`（协议 18→19），客户端据此决定命中预判是否包含操作者本体。玩家伤害改为所有存活玩家候选：
+  直连炮塔排除自己、站台接管包含站台身体；创造模式原版免疫时走 `MedicalEvents.applyDirectDamage`
+  按近战通用规则注入病症（12 HP → 躯干钝器伤 36 + 50% 出血 60）。模块化：`TurretSpec` 统一
+  尺寸/轴心/炮口/相机/俯仰窗口，`TurretModels` 统一图集/cube/UV，`TurretRenderer` 只做旋转/后坐/淡出；
+  `masterPos()/at()` 为 2×2/3×3 预留主方块解析，当前 1×1 为 no-op。`TurretSpecTest` 锁死旧几何，
+  全量 344 测试通过。参考 `patterns/turret-aim-modes.md`。已知限制：绑定距离名义不限，但相机在炮塔本体位，
+  客户端炮塔区块未加载时会退出；瞄准站只支持落地放置；换模型/2×2/3×3 需同步方块形状/放置。
 
 - **炮塔水下炮弹特效 + 右键瞄准 + 三段式模型（2026-11-18/19，已合并 `628589f`）**：新增 `TurretShotFx` 八槽位弹道状态机（连发不互相覆盖，低帧率兜底）、水下能量核心 + 气泡尾迹、跨水面气泡、按 `HitKind` 分支的命中特效（生物血雾/金属碎屑/破口吸泡/舷窗碎片/船内结构碎屑/海床冲击环 + 地波/打空）、`TurretHud` 命中标记与中心点删除；控制改为**右键瞄准（FOV ×0.55、灵敏度 ×0.35）+ 左键开火**，跟随炮塔瞄准时鼠标十字 alpha 降至 35%。协议号仍为 18（无新包）。2026-11-19 重做三段式模型：固定底座走方块模型，水平旋转基座与俯仰炮管由 BER 绘制；512×256 瓦片图集每个 cube 独占一块，三套涂装共用几何（`art/models/turret_20261119/`）。支持地板/吊顶/四面墙挂载：墙面贴墙法兰 + 竖向短颈、吊顶贴顶法兰 + 细主轴，世界 yaw/pitch 与操作保持一致；BER 按组做近处淡出，固定底座不参与。参考 `patterns/turret-aim-modes.md`。已知限制：命中特效与 hitmarker 仍是客户端预测，服务端没有瞄准散布；服务端 aim() 每 tick 6° 滞后、`TurretFirePacket` 不带开火角度；粒子仅操作者可见。
 

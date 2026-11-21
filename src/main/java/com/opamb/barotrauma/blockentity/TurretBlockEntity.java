@@ -1,6 +1,8 @@
 package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.block.TurretBlock;
+import com.opamb.barotrauma.block.TurretSpec;
+import com.opamb.barotrauma.medical.bridge.MedicalEvents;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.TurretStatePacket;
 import com.opamb.barotrauma.registry.ModBlockEntities;
@@ -16,6 +18,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -55,29 +58,12 @@ public class TurretBlockEntity extends BlockEntity {
     /** 客户端每秒最大转动（度），供 HUD/输入层换算每帧上限。 */
     public static final float MAX_TURN_PER_SECOND = MAX_TURN_PER_TICK * 20.0F;
 
-    /** 兜底值；实际每座炮塔按 MOUNT 走 {@link #minPitch(BlockState)} / {@link #maxPitch(BlockState)}。 */
+    /** 兜底值；实际每座炮塔按方块 {@link TurretSpec} 的挂载窗口。 */
     public static final float MIN_PITCH = -89.0F;
     public static final float MAX_PITCH = 89.0F;
 
-    /** 世界 pitch：正=向下，和落地炮塔完全一致，不做安装面局部轴转换。 */
-    public static final float FLOOR_MIN_PITCH = -89.0F;
-    public static final float FLOOR_MAX_PITCH = 20.0F;
-    public static final float CEILING_MIN_PITCH = -10.0F;
-    public static final float CEILING_MAX_PITCH = 89.0F;
-    public static final float WALL_MIN_PITCH = -80.0F;
-    public static final float WALL_MAX_PITCH = 80.0F;
-
     /** 操作者离炮塔的最远距离（格）。 */
     public static final double MAX_OPERATOR_DISTANCE = 6.0D;
-
-    /** 视点相对方块中心的高度（格）：0.5 + 0.55 = 1.05，位于炮座和炮尾上方，避免相机嵌进模型。 */
-    public static final float EYE_HEIGHT = 0.55F;
-
-    /** 炮管枢轴在方块内的 y 偏移（格）：0.75，渲染器与弹道起点共用。 */
-    public static final double PIVOT_Y = 0.75D;
-
-    /** 炮口（制退器前端）到枢轴的距离（格）：开火与落点预判都以炮口为起点。 */
-    public static final double MUZZLE_LENGTH = 1.14D;
 
     /** 每个玩家当前占用的炮塔，防止同时占用两台后旧的那台一直锁着。 */
     private static final Map<UUID, BlockPos> ACTIVE = new HashMap<>();
@@ -96,6 +82,12 @@ public class TurretBlockEntity extends BlockEntity {
     private UUID operator;
     /** 同步给客户端的占用者实体 id（-1 = 空）。 */
     private int operatorEntityId = -1;
+    /**
+     * 从瞄准站接管时的锚点（站台坐标）；直接进炮塔时为 null。
+     * 只存在于内存：重启后占用关系本来就不保留，不需要存档。
+     */
+    @Nullable
+    private BlockPos operatorAnchor;
 
     public TurretBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TURRET.get(), pos, state);
@@ -117,20 +109,17 @@ public class TurretBlockEntity extends BlockEntity {
                 : Direction.UP;
     }
 
+    /** 当前方块类型的几何/操作规格；换 2×2/3×3 时由方块覆盖 {@code spec()}。 */
+    public static TurretSpec spec(BlockState state) {
+        return TurretBlock.spec(state);
+    }
+
     public static float minPitch(BlockState state) {
-        Direction mount = mount(state);
-        if (mount == Direction.DOWN) {
-            return CEILING_MIN_PITCH;
-        }
-        return mount.getAxis().isHorizontal() ? WALL_MIN_PITCH : FLOOR_MIN_PITCH;
+        return spec(state).minPitch(mount(state));
     }
 
     public static float maxPitch(BlockState state) {
-        Direction mount = mount(state);
-        if (mount == Direction.DOWN) {
-            return CEILING_MAX_PITCH;
-        }
-        return mount.getAxis().isHorizontal() ? WALL_MAX_PITCH : FLOOR_MAX_PITCH;
+        return spec(state).maxPitch(mount(state));
     }
 
     public float minPitch() {
@@ -222,24 +211,71 @@ public class TurretBlockEntity extends BlockEntity {
         return muzzlePosition(getBlockState(), getBlockPos(), lookVector());
     }
 
-    /** 所有挂载共用同一个枢轴：方块中心 y=0.75，操作/弹道和落地炮塔完全一致。 */
+    /** 轴心偏移由方块 spec 决定；所有挂载共用同一个轴心，操作/弹道一致。 */
     public static Vec3 pivotOffset(BlockState state) {
-        return new Vec3(0.5D, PIVOT_Y, 0.5D);
+        return spec(state).pivotOffset();
     }
 
     public static Vec3 pivotPosition(BlockState state, BlockPos pos) {
-        Vec3 offset = pivotOffset(state);
-        return new Vec3(pos.getX() + offset.x, pos.getY() + offset.y, pos.getZ() + offset.z);
+        return spec(state).pivot(pos);
     }
 
     /** 供客户端按本地瞄准角算炮口的同一套公式（服务端/客户端弹道必须同源）。 */
     public static Vec3 muzzlePosition(BlockState state, BlockPos pos, Vec3 direction) {
-        return pivotPosition(state, pos).add(direction.scale(MUZZLE_LENGTH));
+        return spec(state).muzzle(pos, direction);
+    }
+
+    /** 相机位置也由 spec 提供；换炮塔尺寸/模型时客户端不需要改。 */
+    public static Vec3 cameraPosition(BlockState state, BlockPos pos) {
+        return spec(state).camera(pos, mount(state));
+    }
+
+    /**
+     * 多块炮塔的主方块坐标。当前 1×1 原型就是自身；未来 2×2/3×3 由方块类
+     * 覆盖这里（例如返回左下角主方块），站台/绑定器/网络包都按主方块工作。
+     */
+    public static BlockPos masterPos(BlockState state, BlockPos pos) {
+        return pos;
+    }
+
+    /**
+     * 从任意方块格解析炮塔 BE：当前 1×1 直接查自身；未来多块炮塔先走
+     * {@link #masterPos}，站台和绑定器不需要知道“点到的是哪一块”。
+     */
+    @Nullable
+    public static TurretBlockEntity at(BlockGetter level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof TurretBlock)) {
+            return null;
+        }
+        BlockPos master = masterPos(state, pos);
+        return level.getBlockEntity(master) instanceof TurretBlockEntity turret ? turret : null;
     }
 
     // ---- 进入 / 退出 ----
 
     public InteractionResult enter(Player player) {
+        return enterInternal(player, null);
+    }
+
+    /**
+     * 从瞄准站接管：站台必须仍然绑定本炮塔；操作距离不限，但站台本身由每 tick
+     * 的 {@link #stationAnchorValid(ServerLevel)} 校验，站被拆/改绑会立刻退出。
+     */
+    public InteractionResult enterFromStation(Player player, BlockPos stationPos) {
+        if (!(level instanceof ServerLevel server)
+                || !(server.getBlockEntity(stationPos) instanceof TurretStationBlockEntity station)
+                || !getBlockPos().equals(station.turretPos())) {
+            if (player instanceof ServerPlayer serverPlayer) {
+                serverPlayer.displayClientMessage(
+                        Component.translatable("msg.barotrauma.turret.station.missing"), true);
+            }
+            return InteractionResult.FAIL;
+        }
+        return enterInternal(player, stationPos.immutable());
+    }
+
+    private InteractionResult enterInternal(Player player, @Nullable BlockPos stationPos) {
         if (!(level instanceof ServerLevel server)) {
             return InteractionResult.SUCCESS;
         }
@@ -247,8 +283,9 @@ public class TurretBlockEntity extends BlockEntity {
             player.displayClientMessage(Component.translatable("msg.barotrauma.turret.occupied"), true);
             return InteractionResult.FAIL;
         }
-        if (player.distanceToSqr(getBlockPos().getX() + 0.5D, getBlockPos().getY() + 0.5D,
-                getBlockPos().getZ() + 0.5D) > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE) {
+        if (stationPos == null && player.distanceToSqr(getBlockPos().getX() + 0.5D,
+                getBlockPos().getY() + 0.5D, getBlockPos().getZ() + 0.5D)
+                > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE) {
             return InteractionResult.FAIL;
         }
 
@@ -262,9 +299,16 @@ public class TurretBlockEntity extends BlockEntity {
 
         operator = player.getUUID();
         operatorEntityId = player.getId();
+        operatorAnchor = stationPos;
         // 冷却由射击与 serverTick 管理，换人不重置：接替者不能靠重新进入跳过后坐。
-        player.displayClientMessage(Component.translatable("msg.barotrauma.turret.entered"), true);
+        player.displayClientMessage(Component.translatable(stationPos == null
+                ? "msg.barotrauma.turret.entered"
+                : "msg.barotrauma.turret.station.entered"), true);
         broadcastState();
+        // 站台可能在 128 格广播半径之外：进入状态必须单独直发占用者，否则其客户端不会激活视角。
+        if (player instanceof ServerPlayer serverPlayer) {
+            ModNetwork.sendToPlayer(serverPlayer, statePacket());
+        }
         return InteractionResult.CONSUME;
     }
 
@@ -279,18 +323,31 @@ public class TurretBlockEntity extends BlockEntity {
         UUID old = operator;
         operator = null;
         operatorEntityId = -1;
+        operatorAnchor = null;
         aimTargetSet = false;
         // 冷却跨占用者保留：退出再进入不能立刻连发。
         if (old != null) {
             ACTIVE.remove(old, getBlockPos());
-            if (notify && level instanceof ServerLevel server) {
+            if (level instanceof ServerLevel server) {
                 ServerPlayer player = server.getServer().getPlayerList().getPlayer(old);
                 if (player != null) {
-                    player.displayClientMessage(Component.translatable("msg.barotrauma.turret.exited"), true);
+                    if (notify) {
+                        player.displayClientMessage(
+                                Component.translatable("msg.barotrauma.turret.exited"), true);
+                    }
+                    // 站台可能离炮塔很远，128 格广播够不到：强制退出必须直发本人。
+                    ModNetwork.sendToPlayer(player, statePacket());
                 }
             }
         }
         broadcastState();
+    }
+
+    /** 瞄准站被拆除/替换时由站台方块调用：只踢走以它为锚点的占用者。 */
+    public void onStationRemoved(BlockPos stationPos) {
+        if (operatorAnchor != null && operatorAnchor.equals(stationPos)) {
+            clearOperator(true);
+        }
     }
 
     // ---- 服务端 tick ----
@@ -307,9 +364,15 @@ public class TurretBlockEntity extends BlockEntity {
             boolean invalid = player == null
                     || player.level() != server
                     || player.isDeadOrDying()
-                    || player.isSpectator()
-                    || player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D)
-                    > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
+                    || player.isSpectator();
+            if (!invalid) {
+                invalid = turret.operatorAnchor != null
+                        // 站台接管：距离不限，但站台必须还在且仍指向本炮塔。
+                        ? !turret.stationAnchorValid(server)
+                        : player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D,
+                                pos.getZ() + 0.5D)
+                                > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
+            }
             if (invalid) {
                 turret.clearOperator(true);
             } else {
@@ -382,9 +445,20 @@ public class TurretBlockEntity extends BlockEntity {
             end = blockHit.getLocation();
         }
 
-        LivingEntity target = findTarget(player, origin, end);
+        // 直连炮塔时操作者就站在炮座旁，炮口可能插进自己身体：排除自己。
+        // 站台接管时身体在别处，属于合法目标（也方便单机验收“炮塔打玩家”）。
+        LivingEntity target = findTarget(operatorAnchor == null ? player : null, origin, end);
         if (target != null) {
-            target.hurt(level.damageSources().playerAttack(player), 12.0F);
+            boolean damaged = target.hurt(level.damageSources().playerAttack(player), 12.0F);
+            if (!damaged && target instanceof Player targetPlayer
+                    && !targetPlayer.isDeadOrDying()
+                    && !targetPlayer.isSpectator()
+                    && targetPlayer.hurtTime <= 0
+                    && targetPlayer.isCreative()) {
+                // 原版 hurt 在创造模式会直接拒绝玩家伤害；炮塔是测试武器，这里绕过拦截，
+                // 直接按医疗系统的近战通用规则注入病症。
+                MedicalEvents.applyDirectDamage(targetPlayer, 12.0F);
+            }
             level.playSound(null, target.getX(), target.getY(), target.getZ(),
                     SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 0.35F, 1.6F);
         }
@@ -395,12 +469,13 @@ public class TurretBlockEntity extends BlockEntity {
     }
 
     @Nullable
-    private LivingEntity findTarget(ServerPlayer shooter, Vec3 origin, Vec3 end) {
+    private LivingEntity findTarget(@Nullable LivingEntity excluded, Vec3 origin, Vec3 end) {
         AABB search = new AABB(origin, end).inflate(1.0D);
         LivingEntity best = null;
         double bestDistance = Double.MAX_VALUE;
         for (LivingEntity candidate : level.getEntitiesOfClass(LivingEntity.class, search,
-                entity -> entity != shooter && entity.isAlive() && !entity.isSpectator())) {
+                entity -> (excluded == null || entity != excluded)
+                        && entity.isAlive() && !entity.isSpectator())) {
             Optional<Vec3> hit = candidate.getBoundingBox().inflate(0.25D).clip(origin, end);
             if (hit.isPresent()) {
                 double distance = origin.distanceToSqr(hit.get());
@@ -425,14 +500,32 @@ public class TurretBlockEntity extends BlockEntity {
     }
 
     private boolean withinReach(ServerPlayer player) {
+        if (operatorAnchor != null) {
+            // 站台接管不限操作距离；但连接本身必须仍然有效。
+            return level instanceof ServerLevel server && stationAnchorValid(server);
+        }
         return player.distanceToSqr(getBlockPos().getX() + 0.5D, getBlockPos().getY() + 0.5D,
                 getBlockPos().getZ() + 0.5D) <= MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
+    }
+
+    /** 占用锚点是否仍是一个“绑定到本炮塔”的瞄准站。 */
+    private boolean stationAnchorValid(ServerLevel server) {
+        if (operatorAnchor == null) {
+            return true;
+        }
+        // 区块未加载时不要 getBlockEntity（会同步加载区块）：直接视为失效。
+        if (!server.hasChunkAt(operatorAnchor)) {
+            return false;
+        }
+        return server.getBlockEntity(operatorAnchor) instanceof TurretStationBlockEntity station
+                && getBlockPos().equals(station.turretPos());
     }
 
     // ---- 同步 ----
 
     public TurretStatePacket statePacket() {
-        return new TurretStatePacket(getBlockPos(), yaw, pitch, cooldown, operatorEntityId);
+        return new TurretStatePacket(getBlockPos(), yaw, pitch, cooldown, operatorEntityId,
+                operatorAnchor != null);
     }
 
     public void broadcastState() {
@@ -483,18 +576,34 @@ public class TurretBlockEntity extends BlockEntity {
         this.prevPitch = this.pitch;
     }
 
+    /**
+     * BER 的可见包围盒。炮管本身伸出方块 1.14 格，未来 2×2/3×3 模型更大；
+     * 不扩大这里会在方块刚好出画面时把整根炮管一起剔除。
+     */
+    @Override
+    public AABB getRenderBoundingBox() {
+        TurretSpec spec = spec(getBlockState());
+        return new AABB(getBlockPos())
+                .inflate(2.0D)
+                .expandTowards(Math.max(0, spec.sizeX() - 1), 0.0D, Math.max(0, spec.sizeZ() - 1));
+    }
+
     @Override
     public void setRemoved() {
         if (operator != null) {
-            ACTIVE.remove(operator, getBlockPos());
-            if (level instanceof ServerLevel server) {
-                ServerPlayer player = server.getServer().getPlayerList().getPlayer(operator);
-                if (player != null) {
-                    player.displayClientMessage(Component.translatable("msg.barotrauma.turret.exited"), true);
-                }
-            }
+            UUID old = operator;
+            ACTIVE.remove(old, getBlockPos());
             operator = null;
             operatorEntityId = -1;
+            operatorAnchor = null;
+            if (level instanceof ServerLevel server) {
+                ServerPlayer player = server.getServer().getPlayerList().getPlayer(old);
+                if (player != null) {
+                    player.displayClientMessage(Component.translatable("msg.barotrauma.turret.exited"), true);
+                    // 炮塔被拆时客户端必须收到空占用状态，站台可能在广播半径外。
+                    ModNetwork.sendToPlayer(player, statePacket());
+                }
+            }
         }
         super.setRemoved();
     }
