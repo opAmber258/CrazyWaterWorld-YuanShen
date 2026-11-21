@@ -1,7 +1,10 @@
 package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.VentBlockEntity;
+import com.opamb.barotrauma.ship.ShipCores;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -34,6 +37,14 @@ public class VentBlock extends Block implements EntityBlock {
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new VentBlockEntity(pos, state);
+    }
+
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
+                            @Nullable LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        // 物理船上新放的设备要进船体几何和靠港还原快照，否则靠泊后留在船坞。
+        ShipCores.refreshNearby(level, pos);
     }
 
     @Nullable

@@ -190,6 +190,12 @@ public final class VsPilot {
                         || !(level instanceof ServerLevel)) {
                     return null;
                 }
+                // 船外位置必须返回 null：调用方把非 null 当作“在物理船上”。
+                // 只做逆变换的话任何世界坐标都会落进某个装配格，compartmentAt
+                // 返回 -1，站台/船外/别船上的玩家会被判成舱室 -1 → 可用氧 0。
+                if (!isInsideInterior(level, pos)) {
+                    return null;
+                }
                 BlockPos cell = toAssemblyCell(level, pos);
                 return cell == null ? null : state.compartmentAt(cell);
             }
@@ -531,6 +537,12 @@ public final class VsPilot {
         pendingShip = null;
         pendingThruster = null;
         pendingLevel = null;
+        // 船头锁和看门狗计数是跨船状态：同一进程切换存档后如果不清，新船会
+        // 沿用上一艘船的船头方向（bowLatched=true 时 currentBow 不再重新锁定）。
+        bowLatched = false;
+        bowLocalX = 1.0D;
+        bowLocalZ = 0.0D;
+        helmWatchdogTicks = 0;
         unstaticTicks = 0;
         simTickCounter = 0;
         waterStateLogCounter = 0;
@@ -829,8 +841,22 @@ public final class VsPilot {
         // 自动驾驶按航向误差给偏航速率，手动 A/D 仍是满舵。
         target.setHelmYawScale(control.helmYawScale());
         target.setPower(control.power());
-        // 舵效供电：导航台/电网有电（原作 MinVoltage 0.5）才能转舵；引擎空转也能转。
-        target.setHelmPowered(control.simulation().voltage() >= 0.5D);
+        // 舵效供电：必须看导航终端自己的电压。全船电压可能还有 1.0，但终端绑定的
+        // 接线盒坏了以后 consumerVoltage(终端)=0，这时不能再执行残留舵令。
+        boolean helmPowered = false;
+        if (lastLevel != null) {
+            com.opamb.barotrauma.blockentity.ShipCoreBlockEntity terminal =
+                    sonarCoreBlockEntity(lastLevel);
+            if (terminal != null) {
+                BlockPos terminalCell = toAssembly(terminal.getBlockPos());
+                if (terminalCell != null) {
+                    helmPowered = control.simulation().consumerVoltage(terminalCell)
+                            >= com.opamb.barotrauma.blockentity.ShipCoreBlockEntity
+                            .TERMINAL_MIN_VOLTAGE;
+                }
+            }
+        }
+        target.setHelmPowered(helmPowered);
         target.setEngineCount(control.simulation().engineCount());
         // 原作 Engine.Update 的逐引擎力：maxforce × 推力% × 电压^(2/3) × 耐久插值。
         target.setEngineForceRaw(control.simulation().engineForceRaw());
@@ -868,7 +894,14 @@ public final class VsPilot {
             return;
         }
         for (ServerPlayer player : level.players()) {
-            if (player.containerMenu instanceof com.opamb.barotrauma.menu.SonarMenu menu
+            // 只认“本船导航终端的声纳菜单”。只看 SonarMenu.stillValid（距离）
+            // 的话，另一艘方块船的玩家在 48 格内开着声纳也能把看门狗喂住，
+            // 驾驶员掉线后舵令永远不会清零。
+            com.opamb.barotrauma.blockentity.ShipCoreBlockEntity terminal =
+                    sonarCoreBlockEntity(level);
+            if (terminal != null
+                    && player.containerMenu instanceof com.opamb.barotrauma.menu.SonarMenu menu
+                    && menu.sonarPos().equals(terminal.getBlockPos())
                     && menu.stillValid(player)) {
                 helmWatchdogTicks = 0;
                 return;

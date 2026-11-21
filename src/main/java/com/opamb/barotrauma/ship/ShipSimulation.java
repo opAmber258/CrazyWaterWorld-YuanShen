@@ -1087,6 +1087,24 @@ public final class ShipSimulation {
         }
         storages.clear();
         storages.putAll(movedStorages);
+        // 制氧机/通风口上报表也要平移：旧坐标的报告会和同一台设备的新坐标报告
+        // 同时计入，产氧量和通风口数量会翻倍，直到旧报告 40 tick 后过期。
+        java.util.Map<net.minecraft.core.BlockPos, OxygenSourceReport> movedOxygen =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, OxygenSourceReport> entry
+                : oxygenSources.entrySet()) {
+            movedOxygen.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        oxygenSources.clear();
+        oxygenSources.putAll(movedOxygen);
+        java.util.Map<net.minecraft.core.BlockPos, VentReport> movedVents =
+                new java.util.HashMap<>();
+        for (java.util.Map.Entry<net.minecraft.core.BlockPos, VentReport> entry
+                : vents.entrySet()) {
+            movedVents.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+        }
+        vents.clear();
+        vents.putAll(movedVents);
     }
 
     /**

@@ -81,10 +81,13 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
         }
         ShipState ship = be.resolveShip(server, pos);
         if (ship == null) {
+            // 失去船体归属：面板还读同一个 BE，读数必须清零，不能停在上一艘船的值。
+            be.clearReadouts();
             return;
         }
         BlockPos cell = assemblyPos(pos);
         if (!ship.tracksHullBlock(cell)) {
+            be.clearReadouts();
             return;
         }
         ShipSimulation simulation = ship.simulation();
@@ -93,28 +96,27 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
         simulation.reportConsumer(cell, broken ? 0.0D : POWER_KW, MIN_VOLTAGE, be.boundBox);
         double voltage = simulation.consumerVoltage(cell);
 
-        // 泡水判定：按格子所在列的水位，和接线盒/电池同一套。
-        boolean wetBody = simulation.bodyIsWet(simulation.bodyOf(cell));
-        if (wetBody) {
-            java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
-            for (ShipState.Breach breach : ship.breaches()) {
-                breachSources.add(breach.pos());
-            }
-            be.submerged = cell.getY() < simulation.waterLevelAt(cell, breachSources);
-        } else {
-            be.submerged = false;
+        // 泡水判定：机器格本身是实心、不在任何舱室里，按相邻舱室格的水位算
+        // （只看 bodyOf(cell) 会永远 -1，泡水伤害永远不触发）。
+        java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
+        for (ShipState.Breach breach : ship.breaches()) {
+            breachSources.add(breach.pos());
         }
+        be.submerged = simulation.submergedAt(cell, breachSources);
         if (be.submerged) {
             be.condition.damage(SUBMERGED_DECAY / 20.0D);
         }
-        if (be.condition.tick(level, !broken)) {
+        // 原作 Repairable.ShouldDeteriorate：制氧机只有 CurrFlow > 0.1（即有电）时才劣化。
+        boolean powered = voltage >= MIN_VOLTAGE;
+        if (be.condition.tick(level, !broken && powered)) {
             be.setChanged();
         }
 
         double fraction = be.condition.fraction();
-        // 原作 CurrFlow = min(Voltage,2) * GeneratedAmount * 100 * (耐久比)²
-        double flow = broken ? 0.0D : ShipSimulation.O2_GENERATOR_OUTPUT
-                * Math.min(Math.max(voltage, 0.0D), 2.0D) * fraction * fraction;
+        // 原作 OxygenGenerator.Update：HasPower（Voltage >= MinVoltage）才产氧；
+        // 0.25V 不能用 min(Voltage,2) 直接乘出一个"半供电"的产量。
+        double flow = (broken || !powered) ? 0.0D : ShipSimulation.O2_GENERATOR_OUTPUT
+                * Math.min(voltage, 2.0D) * fraction * fraction;
         be.lastVoltage = voltage;
         be.lastFlow = flow;
         simulation.reportOxygenSource(cell, flow);
@@ -129,9 +131,15 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
         }
     }
 
+    /** 失去船体归属时清空面板读数（面板还读同一个 BE）。 */
+    private void clearReadouts() {
+        lastFlow = 0.0D;
+        lastVoltage = 0.0D;
+        submerged = false;
+    }
+
     /** 给槽里的氧气瓶/焊接油箱补耐久（耐久即剩余气量）。 */
-    private void refillTanks(double dtSeconds) {
-        boolean changed = false;
+    private void refillTanks(double dtSeconds) {        boolean changed = false;
         for (int i = 0; i < tanks.size(); i++) {
             ItemStack stack = tanks.get(i);
             if (stack.isEmpty() || !isTankItem(stack)) {

@@ -41,6 +41,13 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
     public static final int LAUNCH = 14;
     /** 把物理船按装配快照铺回世界（声纳屏"靠泊"按钮；等价于 /barotrauma ship vs dock）。 */
     public static final int DOCK = 15;
+    /**
+     * 微调自动驾驶目标：a/b/c = 相对**当前目标世界坐标**的增量（−1/0/1）。
+     *
+     * <p>不能用 SET_AUTOPILOT_TARGET 的“相对扫描中心偏移”来微调：船一移动，
+     * 同一个偏移在服务端会解释成另一个世界点，目标会跟着船漂。</p>
+     */
+    public static final int NUDGE_AUTOPILOT_TARGET = 16;
 
     public ShipActionPacket(BlockPos corePos, int action) {
         this(corePos, action, 0, 0, 0);
@@ -195,6 +202,14 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                     }
                     ship.setAutopilotTarget(base.offset(a, b, c));
                 }
+                case NUDGE_AUTOPILOT_TARGET -> {
+                    // 增量直接加在目标的世界坐标上：船怎么移动，目标都不会漂。
+                    BlockPos target = ship.autopilotTarget();
+                    if (target != null) {
+                        ship.setAutopilotTarget(target.offset(
+                                clampAxis(a), clampAxis(b), clampAxis(c)));
+                    }
+                }
                 case CLEAR_AUTOPILOT_TARGET -> ship.clearAutopilotTarget();
                 default -> BarotraumaMod.LOGGER.warn("[Barotrauma] 未知船控指令 {}", action);
             }
@@ -203,7 +218,9 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
             // 真正推动船的是哪个系统由 VsState 决定。
             com.opamb.barotrauma.ship.vs.VsState.syncControl(ship);
             // 掌舵指令每一下都刷屏，交给面板显示
-            if (action != SET_HEADING && action != SET_POWER && action != SET_AUTOPILOT_TARGET) {
+            if (action != SET_HEADING && action != SET_POWER
+                    && action != SET_AUTOPILOT_TARGET
+                    && action != NUDGE_AUTOPILOT_TARGET) {
                 player.sendSystemMessage(ship.liveReport());
             }
         });

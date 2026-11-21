@@ -769,6 +769,9 @@ public final class ShipState {
                 double backward = -along;
                 if (backward < desiredSpeed - 0.2D) {
                     helmForward = -1;
+                } else if (backward > desiredSpeed + 0.5D) {
+                    // 倒车超速：给前进推力主动制动，别只靠水阻慢慢停。
+                    helmForward = 1;
                 }
             } else {
                 applyAutopilotYaw(angle);
@@ -874,7 +877,9 @@ public final class ShipState {
             if (autopilotTarget == null) {
                 return "自动待命";
             }
-            return throttled() ? "自动·前往标记" : "自动·已到达";
+            // 还有目标就是“前往标记”。不能拿舵令为零判断到达：收油滑行时
+            // 舵令本来就会归零，但船还在走、目标也还没清。
+            return "自动·前往标记";
         }
         if (helmForward != 0 || helmYaw != 0) {
             return helmName();
@@ -898,7 +903,7 @@ public final class ShipState {
             if (autopilotTarget == null) {
                 return "自动待命";
             }
-            return throttled() ? "自动·前往标记" : "自动·已到达";
+            return "自动·前往标记";
         }
         StringBuilder text = new StringBuilder();
         if (helmForward > 0) {
