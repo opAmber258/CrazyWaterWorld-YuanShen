@@ -204,9 +204,15 @@ public final class PowerPanelState {
         // 用船体几何判断归属，而不是 consumerInfos/storageInfos：世界重开后设备
         // 还没重新上报时列表是空的，但那台设备仍然属于这艘船，不能因此拒绝绑定。
         // 例外：船核心（导航终端自己就是核心）在扫描时被显式跳过，不属于 hull，
-        // 但它必然属于这艘船，否则导航终端永远绑不上接线盒。
+        // 但它必须**是这艘船自己的核心**，否则可以把别的船的核心绑过来。
         boolean coreDevice = raw instanceof com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
-        if (!coreDevice && !ship.geometry().owns(deviceCell)) {
+        if (coreDevice) {
+            com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core =
+                    (com.opamb.barotrauma.blockentity.ShipCoreBlockEntity) raw;
+            if (core.state() != ship) {
+                return false;
+            }
+        } else if (!ship.geometry().owns(deviceCell)) {
             return false;
         }
         // PowerBox / StorageBox 与 ShipSimulation 的 boxes/consumers 使用同一套坐标。

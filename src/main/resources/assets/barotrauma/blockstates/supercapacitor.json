@@ -1,0 +1,76 @@
+{
+  "variants": {
+    "facing=north,charge=0": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=north,charge=1": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=north,charge=2": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=north,charge=3": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=north,charge=4": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=north,charge=5": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=east,charge=0": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=east,charge=1": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=east,charge=2": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=east,charge=3": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=east,charge=4": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=east,charge=5": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=south,charge=0": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=south,charge=1": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=south,charge=2": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=south,charge=3": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=south,charge=4": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=south,charge=5": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=west,charge=0": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=west,charge=1": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=west,charge=2": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=west,charge=3": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=west,charge=4": {
+      "model": "barotrauma:block/supercapacitor"
+    },
+    "facing=west,charge=5": {
+      "model": "barotrauma:block/supercapacitor"
+    }
+  }
+}

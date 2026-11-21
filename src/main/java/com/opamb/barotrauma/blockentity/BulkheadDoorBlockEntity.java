@@ -37,6 +37,11 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
 
     private AutomationMode automation = AutomationMode.MANUAL;
     private int motionHold;
+    /**
+     * 最近一次手动右键的 tick。按住右键时客户端每 4 tick 触发一次 use，
+     * 门会每 0.2 秒开/关一次，看起来像“打不开”。10 tick 内的重复触发直接忽略。
+     */
+    private long lastManualUseTick = -100L;
     /** 门不自然劣化（原作 Repairable 默认 0/s），只被外力打坏后修理。 */
     private final ConditionComponent condition =
             new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 0.8D);
@@ -103,6 +108,15 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
 
     public AutomationMode automation() {
         return automation;
+    }
+
+    /** 手动开关的节流：同一次按住右键只认第一次。 */
+    public boolean tryManualUse(long gameTime) {
+        if (gameTime - lastManualUseTick < 10L) {
+            return false;
+        }
+        lastManualUseTick = gameTime;
+        return true;
     }
 
     public void cycleAutomation() {

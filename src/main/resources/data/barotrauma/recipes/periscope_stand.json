@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:lead"
+    },
+    {
+      "item": "barotrauma:lead"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:periscope_stand"
+  }
+}

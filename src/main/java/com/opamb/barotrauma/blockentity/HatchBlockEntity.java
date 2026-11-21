@@ -39,6 +39,8 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
 
     private AutomationMode automation = AutomationMode.MANUAL;
     private int motionHold;
+    /** 最近一次手动右键的 tick：按住右键时原版每 4 tick 触发一次，必须节流。 */
+    private long lastManualUseTick = -100L;
     /** 舱口不自然劣化（原作 Repairable 默认 0/s），只被外力打坏后修理。 */
     private final ConditionComponent condition =
             new ConditionComponent(100.0D, 0.0D, 0, 0, 0.0D, 0.8D);
@@ -110,6 +112,15 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
 
     public AutomationMode automation() {
         return automation;
+    }
+
+    /** 手动开关的节流：同一次按住右键只认第一次。 */
+    public boolean tryManualUse(long gameTime) {
+        if (gameTime - lastManualUseTick < 10L) {
+            return false;
+        }
+        lastManualUseTick = gameTime;
+        return true;
     }
 
     public void cycleAutomation() {

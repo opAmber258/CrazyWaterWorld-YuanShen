@@ -194,6 +194,11 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
                             Component.translatable("gui.barotrauma.bulkhead_door.broken"), true);
                     return InteractionResult.CONSUME;
                 }
+                // 按住右键时客户端每 4 tick 再触发一次；不节流的话门会 0.2 秒
+                // 开/关一次，玩家看到的就是“打不开/关不上”。
+                if (!door.tryManualUse(level.getGameTime())) {
+                    return InteractionResult.CONSUME;
+                }
                 if (player.isShiftKeyDown()) {
                     door.cycleAutomation();
                     player.displayClientMessage(

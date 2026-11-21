@@ -232,9 +232,18 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
         if (be.auto) {
             // 泵格子本身是实心方块，要用邻格解析出它服务的舱室（水传感器语义）。
             int body = ship.simulation().pumpBody(cell);
-            // 注意：bodyLevel 是绝对 Y（深海是负数），不能拿来和 0.05 比；
-            // 用 bodyIsWet（水量 > 0.05 格）判断，自动泵才会真的在水进舱时启动。
-            be.autoWet = ship.simulation().bodyIsWet(body);
+            // 回差：以前用 bodyIsWet（整舱 ≥5 units，相当于 5% 格）当开关，
+            // 地板上一层薄水（几 units）永远检测不到；而大流量泵一抽就低于 5，
+            // 下一 tick 水又漫回来，界面就会 0%/100% 反复跳。
+            // 0.1 units 起抽、0.02 units 停，薄水也认，且不会被一步抽干后反复重启。
+            double water = ship.simulation().bodyWater(body);
+            if (be.autoWet) {
+                if (water <= 0.02D) {
+                    be.autoWet = false;
+                }
+            } else if (water >= 0.1D) {
+                be.autoWet = true;
+            }
         }
         ship.simulation().reportPump(cell, actual, be.ballast(), requested,
                 be.keepBelowDoor(), be.ballastTarget());

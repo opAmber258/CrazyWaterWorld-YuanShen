@@ -78,6 +78,27 @@ public final class ModBlockEntities {
                             ModBlocks.BATTERY.get())
                     .build(null));
 
+    /** 超级电容器：储能/脉冲放电、6 档电量屏。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.SupercapacitorBlockEntity>> SUPERCAPACITOR =
+            BLOCK_ENTITIES.register("supercapacitor", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.SupercapacitorBlockEntity::new,
+                            ModBlocks.SUPERCAPACITOR.get())
+                    .build(null));
+
+    /** 潜望镜：静态 GeckoLib 模型 + 炮塔接管。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.PeriscopeBlockEntity>> PERISCOPE =
+            BLOCK_ENTITIES.register("periscope", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.PeriscopeBlockEntity::new,
+                            ModBlocks.PERISCOPE.get())
+                    .build(null));
+
+    /** 潜望镜底座：纯装饰静态模型。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.PeriscopeStandBlockEntity>> PERISCOPE_STAND =
+            BLOCK_ENTITIES.register("periscope_stand", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.PeriscopeStandBlockEntity::new,
+                            ModBlocks.PERISCOPE_STAND.get())
+                    .build(null));
+
     /** 加工台：18 格多块（3×3×2），主方块在前层下排中列。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.FabricatorBlockEntity>> FABRICATOR =
             BLOCK_ENTITIES.register("fabricator", () -> BlockEntityType.Builder

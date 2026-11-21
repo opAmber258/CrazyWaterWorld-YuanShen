@@ -117,6 +117,18 @@ public final class ModItems {
     /** 电池（设备）方块物品。 */
     public static final RegistryObject<Item> BATTERY = blockItem("battery", ModBlocks.BATTERY);
 
+    /** 超级电容器方块物品。 */
+    public static final RegistryObject<Item> SUPERCAPACITOR =
+            blockItem("supercapacitor", ModBlocks.SUPERCAPACITOR);
+
+    /** 潜望镜方块物品。 */
+    public static final RegistryObject<Item> PERISCOPE =
+            blockItem("periscope", ModBlocks.PERISCOPE);
+
+    /** 潜望镜底座方块物品。 */
+    public static final RegistryObject<Item> PERISCOPE_STAND =
+            blockItem("periscope_stand", ModBlocks.PERISCOPE_STAND);
+
     /** 加工台方块物品（3×3×2 多块）。 */
     public static final RegistryObject<Item> FABRICATOR = blockItem("fabricator", ModBlocks.FABRICATOR);
 

@@ -128,17 +128,19 @@ public final class ShipState {
      * 可能变空；不兜底的话进水体积/水面都会变成 0，船灌满也不沉。</p>
      */
     public java.util.Set<BlockPos> interiorCellsOf(ShipGeometry.Compartment pocket) {
-        if (!pocket.interiorCells().isEmpty()) {
-            return pocket.interiorCells();
-        }
+        // 先看历史舱内格：破口/切外壁舱口后 exteriorCells() 会穿过洞口，
+        // interiorCells 可能只剩几格，但历史里仍是完整房间。历史为空才信几何，
+        // 纯船外空气（圆角包围盒四角）两边都为空，不能算舱内。
         java.util.Set<BlockPos> out = new java.util.HashSet<>();
         for (BlockPos cell : pocket.cells()) {
             if (knownInterior.contains(cell)) {
                 out.add(cell);
             }
         }
-        // 没有历史舱内格 = 纯船外空气（圆角包围盒四角），不能把整块空腔算成舱内。
-        return out;
+        if (!out.isEmpty()) {
+            return out;
+        }
+        return pocket.interiorCells();
     }
 
     /** 历史舱内格（核心 NBT 保存用）。 */
@@ -160,6 +162,16 @@ public final class ShipState {
         for (long value : values) {
             merged.add(BlockPos.of(value));
         }
+        knownInterior = java.util.Set.copyOf(merged);
+    }
+
+    /** 认领物理船时从记录恢复历史舱内格（在第一次 simulation() 之前调用）。 */
+    public void restoreKnownInterior(java.util.Set<BlockPos> cells) {
+        if (cells == null || cells.isEmpty()) {
+            return;
+        }
+        java.util.Set<BlockPos> merged = new java.util.HashSet<>(knownInterior);
+        merged.addAll(cells);
         knownInterior = java.util.Set.copyOf(merged);
     }
 
@@ -277,7 +289,7 @@ public final class ShipState {
         this.leakInsideCells = null;
         this.waterBoxCache = null;
         this.waterBoxCacheTick = Long.MIN_VALUE;
-        this.simulation = new ShipSimulation(next, machines);
+        this.simulation = new ShipSimulation(next, machines, knownInterior);
         this.simulation.copySettingsFrom(old);
         // 连续砸洞时水位不能归零：旧水量按格子搬进新几何（并舱/拆舱都守恒）。
         if (carried.isEmpty()) {
@@ -293,66 +305,12 @@ public final class ShipState {
     /**
      * 当前每个格子里的水量（单位）。重扫/换几何前用它把水"按位置"保存下来。
      *
-     * <p>密闭舱室是一个整水面；连海空腔按破口源做逐列水位（和客户端渲染同一套），
-     * 所以搬完之后每一侧还是原来的高度，不会凭空均摊。</p>
+     * <p>逐格场本身就是按位置存的；并舱/拆舱/开关门后再按格注回，不会把水
+     * 按容积比例整体搬到漏水侧。</p>
      */
     public Map<BlockPos, Double> waterByCell() {
-        Map<BlockPos, Double> out = new HashMap<>();
         ShipSimulation sim = this.simulation;
-        if (sim == null) {
-            return out;
-        }
-        List<ShipGeometry.Compartment> sealed = geometry.compartments();
-        for (int i = 0; i < sealed.size(); i++) {
-            double units = sim.waterUnits(i);
-            if (units <= 1.0E-6D) {
-                continue;
-            }
-            addCellsBelow(out, sealed.get(i).cells(),
-                    ShipWaterStateBuilder.surfaceOf(sealed.get(i), units));
-        }
-        List<ShipGeometry.Compartment> pockets = geometry.openPockets();
-        for (int j = 0; j < pockets.size(); j++) {
-            double units = sim.pocketWater(j);
-            if (units <= 1.0E-6D) {
-                continue;
-            }
-            List<BlockPos> sources = new ArrayList<>();
-            for (Breach breach : breaches.values()) {
-                if (pockets.get(j).cells().contains(breach.pos())) {
-                    sources.add(breach.pos());
-                }
-            }
-            ShipPocketWater.Shape shape = sources.isEmpty() ? null
-                    : ShipPocketWater.compute(pockets.get(j).cells(), sources, units);
-            if (shape != null && !shape.columns().isEmpty()) {
-                for (BlockPos cell : pockets.get(j).cells()) {
-                    float level = shape.levelAt(cell.getX(), cell.getZ());
-                    if (Float.isNaN(level)) {
-                        continue;
-                    }
-                    mergeCell(out, cell, level);
-                }
-            } else {
-                addCellsBelow(out, pockets.get(j).cells(),
-                        ShipWaterStateBuilder.surfaceOf(pockets.get(j), units));
-            }
-        }
-        return out;
-    }
-
-    private static void addCellsBelow(Map<BlockPos, Double> out, java.util.Collection<BlockPos> cells,
-                                      float level) {
-        for (BlockPos cell : cells) {
-            mergeCell(out, cell, level);
-        }
-    }
-
-    private static void mergeCell(Map<BlockPos, Double> out, BlockPos cell, float level) {
-        double depth = Math.min(1.0D, Math.max(0.0D, level - cell.getY()));
-        if (depth > 0.0D) {
-            out.merge(cell, depth * ShipSimulation.UNITS_PER_BLOCK, Double::sum);
-        }
+        return sim == null ? Map.of() : sim.waterCells();
     }
 
     /** 方块船重扫会新建一个 {@link ShipState}：把旧船的水/氧气（按格子）和设置接过来。 */
@@ -399,7 +357,7 @@ public final class ShipState {
 
     public ShipSimulation simulation() {
         if (simulation == null) {
-            simulation = new ShipSimulation(geometry, machines);
+            simulation = new ShipSimulation(geometry, machines, knownInterior);
         }
         return simulation;
     }
@@ -419,6 +377,23 @@ public final class ShipState {
             return waterBoxCache;
         }
         waterBoxCache = ShipWaterStateBuilder.build(this, -1L, false, 0.0F, 0.0F, 0.0F);
+        waterBoxCacheTick = gameTime;
+        return waterBoxCache;
+    }
+
+    /**
+     * 带整格方块判定的版本：方块船干燥区判定用。只有非整格的家具/机器需要补
+     * 水面，船壳/地板/墙补水会把水画进墙里。
+     */
+    public ShipWaterStatePacket waterBoxesFor(net.minecraft.world.level.Level level,
+                                              long gameTime) {
+        if (waterBoxCache != null && waterBoxCacheTick == gameTime) {
+            return waterBoxCache;
+        }
+        java.util.function.Predicate<net.minecraft.core.BlockPos> fullCube = level == null
+                ? null
+                : pos -> level.getBlockState(pos).isCollisionShapeFullBlock(level, pos);
+        waterBoxCache = ShipWaterStateBuilder.build(this, -1L, false, 0.0F, 0.0F, 0.0F, fullCube);
         waterBoxCacheTick = gameTime;
         return waterBoxCache;
     }
@@ -769,6 +744,9 @@ public final class ShipState {
                 double backward = -along;
                 if (backward < desiredSpeed - 0.2D) {
                     helmForward = -1;
+                } else if (backward > desiredSpeed + 0.5D) {
+                    // 倒车超速：给前进推力主动制动，别只靠水阻慢慢停。
+                    helmForward = 1;
                 }
             } else {
                 applyAutopilotYaw(angle);
@@ -874,7 +852,9 @@ public final class ShipState {
             if (autopilotTarget == null) {
                 return "自动待命";
             }
-            return throttled() ? "自动·前往标记" : "自动·已到达";
+            // 还有目标就是“前往标记”。不能拿舵令为零判断到达：收油滑行时
+            // 舵令本来就会归零，但船还在走、目标也还没清。
+            return "自动·前往标记";
         }
         if (helmForward != 0 || helmYaw != 0) {
             return helmName();
@@ -898,7 +878,7 @@ public final class ShipState {
             if (autopilotTarget == null) {
                 return "自动待命";
             }
-            return throttled() ? "自动·前往标记" : "自动·已到达";
+            return "自动·前往标记";
         }
         StringBuilder text = new StringBuilder();
         if (helmForward > 0) {
@@ -1053,7 +1033,8 @@ public final class ShipState {
             }
             double rate = health <= 0.3F ? BIG_LEAK_UNITS_PER_SECOND
                     : SMALL_LEAK_UNITS_PER_SECOND;
-            sim.addWater(compartment, rate * dt);
+            // 从破损格旁边注入，让水先出现在漏点，再由逐格场流开。
+            sim.addWaterAt(compartment, pos, rate * dt);
         }
     }
 
@@ -1324,7 +1305,9 @@ public final class ShipState {
         Component body = Component.literal("\n  设备：" + machines.describe()).withStyle(ChatFormatting.GRAY);
         int index = 1;
         for (ShipGeometry.Compartment compartment : compartments()) {
-            int waterPercent = (int) Math.round(compartment.waterRatio() * 100.0D);
+            double capacity = Math.max(1.0D, compartment.volume() * ShipSimulation.UNITS_PER_BLOCK);
+            int waterPercent = (int) Math.round(
+                    simulation().waterUnits(index - 1) / capacity * 100.0D);
             body = body.copy().append(Component.literal("\n  #" + index + " 容积 " + compartment.volume()
                     + " 格，进水 " + waterPercent + "%").withStyle(ChatFormatting.DARK_GRAY));
             index++;

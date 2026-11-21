@@ -26,6 +26,8 @@ edges:
     condition: when adding a creative-tab debug item, screen, or server-validated edit packet
   - target: patterns/debug-ship-water.md
     condition: when a ship is dry, flooding incorrectly, or missing water visuals
+  - target: patterns/ship-fluid-field.md
+    condition: when changing in-ship flooding, water-box generation, pump auto thresholds, or debugging water inside hull walls / dry room treated as ocean
   - target: patterns/debug-hull-damage.md
     condition: when hull durability, damage bars, welding, or breach-on-zero-HP behavior looks wrong
   - target: patterns/run-tests.md
@@ -36,7 +38,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-20
+last_updated: 2026-11-21
 ---
 
 # Session Bootstrap
@@ -66,6 +68,18 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 这是随 Git 分享的开工阅读入口，不是自动通知；合作者获取包含本提醒的提交后才能看到。
 
 ## Current Project State
+
+- **逐格流体场水系统 + 潜望镜/超级电容器（2026-11-21，任务分支 `feat/water-fluid-field-20261120`，PR #80）**：
+  新增 `ship/water/ShipFluidField` 逐格流体场（密封舱室优先成 body、连海空腔单列、门走 `DoorLink` 限速、
+  整舱归平），删除旧的 `ShipPocketWater`；船内水盒改由流体场生成，`ShipWaterStateBuilder` 用整格方块判定
+  跳过墙/地板（水盒不再画进舱壁），并给没有水盒覆盖的舱内格补干燥 bbox（货舱不再被当海里）。薄水层波幅
+  同时受天花板净空与水深限制，贴地水面不再干湿闪；排水泵自动模式改滞回阈值（≥0.1 起抽、≤0.02 停）。
+  新增 `periscope`（+ `periscope_stand`）与 `supercapacitor` 三件 GeckoLib 设备：潜望镜右键接管 48 格内最近
+  炮塔、必须有底座；超级电容器未绑定接线盒时不出力也不充电。炮塔镜头改由服务端下发世界坐标锚点
+  （船坞坐标 `VsPilot.assemblyToWorld` 换算），修复潜望镜里只有深海/方块内部。与 PR #78 合并后
+  `TurretStatePacket` 同时带 `fromStation` 与 `controllerPos`/`cameraAnchor`，`TurretBlockEntity` 同时保留
+  `operatorAnchor`（站台）与 `controllerPos`（潜望镜），`PROTOCOL` 升到 **25**。386 项单测全绿；
+  细节见 `patterns/ship-fluid-field.md`。实机验收进行中（用户已报 8 条新现象待修）。
 
 - **炮塔瞄准站 + 炮台绑定器 + 模块化（2026-11-20，任务分支 `feat/turret-station-20261120`）**：
   新增 `turret_station` 瞄准站（BE 存 `TurretPos`、NBT/客户端同步、右键由服务端校验后 `enterFromStation`）

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -49,6 +50,51 @@ class ShipFloodingTest {
         };
         Predicate<BlockPos> isShipBlock = solid::contains;
         return ShipGeometry.scanShip(new BlockPos(0, 0, 0), 12, isShipBlock, probe);
+    }
+
+    @Test
+    @DisplayName("有破口记录时，进水落到破口所属的舱内空腔，并按整舱水位铺开")
+    void breachFloodLevelsAcrossPocket() {
+        ShipGeometry.Result geometry = scan(breachedCube());
+        ShipSimulation sim = new ShipSimulation(geometry, MachineCount.EMPTY);
+        BlockPos hole = new BlockPos(2, 0, 0);
+        sim.tickSeaFlood(0.1D, 50.0D, java.util.List.of(hole));
+
+        assertTrue(sim.pocketWater(0) > 0.0D, "破口应该把水灌进这个连海空腔");
+        for (int i = 0; i < 10; i++) {
+            sim.tickWaterFlow(0.1D);
+        }
+        // 归平之后同一间舱的水面一致：舱底整层都该有水，而不是只在洞口一小坨。
+        assertTrue(sim.fluid().waterAt(new BlockPos(0, -1, 0)) > 0.0D,
+                "舱底离破口最远的格也应该有水");
+        assertTrue(sim.fluid().waterAt(new BlockPos(0, -1, 1)) > 0.0D,
+                "整层都应该铺开");
+    }
+
+    @Test
+    @DisplayName("破口格属于船外空腔时，进水要落到洞口内侧的房间空腔")
+    void breachFloodGoesToInsidePocketNotOutside() {
+        BlockPos hole = new BlockPos(2, 0, 0);
+        // 船外空腔：包含被打掉的船壳格自己，没有船壳内格（场里不建）。
+        ShipGeometry.Compartment outside = new ShipGeometry.Compartment(
+                Set.of(hole, new BlockPos(3, 0, 0)), 0, Set.of());
+        // 房间空腔：洞口内侧的 2×2 地板。
+        Set<BlockPos> room = Set.of(
+                new BlockPos(0, 0, 0), new BlockPos(1, 0, 0),
+                new BlockPos(0, 0, 1), new BlockPos(1, 0, 1));
+        ShipGeometry.Compartment roomPocket = new ShipGeometry.Compartment(room, 0);
+        ShipGeometry.Result geometry = new ShipGeometry.Result(
+                List.of(), List.of(outside, roomPocket), 0, 6,
+                new ShipGeometry.Bounds(0, 0, 0, 3, 0, 1),
+                Set.of(), List.of(), Set.of());
+        ShipSimulation sim = new ShipSimulation(geometry, MachineCount.EMPTY);
+
+        sim.tickSeaFlood(0.1D, 0.0D, java.util.List.of(hole));
+
+        assertEquals(0.0D, sim.pocketWater(0), 1.0E-9D, "船外空腔不该接水");
+        assertTrue(sim.pocketWater(1) > 0.0D, "水应该进洞口内侧的房间");
+        assertTrue(sim.fluid().waterAt(new BlockPos(0, 0, 0)) > 0.0D,
+                "房间里的格应该有水");
     }
 
     @Test

@@ -13,16 +13,21 @@ import com.opamb.barotrauma.block.JunctionBoxBlock;
 import com.opamb.barotrauma.block.MissionTerminalBlock;
 import com.opamb.barotrauma.block.NavigationTerminalBlock;
 import com.opamb.barotrauma.block.OxygenGeneratorBlock;
+import com.opamb.barotrauma.block.PeriscopeBlock;
 import com.opamb.barotrauma.block.ReactorBlock;
 import com.opamb.barotrauma.block.SonarBlock;
+import com.opamb.barotrauma.block.SupercapacitorBlock;
+import com.opamb.barotrauma.block.TurretBlock;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.ShipUseBlockPacket;
 import com.opamb.barotrauma.ship.vs.VsState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -46,7 +51,23 @@ public final class ShipBlockUseEvents {
     /** 客户端射线命中的方块坐标离玩家超过这个距离，就一定是船坞坐标（正常交互 4.5 格）。 */
     private static final double SHIPYARD_BLOCK_DISTANCE_SQR = 64.0D;
 
+    /**
+     * 按住右键时 {@code Minecraft.startUseItem} 每 4 tick 再触发一次事件；对门/舱口
+     * 来说就是每 0.2 秒开关一次，看起来像“打不开”。同一次按住只发一次包，
+     * 松开右键（client tick 检测）后才允许下一次；炮塔/舱口的命中格可能在
+     * 上下半块之间跳，所以不能按方块坐标去重。
+     */
+    private static boolean useHeldSent;
+
     private ShipBlockUseEvents() {
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase == TickEvent.Phase.END
+                && !Minecraft.getInstance().options.keyUse.isDown()) {
+            useHeldSent = false;
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -68,6 +89,14 @@ public final class ShipBlockUseEvents {
             // 船壳等非交互方块不拦：放置方块等操作仍走原版/VS2 路径。
             return;
         }
+        boolean useDown = Minecraft.getInstance().options.keyUse.isDown();
+        if (useDown && useHeldSent) {
+            // 同一次按住里的重复触发：只取消，不再发包（否则门每 4 tick 翻一次）。
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            return;
+        }
+        useHeldSent = useDown;
         Vec3 hit = event.getHitVec().getLocation();
         // 相对命中点用世界坐标的小数部分：船的偏航只影响水平面，Y 分层的
         // 货架/机器面板读到的层高仍然正确。
@@ -93,6 +122,10 @@ public final class ShipBlockUseEvents {
                 || block instanceof DeconstructorBlock
                 || block instanceof OxygenGeneratorBlock
                 || block instanceof JunctionBoxBlock
+                || block instanceof SupercapacitorBlock
+                // 炮塔/潜望镜放在物理船上时方块也在船坞里，右键坐标同样是船坞坐标。
+                || block instanceof TurretBlock
+                || block instanceof PeriscopeBlock
                 || block instanceof ReactorBlock
                 || block instanceof EngineBlock
                 || block instanceof DrainPumpBlock

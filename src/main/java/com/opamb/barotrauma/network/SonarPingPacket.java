@@ -393,10 +393,14 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
         }
         java.util.List<Integer> out = new java.util.ArrayList<>();
         int used = 0;
-        for (com.opamb.barotrauma.ship.ShipGeometry.Compartment compartment : ship.compartments()) {
+        java.util.List<com.opamb.barotrauma.ship.ShipGeometry.Compartment> compartments =
+                ship.compartments();
+        for (int compartmentIndex = 0; compartmentIndex < compartments.size(); compartmentIndex++) {
             if (used++ >= 10) {
                 break;
             }
+            com.opamb.barotrauma.ship.ShipGeometry.Compartment compartment =
+                    compartments.get(compartmentIndex);
             int minX = Integer.MAX_VALUE;
             int maxX = Integer.MIN_VALUE;
             int minY = Integer.MAX_VALUE;
@@ -416,7 +420,10 @@ public record SonarPingPacket(BlockPos sonarPos, int range, int mode, float aimX
             out.add(maxX);
             out.add(minY);
             out.add(maxY);
-            out.add((int) Math.round(compartment.waterRatio() * 100.0D));
+            double capacity = Math.max(1.0D,
+                    compartment.volume() * com.opamb.barotrauma.ship.ShipSimulation.UNITS_PER_BLOCK);
+            double units = ship.simulation().waterUnits(compartmentIndex);
+            out.add((int) Math.round(Math.min(1.0D, units / capacity) * 100.0D));
         }
         int[] result = new int[out.size()];
         for (int i = 0; i < result.length; i++) {

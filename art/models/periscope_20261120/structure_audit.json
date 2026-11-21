@@ -1,0 +1,26 @@
+{
+  "asset": "periscope",
+  "date": "2026-11-20",
+  "source": "periscope.bbmodel (Blockbench 5.0, model_format java_block, java_block_version 26.3)",
+  "counts": {
+    "cubes": 43,
+    "faces": 258,
+    "groups": 14,
+    "bones": 0,
+    "loose_cubes": 0,
+    "hidden_elements": 0,
+    "hidden_groups": 0,
+    "animations": 0,
+    "rotated_cubes": 28,
+    "zero_thickness_planes": 2
+  },
+  "groups": ["主体", "贴皮", "镜头", "插件", "潜望镜本体", "贴皮", "掌舵", "挂件", "上箱子", "电线", "电线", "电线", "电线组", "把手"],
+  "findings": [
+    { "level": "info", "code": "NO_BONES", "detail": "java_block 格式无骨骼，14 个分组仅作层级组织。" },
+    { "level": "info", "code": "NO_LOOSE_CUBES", "detail": "43 个 cube 全部在分组下，无游离元素。" },
+    { "level": "info", "code": "NO_ANIMATION", "detail": "0 条动画，静态交付。" },
+    { "level": "warn", "code": "ROTATION_OVER_LIMIT", "detail": "28/43 个 cube 带旋转，含 12 个超限单轴角度与 4 个多轴自由旋转，超出 1.20.1 原版 Java 模型 JSON 限制；接入前需集成侧确认目标格式。" },
+    { "level": "warn", "code": "ZERO_THICKNESS_PLANES", "detail": "2 个零厚度面片（4×3×0 与 0×2×2）。" },
+    { "level": "info", "code": "INFORMAL_NAMES", "detail": "分组命名含随意中文名（贴皮/掌舵/挂件/上箱子等），均为参与几何的正式对象，不影响导出。" }
+  ]
+}

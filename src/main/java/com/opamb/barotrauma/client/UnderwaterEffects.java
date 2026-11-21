@@ -101,7 +101,11 @@ public final class UnderwaterEffects {
             return;
         }
         Vec3 pos = mc.gameRenderer.getMainCamera().getPosition();
-        boolean submerged = OceanEnvironment.isSubmerged(mc.level, pos);
+        // 回差：入水看眼睛是否真的没入水面，出水要眼睛高过水面约 0.15 格才算。
+        // 玩家停在水面上下浮时，没有回差会让滤镜和水下色调每帧开关（用户实测闪屏）。
+        boolean enter = OceanEnvironment.isSubmerged(mc.level, pos.add(0.0D, 0.05D, 0.0D));
+        boolean stay = OceanEnvironment.isSubmerged(mc.level, pos.add(0.0D, -0.15D, 0.0D));
+        boolean submerged = lastSubmerged ? stay : enter;
         if (submerged != lastSubmerged) {
             lastSubmerged = submerged;
             BarotraumaMod.LOGGER.info("[water] 客户端浸没切换：submerged={} pos=({},{},{})",

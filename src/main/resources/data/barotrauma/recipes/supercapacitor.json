@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:zinc"
+    },
+    {
+      "item": "barotrauma:zinc"
+    },
+    {
+      "item": "barotrauma:lead"
+    },
+    {
+      "item": "minecraft:redstone"
+    },
+    {
+      "item": "minecraft:redstone"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:supercapacitor"
+  }
+}

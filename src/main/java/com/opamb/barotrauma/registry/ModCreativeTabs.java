@@ -52,6 +52,9 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.JUNCTION_BOX.get());
                         output.accept(ModItems.BATTERY.get());
                         output.accept(ModItems.BATTERY_CELL.get());
+                        output.accept(ModItems.SUPERCAPACITOR.get());
+                        output.accept(ModItems.PERISCOPE.get());
+                        output.accept(ModItems.PERISCOPE_STAND.get());
                         output.accept(ModItems.FABRICATOR.get());
                         output.accept(ModItems.DECONSTRUCTOR.get());
                         output.accept(ModItems.OXYGEN_GENERATOR.get());

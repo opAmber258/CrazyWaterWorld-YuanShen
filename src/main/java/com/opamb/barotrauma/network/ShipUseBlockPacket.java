@@ -68,18 +68,31 @@ public record ShipUseBlockPacket(BlockPos yardPos, Direction face, InteractionHa
             // 客户端给的 worldHit 是**船坞坐标**里的命中点（VS2 把射线打在船坞方块上），
             // 直接拿它和玩家眼睛比会得到 3.1e7 格，所有右键都会被拒。服务端自己把
             // 船坞方块换算回世界坐标再验距离。
+            // 命中偏移必须是 [0,1] 的有限值：NaN 会让下面的距离比较失效，
+            // 越界值又可以把“命中点”伪造到玩家身边，从而远程 use 任意船坞方块。
+            double hitX = message.hitX;
+            double hitY = message.hitY;
+            double hitZ = message.hitZ;
+            if (!Double.isFinite(hitX) || !Double.isFinite(hitY) || !Double.isFinite(hitZ)
+                    || hitX < 0.0D || hitX > 1.0D
+                    || hitY < 0.0D || hitY > 1.0D
+                    || hitZ < 0.0D || hitZ > 1.0D) {
+                BarotraumaMod.LOGGER.info("[ship-use] 拒绝 {}：非法命中偏移 ({},{},{})",
+                        message.yardPos, hitX, hitY, hitZ);
+                return;
+            }
             Vec3 check = null;
             BlockPos assembly = VsPilot.toAssembly(message.yardPos);
             Vec3 cellWorld = assembly == null ? null : VsPilot.assemblyToWorld(assembly);
             if (cellWorld != null) {
                 // cellWorld 是方块中心；相对命中点 0..1，减 0.5 变到中心坐标系。
-                check = cellWorld.add(message.hitX - 0.5D, message.hitY - 0.5D, message.hitZ - 0.5D);
+                check = cellWorld.add(hitX - 0.5D, hitY - 0.5D, hitZ - 0.5D);
             }
             double distance = check == null
                     ? Double.MAX_VALUE
                     : player.getEyePosition().distanceToSqr(check);
             double maxDistance = MAX_DISTANCE + 1.0D;
-            if (distance > maxDistance * maxDistance) {
+            if (!Double.isFinite(distance) || distance > maxDistance * maxDistance) {
                 BarotraumaMod.LOGGER.info("[ship-use] 拒绝 {}：距离 {}/{} 格（世界命中点 {}）",
                         message.yardPos, check == null ? "未知" : Math.sqrt(distance),
                         maxDistance, check);
@@ -91,7 +104,7 @@ public record ShipUseBlockPacket(BlockPos yardPos, Direction face, InteractionHa
                 return;
             }
             Vec3 localHit = Vec3.atLowerCornerOf(message.yardPos)
-                    .add(message.hitX, message.hitY, message.hitZ);
+                    .add(hitX, hitY, hitZ);
             BlockHitResult hit = new BlockHitResult(localHit, message.face, message.yardPos, false);
             BarotraumaMod.LOGGER.info("[ship-use] 执行 {} @ {}", state.getBlock(), message.yardPos);
             state.use(level, player, message.hand, hit);

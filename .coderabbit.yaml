@@ -25,6 +25,14 @@ reviews:
     - "!run/**"
     - "!run-client/**"
     - "!build/**"
+    # 美术交付目录（.bbmodel / 预览 PNG / 一次性校验脚本）与二进制贴图：
+    # 只归档不参与运行时逻辑，而且会把 PR 文件数顶过 CodeRabbit 的 100 个上限。
+    - "!art/**"
+    - "!**/*.png"
+    - "!**/*.bbmodel"
+    # GeckoLib 导出的 geo/动画资产：大段数值 JSON，不是手写逻辑
+    - "!**/*.geo.json"
+    - "!**/*.animation.json"
 
   path_instructions:
     - path: "src/main/java/**"

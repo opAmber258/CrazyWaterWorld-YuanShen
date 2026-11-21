@@ -54,6 +54,31 @@ public final class VsState {
                                           net.minecraft.world.phys.Vec3 pos);
 
         /**
+         * 脚位置所在舱室的头顶净高是否放得下站立碰撞箱。
+         *
+         * @return null = 不在物理船里/无法判定；true = 能站；false = 天花板太低
+         */
+        default Boolean hasStandingRoom(net.minecraft.world.level.Level level,
+                                        net.minecraft.world.phys.Vec3 pos, double height) {
+            return null;
+        }
+
+        /** 当前这艘物理船的 id；没有返回 null。用于把"随船拖拽"下发给客户端。 */
+        default Long activeShipId(net.minecraft.world.level.Level level) {
+            return null;
+        }
+
+        /**
+         * 脚是否贴着所在舱室的底面/平台顶。
+         *
+         * @return null = 不在物理船里/无法判定
+         */
+        default Boolean nearFloor(net.minecraft.world.level.Level level,
+                                  net.minecraft.world.phys.Vec3 pos, double maxAbove) {
+            return null;
+        }
+
+        /**
          * 位置是否真的在舱室几何内（不看水位）。
          *
          * @return null = 没有物理船/无法判定
@@ -163,6 +188,26 @@ public final class VsState {
                                                       net.minecraft.world.phys.Vec3 pos) {
         CompartmentQuery query = compartmentQuery;
         return query == null ? null : query.isPlayerInDryCompartment(level, pos);
+    }
+
+    /** 脚位置所在舱室的头顶净高是否放得下 {@code height} 格站立碰撞箱。 */
+    public static Boolean queryStandingRoom(net.minecraft.world.level.Level level,
+                                            net.minecraft.world.phys.Vec3 pos, double height) {
+        CompartmentQuery query = compartmentQuery;
+        return query == null ? null : query.hasStandingRoom(level, pos, height);
+    }
+
+    /** 当前物理船的 id（客户端随船拖拽按它对齐）；没有返回 null。 */
+    public static Long queryActiveShipId(net.minecraft.world.level.Level level) {
+        CompartmentQuery query = compartmentQuery;
+        return query == null ? null : query.activeShipId(level);
+    }
+
+    /** 脚是否贴着所在舱室的底面/平台顶。 */
+    public static Boolean queryNearFloor(net.minecraft.world.level.Level level,
+                                         net.minecraft.world.phys.Vec3 pos, double maxAbove) {
+        CompartmentQuery query = compartmentQuery;
+        return query == null ? null : query.nearFloor(level, pos, maxAbove);
     }
 
     /**

@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "barotrauma:block/periscope_stand"
+    },
+    "facing=east": {
+      "model": "barotrauma:block/periscope_stand"
+    },
+    "facing=south": {
+      "model": "barotrauma:block/periscope_stand"
+    },
+    "facing=west": {
+      "model": "barotrauma:block/periscope_stand"
+    }
+  }
+}

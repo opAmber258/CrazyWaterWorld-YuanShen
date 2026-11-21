@@ -133,6 +133,11 @@ public final class ShipSavedData extends SavedData {
          * 这份知识丢失，船回到码头时乘客会被留在海里。</p>
          */
         public final java.util.Set<BlockPos> knownInterior = new java.util.HashSet<>();
+        /** 逐格水量（装配坐标，单位）；读档/认领时注回新场。 */
+        public final Map<BlockPos, Double> water = new HashMap<>();
+        public boolean ballastPrimed;
+        public float ballastNeutral = 0.5F;
+        public float ballastMax = 1.0F;
 
         public static AssembledShip of(long shipId, BlockPos core, BlockPos proxy, Vec3 pos,
                                        Map<BlockPos, BlockState> blocks, ShipState shipState) {
@@ -154,6 +159,10 @@ public final class ShipSavedData extends SavedData {
                 ship.hullMultiplier = shipState.hullHealthMultiplier();
                 ship.engineMultiplier = shipState.engineMultiplier();
                 ship.hullDamage.copyFrom(shipState.hullDamage());
+                ship.water.putAll(shipState.simulation().waterCells());
+                ship.ballastPrimed = shipState.simulation().ballastPrimed();
+                ship.ballastNeutral = (float) shipState.simulation().ballastNeutral();
+                ship.ballastMax = (float) shipState.simulation().ballastMaxPercent();
             }
             return ship;
         }
@@ -181,6 +190,20 @@ public final class ShipSavedData extends SavedData {
             }
             tag.put("snapshot", snap);
             tag.put("hullDamage", hullDamage.saveNbt());
+            ListTag waterList = new ListTag();
+            for (Map.Entry<BlockPos, Double> entry : water.entrySet()) {
+                if (entry.getValue() == null || entry.getValue() <= 0.005D) {
+                    continue;
+                }
+                CompoundTag item = new CompoundTag();
+                item.putLong("pos", entry.getKey().asLong());
+                item.putFloat("units", entry.getValue().floatValue());
+                waterList.add(item);
+            }
+            tag.put("water", waterList);
+            tag.putBoolean("ballastPrimed", ballastPrimed);
+            tag.putFloat("ballastNeutral", ballastNeutral);
+            tag.putFloat("ballastMax", ballastMax);
             long[] interior = new long[knownInterior.size()];
             int i = 0;
             for (BlockPos pos : knownInterior) {
@@ -213,6 +236,19 @@ public final class ShipSavedData extends SavedData {
                         NbtUtils.readBlockState(blocks, item.getCompound("state")));
             }
             ship.hullDamage.loadNbt(tag.getList("hullDamage", Tag.TAG_COMPOUND));
+            ListTag waterList = tag.getList("water", Tag.TAG_COMPOUND);
+            for (int i = 0; i < waterList.size(); i++) {
+                CompoundTag item = waterList.getCompound(i);
+                float units = item.getFloat("units");
+                if (units > 0.0F) {
+                    ship.water.put(BlockPos.of(item.getLong("pos")), (double) units);
+                }
+            }
+            ship.ballastPrimed = tag.getBoolean("ballastPrimed");
+            ship.ballastNeutral = tag.contains("ballastNeutral")
+                    ? tag.getFloat("ballastNeutral") : 0.5F;
+            ship.ballastMax = tag.contains("ballastMax")
+                    ? tag.getFloat("ballastMax") : 1.0F;
             // 旧存档没有这份集合：留空，认领时按当前几何重建（和之前行为一致）。
             for (long packed : tag.getLongArray("knownInterior")) {
                 ship.knownInterior.add(BlockPos.of(packed));

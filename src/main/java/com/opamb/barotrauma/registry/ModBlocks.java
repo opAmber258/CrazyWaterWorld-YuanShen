@@ -132,6 +132,39 @@ public final class ModBlocks {
                     .isViewBlocking((state, level, pos) -> false)
                     .isSuffocating((state, level, pos) -> false)));
 
+    /**
+     * 超级电容器（设备）：墙挂储能。原作 20 kW·min / 最大输出 20 MW /
+     * 充电 1000 kW / 效率 0.1；瞬间脉冲供能。
+     */
+    public static final RegistryObject<Block> SUPERCAPACITOR = BLOCKS.register("supercapacitor",
+            () -> new com.opamb.barotrauma.block.SupercapacitorBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(8.0F, 300.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /** 潜望镜：接管附近炮塔的世界坐标设备（和炮塔一样暂不随 VS2 船移动）。 */
+    public static final RegistryObject<Block> PERISCOPE = BLOCKS.register("periscope",
+            () -> new com.opamb.barotrauma.block.PeriscopeBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(4.0F, 120.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
+    /** 潜望镜底座：纯装饰方块，可垫在潜望镜下面。 */
+    public static final RegistryObject<Block> PERISCOPE_STAND = BLOCKS.register("periscope_stand",
+            () -> new com.opamb.barotrauma.block.PeriscopeStandBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(4.0F, 120.0F)
+                    .sound(SoundType.METAL)
+                    .noOcclusion()
+                    .isViewBlocking((state, level, pos) -> false)
+                    .isSuffocating((state, level, pos) -> false)));
+
     // ---- 加工台 / 解构仪（2026-11-16） ----
     /**
      * 加工台：3×3×2 落地多方块。原作 500 kW、MinVoltage 0.5，

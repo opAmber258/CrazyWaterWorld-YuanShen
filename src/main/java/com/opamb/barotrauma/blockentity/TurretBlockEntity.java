@@ -88,6 +88,9 @@ public class TurretBlockEntity extends BlockEntity {
      */
     @Nullable
     private BlockPos operatorAnchor;
+    /** 通过潜望镜进入时的控制器位置（世界坐标）；直接操作炮塔时为 null。 */
+    @Nullable
+    private BlockPos controllerPos;
 
     public TurretBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TURRET.get(), pos, state);
@@ -255,7 +258,7 @@ public class TurretBlockEntity extends BlockEntity {
     // ---- 进入 / 退出 ----
 
     public InteractionResult enter(Player player) {
-        return enterInternal(player, null);
+        return enterInternal(player, null, null);
     }
 
     /**
@@ -272,10 +275,20 @@ public class TurretBlockEntity extends BlockEntity {
             }
             return InteractionResult.FAIL;
         }
-        return enterInternal(player, stationPos.immutable());
+        return enterInternal(player, stationPos.immutable(), null);
     }
 
-    private InteractionResult enterInternal(Player player, @Nullable BlockPos stationPos) {
+    /**
+     * 通过潜望镜等控制器进入：占用距离和每 tick 的存活校验都按控制器的世界眼位算，
+     * 而不是船坞里的炮塔方块坐标。
+     */
+    public InteractionResult enter(Player player, @Nullable BlockPos controllerPos) {
+        return enterInternal(player, null,
+                controllerPos == null ? null : controllerPos.immutable());
+    }
+
+    private InteractionResult enterInternal(Player player, @Nullable BlockPos stationPos,
+                                            @Nullable BlockPos controllerPos) {
         if (!(level instanceof ServerLevel server)) {
             return InteractionResult.SUCCESS;
         }
@@ -283,10 +296,13 @@ public class TurretBlockEntity extends BlockEntity {
             player.displayClientMessage(Component.translatable("msg.barotrauma.turret.occupied"), true);
             return InteractionResult.FAIL;
         }
-        if (stationPos == null && player.distanceToSqr(getBlockPos().getX() + 0.5D,
-                getBlockPos().getY() + 0.5D, getBlockPos().getZ() + 0.5D)
-                > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE) {
-            return InteractionResult.FAIL;
+        if (stationPos == null) {
+            // 物理船上的炮塔/潜望镜都在船坞里，直接用船坞坐标比距离永远是 3e7 格。
+            // 用换算后的世界镜头位置做距离校验，潜望镜才进得去。
+            Vec3 anchor = cameraAnchorFor(getBlockState(), getBlockPos(), controllerPos);
+            if (player.distanceToSqr(anchor) > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE) {
+                return InteractionResult.FAIL;
+            }
         }
 
         BlockPos previous = ACTIVE.put(player.getUUID(), getBlockPos());
@@ -297,9 +313,10 @@ public class TurretBlockEntity extends BlockEntity {
             old.clearOperator(false);
         }
 
+        this.controllerPos = controllerPos;
         operator = player.getUUID();
         operatorEntityId = player.getId();
-        operatorAnchor = stationPos;
+        this.operatorAnchor = stationPos;
         // 冷却由射击与 serverTick 管理，换人不重置：接替者不能靠重新进入跳过后坐。
         player.displayClientMessage(Component.translatable(stationPos == null
                 ? "msg.barotrauma.turret.entered"
@@ -324,6 +341,7 @@ public class TurretBlockEntity extends BlockEntity {
         operator = null;
         operatorEntityId = -1;
         operatorAnchor = null;
+        controllerPos = null;
         aimTargetSet = false;
         // 冷却跨占用者保留：退出再进入不能立刻连发。
         if (old != null) {
@@ -361,17 +379,27 @@ public class TurretBlockEntity extends BlockEntity {
         }
         if (turret.operator != null) {
             ServerPlayer player = server.getServer().getPlayerList().getPlayer(turret.operator);
+            Vec3 anchor = turret.cameraAnchor();
             boolean invalid = player == null
                     || player.level() != server
                     || player.isDeadOrDying()
                     || player.isSpectator();
             if (!invalid) {
-                invalid = turret.operatorAnchor != null
-                        // 站台接管：距离不限，但站台必须还在且仍指向本炮塔。
-                        ? !turret.stationAnchorValid(server)
-                        : player.distanceToSqr(pos.getX() + 0.5D, pos.getY() + 0.5D,
-                                pos.getZ() + 0.5D)
+                if (turret.operatorAnchor != null) {
+                    // 站台接管：距离不限，但站台必须还在且仍指向本炮塔。
+                    invalid = !turret.stationAnchorValid(server);
+                } else {
+                    if (turret.controllerPos != null) {
+                        // 潜望镜：区块未加载时不要 getBlockEntity（会同步加载区块）。
+                        invalid = !server.hasChunkAt(turret.controllerPos)
+                                || !(server.getBlockEntity(turret.controllerPos)
+                                instanceof PeriscopeBlockEntity);
+                    }
+                    if (!invalid) {
+                        invalid = player.distanceToSqr(anchor)
                                 > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
+                    }
+                }
             }
             if (invalid) {
                 turret.clearOperator(true);
@@ -379,10 +407,9 @@ public class TurretBlockEntity extends BlockEntity {
                 if (turret.aimTargetSet) {
                     turret.stepAim();
                 }
-                if (turret.cooldown > 0 && level.getGameTime() % 2L == 0L) {
-                    // 开火后把冷却同步给周围客户端，炮管后坐/准星状态才不会冻住。
-                    turret.broadcastState();
-                }
+                // 物理船会移动/转向：潜望镜镜头锚点是世界坐标，必须每 tick 重算并
+                // 下发，否则船开走了镜头还留在原地（画面只剩海）。顺带同步冷却。
+                turret.broadcastState();
             }
         }
     }
@@ -426,7 +453,7 @@ public class TurretBlockEntity extends BlockEntity {
         applyAim(clampYaw(getBlockState(), yaw + deltaYaw),
                 Mth.clamp(pitch + deltaPitch, minPitch(getBlockState()), maxPitch(getBlockState())));
         setChanged();
-        broadcastState();
+        // 状态包由 serverTick 每 tick 统一发（镜头锚点也要跟着船走）。
     }
 
     public void fire(ServerPlayer player) {
@@ -504,8 +531,45 @@ public class TurretBlockEntity extends BlockEntity {
             // 站台接管不限操作距离；但连接本身必须仍然有效。
             return level instanceof ServerLevel server && stationAnchorValid(server);
         }
-        return player.distanceToSqr(getBlockPos().getX() + 0.5D, getBlockPos().getY() + 0.5D,
-                getBlockPos().getZ() + 0.5D) <= MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
+        return player.distanceToSqr(cameraAnchor()) <= MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
+    }
+
+    /**
+     * 操作者看到的镜头位置（世界坐标）。
+     *
+     * <p>物理船上的方块都在船坞里，直接拿方块坐标当镜头会在 x≈-2800 万、z≈1200 万
+     * 的船坞虚空里，画面只剩深海背景。这里用
+     * {@code VsPilot.assemblyToWorld} 把船坞坐标换回船当前的世界位置；世界方块
+     * （未上船的炮塔）保持原坐标。</p>
+     */
+    public Vec3 cameraAnchor() {
+        return cameraAnchorFor(getBlockState(), getBlockPos(), controllerPos);
+    }
+
+    private static Vec3 cameraAnchorFor(BlockState state, BlockPos turretPos,
+                                        @Nullable BlockPos controller) {
+        if (controller != null) {
+            // 潜望镜眼位：方块中心 + 0.58 = 方块底面 + 1.08。
+            return blockCenterWorld(controller).add(0.0D, 0.58D, 0.0D);
+        }
+        // 相机高度/轴心由炮塔规格给：eye 相对方块底面，pivot 相对方块最小角。
+        TurretSpec spec = spec(state);
+        double eye = mount(state) == Direction.DOWN ? spec.ceilingEyeHeight() : spec.eyeHeight();
+        return blockCenterWorld(turretPos)
+                .add(spec.pivotX() - 0.5D, eye - 0.5D, spec.pivotZ() - 0.5D);
+    }
+
+    private static Vec3 blockCenterWorld(BlockPos pos) {
+        if (com.opamb.barotrauma.ship.vs.VsState.active()
+                && com.opamb.barotrauma.ship.vs.VsPilot.isYardBlock(pos)) {
+            BlockPos assembly = com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(pos);
+            Vec3 world = assembly == null ? null
+                    : com.opamb.barotrauma.ship.vs.VsPilot.assemblyToWorld(assembly);
+            if (world != null) {
+                return world;
+            }
+        }
+        return Vec3.atCenterOf(pos);
     }
 
     /** 占用锚点是否仍是一个“绑定到本炮塔”的瞄准站。 */
@@ -525,7 +589,7 @@ public class TurretBlockEntity extends BlockEntity {
 
     public TurretStatePacket statePacket() {
         return new TurretStatePacket(getBlockPos(), yaw, pitch, cooldown, operatorEntityId,
-                operatorAnchor != null);
+                operatorAnchor != null, controllerPos, cameraAnchor());
     }
 
     public void broadcastState() {
@@ -537,8 +601,11 @@ public class TurretBlockEntity extends BlockEntity {
         double centerY = getBlockPos().getY() + 0.5D;
         double centerZ = getBlockPos().getZ() + 0.5D;
         double radius = 128.0D * 128.0D;
+        ServerPlayer operatorPlayer = operator == null ? null
+                : server.getServer().getPlayerList().getPlayer(operator);
         for (ServerPlayer player : server.players()) {
-            if (player.distanceToSqr(centerX, centerY, centerZ) <= radius) {
+            if (player == operatorPlayer
+                    || player.distanceToSqr(centerX, centerY, centerZ) <= radius) {
                 ModNetwork.sendToPlayer(player, packet);
             }
         }
@@ -596,6 +663,7 @@ public class TurretBlockEntity extends BlockEntity {
             operator = null;
             operatorEntityId = -1;
             operatorAnchor = null;
+            controllerPos = null;
             if (level instanceof ServerLevel server) {
                 ServerPlayer player = server.getServer().getPlayerList().getPlayer(old);
                 if (player != null) {
