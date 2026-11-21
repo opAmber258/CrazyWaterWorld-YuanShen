@@ -30,6 +30,9 @@ reviews:
     - "!art/**"
     - "!**/*.png"
     - "!**/*.bbmodel"
+    # GeckoLib 导出的 geo/动画资产：大段数值 JSON，不是手写逻辑
+    - "!**/*.geo.json"
+    - "!**/*.animation.json"
 
   path_instructions:
     - path: "src/main/java/**"
