@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:steel"
+    },
+    {
+      "item": "barotrauma:copper"
+    },
+    {
+      "item": "barotrauma:copper"
+    },
+    {
+      "item": "minecraft:glass"
+    },
+    {
+      "item": "minecraft:redstone"
+    }
+  ],
+  "result": {
+    "item": "barotrauma:periscope"
+  }
+}

@@ -179,6 +179,21 @@ public final class VsPilot {
             }
 
             @Override
+            public Boolean hasStandingRoom(Level level, Vec3 pos, double height) {
+                return VsPilot.hasStandingRoom(level, pos, height);
+            }
+
+            @Override
+            public Long activeShipId(Level level) {
+                return ship == null ? null : ship.getId();
+            }
+
+            @Override
+            public Boolean nearFloor(Level level, Vec3 pos, double maxAbove) {
+                return VsPilot.nearFloor(level, pos, maxAbove);
+            }
+
+            @Override
             public Boolean isInsideCompartmentGeometry(Level level, Vec3 pos) {
                 // 用实时逆变换 + interiorCells（含破洞后的历史兜底），不看水位。
                 return isInsideInterior(level, pos);
@@ -371,7 +386,8 @@ public final class VsPilot {
             if (live == null) {
                 live = ship;
             }
-            VsBridge.loadShipChunks(level, live);
+            // 常驻票据：传送后 activeChunks 会变，票据由 tick() 的周期同步搬到新位置。
+            VsChunkTickets.sync(level, live);
             Vec3 from = VsBridge.position(live);
             // 钉在船上的散货必须跟着传送走：VS2 传送只改刚体位置，实体留在原地。
             // 商店"送至潜艇"的大件（潜水服）和没有空箱时生成的金属箱都是这种散货，
@@ -429,7 +445,7 @@ public final class VsPilot {
         }
         try {
             ServerShip live = VsBridge.loaded(level, ship);
-            VsBridge.loadShipChunks(level, live == null ? ship : live);
+            VsChunkTickets.sync(level, live == null ? ship : live);
         } catch (Throwable ignored) {
             // 预加载失败不影响后续流程，VS2 自己的 chunk watch 还会补
         }
@@ -462,7 +478,8 @@ public final class VsPilot {
     private static void dropStale() {
         // 船没了，交互锚点也得撤掉。
         com.opamb.barotrauma.ship.water.ShipVolumeGuard.deactivate();
-                removeProxy(lastLevel);
+        VsChunkTickets.clear(lastLevel);
+        removeProxy(lastLevel);
         ship = null;
         thruster = null;
         state = null;
@@ -528,6 +545,7 @@ public final class VsPilot {
         reactorProxyPos = null;
         engineAnchor = null;
         engineProxyPos = null;
+        VsChunkTickets.clear(lastLevel);
         lastLevel = null;
         yardOffsetX = Integer.MIN_VALUE;
         yardOffsetY = Integer.MIN_VALUE;
@@ -547,6 +565,8 @@ public final class VsPilot {
         simTickCounter = 0;
         waterStateLogCounter = 0;
         lastRecordFlushGameTime = Long.MIN_VALUE;
+        pendingGeometryLevel = null;
+        pendingGeometryDueTick = Long.MIN_VALUE;
         lastWaterPacket = ShipWaterStatePacket.empty();
         clearFixtureCut();
         com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
@@ -745,7 +765,13 @@ public final class VsPilot {
      *
      * @return {@code null} = 不在任何舱室 bbox 内（调用方继续走原判定链）。
      */
-    public static Boolean isPlayerInDryCompartment(Level level, Vec3 pos) {
+    /**
+     * 世界坐标 → 船的装配坐标（和水面盒同一套坐标）。
+     *
+     * <p>物理船用实时逆变换，船偏航后不会把舱内算到盒子外；返回 null 表示
+     * 当前没有可用的物理船/水面数据。</p>
+     */
+    private static double[] toShipLocal(Level level, Vec3 pos) {
         if (ship == null || state == null
                 || !(level instanceof ServerLevel server) || pos == null) {
             return null;
@@ -769,9 +795,48 @@ public final class VsPilot {
         } catch (Throwable error) {
             return null;
         }
-        double lx = shipSpace.x - origin.x;
-        double ly = shipSpace.y - origin.y;
-        double lz = shipSpace.z - origin.z;
+        return new double[]{shipSpace.x - origin.x, shipSpace.y - origin.y, shipSpace.z - origin.z};
+    }
+
+    /**
+     * 脚所在舱室的头顶净高是否放得下站立碰撞箱。
+     *
+     * <p>水面盒的 maxY+1 是这一列空气段的天花板；1.8 格放不下时必须保持游泳
+     * 碰撞箱，否则原版会把站立碰撞箱撑进天花板、把人挤到上层。</p>
+     */
+    public static Boolean hasStandingRoom(Level level, Vec3 pos, double height) {
+        double[] local = toShipLocal(level, pos);
+        if (local == null) {
+            return null;
+        }
+        return com.opamb.barotrauma.ship.ShipWaterBoxes.hasStandingRoom(
+                lastWaterPacket.boxes(), local[0], local[1], local[2], height);
+    }
+
+    /**
+     * 脚是否贴着所在舱室的底面/平台顶。
+     *
+     * <p>水里只有落到舱底才允许站起来；浮在水中间/贴墙/贴天花板都保持游泳
+     * 碰撞箱，避免姿态每 tick 来回切（用户实测贴墙卡顿）。</p>
+     */
+    public static Boolean nearFloor(Level level, Vec3 pos, double maxAbove) {
+        double[] local = toShipLocal(level, pos);
+        if (local == null) {
+            return null;
+        }
+        double distance = com.opamb.barotrauma.ship.ShipWaterBoxes.floorDistance(
+                lastWaterPacket.boxes(), local[0], local[1], local[2]);
+        return Double.isNaN(distance) ? null : distance <= maxAbove;
+    }
+
+    public static Boolean isPlayerInDryCompartment(Level level, Vec3 pos) {
+        double[] local = toShipLocal(level, pos);
+        if (local == null) {
+            return null;
+        }
+        double lx = local[0];
+        double ly = local[1];
+        double lz = local[2];
         float[] boxes = lastWaterPacket.boxes();
         if (boxes.length < 7) {
             return null;
@@ -809,7 +874,10 @@ public final class VsPilot {
             }
         }
         if (!inAny) {
-            return null;
+            // 几何确认在船体舱内、但水盒没覆盖到（新房间/破口后场缺格）：
+            // 按干舱兜底。否则客户端和服务端都会回落到“舱外海水”，
+            // 出现货舱没水却能游泳、还套水下滤镜（用户实测）。
+            return isInsideInterior(level, pos) ? Boolean.TRUE : null;
         }
         return !wet;
     }
@@ -1091,13 +1159,18 @@ public final class VsPilot {
                     }
                 }
                 state.simulation().tick(0.1D);
+                java.util.List<net.minecraft.core.BlockPos> breachCells = new java.util.ArrayList<>();
+                for (com.opamb.barotrauma.ship.ShipState.Breach breach : state.breaches()) {
+                    breachCells.add(breach.pos());
+                }
                 if (now != null) {
-                    state.simulation().tickSeaFlood(0.1D, Math.max(0.0D, -now.y));
+                    state.simulation().tickSeaFlood(0.1D,
+                            Math.max(0.0D, -now.y), breachCells);
                 }
                 // 还没破块、但伤害 ≥10%/70% 的船壳渗水
                 state.tickLeaks(0.1D);
-                // 开着的门：两侧水位不一样时按限速慢慢流，不做瞬间均摊
-                state.simulation().tickDoorFlow(0.1D);
+                // 逐格场：重力下落 + 开门/舱口压力流
+                state.simulation().tickWaterFlow(0.1D);
             } catch (Throwable ignored) {
                 // 模拟出错不影响物理
             }
@@ -1118,6 +1191,17 @@ public final class VsPilot {
             // 空气海域没有真实水要拦截；保留清水调用只为兼容旧存档里可能残留的水。
             clearShipVolumeWater(level, VsState.offsetX(), VsState.offsetY(), VsState.offsetZ(), now);
             moveProxy(level, VsState.offsetX(), VsState.offsetY(), VsState.offsetZ());
+            // 门开合登记过的几何重扫：合并到主 tick，最多 5 tick 扫一次。
+            // 舱内自动门会随着玩家游动反复开合，每次全量重扫 + 重建流体场太重，
+            // 而且日志会被"0 格被破坏"刷屏（用户日志 45 秒 21 次）。
+            if (pendingGeometryDueTick != Long.MIN_VALUE
+                    && level.getGameTime() >= pendingGeometryDueTick) {
+                ServerLevel refreshLevel =
+                        pendingGeometryLevel == null ? level : pendingGeometryLevel;
+                pendingGeometryDueTick = Long.MIN_VALUE;
+                pendingGeometryLevel = null;
+                rebuildGeometry(refreshLevel, List.of());
+            }
             // 船体破损对账：VS2 自己不支持船上破坏，我们靠船坞方块状态兜底
             // （爆炸、命令、其它 mod 把方块弄没了也能发现）。
             if (level.getGameTime() % 20L == 0L) {
@@ -1125,6 +1209,8 @@ public final class VsPilot {
                     discoverYardOffset(level);
                 }
                 refreshHull(level);
+                // 船移动/传送后 activeChunks 会变：把常驻票据搬到新占用的区块。
+                VsChunkTickets.sync(level, view(level));
             }
             // 和模拟步进（每 2 tick，10 Hz）对齐：水面目标每 100 ms 更新一次，
             // 客户端再按帧插值。原来是 10 tick（2 Hz），水面会一顿一顿。
@@ -1416,8 +1502,20 @@ public final class VsPilot {
      */
     /** 门开合后强制重扫船坞几何；方块类型没变，{@link #refreshHull} 不会触发。 */
     private static void refreshPhysicalGeometry(ServerLevel level) {
-        rebuildGeometry(level, List.of());
+        if (level == null) {
+            return;
+        }
+        // 只登记，主 tick 里合并成一次：舱内自动门会跟玩家反复开合，
+        // 每次全量扫 6k+ 格并重建流体场太重，还会让日志刷屏。
+        pendingGeometryLevel = level;
+        if (pendingGeometryDueTick == Long.MIN_VALUE) {
+            pendingGeometryDueTick = level.getGameTime() + 5L;
+        }
     }
+
+    /** 待处理的几何重扫（门开合触发）。 */
+    private static ServerLevel pendingGeometryLevel;
+    private static long pendingGeometryDueTick = Long.MIN_VALUE;
 
     /**
      * 船坞坐标 → 装配坐标。物理船的方块实体（排水泵等）报上来的是船坞里的格子，
@@ -1734,11 +1832,17 @@ public final class VsPilot {
         interiorOffsetX = Integer.MIN_VALUE;
         interiorOffsetY = Integer.MIN_VALUE;
         interiorOffsetZ = Integer.MIN_VALUE;
-        LOGGER.info("[vs] 空气海域（破损后）：舱室 {} 格 + 剩余船体 {} 格 = {} 格（真实水拦截保持停用）",
+        LOGGER.debug("[vs] 空气海域（破损后）：舱室 {} 格 + 剩余船体 {} 格 = {} 格（真实水拦截保持停用）",
                 interiorCells.size(), snapshot.size(), guardCells.size());
-        LOGGER.info("[vs] 船体破损：{} 格被破坏 → 重扫 {} 个舱室 / {} 处连海 / 舱容 {}",
-                broken.size(), geometry.compartments().size(), geometry.openPockets().size(),
-                geometry.totalVolume());
+        if (broken.isEmpty()) {
+            LOGGER.debug("[vs] 门格几何重扫：{} 个舱室 / {} 处连海 / 舱容 {}",
+                    geometry.compartments().size(), geometry.openPockets().size(),
+                    geometry.totalVolume());
+        } else {
+            LOGGER.info("[vs] 船体破损：{} 格被破坏 → 重扫 {} 个舱室 / {} 处连海 / 舱容 {}",
+                    broken.size(), geometry.compartments().size(), geometry.openPockets().size(),
+                    geometry.totalVolume());
+        }
         if (!broken.isEmpty()) {
             LOGGER.info("[vs] 破口位置（原坐标，前 5 个）：{}",
                     broken.subList(0, Math.min(5, broken.size())));
@@ -1754,8 +1858,20 @@ public final class VsPilot {
                 maxY = Math.max(maxY, pos.getY());
                 maxZ = Math.max(maxZ, pos.getZ());
             }
-            LOGGER.info("[vs] 连海空腔：{} 格，bbox x{}..{} y{}..{} z{}..{}",
-                    pocket.volume(), minX, maxX, minY, maxY, minZ, maxZ);
+            // 水场格数/容量：破口裁空 interior 时，靠历史舱内格兜底应该和房间格数
+            // 对得上；如果这里远小于"格"，水会只在一小块里涨（2026-11-20 实测）。
+            int fieldCells = 0;
+            double fieldCapacity = 0.0D;
+            int pocketIndex = geometry.openPockets().indexOf(pocket);
+            if (current != null && current.simulation() != null
+                    && current.simulation().fluid() != null && pocketIndex >= 0) {
+                int body = current.compartments().size() + pocketIndex;
+                fieldCells = current.simulation().fluid().cellsOfBody(body).size();
+                fieldCapacity = current.simulation().fluid().bodyCapacity(body);
+            }
+            LOGGER.debug("[vs] 连海空腔：{} 格（水场 {} 格 / {} 单位），bbox x{}..{} y{}..{} z{}..{}",
+                    pocket.volume(), fieldCells, Math.round(fieldCapacity),
+                    minX, maxX, minY, maxY, minZ, maxZ);
         }
         sendWaterState(current);
     }
@@ -2521,8 +2637,21 @@ public final class VsPilot {
     /** 把每个舱室的包围盒 + 水面高度发给客户端（自绘水面用）。 */
     private static void sendWaterState(ShipState st) {
         long shipId = ship != null ? ship.getId() : -1L;
+        // 只有模型比整格小的家具/机器需要补水面；船壳/地板/墙是完整方块，
+        // 补进去会把水渲染到墙里（客户端还会把墙格当成舱内）。
+        java.util.function.Predicate<BlockPos> fullCube = pos -> {
+            if (lastLevel == null || yardOffsetX == Integer.MIN_VALUE) {
+                return true;
+            }
+            BlockPos yard = toYard(pos);
+            if (yard == null) {
+                return true;
+            }
+            net.minecraft.world.level.block.state.BlockState state = lastLevel.getBlockState(yard);
+            return state.isCollisionShapeFullBlock(lastLevel, yard);
+        };
         ShipWaterStatePacket packet = com.opamb.barotrauma.ship.ShipWaterStateBuilder.build(st, shipId, true,
-                (float) assembledPos.x, (float) assembledPos.y, (float) assembledPos.z);
+                (float) assembledPos.x, (float) assembledPos.y, (float) assembledPos.z, fullCube);
         lastWaterPacket = packet;
         ModNetwork.sendToAll(packet);
         // 船壳耐久和水平同步：同一套 anchor/坐标空间，客户端用同一个 render 变换映射。
@@ -3161,6 +3290,19 @@ public final class VsPilot {
                 }
                 next.setHullHealthMultiplier(state.hullHealthMultiplier());
                 next.setEngineMultiplier(state.engineMultiplier());
+                // 飞行期间的水按格搬回方块船：装配坐标 + 靠泊位移 = 世界坐标。
+                Map<BlockPos, Double> carried = new java.util.HashMap<>();
+                for (Map.Entry<BlockPos, Double> entry : state.waterByCell().entrySet()) {
+                    carried.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+                }
+                if (!carried.isEmpty()) {
+                    next.simulation().seedWaterByCell(carried, next.geometry());
+                }
+                if (state.simulation().ballastPrimed()) {
+                    next.simulation().restoreBallastState(true,
+                            state.simulation().ballastNeutral(),
+                            state.simulation().ballastMaxPercent());
+                }
                 core.setChanged();
             }
         }
@@ -3170,6 +3312,7 @@ public final class VsPilot {
         } catch (Throwable ignored) {
             // 存档取不到也不能挡拆船
         }
+        VsChunkTickets.clear(level);
         ship = null;
         thruster = null;
         state = null;
@@ -3295,6 +3438,12 @@ public final class VsPilot {
             record.hullDamage.copyFrom(state.hullDamage());
             record.hullMultiplier = state.hullHealthMultiplier();
             record.engineMultiplier = state.engineMultiplier();
+            // 逐格水位/压载标定也随 5 秒同步写进认领记录，不能只靠装配那一刻的快照。
+            record.water.clear();
+            record.water.putAll(state.waterByCell());
+            record.ballastPrimed = state.simulation().ballastPrimed();
+            record.ballastNeutral = (float) state.simulation().ballastNeutral();
+            record.ballastMax = (float) state.simulation().ballastMaxPercent();
             // 只增不减的舱内格历史：切破洞后新几何裁空的部分也要落盘。
             record.knownInterior.clear();
             record.knownInterior.addAll(knownInteriorCells);
@@ -3560,6 +3709,9 @@ public final class VsPilot {
                 });
         ShipState rebuilt = new ShipState(geometry,
                 new MachineCount(0, 0, 0, 0, 0, 0, sonar));
+        // 历史舱内格要在第一次 simulation()/seedWater 前恢复：破口空腔的
+        // interiorCells 可能被外部洪泛清空，否则水场会没有格子。
+        rebuilt.restoreKnownInterior(record.knownInterior);
         rebuilt.setHullHealthMultiplier(record.hullMultiplier);
         rebuilt.setEngineMultiplier(record.engineMultiplier);
         rebuilt.hullDamage().copyFrom(record.hullDamage);
@@ -3580,8 +3732,17 @@ public final class VsPilot {
         int initial = record.initialBlocks > 0 ? record.initialBlocks : snap.size();
         int destroyed = Math.max(0, initial - snap.size());
         rebuilt.simulation().setBreachSize(Math.max(1, destroyed + breached.size()));
-        // 认领/读档后没有存档水位：压载重置到原版中性相对水位
-        rebuilt.simulation().requestBallastPrime();
+        // 读档/重新认领：先注回逐格水位，再决定要不要重新 prime 压载。
+        if (!record.water.isEmpty()) {
+            rebuilt.simulation().seedWaterByCell(record.water, geometry);
+        }
+        if (record.ballastPrimed) {
+            rebuilt.simulation().restoreBallastState(true,
+                    record.ballastNeutral, record.ballastMax);
+        } else {
+            // 旧存档没有水位：压载重置到原版中性相对水位
+            rebuilt.simulation().requestBallastPrime();
+        }
 
         ship = found;
         state = rebuilt;
@@ -3640,6 +3801,10 @@ public final class VsPilot {
         }
         VsState.activate(core, rebuilt, VsPilot::isPhysicalHere, VsPilot::applyControl);
         applyControl(rebuilt);
+        // 世界重开/读档直接进船时，船坞区块可能还没加载：VS2 会把玩家移动包
+        // 判成 "colliding with unloaded ships" 并取消、把位置打回旧点（实测
+        // 260 条/2 秒）。认领时同步把船实际占用的区块拉起来，玩家一进来就能走。
+        preloadShipChunks(level);
         sendWaterState(rebuilt);
         LOGGER.info("[vs] 已认领世界里的物理船：shipId={}，快照 {} 格，破口 {} 处，推进器 {}",
                 record.vsShipId, snap.size(), breached.size(), attached != null ? "已挂" : "待挂");

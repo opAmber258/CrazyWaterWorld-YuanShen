@@ -10,19 +10,18 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 把"舱室水位"翻译成真实水方块。
+ * 把逐格水场翻译成真实水方块（调试/命令用）。
  *
- * <p>《潜渊症》的水不是流体模拟：每个舱室只有一个水位。这里按水位从舱底往上铺水——
- * 水位涨一格就多一格水，玩家能看见水线上升。连到外海的空腔（船体破洞）直接按满水处理。</p>
+ * <p>正式渲染走客户端自绘水面；这里只把"水量 ≥ 一格"的格写成原版水，方便
+ * {@code /ship flood} 和自检。部分填充格原版水方块表示不了，会留空。</p>
  */
 public final class ShipWater {
 
     private static final BlockState WATER = Blocks.WATER.defaultBlockState();
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
 
-    /** 一个舱室（或破口空腔）的格子，已按"从底往上"排好序。 */
-    private record Room(List<BlockPos> cells, int volume, int compartmentIndex, int pocketIndex,
-                        boolean openToSea) {
+    /** 一个舱室（或破口空腔）的格子。 */
+    private record Room(List<BlockPos> cells) {
     }
 
     private final List<Room> rooms;
@@ -31,13 +30,11 @@ public final class ShipWater {
     public ShipWater(ShipGeometry.Result geometry, ShipSimulation simulation) {
         this.simulation = simulation;
         this.rooms = new ArrayList<>();
-        int index = 0;
         for (ShipGeometry.Compartment compartment : geometry.compartments()) {
-            rooms.add(new Room(sorted(compartment.cells()), compartment.volume(), index++, -1, false));
+            rooms.add(new Room(sorted(compartment.cells())));
         }
-        int pocketIndex = 0;
         for (ShipGeometry.Compartment pocket : geometry.openPockets()) {
-            rooms.add(new Room(sorted(pocket.cells()), pocket.volume(), -1, pocketIndex++, true));
+            rooms.add(new Room(sorted(pocket.cells())));
         }
     }
 
@@ -50,27 +47,17 @@ public final class ShipWater {
         return list;
     }
 
-    /** 按当前水位重写水方块。返回改动的方块数。 */
+    /** 按逐格水场重写水方块（调试/命令用；部分填充格无法用原版水方块表示）。 */
     public int apply(Level level) {
         int changed = 0;
+        com.opamb.barotrauma.ship.water.ShipFluidField field = simulation.fluid();
+        if (field == null) {
+            return 0;
+        }
         for (Room room : rooms) {
-            int filled;
-            if (room.openToSea) {
-                // 破口进水是渐进的（ShipSimulation.tickSeaFlood），不再直接按满水
-                filled = (int) Math.floor(simulation.pocketWater(room.pocketIndex()) / ShipSimulation.UNITS_PER_BLOCK);
-            } else {
-                double units = room.compartmentIndex >= 0 ? simulation.waterUnits(room.compartmentIndex) : 0.0D;
-                filled = (int) Math.floor(units / ShipSimulation.UNITS_PER_BLOCK);
-            }
-            if (filled < 0) {
-                filled = 0;
-            } else if (filled > room.volume) {
-                filled = room.volume;
-            }
-            for (int i = 0; i < room.cells.size(); i++) {
-                BlockPos pos = room.cells.get(i);
+            for (BlockPos pos : room.cells) {
                 BlockState state = level.getBlockState(pos);
-                boolean shouldBeWater = i < filled;
+                boolean shouldBeWater = field.waterAt(pos) >= ShipSimulation.UNITS_PER_BLOCK - 0.5D;
                 if (shouldBeWater && state.isAir()) {
                     level.setBlock(pos, WATER, 3);
                     changed++;

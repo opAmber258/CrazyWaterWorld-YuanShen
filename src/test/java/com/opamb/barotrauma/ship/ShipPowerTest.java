@@ -190,4 +190,32 @@ class ShipPowerTest {
         assertEquals(0.0D, sim.boxLoad(boxA), 1.0E-6);
         assertEquals(500.0D, sim.boxLoad(boxB), 1.0E-6);
     }
+
+    @Test
+    void 超级电容器按原作百分之一效率充电() {
+        ShipSimulation sim = simulation(0);
+        sim.reportConsumer(new BlockPos(0, 0, 0), 1000.0D, 0.5D, null);
+        sim.reportReactor(new BlockPos(1, 0, 0), 3000.0D, 5000.0D, 50.0D, false, false);
+        // 容量 20 kW·min、充电 1000 kW、效率 0.1；7 参数重载显式给效率。
+        sim.reportStorage(new BlockPos(0, 1, 0), 0.0D, 20.0D, 20_000_000.0D, 1000.0D,
+                null, 100.0D, 0.1D);
+        sim.tick(1.0D);
+        assertEquals(1000.0D, sim.batteryChargeKw(), 1.0E-6);
+        // 充进去 1000 kW × 1 秒，只有 10% 存下来
+        assertEquals(1000.0D / 60.0D * 0.1D, sim.storedKwm(), 1.0E-6);
+    }
+
+    @Test
+    void 超级电容器单步放电受能量上限约束() {
+        ShipSimulation sim = simulation(0);
+        // 负载 15000 kW、无反应堆；电容满电 20 kW·min，单步 0.1 秒最多放 12000 kW
+        sim.reportConsumer(new BlockPos(0, 0, 0), 15_000.0D, 0.5D, null);
+        sim.reportStorage(new BlockPos(0, 1, 0), 20.0D, 20.0D, 20_000_000.0D, 1000.0D,
+                null, 100.0D, 0.1D);
+        sim.tick(0.1D);
+        assertEquals(12_000.0D, sim.batteryOutputKw(), 1.0E-6);
+        assertEquals(0.8D, sim.voltage(), 1.0E-6);
+        // 20 kW·min 全部放完（12000 kW × 0.1 秒 = 20 kW·min）
+        assertEquals(0.0D, sim.storedKwm(), 1.0E-6);
+    }
 }

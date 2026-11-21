@@ -142,13 +142,12 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
             be.setChanged();
         }
         if (ship != null && cell != null && be.condition.condition() > 10.0D) {
-            int body = ship.simulation().bodyOf(cell);
             java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
             for (ShipState.Breach breach : ship.breaches()) {
                 breachSources.add(breach.pos());
             }
-            boolean wet = ship.simulation().bodyIsWet(body)
-                    && cell.getY() < ship.simulation().waterLevelAt(cell, breachSources);
+            // 反应堆本身是实心格，bodyOf(自身) 恒为 -1；必须看相邻舱内格有没有被淹。
+            boolean wet = ship.simulation().submergedAt(cell, breachSources);
             if (wet) {
                 be.condition.damage(Math.min(0.5D * SECONDS_PER_TICK,
                         be.condition.condition() - 10.0D));

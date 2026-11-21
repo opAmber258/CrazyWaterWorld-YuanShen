@@ -64,6 +64,9 @@ public final class ClientSetup {
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.BATTERY.get(), BatteryScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.SUPERCAPACITOR.get(),
+                    SupercapacitorScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.OXYGEN_GENERATOR.get(),
                     OxygenGeneratorScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
@@ -106,6 +109,12 @@ public final class ClientSetup {
                 context -> new JunctionBoxRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.BATTERY.get(),
                 context -> new BatteryRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.SUPERCAPACITOR.get(),
+                context -> new SupercapacitorRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.PERISCOPE.get(),
+                context -> new PeriscopeRenderer());
+        event.registerBlockEntityRenderer(ModBlockEntities.PERISCOPE_STAND.get(),
+                context -> new PeriscopeStandRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.FABRICATOR.get(),
                 context -> new FabricatorRenderer());
         event.registerBlockEntityRenderer(ModBlockEntities.DECONSTRUCTOR.get(),

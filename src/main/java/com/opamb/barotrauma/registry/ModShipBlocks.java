@@ -218,6 +218,10 @@ public final class ModShipBlocks {
         if (state.getBlock() == ModBlocks.BATTERY.get()) {
             return false;
         }
+        // 超级电容器同样是墙挂设备（1.5×1.4×0.81），不能隔舱。
+        if (state.getBlock() == ModBlocks.SUPERCAPACITOR.get()) {
+            return false;
+        }
         // 通风口是墙挂小设备（临时单格占位）：如果算整格墙，分舱扫描会跳过
         // 它所在的格，bodyOf(通风口) 永远是 -1，通风口就永远不工作。
         if (state.getBlock() == ModBlocks.VENT.get()) {
@@ -260,6 +264,7 @@ public final class ModShipBlocks {
                 || block == ModBlocks.DRAIN_PUMP.get()
                 || block == ModBlocks.BALLAST_PUMP.get()
                 || block == ModBlocks.BATTERY.get()
+                || block == ModBlocks.SUPERCAPACITOR.get()
                 || block == ModBlocks.FABRICATOR.get()
                 || block == ModBlocks.DECONSTRUCTOR.get()
                 || block == ModBlocks.OXYGEN_GENERATOR.get()
@@ -293,6 +298,7 @@ public final class ModShipBlocks {
                 || block == ModBlocks.ENGINE.get()
                 || block == ModBlocks.JUNCTION_BOX.get()
                 || block == ModBlocks.BATTERY.get()
+                || block == ModBlocks.SUPERCAPACITOR.get()
                 || block == ModBlocks.FABRICATOR.get()
                 || block == ModBlocks.DECONSTRUCTOR.get()
                 || block == ModBlocks.OXYGEN_GENERATOR.get()

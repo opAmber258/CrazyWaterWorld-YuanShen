@@ -106,6 +106,15 @@ public final class TurretClient {
     private static boolean active;
     @Nullable
     private static BlockPos activePos;
+    /** 通过潜望镜进入时的镜头锚点；直接操作炮塔时为 null（镜头在炮塔枢轴）。 */
+    @Nullable
+    private static BlockPos activeAnchor;
+    /**
+     * 服务端算好的世界镜头位置。物理船上的炮塔/潜望镜方块坐标在船坞里，
+     * 不能直接当镜头位置（否则画面只剩船坞虚空里的深海背景）。
+     */
+    @Nullable
+    private static Vec3 activeCamera;
     private static float aimYaw;
     private static float aimPitch;
     private static float lastSentYaw;
@@ -252,6 +261,15 @@ public final class TurretClient {
         if (minecraft.level == null) {
             return null;
         }
+        // 服务端给的世界镜头位置优先：船坞坐标不能直接拿来画。
+        if (activeCamera != null) {
+            return activeCamera;
+        }
+        // 潜望镜：镜头锚在潜望镜方块上，旋转仍然用炮塔 aim（准星方向 = 炮口方向）。
+        if (activeAnchor != null) {
+            return new Vec3(activeAnchor.getX() + 0.5D, activeAnchor.getY() + 1.08D,
+                    activeAnchor.getZ() + 0.5D);
+        }
         BlockState state = minecraft.level.getBlockState(activePos);
         return TurretBlockEntity.cameraPosition(state, activePos);
     }
@@ -315,22 +333,29 @@ public final class TurretClient {
                 return;
             }
             if (!active || activePos == null || !state.pos().equals(activePos)) {
-                activate(state.pos(), state.yaw(), state.pitch(), state.fromStation());
+                activate(state.pos(), state.yaw(), state.pitch(), state.fromStation(),
+                        state.controllerPos(), state.cameraAnchor());
             } else {
                 // 以服务端冷却为准，避免本地连发被拒。
                 cooldown = Math.max(cooldown, state.cooldown());
                 fromStation = state.fromStation();
+                activeAnchor = state.controllerPos() == null ? null
+                        : state.controllerPos().immutable();
+                activeCamera = state.cameraAnchor();
             }
         } else if (active && state.pos().equals(activePos)) {
             deactivate(true);
         }
     }
 
-    private static void activate(BlockPos pos, float yaw, float pitch, boolean remoteStation) {
+    private static void activate(BlockPos pos, float yaw, float pitch, boolean remoteStation,
+                                 @Nullable BlockPos anchor, @Nullable Vec3 camera) {
         Minecraft minecraft = Minecraft.getInstance();
         active = true;
         activePos = pos;
         fromStation = remoteStation;
+        activeAnchor = anchor == null ? null : anchor.immutable();
+        activeCamera = camera;
         aimYaw = yaw;
         aimPitch = pitch;
         lastSentYaw = yaw;
@@ -369,8 +394,9 @@ public final class TurretClient {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
-        // 跟随模式下视角是玩家自己的，退出时不要把它拽回炮塔朝向。
-        if (snapPlayerRotation && !tracking && minecraft.player != null) {
+        // 跟随模式下视角是玩家自己的，退出时不要把它拽回炮塔朝向；
+        // 潜望镜会话也一样——玩家进潜望镜前的视角要保留。
+        if (snapPlayerRotation && activeAnchor == null && !tracking && minecraft.player != null) {
             minecraft.player.setYRot(aimYaw);
             minecraft.player.setXRot(aimPitch);
             minecraft.player.yRotO = aimYaw;
@@ -379,6 +405,8 @@ public final class TurretClient {
         minecraft.options.setCameraType(previousCameraType);
         active = false;
         activePos = null;
+        activeAnchor = null;
+        activeCamera = null;
         cooldown = 0;
         aiming = false;
         aimArmed = false;
@@ -1039,6 +1067,13 @@ public final class TurretClient {
         }
         if (!(minecraft.level.getBlockEntity(activePos) instanceof TurretBlockEntity)) {
             deactivate(true);
+            return;
+        }
+        if (activeAnchor != null
+                && minecraft.level.hasChunkAt(activeAnchor)
+                && !(minecraft.level.getBlockState(activeAnchor).getBlock()
+                instanceof com.opamb.barotrauma.block.PeriscopeBlock)) {
+            requestExit();
             return;
         }
         if (minecraft.player.isDeadOrDying()) {

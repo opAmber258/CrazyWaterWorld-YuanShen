@@ -150,7 +150,7 @@ public final class OceanEnvironment {
         }
         // 按游戏刻缓存：同一 tick 里每个玩家都会问一次，不能每次都重建水面包
         // （build 里的矩形分解和连海空腔松弛远比这次包围盒判定贵）。
-        float[] boxes = state.waterBoxesFor(level.getGameTime()).boxes();
+        float[] boxes = state.waterBoxesFor(level, level.getGameTime()).boxes();
         if (boxes.length < 7) {
             return starterFallback;
         }

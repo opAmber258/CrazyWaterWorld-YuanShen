@@ -55,7 +55,22 @@ public final class BarotraumaMod {
         com.opamb.barotrauma.registry.ModEffects.register(modBus);
         com.opamb.barotrauma.medical.ModMedicalItems.register(modBus);
         com.opamb.barotrauma.network.ModNetwork.register();
+        modBus.addListener(BarotraumaMod::onCommonSetup);
 
         LOGGER.info("[Barotrauma] loaded, 该上潜了。");
+    }
+
+    /**
+     * 所有 mod 构造完之后、读世界之前：把物理船附件注册进 VS2。
+     *
+     * <p>必须早于读档，否则 VS2 反序列化船附件时找不到注册，会把该附件 key
+     * 永久锁成失败状态，读档后的船推进器再也挂不上。</p>
+     */
+    private static void onCommonSetup(net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> {
+            if (com.opamb.barotrauma.ship.vs.VsSupport.available()) {
+                com.opamb.barotrauma.ship.vs.VsBridge.registerAttachments();
+            }
+        });
     }
 }

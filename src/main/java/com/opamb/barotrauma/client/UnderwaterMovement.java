@@ -62,6 +62,12 @@ public final class UnderwaterMovement {
             }
             return;
         }
+        // 随船拖拽完全跟随服务端下发的 dragShipId：两边用同一个船 id，
+        // 不再各算一次"在不在舱里"，避免贴墙时一边拖一边不拖导致位置回拉。
+        if (ClientSwimState.known()) {
+            com.opamb.barotrauma.ship.vs.VsClientDrag.apply(
+                    player, ClientSwimState.dragShipId());
+        }
         // 一键切换自然下沉（默认 N，可在"控制 → 按键绑定 → 潜渊症"里改）。
         // 放在浸没判定之前，岸上/船里也能先设好，下水直接生效。
         while (TOGGLE_NATURAL_SINK.consumeClick()) {
@@ -71,21 +77,34 @@ public final class UnderwaterMovement {
                     : "message.barotrauma.natural_sink.off"), true);
         }
         // 水中移动入口用服务端权威的「脚部浸没」状态（issue #31 审查意见）：
-        // 泳姿标志（isSwimming）会被医疗钩子设置，且停疾跑就被清除，不能当干湿用。
+        // 泳姿标志（isSwimming）会被医疗钩子设置，不能当干湿用。
         // 没收到过包（刚进世界）时回退到客户端本地判定。
-        boolean submerged = ClientSwimState.known()
+        boolean known = ClientSwimState.known();
+        boolean submerged = known
                 ? ClientSwimState.waterAtFeet()
                 : OceanEnvironment.isOceanWaterAt(mc.level,
                         player.position().add(0.0D, 0.4D, 0.0D));
+        // 泳姿以服务端为准（疾跑/舱顶净高由服务端锁存后随 SwimStatePacket 下发）。
+        // 客户端不再自己用水面盒算净高：两边船变换/玩家位置差一 tick 时会一边站
+        // 一边游，碰撞箱反复改尺寸，表现就是贴墙视角卡、位置被拉回（用户实测）。
+        boolean sprintSwim = player.isSprinting() && !player.getAbilities().flying;
+        boolean swimPose = (known && ClientSwimState.swimPose())
+                || (submerged && sprintSwim);
         if (!submerged) {
-            modSwimming = false;
+            // 服务端可能因为舱顶太低让玩家在水面以上也保持游泳碰撞箱。
+            if (swimPose) {
+                player.setSwimming(true);
+                player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
+                modSwimming = true;
+            } else if (modSwimming) {
+                if (player.isSwimming()) {
+                    player.setSwimming(false);
+                }
+                modSwimming = false;
+            }
             return;
         }
-        boolean sprintSwim = player.isSprinting() && !player.getAbilities().flying;
-        // 客户端本地维持泳姿（issue #31 后续）：原版 updateSwimming/updatePlayerPose
-        // 每 tick 在空气海域会把 swimming 清掉，只等服务端同步会频繁闪回直立姿态；
-        // 入口仍以服务端权威浸没状态（ClientSwimState）为准，所以不会误触发。
-        if (sprintSwim) {
+        if (swimPose) {
             player.setSwimming(true);
             player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
             modSwimming = true;

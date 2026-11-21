@@ -73,6 +73,15 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     /** 世界加载时从 NBT 恢复的历史舱内格（切破外壁后水面/进水比例兜底用）。 */
     @Nullable
     private long[] pendingKnownInterior;
+    /** 世界加载时从 NBT 恢复的逐格水量（第一次重扫后注入新场）。 */
+    @Nullable
+    private java.util.Map<net.minecraft.core.BlockPos, Double> pendingWater;
+    @Nullable
+    private Boolean pendingBallastPrimed;
+    @Nullable
+    private Float pendingBallastNeutral;
+    @Nullable
+    private Float pendingBallastMax;
     private long lastTickGameTime = Long.MIN_VALUE;
     /** 方块船的水面同步计时。 */
     private long lastWaterSyncGameTime = Long.MIN_VALUE;
@@ -183,12 +192,16 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             // 低于 MinVoltage 0.5 时终端完全不能用。
             be.reportTerminalPower(pos);
             be.state.simulation().tick(0.1D);
-            // 破口进水：连海空腔（船体破洞）按速率缓慢灌水，而不是瞬间满
-            be.state.simulation().tickSeaFlood(0.1D, -pos.getY());
+            // 破口进水：只在破口旁边的格注水，再由逐格场向四周流
+            java.util.List<net.minecraft.core.BlockPos> breachCells = new java.util.ArrayList<>();
+            for (com.opamb.barotrauma.ship.ShipState.Breach breach : be.state.breaches()) {
+                breachCells.add(breach.pos());
+            }
+            be.state.simulation().tickSeaFlood(0.1D, -pos.getY(), breachCells);
             // 还没破块、但伤害 ≥10%/70% 的船壳渗水
             be.state.tickLeaks(0.1D);
-            // 开着的门：两侧水位不一样时按限速慢慢流，不做瞬间均摊
-            be.state.simulation().tickDoorFlow(0.1D);
+            // 逐格场：重力下落 + 开门/舱口压力流
+            be.state.simulation().tickWaterFlow(0.1D);
             // 方块船移动已关闭（用户实测"方块船太烂：移动时找不到声纳、乱闪"）。
             // 主路径是 VS2 物理船（`/barotrauma ship vs launch`）。代码保留，以后做
             // "服务端整格 + 客户端插值"的自研移动层时再启用。
@@ -209,7 +222,9 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                 be.lastWaterSyncGameTime = now;
                 com.opamb.barotrauma.network.ModNetwork.sendToAll(
                         com.opamb.barotrauma.ship.ShipWaterStateBuilder.build(
-                                be.state, -1L, false, 0.0F, 0.0F, 0.0F));
+                                be.state, -1L, false, 0.0F, 0.0F, 0.0F,
+                                cell -> level.getBlockState(cell)
+                                        .isCollisionShapeFullBlock(level, cell)));
             }
             // 船壳耐久：没受损时不发；有受损就低频刷新，受击/焊接时 force 立即发。
             // 第一次 tick 必须发一次（哪怕是空包），否则客户端可能留着上一艘船的血条。
@@ -522,11 +537,11 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             // 航行控制（油门、功率、自动驾驶）同样属于旧实例，重扫不能重置。
             state.inheritControlFrom(previous);
             state.hullDamage().retain(pos -> ModShipBlocks.isRepairableHull(level.getBlockState(pos)));
+            // 切掉外壁舱口后空腔 interior 会变空：先把历史确认过的舱内格带过来，
+            // 再建水场/搬水，否则逐格场会把整间舱当成船外空气。
+            state.inheritInteriorFrom(previous);
             // 开合门也会重扫：水量必须按格子搬过来，否则一关门水就全跑到漏水侧。
             state.inheritWaterFrom(previous);
-            // 切掉外壁舱口后空腔 interior 会变空：把历史确认过的舱内格带过来，
-            // 进水体积/水面才有分母。
-            state.inheritInteriorFrom(previous);
         } else if (pendingDamage != null) {
             // 世界重开后的第一次重扫：把区块 NBT 里存下来的耐久接回来，
             // 否则 10%~90% 的部分损伤会全部凭空满血。
@@ -534,13 +549,30 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             state.setHullHealthMultiplier(pendingMultiplier != null ? pendingMultiplier : 1.0F);
             state.setEngineMultiplier(pendingEngineMultiplier != null ? pendingEngineMultiplier : 1.0F);
             state.hullDamage().retain(pos -> ModShipBlocks.isRepairableHull(level.getBlockState(pos)));
+        }
+        if (previous == null) {
             // 世界重开后第一次重扫没有 previous：历史舱内格从 NBT 恢复。
+            // 即使没有耐久记录（比如只是舱里有水/压载），也要恢复。
             state.restoreKnownInterior(pendingKnownInterior);
         }
         pendingDamage = null;
         pendingMultiplier = null;
         pendingEngineMultiplier = null;
         pendingKnownInterior = null;
+        // 世界重开后的第一次重扫：把 NBT 里的逐格水位注回新场。
+        // 有 previous 时（开关门/破洞重扫）水已经按格继承，不能再拿旧存档覆盖。
+        if (previous == null && pendingWater != null) {
+            state.simulation().seedWaterByCell(pendingWater, geometry);
+            if (pendingBallastPrimed != null && pendingBallastPrimed) {
+                state.simulation().restoreBallastState(true,
+                        pendingBallastNeutral == null ? 0.5D : pendingBallastNeutral,
+                        pendingBallastMax == null ? 1.0D : pendingBallastMax);
+            }
+        }
+        pendingWater = null;
+        pendingBallastPrimed = null;
+        pendingBallastNeutral = null;
+        pendingBallastMax = null;
         // breached 方块仍然是 ship block（hull 集合里有它），但不再实心；
         // 重新加载后耐久表是空的，必须按 blockstate 补回 0%，否则焊不回去。
         List<BlockPos> breached = new ArrayList<>();
@@ -585,6 +617,11 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             tag.putFloat("BarotraumaHullMultiplier", state.hullHealthMultiplier());
             tag.putFloat("BarotraumaEngineMultiplier", state.engineMultiplier());
             tag.putLongArray("BarotraumaKnownInterior", state.knownInteriorArray());
+            // 水位也存档：逐格场不再依赖世界里的真实水方块，重进世界不能把进水清空。
+            tag.put("BarotraumaWater", state.simulation().saveWaterNbt());
+            tag.putBoolean("BarotraumaBallastPrimed", state.simulation().ballastPrimed());
+            tag.putFloat("BarotraumaBallastNeutral", (float) state.simulation().ballastNeutral());
+            tag.putFloat("BarotraumaBallastMax", (float) state.simulation().ballastMaxPercent());
         }
         condition.save(tag, "Condition");
         if (boundBox != null) {
@@ -606,6 +643,15 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                 ? tag.getFloat("BarotraumaEngineMultiplier") : null;
         pendingKnownInterior = tag.contains("BarotraumaKnownInterior", Tag.TAG_LONG_ARRAY)
                 ? tag.getLongArray("BarotraumaKnownInterior") : null;
+        pendingWater = tag.contains("BarotraumaWater", Tag.TAG_LIST)
+                ? com.opamb.barotrauma.ship.ShipSimulation.readWaterNbt(
+                        tag.getList("BarotraumaWater", Tag.TAG_COMPOUND)) : null;
+        pendingBallastPrimed = tag.contains("BarotraumaBallastPrimed")
+                ? tag.getBoolean("BarotraumaBallastPrimed") : null;
+        pendingBallastNeutral = tag.contains("BarotraumaBallastNeutral")
+                ? tag.getFloat("BarotraumaBallastNeutral") : null;
+        pendingBallastMax = tag.contains("BarotraumaBallastMax")
+                ? tag.getFloat("BarotraumaBallastMax") : null;
         condition.load(tag, "Condition");
         boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
     }

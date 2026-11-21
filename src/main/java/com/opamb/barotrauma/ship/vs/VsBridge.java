@@ -201,17 +201,41 @@ public final class VsBridge {
         }
     }
 
-    private static boolean registered;
+    /** 上次成功注册时的 VS2 core 实例；服务器/核心重建后会重新注册。 */
+    private static Object registeredCore;
+
+    /**
+     * 在 VS2 <strong>读档反序列化船附件之前</strong>注册推进器附件。
+     *
+     * <p>必须由模组初始化阶段（{@code FMLCommonSetupEvent}）调一次：以前是懒注册，
+     * 第一次 attach 时才注册，但 VS2 在读档加载船时就会反序列化存档里的
+     * {@code VsThruster} 附件，此时 key 还没注册 → VS2 永久锁存该附件 key，
+     * 之后每次 {@code setAttachment} 都抛
+     * "we tried to deserialize it earlier, and the deserialization failed"，
+     * 读档后的船就再也没有推进/姿态稳定器（用户日志实测）。</p>
+     *
+     * <p>附件只是运行时控制状态，本来就不该进存档，所以用 transient 序列化器，
+     * 旧存档里的同 key 载荷会被 VS2 直接丢弃。</p>
+     */
+    public static void registerAttachments() {
+        ensureRegistered();
+    }
 
     private static void ensureRegistered() {
-        if (registered) {
-            return;
-        }
-        registered = true;
         try {
-            ValkyrienSkiesMod.getVsCore().registerAttachment(VsThruster.class);
+            Object core = ValkyrienSkiesMod.getVsCore();
+            if (core == null || core == registeredCore) {
+                return;
+            }
+            org.valkyrienskies.core.internal.VsiCore vsCore =
+                    (org.valkyrienskies.core.internal.VsiCore) core;
+            vsCore.registerAttachment(VsThruster.class, builder -> {
+                builder.useTransientSerializer();
+                return kotlin.Unit.INSTANCE;
+            });
+            registeredCore = core;
         } catch (Throwable ignored) {
-            // 已经注册过（例如重载）就忽略
+            // VS2 还没初始化：服务器启动阶段会再试（registerAttachments 幂等）。
         }
     }
 

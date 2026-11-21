@@ -192,6 +192,10 @@ public class HatchBlock extends BaseEntityBlock {
                             Component.translatable("gui.barotrauma.hatch.broken"), true);
                     return InteractionResult.CONSUME;
                 }
+                // 同舱壁门：按住右键会每 4 tick 触发一次，必须节流。
+                if (!hatch.tryManualUse(level.getGameTime())) {
+                    return InteractionResult.CONSUME;
+                }
                 if (player.isShiftKeyDown()) {
                     hatch.cycleAutomation();
                     player.displayClientMessage(

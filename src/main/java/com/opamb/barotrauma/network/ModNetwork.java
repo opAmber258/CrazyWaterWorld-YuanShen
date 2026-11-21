@@ -18,8 +18,12 @@ public final class ModNetwork {
     // 18：炮塔原型新增瞄准/开火/退出/状态同步包（在 17 基础上追加）。
     // 19：右键拾取改走实体 id 包；物理船方块右键改走船坞坐标包（制氧 WIP 分支）。
     // 20：合并后两批包同时存在，统一升到 20，避免与只含其中一批的开发构建混连。
-    // 21：TurretStatePacket 增加 fromStation（瞄准站遥控标记），客户端命中预判据此处理操作者本体。
-    private static final String PROTOCOL = "21";
+    // 21：水面破口行 8→9 float（新增开口类型），客户端/服务端必须同版本。
+    // 22：SwimStatePacket 增加服务端权威泳姿位（客户端不再自己算舱顶净高）。
+    // 23：TurretStatePacket 增加潜望镜控制器位置（客户端镜头锚点）。
+    // 24：TurretStatePacket 增加服务端换算好的世界镜头位置（物理船船坞坐标 → 世界坐标）。
+    // 25：TurretStatePacket 增加 fromStation（瞄准站遥控标记），客户端命中预判据此处理操作者本体。
+    private static final String PROTOCOL = "25";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
