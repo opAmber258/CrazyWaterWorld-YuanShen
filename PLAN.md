@@ -1,5 +1,86 @@
 # 深海环境开发计划（M1）
 
+## 2026-11-22 薄水折射、贴壁来水、涉水和粒子暂停
+
+- 核对原作的 `Ragdoll` 运动、`GetFloorY` 和 `GetWaterSurfaceAndCeilingY`。舱内以碰撞体中心浸水为前提，实际水深超过站姿头高的 80% 或净高低于该值才游泳，头部浸没单独处理。用 Minecraft 的固定站姿碰撞箱换算躯干和水深，在出水时保留小幅滞回。VS2 2.4.11 的 `Level.clip` 会查询实体船碰撞，可用于探测实际地板、平台和净空。[泳姿判定](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Characters/Animation/Ragdoll.cs#L1230-L1324) · [原作地板探测](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Characters/Animation/Ragdoll.cs#L1645-L1860)
+- 核对原作 `Gap.EmitParticles`、关卡更新和粒子系统。强流从开口的有效面积产生游动的水花，弱流是滴水。舱壁面有溅水，下落方向由液体流向与重力决定。颗粒随游戏步进更新，原版 `bubbles` 配置寿命为 3 秒，水花 1.25 秒，水滴与气泡使用不同形状。[来水粒子](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Gap.cs#L122-L306) · [原作粒子更新](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Particles/ParticleManager.cs#L186-L207)
+- 原作在水的边界内重采样场景。模组图 1 在掠过地板的角度出现变形。日志 19:00:00 记录相机未浸没，19:00:01 记录 `breaches=0 streams=0 sideFlows=0`，19:00:05 全船仍有 23% 的模拟水，不能由此确认画面中某一格的实际水深。现有 shader 在薄水和镜头下的水体填充层也偏移采样。本轮把折射限制在有可见厚度、深度检验通过的水界面，镜头在水中时，直接看见的地板按实际水程着色。器械空隙按相邻的同一舱室水位补齐，实心模型参与场景遮挡。[原作水面合成](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Levels/WaterRenderer.cs#L88-L183)
+- 实船日志 19:02:00 记录 `streams=4 sideFlows=3`。图 2 的透空带与旧几何故意分离的三条带对应。19:06:24 后的破口日志和图 3 一起表明有贴壁泄漏。来水用连续起伏水面和水珠表现，真实有墙的落水路径贴壁。
+- 前一版在 `AFTER_LEVEL` 依实时时钟生成气泡，单人暂停时 Minecraft 停止粒子引擎 tick，但仍可绘制世界，待加入的粒子会堆积。船上来水粒子改为按客户端世界刻生成，暂停期间不发射，恢复时只处理当前刻。
+- Java 17 静态检查 23 个源文件，53 项定向回归通过。隔离场景执行当前游泳条件代码和粒子刻回调，覆盖腰以下涉水、躯干已浸没但水深不足、深水滞回、低舱连通和暂停期间零发射、恢复无补发。离屏 OpenGL 用掠视下 1/32 格的薄水和前景遮挡检查干地板，并用带纹理的地板核对水下直视只吸收、采样位置不随波纹时间变化。核对原版 `minecraft:drip_fall` 已随客户端资源提供。实船画面待验。
+
+## 2026-11-22 疾游切换、开口来水与寒冷深穴
+
+- 客户端 `run-client/options.txt` 第 21、95 行为 `toggleSprint:true` 和左 Ctrl。Forge 47.4.0 的 `Options.keySprint` 是 `ToggleKeyMapping`，其 `isDown()` 会按配置返回切换态或按住态。原先假水游泳读 GLFW 的物理按键，绕过了这层。沿用原版疾跑消息同步服务端。[Forge KeyMapping](https://github.com/MinecraftForge/MinecraftForge/blob/1.20.1/patches/minecraft/net/minecraft/client/KeyMapping.java.patch)
+- 原作 `Gap.EmitParticles` 将落水水花散布在整个开口宽度，并沿水平开口的实际过水高度发射水花、喷溅和水下气泡。模组用实际来水路径画有流动边缘的薄水幕和贴近接收面的扇形侧流，以飞溅表现弱流和水束破碎，复用舱内的折射材质。[Gap](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Gap.cs#L138-L273)
+- 本机原版 1.13.5.0 `Content/Map/Biomes/ColdCaverns/ColdCaverns.xml` 第 97–99、370–372 行实查冷洞的环境为 RGB 4/6/8、背景纹理 0/25/40、底色 0/0/5。原作人物镜头没有固定雾距。按参考宽度 1920、默认鼠标视野缩放 1.3、前望偏移上限 500 单位和 100 显示单位/米，换算正中和全前望水平边缘约 7.4 米和 18.7 米。模组用这两点做人物外海视距的柔和过渡，配合冷洞的颜色。[官方 Wiki 寒冷深穴](https://barotraumagame.com/wiki/Cold_Caverns) · [人物观察](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Characters/Character.cs#L440-L465) · [镜头缩放](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Camera.cs#L325-L336)
+- 原作对接只在实际相接的舱口之间生成临时船壳区域。模组船顶的对接封盖缩到实际 3×1 开口，舱外干湿以实际舱室和站内通道为准。[官方 Wiki 对接口](https://barotraumagame.com/wiki/Docking_Hatch_%26_Port) · [DockingPort](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/DockingPort.cs#L653-L735)
+- 修改前日志 18:22:58 `[CHAT]` 确认靠泊，18:23:22 镜头在船顶外 `(12.686,-68.633,1.838)` 被判未浸没，蓝图该格及上下均为空气。18:24:01.970 到 18:24:02.467 在同一高度仍浸没，只有疾跑与疾游从真变假；18:24:45 `sideFlows=2`，18:24:48 `streams=3`，确认两种来水数据均到客户端。
+- Java 17 静态检查通过 16 个源文件。内存中运行的 43 项定向回归覆盖落水范围和动画、侧门过水和入水面、舱口密封、船水盒与对接干区。另用实际 Forge 47.4.0 `ToggleKeyMapping` 验证了松键和二次按键。离屏 OpenGL 检查中，人物视角的 18.8 格、30 格取样都融入 RGB 0/25/40，炮台距离、真实水柱边界和来水对场景深度的裁剪也通过。实船画面待验。
+
+## 2026-11-22 舱口假水、地板折射与外海观感
+
+- 原作在一张场景上合成舱内外水，由舱室边界恢复空气区。`Gap` 在有效开度下按两侧水头和接收舱容交换水量，水花和气泡依据实际流向与强度生成。[GameScreen](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Screens/GameScreen.cs#L480-L483) · [WaterRenderer](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Levels/WaterRenderer.cs#L88-L183) · [Gap](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Gap.cs#L461-L529)
+- 原作在关卡背景中画水里的悬浮颗粒，缓慢插值其流速。官方 Wiki 将主航道下方的深处划为深渊。本模组沿用空气海域，按当前潜深统一水体的雾与散射色，用近景粒子表现漂浮物。[LevelRenderer](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Levels/LevelRenderer.cs#L216-L282) · [官方 Wiki 深渊](https://www.barotraumagame.com/wiki/Abyss)
+- 本轮基线 `run-client/logs/latest.log` 17:49:10 的 `[CHAT]` 记录切回创造模式，17:49:14 点击侧门后 `streams=4 sideFlows=4`，17:49:29 恢复为 `sideFlows=0`。17:54:41 已无流入路径，17:54:43 服务端仍有 88% 进水。用户说明普通地板有残留折射，另有水平舱口能看见没有实际积水的区域。
+- 现有水体使用负深度偏移，水底或侧面共面时可盖过实心地板。取消偏移并比较场景与界面的距离，保留镜头实际入水时按水路径着色。门格单独按开口两侧的实际水接触生成，双方有落差的部分继续用服务端实际送来的水流几何。
+- 舱内水、外海、远景雾和背景使用同一潜深色带。外海镜头用场景深度估算水程并控制颜色衰减，干舱保留近处原有光照。海中悬浮颗粒按距离、位置与粒子质量限制数量。
+- 外海合成和船水面共用一份场景副本，开放水柱使用一次颜色与一次深度采样。水盒离开视锥且没有来水路径时跳过水网格更新。海雪每刻最多一粒、寿命最长 75 刻。舱口水珠复用现有粒子贴图，气泡在离开水体后退场。
+- Java 17 静态类型检查覆盖 15 个文件，内存中运行水盒和网格的 23 项回归全部通过。离屏 OpenGL 检查了共面地板遮挡、镜头入水后的地板及近处出水面、外海按距离及水柱边界着色。实船观感和帧率待对照。
+
+## 2026-11-22 普通游、疾游和舱门来水
+
+- 原作 `AnimController.GetCurrentSpeed` 在水里按快速输入切换 `SwimSlow` / `SwimFast`，官方 Wiki 的基准是 1.5 / 2.5 m/s。本模组沿用这两档速度，松开疾跑时直立划水，按住时沿视线疾游。在 `run-client/options.txt` 确认现用设置为 `toggleSprint:true`，水里直接读绑定的物理键，服务端通过原版疾跑消息和固定脚部高度的浸没判定确定疾游。站姿展开检查实际碰撞，包含 VS2 舱顶。[AnimController](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Characters/Animation/AnimController.cs#L257-L287) · [官方 Wiki 人类](https://barotraumagame.com/wiki/Human)
+- 原作 `Gap.EmitParticles` 按开度、过水强度和方向发水花。模组已有服务端过水量和开口路径，本轮用同一套水材质绘制门洞来水和舱内水面，按真实路径保留水花和涟漪。[Gap](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Gap.cs) · [原作水面着色器](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/Barotrauma/BarotraumaClient/Shaders/watershader.fx)
+- 本轮基线 `run-client/logs/latest.log` 15:52:07 的泳姿日志为 `water=true deep=false nearFloor=false low=false sprint=false`，仍进了泳姿。15:52:08 收到了 `streams=6 sideFlows=2`。15:53:26–15:53:31 在接近同一高度、未疾跑时仍记录了站立和游泳切换。`[CHAT]` 15:52:13、15:52:14 确认了实船切换旁观和创造模式。服务端独立日志末尾是上一轮 GameTest 关闭记录。
+- 旧材质只处理水体外壳通过场景深度测试的像素。镜头在水里，舱底和设备先遮住外壳时会漏掉水下着色。新路径按渲染网格判定镜头是否入水，先给镜头到场景的距离着色，再让可见水界面按镜头到界面距离覆盖对应像素。射线近裁剪处继续保留水线。
+- 竖向落水的相邻段复用交点处的网格截面，末端取渲染水面的当前高度。横向喷流根据开口内的水位和接收水位弯向舱内，与舱内水面一起用 `ShipWaterMaterial`。开口完全浸没时几何隐去，保留流量驱动的气泡。
+- 专用服的原版悬空检测依据附近是否有方块，对空气海域的游泳也会计时。本轮在服务端读取真实脚部浸没后清掉该次移动的悬空标志，使直立游泳能在水里悬停。
+- Java 17 静态分析覆盖 16 个改动相关源文件。用现有依赖在内存中执行水面网格的 7 项回归检查，全部通过。GLSL 在隐藏 OpenGL 3.2 上下文链接通过，离屏像素检查覆盖地板先遮住水体、视线穿出水面，以及近裁剪处的水线。实船的游泳手感和来水效果仍待画面对照。
+
+## 2026-11-22 舱内水面与接缝
+
+- 原作 `Hull` 从水量计算基础水位，波浪以相邻采样点的高度差传播并衰减。两侧水线处在开启的横向 `Gap` 范围内时，边界会相互带动并接齐。[Hull](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Hull.cs#L861-L937)
+- 原作先画水下场景，再按舱室顶点用扰动后的屏幕坐标取样，水线下方有较浅的过渡带，贴舱顶后带宽收缩。[GameScreen](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Screens/GameScreen.cs#L439-L444) · [watershader](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/Shaders/watershader.fx#L43-L67) · [Hull 顶点](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Hull.cs#L521-L611)
+- 模组原有侧带在边界法线方向内缩，顶面按盒子单独分段。邻盒只覆盖一部分边长时，竖向区间会被整边扣掉。客户端改按格列合并水体，顶面和侧面共用顶边，以真实流入驱动衰减波浪，并在世界画面合成后做屏幕空间折射。水量、流量和干湿查询仍由协议 28 提供。
+- `run-client/logs/latest.log` 00:24:03 的 `[CHAT]` 记录任务下潜，00:25:09 的 `[water]` 记录 `ship=4 physical=true boxes=480 breaches=1 streams=1 sideFlows=0`。这是修改前的进水数据基线。服务端日志为上一轮 GameTest，末尾记录服务器关闭。
+- 新网格在装配坐标按列合并湿区间，侧边逐格与相邻列的空气区间求交。水面以 60 Hz 更新位移，渲染水位继续插值。客户端检查门框和开关状态，水线相差 ≤0.125 格且能穿过开口时接齐。落点按水面的高度选择甲板，浅水和贴顶水按净空压低波幅。
+- Forge 47.4.0 在 `AFTER_LEVEL` 派发事件时已合成世界图层，而且尚未画手。实际的相机姿态取自前面的地形渲染阶段。水体从独立场景副本读颜色和深度，按最近界面合成，之后恢复世界深度。折射不可用时绘制同一张透明网格。[Forge GameRenderer](https://github.com/MinecraftForge/MinecraftForge/blob/1.20.1/patches/minecraft/net/minecraft/client/renderer/GameRenderer.java.patch#L101-L116)
+- 按本轮要求交付源码。Java 17 静态语法及类型分析覆盖四个客户端类和 `ShipWaterMeshTest`，着色器资源、顶点属性和 GLSL 接口对应关系已静态核对。新增五个待运行的回归用例，覆盖长短边相接、顶边共享、上下重叠、门洞水线和双层涟漪。游戏中的水线观感、实际 GLSL 链接和显卡上的深度合成留给实机验收。
+
+## 2026-11-22 用户客户端实船复测
+
+- 用户本次的 `run-client/logs/debug.log` 00:23:09 确认启动类读取本地 `build/classes/java/main`，00:23:39 本地主机与客户端均接受水面协议 28。随后 `latest.log` 00:24:03 记录开始下潜，00:25:07–00:25:19 的交互对应原始船体坐标 `(-3,-72,-2)` 的侧门，邻格 `(-3,-71,-1)` 曾开出破口，但同步日志未见 `sideFlows` 大于 0。使用 `新的世界 (10)` 的隔离副本复现真实 VS2 船。
+- ForgeGradle `runClient` 可用独立工作目录加载当前源码，测试可以读取同一艘船的存档副本。[Forge 运行配置](https://docs.minecraftforge.net/en/fg-6.x/configuration/runs/) 原作按门洞下沿和两侧水头计算流量，客户端按流向和流量渲染水花。[Gap 模拟](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Gap.cs) · [Gap 渲染](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Gap.cs)
+- 00:30:32 的实船复现确认门西面是外海，旧几何却接到编号 14、容量为 0 的外部空腔；东面舱容为 4300 单位，开门后两者之间没有流量。存档快照记录侧门关闭并缺少一格已补船壳，船坞里该门实际开着，船壳也已补回。现在沿门的朝向用外部洪泛判定海侧，保留历史已确认的舱内格的有限容积。读档后等船坞坐标可用时重扫真实门状态。
+- 12:34:08 在第一次点门之前已从船坞恢复开门状态并进水。关门、排空后重开实测，12:34:15.976 发出两行由西向东的侧流，4300 单位气闸进水量由约 0 增至 600 单位，12:34:16.306 涨至 1696.8 单位。接收端越过下半扇门后在上半扇处仍有喷流，下半扇开始冒泡（`same-door-flow-37.png`）。12:34:18.355 关门后侧流为 0。客户端实际接收到物理船的侧流水面包。
+- 同一存档副本的两台压载泵在中性位置稳定在 3548.897/7500 和 6104.103/12900（47.32%）。12:34:22–12:34:25 在船外实测普通游 1.47、疾游 2.45 格/秒，各 39 刻持续泳姿。396 项单测通过，包含内缩外门开启、关闭和有限相邻舱容回归。客户原存档只读，测试窗口已关闭。
+
+## 2026-11-22 压载、舱外游速和侧门进水复测
+
+- `run-client/logs/latest.log` 11 月 21 日 23:42:16 的 `[CHAT]` 记录任务下潜，23:42–23:44 的水包无破口。只读核查 `新的世界 (9)` 的逐格水存档，9653 单位水中 7500 集中在左侧压载舱的三层（75 个满水格），右侧底层 42 格各约 51.26，合计 2153。全船中性压载已标定到两个舱容的 46.63%。原先的启动注水逐舱填满，自动泵又只比较总水量，无法校正分布。水盒反映的是真实模拟水量。
+- 原作 `SubmarineBody` 用全船可用体积的 7% 计算中性浮力，`Steering` 输出目标水位，`Pump.Update` 用所在 `Hull` 的当前水量与舵台目标之差决定流量和方向。模组保留 7% 目标与舱口限高，按各压载舱可注水量分配，并让每台自动泵按自己的舱室反馈。已存的中性值和逐格水量仍可读。[SubmarineBody](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/SubmarineBody.cs) · [Steering](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Steering.cs) · [Pump](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Pump.cs) · [官方 Wiki 泵](https://barotraumagame.com/wiki/Pumps)
+- 官方 Wiki 的人类基准为慢游约 1.5 m/s、快游约 2.5 m/s。舱外无地面摩擦系数可用时，当前代码仍让原版空气移动计算水平推进，再额外乘 0.78，普通划水几乎只能漂。给有效泳姿显式的输入驱动和速度，并保留疾泳的视线控制及原有升潜键。[官方 Wiki 人类](https://barotraumagame.com/wiki/Human) · [HumanoidAnimController](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Characters/Animation/HumanoidAnimController.cs)
+- 原作 `Gap` 用实际流量驱动侧向水花，水下仍可冒泡。当前路径统一按重力下落裁剪，即使侧门实际过水也会在接收水面超过门格底部 0.36 格后丢掉。水平门流需要单独保留过水方向、洞口高度和落差。[Gap 水量交换](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Gap.cs) · [Gap 粒子](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Gap.cs)
+- 00:13:36–00:13:38 在存档副本读到左舱 `7500/7500`、右舱 `2153/12900`。恢复供电 24 刻内左舱回到 `3548.897/7500`，右舱回到 `6104.103/12900`，两舱均为各自可用容积的 47.32%，总水量仍为 9653，自动泵到位后停转。用户存档只读。
+- 00:15:41–00:15:43 独立客户端的侧门场景发出两行向 -X 的门流水，接收舱水位从 `-84.9535` 升到 `-84.7667`，关门后 `closed door rows=0`。截图 `side-door-flow.png` 显示开口横向水流和水花。00:15:49 的开阔水道复验中，普通游和疾游各 39 刻均为假水泳姿，平游实测 1.47、2.45 格/秒，疾游 39 刻均维持疾跑，取样无竖直漂移。之前一次取样点在岩层内，清出水道后重测。
+- 最终 JAR 构建通过，395 项单测、6 项 Forge GameTest 通过。00:09:45 的独立 VS2 破口自检记录 40 tick 后 2700 单位模拟水、实水复查为 0。新增单测覆盖中性水量分配、旧档偏满的舱独立排水和补水、侧门反向与满舱溢流、接收端淹没和外海侧门的水包。
+
+## 2026-11-21 复测：泳姿与双层舱室进水
+
+- `run-client/logs/latest.log` 的 `[CHAT]` 在 22:11:32 记录船已开始下潜。22:12:48 至 22:12:50 的服务端记录反复出现 `water=true inShip=true nearFloor=true low=false sprint=true`，22:12:50.833 转站时浸没、底板和舱顶状态仍相同，只有 `sprint=false`。复核 Forge 47.4.0 的 `LocalPlayer.aiStep`，它还会因没有真实流体而在泳姿期间清除疾跑。VS2 自带的 `updateSwimming` 包装也能在密封区直接清游泳标志，绕开上一轮的原版方法入口。
+- 同一日志 22:13:53 和 22:13:56 记录了装配坐标 `(5,-71,1)` 和 `(6,-72,1)` 的破口。现有舱体积会立即摊到低处。上一轮只为跨舱过水和竖直海舱口发落水行，舷侧破口绘制的固定竖直柱无法绕过二层甲板。
+- 原作按舱室水量计算水面，单独更新受舱室边界约束的波浪。水平和垂直开口分别结算流量，客户端按实际流动强度绘制水花、滴水和气泡。角色用水面、地板、净高和固定的站立参考高度判断能否站立，阈值为参考高度的 80%。[Hull 水量和波浪](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Hull.cs) · [Gap 流量](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Gap.cs) · [Gap 粒子](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Gap.cs) · [Ragdoll 浸没](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Characters/Animation/Ragdoll.cs)
+- 三维方块舱继续按容积和开口结算，由服务端同步当步进水的路径。破口与渗漏沿开放格下落，遇甲板时沿同层查找下行口，到当前水面结束。客户端在路径上画地面薄流、水幕和落点水花，不同楼层的水面各自取样。泳姿按固定站姿尺寸判定，浅水贴地可以站立，疾跑有 5 tick 保持，局部疾跑判定读取假水状态。
+- 独立客户端在 22:41:02 和 22:41:04 分别拍到下层水幕和二层薄流。客户端日志记录 `physical=false ship=-1 boxes=120 breaches=1 streams=9`，同一路径的下层落点从 `-87.819` 升到 `-87.571`。开阔水域连续取样 63 tick，出现站姿 0 次。该脚本的疾跑输入没有触发，之后只进行后台构建和测试。
+- 最终后台构建通过，392 项单测无失败，Forge 日志 22:48:41 为 `All 6 required tests passed :)`。独立专服 22:49:31 报告 `破口 40 tick 后：连海空腔 1 处，模拟进水 2634 单位，进水比例 98%` 与 `舱内实际水方块（应为 0，水面是客户端自绘）：0`。网络水面包更新为协议 27。
+
+## 2026-11-21 船舱水流、感应门和潜望镜修复
+
+- 原作 [Gap 服务端流量](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Gap.cs) 用两舱压力差驱动横向流动，向下泄流单独处理，扣除来源水量并限制接收舱容量。[Gap 客户端粒子](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Gap.cs) 根据流向和流量在开口喷出水花。模组沿用每格 100 单位和门洞每秒 3000 单位的上限，落水效果取实际发生的下行流量。
+- [原作潜望镜说明](https://barotraumagame.com/wiki/Periscope) 明确显示所连接设备的镜头。模组潜望镜仍按控制器位置校验操作距离，观察点改用被接管炮塔的镜头。
+- 本机 Forge 1.20.1 源码里 `Entity.updateSwimming()` 每刻依据原版真实流体更新游泳标志，`Player.updatePlayerPose()` 紧接着读取该标志。空气海域仅在刻末反复写姿态，会先被原版切回站立。感应门继续使用仓库已查证的离开感应范围后 4 秒关门，手动打开也启动这段计时。
+
 > 目标：进游戏就出生在深海新手哨站里，推门出去是 1000 米深的水柱，岩体之间有岔路可走。
 > 版本：Minecraft 1.20.1 / Forge 47.4.0
 

@@ -20,7 +20,7 @@ edges:
     condition: when changing the turret block model or barrel rendering geometry
   - target: patterns/run-tests.md
     condition: when verifying the turret change beyond a compile
-last_updated: 2026-11-20
+last_updated: 2026-11-21
 mex:
   id: mx_01M7M7HRZYXWEE1W4VEB95FRVX
   type: pattern
@@ -215,6 +215,7 @@ mex:
 - [ ] 相机贴近炮管/转盘时整组淡出，不出现“末端透明、前端挡视野”
 - [ ] 绑定器：炮塔→站台、站台→炮塔两种顺序都能绑定；同类型两端被拒绝；跨维度被拒绝
 - [ ] 瞄准站：未绑定时右键只提示；绑定后右键进入同一套炮塔视角，左 Shift 退出
+- [ ] 潜望镜须有相邻的上置或下置底座。操作者距离按潜望镜校验，视点使用炮塔规格的镜头，船载炮塔的镜头随船平移和旋转。
 - [ ] 站台绑定/解绑后手持绑定器，连线 10 tick 内刷新；拆站台/拆炮塔后占用者自动退出
 - [ ] 超过 128 格远的站台仍能进入/退出（状态包直发占用者）
 - [ ] 瞄准时本机玩家模型仍留在原地可见（第三人称），退出后恢复原来的第一/第三人称

@@ -17,6 +17,7 @@ import com.opamb.barotrauma.world.OceanEnvironment;
 import com.opamb.barotrauma.world.StarterSub;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -216,19 +217,6 @@ public final class VsPilot {
             }
         });
         VsState.installBlockRecorder(VsPilot::recordPlacedBlock);
-        // 只注册服务端干燥区：单人存档里客户端和集成服务端同进程，
-        // 客户端渲染用的 ShipWaterRenderer 不能被这里覆盖（否则方块船舱内会漏滤镜）。
-        OceanEnvironment.setServerDryZone(new OceanEnvironment.DryZone() {
-            @Override
-            public boolean isDry(Level level, Vec3 pos) {
-                return VsPilot.isInsideDryZone(level, pos);
-            }
-
-            @Override
-            public boolean isInsideCompartment(Level level, Vec3 pos) {
-                return VsPilot.isInsideCompartment(level, pos);
-            }
-        });
     }
 
     /** 装配刚完成时 VS2 可能还没把这艘船标成"已加载"，推进器先挂在这里，下一 tick 再试。 */
@@ -756,46 +744,13 @@ public final class VsPilot {
     }
 
     /**
-     * 物理船舱内干湿询问（issue #31）：用实时 transform 把玩家世界坐标换算回
-     * 装配坐标，再看所在舱室 bbox 的水面。
-     *
-     * <p>旧实现用 {@code VsState.offset} 平移——船被传送到任务海域实例锚点、
-     * 或与哨站重叠后，这个平移不再等于“装配坐标↔世界坐标”，干舱会被判成浸没，
-     * 疾跑游泳就误触发。这里直接取 {@code shipToWorld} 的逆变换，不受传送影响。</p>
-     *
-     * @return {@code null} = 不在任何舱室 bbox 内（调用方继续走原判定链）。
-     */
-    /**
      * 世界坐标 → 船的装配坐标（和水面盒同一套坐标）。
      *
      * <p>物理船用实时逆变换，船偏航后不会把舱内算到盒子外；返回 null 表示
      * 当前没有可用的物理船/水面数据。</p>
      */
     private static double[] toShipLocal(Level level, Vec3 pos) {
-        if (ship == null || state == null
-                || !(level instanceof ServerLevel server) || pos == null) {
-            return null;
-        }
-        org.valkyrienskies.core.api.ships.ServerShip live = view(server);
-        org.valkyrienskies.core.api.ships.ServerShip target = live != null ? live : ship;
-        if (target == null) {
-            return null;
-        }
-        var transform = target.getTransform();
-        var origin = new org.joml.Vector3d(
-                transform.getPositionInShip().x() - assembledPos.x,
-                transform.getPositionInShip().y() - assembledPos.y,
-                transform.getPositionInShip().z() - assembledPos.z);
-        org.joml.Matrix4dc shipToWorld = transform.getShipToWorld();
-        org.joml.Vector3d shipSpace;
-        try {
-            shipSpace = shipToWorld.invert(new org.joml.Matrix4d())
-                    .transformPosition(new org.joml.Vector3d(pos.x, pos.y, pos.z),
-                            new org.joml.Vector3d());
-        } catch (Throwable error) {
-            return null;
-        }
-        return new double[]{shipSpace.x - origin.x, shipSpace.y - origin.y, shipSpace.z - origin.z};
+        return state == null || level != lastLevel ? null : toAssemblyLocal(level, pos);
     }
 
     /**
@@ -829,6 +784,7 @@ public final class VsPilot {
         return Double.isNaN(distance) ? null : distance <= maxAbove;
     }
 
+    /** 查询实心船体、实际水量和贴墙设备的干湿状态。船外返回 null。 */
     public static Boolean isPlayerInDryCompartment(Level level, Vec3 pos) {
         double[] local = toShipLocal(level, pos);
         if (local == null) {
@@ -837,75 +793,22 @@ public final class VsPilot {
         double lx = local[0];
         double ly = local[1];
         double lz = local[2];
-        // 服务端有逐格场：直接按格子问，别用发给客户端的水盒。水盒在“盒子数超过
-        // 上限”时会退化成每个水体的包围盒，包围盒会盖住别的舱室的干格，据此判
-        // 干湿会把干舱里的玩家判成泡水（游泳 + 水下滤镜）。
-        if (state != null && state.simulation().fluid() != null) {
-            com.opamb.barotrauma.ship.water.ShipFluidField field = state.simulation().fluid();
-            BlockPos cell = BlockPos.containing(lx, ly, lz);
-            if (field.bodyOf(cell) >= 0) {
-                return ly > field.levelAt(cell) + 0.01D;
-            }
-        }
-        float[] boxes = lastWaterPacket.boxes();
-        if (boxes.length < 7) {
+        BlockPos cell = BlockPos.containing(lx, ly, lz);
+        if (!state.geometry().bounds().contains(cell)) {
             return null;
         }
-        boolean inAny = false;
-        boolean wet = false;
-        for (int i = 0; i + 6 < boxes.length; i += 7) {
-            float minX = boxes[i];
-            float minY = boxes[i + 1];
-            float minZ = boxes[i + 2];
-            float maxX = boxes[i + 3] + 1.0F;
-            float maxY = boxes[i + 4] + 1.0F;
-            float maxZ = boxes[i + 5] + 1.0F;
-            float surface = boxes[i + 6];
-            if (lx < minX || lx > maxX || lz < minZ || lz > maxZ) {
-                continue;
-            }
-            boolean dryBox = surface <= minY + 0.01F;
-            if (dryBox) {
-                // 干舱：给跳跃顶点留 1 格余量
-                if (ly >= minY && ly <= maxY + 1.0F) {
-                    inAny = true;
-                }
-            } else {
-                // 湿舱：水面以下都算湿（水面可能高于棱柱顶格，CodeRabbit 审查意见）；
-                // 水面之上、棱柱顶 +1 余量内仍是舱内干燥
-                if (ly <= surface + 0.01F) {
-                    if (ly >= minY) {
-                        inAny = true;
-                        wet = true;
-                    }
-                } else if (ly >= minY && ly <= maxY + 1.0F) {
-                    inAny = true;
-                }
-            }
+        BlockPos yard = toYard(cell);
+        if (yard != null && OceanEnvironment.insideCollision(level, yard,
+                new Vec3(lx + yardOffsetX, ly + yardOffsetY, lz + yardOffsetZ))) {
+            return Boolean.TRUE;
         }
-        if (!inAny) {
-            // 几何确认在船体舱内、但水盒没覆盖到（新房间/破口后场缺格）：
-            // 按干舱兜底。否则客户端和服务端都会回落到“舱外海水”，
-            // 出现货舱没水却能游泳、还套水下滤镜（用户实测）。
-            return isInsideInterior(level, pos) ? Boolean.TRUE : null;
+        var field = state.simulation().fluid();
+        if (field != null && field.bodyOf(cell) >= 0 && !state.geometry().doorwayAxes().containsKey(cell)) {
+            return ly >= field.levelAt(cell);
         }
-        return !wet;
-    }
-
-    /**
-     * 玩家/实体是否在“未进水的船舱”里。
-     *
-     * <p>服务端用最近一次同步的水面包判断：把世界坐标换算回装配坐标，落在某个舱室
-     * bbox 内且高于该舱室水面，就是干燥区。这样破口舱室进水后，水面盖过眼睛就会
-     * 自动切回水下状态。</p>
-     */
-    public static boolean isInsideDryZone(Level level, Vec3 pos) {
-        if (ship == null || state == null || level == null || pos == null) {
-            return false;
-        }
-        // 和 isPlayerInDryCompartment 用同一套实时逆变换 + 盒内干湿判定；
-        // 旧实现只减整数位移，船偏航后舱内会被误判成水外。
-        return Boolean.TRUE.equals(isPlayerInDryCompartment(level, pos));
+        Boolean dry = com.opamb.barotrauma.ship.ShipWaterBoxes.dryAt(lastWaterPacket.boxes(),
+                lx, ly, lz);
+        return dry != null ? dry : isInsideInterior(level, pos) ? Boolean.TRUE : null;
     }
 
     /** 把船状态推给物理推进器：油门 / 功率 / 压载 / 进水比例。 */
@@ -1207,7 +1110,7 @@ public final class VsPilot {
             // 门开合登记过的几何重扫：合并到主 tick，最多 5 tick 扫一次。
             // 舱内自动门会随着玩家游动反复开合，每次全量重扫 + 重建流体场太重，
             // 而且日志会被"0 格被破坏"刷屏（用户日志 45 秒 21 次）。
-            if (pendingGeometryDueTick != Long.MIN_VALUE
+            if (pendingGeometryDueTick != Long.MIN_VALUE && yardOffsetX != Integer.MIN_VALUE
                     && level.getGameTime() >= pendingGeometryDueTick) {
                 ServerLevel refreshLevel =
                         pendingGeometryLevel == null ? level : pendingGeometryLevel;
@@ -1802,6 +1705,11 @@ public final class VsPilot {
             public boolean isOpenDoorway(BlockPos pos) {
                 return ModShipBlocks.isOpenDoorway(level.getBlockState(pos.offset(ox, oy, oz)));
             }
+
+            @Override
+            public Direction.Axis doorwayAxis(BlockPos pos) {
+                return ModShipBlocks.doorwayAxis(level.getBlockState(pos.offset(ox, oy, oz)));
+            }
         };
         ShipGeometry.Result geometry = ShipGeometry.scanShip(core, ShipCoreBlockEntity.RADIUS,
                 pos -> ModShipBlocks.isShipBlock(level.getBlockState(pos.offset(ox, oy, oz)))
@@ -2331,20 +2239,35 @@ public final class VsPilot {
 
     /** 把装配快照里的原坐标映射到船当前的世界坐标。 */
     private static Vec3 toWorld(BlockPos original) {
+        return toWorld(Vec3.atCenterOf(original));
+    }
+
+    private static Vec3 toWorld(Vec3 original) {
         if (ship == null) {
-            return Vec3.atCenterOf(original);
+            return original;
         }
         // 和 view 一样读“已加载”句柄：装配时拿到的 ServerShip 快照 transform
         // 不随物理更新，船开走后会一直返回装配那一刻的旧坐标。
         ServerShip live = lastLevel == null ? ship : view(lastLevel);
+        if (live == null) {
+            live = ship;
+        }
         org.joml.Vector3dc positionInShip = live.getTransform().getPositionInShip();
         org.joml.Vector3d shipSpace = new org.joml.Vector3d(
-                original.getX() + 0.5D + positionInShip.x() - assembledPos.x,
-                original.getY() + 0.5D + positionInShip.y() - assembledPos.y,
-                original.getZ() + 0.5D + positionInShip.z() - assembledPos.z);
+                original.x + positionInShip.x() - assembledPos.x,
+                original.y + positionInShip.y() - assembledPos.y,
+                original.z + positionInShip.z() - assembledPos.z);
         org.joml.Vector3d world = live.getTransform().getShipToWorld()
                 .transformPosition(shipSpace, new org.joml.Vector3d());
         return new Vec3(world.x, world.y, world.z);
+    }
+
+    /** 将船坞设备上的精确位置（如镜头）随船平移及旋转到世界坐标。 */
+    public static Vec3 shipyardPointToWorld(Level level, BlockPos block, Vec3 point) {
+        if (level != lastLevel || !isYardBlock(block)) {
+            return point;
+        }
+        return toWorld(point.add(-yardOffsetX, -yardOffsetY, -yardOffsetZ));
     }
 
     /** 给反应堆熔毁/起火用：装配坐标 → 当前世界坐标；没有物理船返回 null。 */
@@ -2664,7 +2587,8 @@ public final class VsPilot {
             return state.isCollisionShapeFullBlock(lastLevel, yard);
         };
         ShipWaterStatePacket packet = com.opamb.barotrauma.ship.ShipWaterStateBuilder.build(st, shipId, true,
-                (float) assembledPos.x, (float) assembledPos.y, (float) assembledPos.z, fullCube);
+                (float) assembledPos.x, (float) assembledPos.y, (float) assembledPos.z, fullCube,
+                lastLevel == null ? "" : lastLevel.dimension().location().toString());
         lastWaterPacket = packet;
         ModNetwork.sendToAll(packet);
         // 船壳耐久和水平同步：同一套 anchor/坐标空间，客户端用同一个 render 变换映射。
@@ -3707,14 +3631,18 @@ public final class VsPilot {
                 BlockState blockState = snap.get(pos);
                 return blockState != null && ModShipBlocks.isOpenDoorway(blockState);
             }
+
+            @Override
+            public Direction.Axis doorwayAxis(BlockPos pos) {
+                return ModShipBlocks.doorwayAxis(snap.get(pos));
+            }
         };
         ShipGeometry.Result geometry = ShipGeometry.scanShip(core, ShipCoreBlockEntity.RADIUS,
                 snap::containsKey, probe, 0,
                 // 和 rebuildGeometry 用同一套船壳判定，认领时才能正确排除船外空气。
                 pos -> {
                     BlockState st = snap.get(pos);
-                    return st != null && (ModShipBlocks.isRepairableHull(st)
-                            || ModShipBlocks.isDoorway(st));
+                    return !pos.equals(core) && st != null && ModShipBlocks.sealsHull(st);
                 },
                 pos -> {
                     BlockState st = snap.get(pos);
@@ -3818,6 +3746,9 @@ public final class VsPilot {
         // 判成 "colliding with unloaded ships" 并取消、把位置打回旧点（实测
         // 260 条/2 秒）。认领时同步把船实际占用的区块拉起来，玩家一进来就能走。
         preloadShipChunks(level);
+        // 旧快照可能记录的是门上次开合或船壳修复前的状态。
+        // 等船坞偏移可用后，从真实方块重新计算通海口和门洞。
+        refreshPhysicalGeometry(level);
         sendWaterState(rebuilt);
         LOGGER.info("[vs] 已认领世界里的物理船：shipId={}，快照 {} 格，破口 {} 处，推进器 {}",
                 record.vsShipId, snap.size(), breached.size(), attached != null ? "已挂" : "待挂");

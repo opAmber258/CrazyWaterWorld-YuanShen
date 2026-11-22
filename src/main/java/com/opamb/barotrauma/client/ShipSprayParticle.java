@@ -9,10 +9,7 @@ import net.minecraft.client.particle.TextureSheetParticle;
 import net.minecraft.core.particles.SimpleParticleType;
 
 /**
- * 破口喷淋水珠：空气舱里水柱打进空气时，从洞口呈扇形喷出的细小水滴。
- *
- * <p>比原版 {@code SPLASH} 更小、更密，带重力；只负责空气舱里的喷淋视觉，
- * 不会在水面转成气泡。贴图复用 {@code ship_bubble} 的白蓝色水珠纹理。</p>
+ * Short-lived falling droplets leaving an opening or splashing off a receiving surface.
  */
 public final class ShipSprayParticle extends TextureSheetParticle {
 
@@ -20,13 +17,14 @@ public final class ShipSprayParticle extends TextureSheetParticle {
                               double vx, double vy, double vz) {
         super(level, x, y, z);
         this.setSize(0.03F, 0.03F);
-        this.quadSize = 0.04F + this.random.nextFloat() * 0.04F;
+        this.quadSize = 0.046F + this.random.nextFloat() * 0.064F;
         this.xd = vx;
         this.yd = vy;
         this.zd = vz;
         this.lifetime = 8 + this.random.nextInt(8);
-        // 喷淋水珠不跟方块碰撞，否则会贴在船壳上停住。
-        this.hasPhysics = false;
+        var color = UnderwaterEffects.waterLight(y);
+        setColor(0.60F + color.red(), 0.73F + color.green(), 0.76F + color.blue());
+        setAlpha(0.83F);
     }
 
     @Override
@@ -36,8 +34,10 @@ public final class ShipSprayParticle extends TextureSheetParticle {
         this.zo = this.z;
         this.yd -= 0.05D;
         this.move(this.xd, this.yd, this.zd);
-        if (this.lifetime-- <= 0) {
+        if (onGround || this.lifetime-- <= 0) {
             this.remove();
+        } else if (this.lifetime < 5) {
+            setAlpha(0.16F * this.lifetime);
         }
     }
 

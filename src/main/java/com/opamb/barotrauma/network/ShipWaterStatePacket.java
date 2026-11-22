@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.network;
 
+import io.netty.handler.codec.DecoderException;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -11,27 +12,40 @@ import java.util.function.Supplier;
  * 物理船的舱内水面状态（服务端 → 客户端），用于自绘平滑水面。
  *
  * <p>每个水体块 7 个 float：包围盒 minX/minY/minZ/maxX/maxY/maxZ + 水面高度 surfaceY。
- * 一个舱室可能拆成多个矩形棱柱（只覆盖真实格子），所以同一个舱室会出现多条、
- * 水面高度相同。客户端用"当前渲染位置 − 装配锚点"做整体平移（姿态锁死，不需要旋转）。</p>
+ * 一个舱室可能拆成多个矩形棱柱。客户端用物理船的渲染变换映射装配坐标。</p>
  *
  * <p>{@code breaches} 每 9 个 float 一个破口/门行：格中心 x/y/z（装配坐标）、
  * 破口自己那一列水柱在 {@code boxes} 里的**绝对 float 偏移**（不是盒子序号，别再乘 7；
  * 取该列水面用）、朝舱内的方向 dx/dz、所在空腔的 minY/maxY、开口类型
- * （0 墙 / 1 舱顶 / 2 舱底）。开着的门也追加同样的 9 float，第四位是"接水侧"水体的
- * 第一个盒子偏移，方向保持"洞口→来水侧质心"的斜方向。只包含真正连到外海的洞。</p>
+ * （0 墙 / 1 舱顶 / 2 舱底）。只包含直接连到外海的破口。
+ * {@code streams} 每 7 个 float 描述一段实际流过的路径：起点 x/y/z、终点 x/y/z 和流量强度。
+ * {@code sideFlows} 每 8 个 float 描述侧门：门槛 x/y/z、方向 dx/dz、开口内水柱顶、
+ * 接收水面高度和实际流量强度。</p>
  */
 public record ShipWaterStatePacket(long shipId, boolean physical,
                                    float anchorX, float anchorY, float anchorZ,
-                                   float[] boxes, float[] breaches) {
+                                   float[] boxes, float[] breaches, float[] streams, float[] sideFlows,
+                                   String dimension) {
 
     public static final int BOX_STRIDE = 7;
     public static final int BREACH_STRIDE = 9;
+    public static final int STREAM_STRIDE = 7;
+    public static final int SIDE_FLOW_STRIDE = 8;
     /** 解码上限：正常船远低于此值，防止恶意包直接分配超大数组。 */
     public static final int MAX_BOXES = 8192;
     public static final int MAX_BREACHES = 1024;
+    public static final int MAX_STREAMS = 1024;
+
+    /** 旧签名（不带维度）：测试和没有关卡上下文的调用默认“未知”，客户端不做维度过滤。 */
+    public ShipWaterStatePacket(long shipId, boolean physical,
+                                float anchorX, float anchorY, float anchorZ,
+                                float[] boxes, float[] breaches, float[] streams, float[] sideFlows) {
+        this(shipId, physical, anchorX, anchorY, anchorZ, boxes, breaches, streams, sideFlows, "");
+    }
 
     public static ShipWaterStatePacket empty() {
-        return new ShipWaterStatePacket(-1L, false, 0, 0, 0, new float[0], new float[0]);
+        return new ShipWaterStatePacket(-1L, false, 0, 0, 0,
+                new float[0], new float[0], new float[0], new float[0], "");
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -40,13 +54,18 @@ public record ShipWaterStatePacket(long shipId, boolean physical,
         buf.writeFloat(anchorX);
         buf.writeFloat(anchorY);
         buf.writeFloat(anchorZ);
-        buf.writeVarInt(boxes.length / BOX_STRIDE);
-        for (float value : boxes) {
-            buf.writeFloat(value);
-        }
-        buf.writeVarInt(breaches.length / BREACH_STRIDE);
-        for (float value : breaches) {
-            buf.writeFloat(value);
+        buf.writeUtf(dimension == null ? "" : dimension);
+        writeRows(buf, boxes, BOX_STRIDE, MAX_BOXES);
+        writeRows(buf, breaches, BREACH_STRIDE, MAX_BREACHES);
+        writeRows(buf, streams, STREAM_STRIDE, MAX_STREAMS);
+        writeRows(buf, sideFlows, SIDE_FLOW_STRIDE, MAX_STREAMS);
+    }
+
+    private static void writeRows(FriendlyByteBuf buf, float[] values, int stride, int maxRows) {
+        int rows = Math.min(maxRows, values.length / stride);
+        buf.writeVarInt(rows);
+        for (int i = 0; i < rows * stride; i++) {
+            buf.writeFloat(values[i]);
         }
     }
 
@@ -56,17 +75,25 @@ public record ShipWaterStatePacket(long shipId, boolean physical,
         float ax = buf.readFloat();
         float ay = buf.readFloat();
         float az = buf.readFloat();
-        int count = Math.max(0, Math.min(MAX_BOXES, buf.readVarInt()));
-        float[] boxes = new float[count * BOX_STRIDE];
-        for (int i = 0; i < boxes.length; i++) {
-            boxes[i] = buf.readFloat();
+        String dimension = buf.readUtf(128);
+        return new ShipWaterStatePacket(id, physical, ax, ay, az,
+                readRows(buf, BOX_STRIDE, MAX_BOXES),
+                readRows(buf, BREACH_STRIDE, MAX_BREACHES),
+                readRows(buf, STREAM_STRIDE, MAX_STREAMS),
+                readRows(buf, SIDE_FLOW_STRIDE, MAX_STREAMS),
+                dimension);
+    }
+
+    private static float[] readRows(FriendlyByteBuf buf, int stride, int maxRows) {
+        int rows = buf.readVarInt();
+        if (rows < 0 || rows > maxRows) {
+            throw new DecoderException("Invalid water state row count: " + rows);
         }
-        int breachCount = Math.max(0, Math.min(MAX_BREACHES, buf.readVarInt()));
-        float[] breaches = new float[breachCount * BREACH_STRIDE];
-        for (int i = 0; i < breaches.length; i++) {
-            breaches[i] = buf.readFloat();
+        float[] values = new float[rows * stride];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = buf.readFloat();
         }
-        return new ShipWaterStatePacket(id, physical, ax, ay, az, boxes, breaches);
+        return values;
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

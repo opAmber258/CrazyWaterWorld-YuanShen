@@ -208,7 +208,7 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
             return;
         }
         // 子类钩子：压载泵在这里读舵台垂直指令（下潜泵入 / 上浮泵出）。
-        be.beforeReport(ship);
+        be.beforeReport(ship, cell);
         // 硬核供电：实际流量按设备拿到的电压缩放（原作 Pump.Update 用 min(Voltage, 2)）；
         // 请求值单独上报，负载按请求流量算。
         double requested = be.signedRate(state);
@@ -250,10 +250,10 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
     }
 
     /** 上报前钩子：默认什么也不做；压载泵用它读取舵台垂直指令。 */
-    protected void beforeReport(ShipState ship) {
+    protected void beforeReport(ShipState ship, BlockPos cell) {
     }
 
-    /** 自动压载泵的目标水位（0..1）；普通泵/手动模式返回 -1（不做单步目标钳制）。 */
+    /** 自动压载泵的目标水位，占所在舱可注水容积的比例；手动和普通泵返回 -1。 */
     protected double ballastTarget() {
         return -1.0D;
     }

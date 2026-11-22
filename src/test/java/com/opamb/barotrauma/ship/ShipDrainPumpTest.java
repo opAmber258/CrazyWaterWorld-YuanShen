@@ -4,6 +4,8 @@ import net.minecraft.core.BlockPos;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -186,6 +188,46 @@ class ShipDrainPumpTest {
         assertEquals(ShipSimulation.NEUTRAL_WATER_RATIO, sim.ballastPercent(), 1.0E-6);
         assertEquals(ShipSimulation.NEUTRAL_WATER_RATIO, sim.ballastNeutral(), 1.0E-6);
         assertTrue(sim.ballastPrimed(), "标定后压载泵才允许自动动作");
+    }
+
+    @Test
+    void neutralBallastIsSharedByBothTanksAndRespectsHatch() {
+        BlockPos small = BlockPos.ZERO;
+        BlockPos hatch = small.above();
+        BlockPos large = new BlockPos(3, 0, 0);
+        Set<BlockPos> cabin = new HashSet<>();
+        for (int x = 0; x < 35; x++) {
+            cabin.add(new BlockPos(x, 2, 0));
+        }
+        var geometry = new ShipGeometry.Result(List.of(
+                new ShipGeometry.Compartment(Set.of(small, hatch), 0),
+                new ShipGeometry.Compartment(Set.of(large, large.above(), large.south(), large.south().above()), 0),
+                new ShipGeometry.Compartment(cabin, 0)), List.of(), 0, 41,
+                new ShipGeometry.Bounds(0, 0, 0, 34, 2, 1), Set.of(),
+                List.of(new ShipGeometry.DoorLink(hatch, 0, 2, false)), Set.of());
+        ShipSimulation sim = new ShipSimulation(geometry, MachineCount.EMPTY);
+        sim.reportPump(small, 0.0D, true, 0.0D, true);
+        sim.reportPump(large, 0.0D, true, 0.0D, true);
+        sim.requestBallastPrime();
+        sim.tick(0.1D);
+
+        double neutralUnits = 4100.0D * ShipSimulation.NEUTRAL_WATER_RATIO;
+        double target = neutralUnits / 500.0D;
+        assertEquals(neutralUnits, sim.ballastUnits(), 1.0E-6D);
+        assertEquals(target * 100.0D, sim.bodyWater(0), 1.0E-6D);
+        assertEquals(target * 400.0D, sim.bodyWater(1), 1.0E-6D);
+
+        // 旧存档总水量已经中性，但一侧满到舱门，另一侧偏低。
+        sim.restoreBallastState(true, neutralUnits / 600.0D, 500.0D / 600.0D);
+        sim.seedWaterByCell(Map.of(small, 100.0D,
+                large, (neutralUnits - 100.0D) / 2.0D,
+                large.south(), (neutralUnits - 100.0D) / 2.0D), geometry);
+        sim.reportPump(small, 9000.0D, true, 9000.0D, true, sim.neutralBallastFill());
+        sim.reportPump(large, -9000.0D, true, -9000.0D, true, sim.neutralBallastFill());
+        sim.tick(0.1D);
+        assertEquals(target * 100.0D, sim.bodyWater(0), 1.0E-6D);
+        assertEquals(target * 400.0D, sim.bodyWater(1), 1.0E-6D);
+        assertEquals(neutralUnits, sim.ballastUnits(), 1.0E-6D);
     }
 
     @Test

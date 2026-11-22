@@ -1,11 +1,13 @@
 package com.opamb.barotrauma.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.opamb.barotrauma.BarotraumaMod;
-import com.opamb.barotrauma.world.OceanEnvironment;
+import com.opamb.barotrauma.world.AirOceanSwimmer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
@@ -16,14 +18,18 @@ import org.lwjgl.glfw.GLFW;
 /**
  * 空气海域里的玩家游泳。
  *
- * <p>不走原版 {@code isInWater} 假水路径——那条路会触发 VS2 的实体区块碰撞迭代异常。
- * 这里只在客户端给玩家施加水阻、上浮/下潜和（可选的）缓慢下沉；服务端仍按客户端位置同步。</p>
+ * <p>直立划水和疾游都在 travel 中按输入推进，使用原版的实体移动和 VS2 碰撞。
+ * 舱内或舱外的浸没状态仍由服务端同步。</p>
  */
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class UnderwaterMovement {
 
     /** 上浮/下潜使用同一速度，避免手感不对称。 */
     private static final double SWIM_VERTICAL_SPEED = 0.12D;
+
+    /** 原作人类普通游和疾游约为 1.5 和 2.5 米/秒，按一格一米换算。 */
+    private static final double SWIM_SPEED = 1.5D / 20.0D;
+    private static final double SPRINT_SWIM_SPEED = 2.5D / 20.0D;
 
     /** 自然下沉速度（格/tick）：约 0.4 格/秒，接近原版水里松手后的缓慢下沉。 */
     private static final double NATURAL_SINK_SPEED = 0.02D;
@@ -35,13 +41,10 @@ public final class UnderwaterMovement {
 
     private static boolean naturalSink;
 
-    /** 当前客户端泳姿是否由本模组设置（只清理自己设置的，保留原版真实水中的游泳）。 */
-    private static boolean modSwimming;
-
     private UnderwaterMovement() {
     }
 
-    /** 每 tick 处理浸没判定、疾跑游泳姿态和水中垂直速度。 */
+    /** 每 tick 同步随船拖拽和自然下沉开关。 */
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
@@ -52,11 +55,9 @@ public final class UnderwaterMovement {
         if (player == null || mc.level == null) {
             return;
         }
-        if (player.isSpectator()) {
-            return;
-        }
-        if (player.isPassenger()) {
-            // 乘坐时丢弃积压的 N 键点击，避免下船后的第一个 tick 误切换自然下沉。
+        if (player.isSpectator() || player.isPassenger()) {
+            com.opamb.barotrauma.ship.vs.VsClientDrag.apply(player, -1L);
+            // 丢弃积压的 N 键点击。
             while (TOGGLE_NATURAL_SINK.consumeClick()) {
                 // discard
             }
@@ -76,95 +77,69 @@ public final class UnderwaterMovement {
                     ? "message.barotrauma.natural_sink.on"
                     : "message.barotrauma.natural_sink.off"), true);
         }
-        // 水中移动入口用服务端权威的「脚部浸没」状态（issue #31 审查意见）：
-        // 泳姿标志（isSwimming）会被医疗钩子设置，不能当干湿用。
-        // 没收到过包（刚进世界）时回退到客户端本地判定。
-        boolean known = ClientSwimState.known();
-        boolean submerged = known
-                ? ClientSwimState.waterAtFeet()
-                : OceanEnvironment.isOceanWaterAt(mc.level,
-                        player.position().add(0.0D, 0.4D, 0.0D));
-        // 泳姿以服务端为准（疾跑/舱顶净高由服务端锁存后随 SwimStatePacket 下发）。
-        // 客户端不再自己用水面盒算净高：两边船变换/玩家位置差一 tick 时会一边站
-        // 一边游，碰撞箱反复改尺寸，表现就是贴墙视角卡、位置被拉回（用户实测）。
-        boolean sprintSwim = player.isSprinting() && !player.getAbilities().flying;
-        boolean swimPose = (known && ClientSwimState.swimPose())
-                || (submerged && sprintSwim);
-        if (!submerged) {
-            // 服务端可能因为舱顶太低让玩家在水面以上也保持游泳碰撞箱。
-            if (swimPose) {
-                player.setSwimming(true);
-                player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
-                modSwimming = true;
-            } else if (modSwimming) {
-                if (player.isSwimming()) {
-                    player.setSwimming(false);
-                }
-                modSwimming = false;
-            }
-            return;
+    }
+
+    /** 在开始移动之前应用原版疾跑绑定的状态，包括切换疾跑。 */
+    public static void updateSwimInput(LocalPlayer player) {
+        AirOceanSwimmer swimmer = (AirOceanSwimmer) player;
+        boolean immersed = hasAirOceanWater(player);
+        boolean fast = immersed && !player.isUsingItem() && Minecraft.getInstance().options.keySprint.isDown();
+        if ((immersed || swimmer.barotrauma$isAirOceanSwimming()) && player.isSprinting() != fast) {
+            // LocalPlayer.sendPosition 继续用原版 START/STOP_SPRINTING 同步服务端。
+            player.setSprinting(fast);
         }
-        if (swimPose) {
-            player.setSwimming(true);
-            player.setPose(net.minecraft.world.entity.Pose.SWIMMING);
-            modSwimming = true;
-        } else if (modSwimming) {
-            if (player.isSwimming()) {
-                player.setSwimming(false);
-            }
-            modSwimming = false;
+        swimmer.barotrauma$setAirOceanSwimState(immersed, fast);
+    }
+
+    /** 达到可游水深时，两种姿态都用水中推进。 */
+    public static boolean swimTravel(LocalPlayer player, Vec3 input) {
+        AirOceanSwimmer swimmer = (AirOceanSwimmer) player;
+        if (!swimmer.barotrauma$isInAirOceanWater()) {
+            return false;
         }
-        Vec3 motion = player.getDeltaMovement();
+        Minecraft mc = Minecraft.getInstance();
+        boolean sprint = swimmer.barotrauma$isAirOceanSwimming();
+        double yaw = Math.toRadians(player.getYRot());
+        Vec3 forward = sprint ? player.getLookAngle() : new Vec3(-Math.sin(yaw), 0.0D, Math.cos(yaw));
+        Vec3 left = new Vec3(Math.cos(yaw), 0.0D, Math.sin(yaw));
+        Vec3 wish = forward.scale(input.z).add(left.scale(input.x));
+        double speed = sprint ? SPRINT_SWIM_SPEED : SWIM_SPEED;
+        wish = wish.scale(speed / Math.max(1.0D, wish.length()));
+
+        Vec3 motion = player.getDeltaMovement().lerp(wish, 0.62D);
+        double y = verticalSpeed(swimDirection(mc), wish.y);
+        Vec3 start = player.position();
+        player.setDeltaMovement(motion.x, y, motion.z);
+        player.move(MoverType.SELF, player.getDeltaMovement());
+        player.resetFallDistance();
+        Vec3 moved = player.position().subtract(start);
+        player.checkMovementStatistics(moved.x, moved.y, moved.z);
+        return true;
+    }
+
+    private static int swimDirection(Minecraft mc) {
         // 开 GUI（声纳台）时原版会 releaseAll 键位，KeyMapping.isDown() 恒为 false；
         // 这里直接读物理键盘，保证开着声纳按 Shift 也能下潜。
-        boolean shiftDown = physicalKeyDown(mc, mc.options.keyShift);
-        boolean jumpDown = physicalKeyDown(mc, mc.options.keyJump);
+        if (physicalKeyDown(mc, mc.options.keyJump)) {
+            return 1;
+        }
+        return physicalKeyDown(mc, mc.options.keyShift) ? -1 : 0;
+    }
 
-        // 自由泳（疾跑触发）：按视线方向游，像原版水里疾泳一样头朝哪游哪。
-        //
-        // 关键：不能用"旧速度 × 阻力 + 加速度"，因为原版每 tick 都会先给 delta.y
-        // 叠一次重力，乘阻力会把它累积成持续下沉（用户实测"只会往底下游"）。
-        // 这里每 tick 直接把竖直速度设成 look.y × 泳速（重力清零），水平保留一点惯性。
-        if (sprintSwim) {
-            final double swimSpeed = 0.11D;
-            Vec3 look = player.getLookAngle();
-            double yaw = Math.toRadians(player.getYRot());
-            // 注意：player.xxa 左正右负（A=+1、D=-1），所以这里取的是"左"方向向量；
-            // 之前用右向量乘 xxa，导致按 A 往右前方游（用户实测的左右反了）。
-            Vec3 left = new Vec3(Math.cos(yaw), 0.0D, Math.sin(yaw));
-            Vec3 wish = look.scale(player.zza).add(left.scale(player.xxa * 0.7D));
-            if (wish.lengthSqr() > 1.0E-4D) {
-                wish = wish.normalize().scale(swimSpeed);
-            } else {
-                wish = Vec3.ZERO;
-            }
-            double vy = wish.y;
-            if (jumpDown) {
-                vy = Math.max(vy, 0.10D);
-            } else if (shiftDown) {
-                vy = Math.min(vy, -0.10D);
-            }
-            double blend = 0.55D;
-            player.setDeltaMovement(
-                    motion.x * (1.0D - blend) + wish.x * blend,
-                    vy,
-                    motion.z * (1.0D - blend) + wish.z * blend);
-            player.resetFallDistance();
-            return;
+    private static double verticalSpeed(int direction, double aim) {
+        if (direction != 0) {
+            return direction * SWIM_VERTICAL_SPEED;
         }
-        double y;
-        if (jumpDown) {
-            // 直接给一个明确的上浮速度；不要在原版重力后的负速度上做加法。
-            y = SWIM_VERTICAL_SPEED;
-        } else if (shiftDown) {
-            y = -SWIM_VERTICAL_SPEED;
-        } else {
-            // 松开按键：默认保持当前深度；按 N 打开"自然下沉"后改为缓慢下沉
-            // （0.02 格/tick，接近原版水里松手）。开 GUI 时同理，Shift 仍然有效。
-            y = naturalSink ? -NATURAL_SINK_SPEED : 0.0D;
-        }
-        player.setDeltaMovement(motion.x * 0.78D, y, motion.z * 0.78D);
-        player.resetFallDistance();
+        return aim != 0.0D ? aim : naturalSink ? -NATURAL_SINK_SPEED : 0.0D;
+    }
+
+    /** 游泳条件由服务端采样，首包前用相同规则在本地判断。 */
+    public static boolean hasAirOceanWater(LocalPlayer player) {
+        return AirOceanSwimmer.canUseAirOceanMovement(player)
+                && (ClientSwimState.known() ? ClientSwimState.swimMovement()
+                // 迟滞带内要传“当前泳姿”，不能传浸没状态，否则带里会被永远判成游泳。
+                : AirOceanSwimmer.canSwimAtDepth(player,
+                        ((AirOceanSwimmer) player).barotrauma$isAirOceanSwimming()));
     }
 
     /**
@@ -176,22 +151,20 @@ public final class UnderwaterMovement {
      * <p>左右 Shift 在 GLFW 里是两个不同的键：绑定读的是 {@code left.shift}，
      * 只查它会把"按右 Shift"当成没按。这里两种都认。</p>
      */
-    private static boolean physicalKeyDown(Minecraft mc, net.minecraft.client.KeyMapping mapping) {
+    private static boolean physicalKeyDown(Minecraft mc, KeyMapping mapping) {
         try {
-            com.mojang.blaze3d.platform.InputConstants.Key key = mapping.getKey();
-            if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM) {
+            InputConstants.Key key = mapping.getKey();
+            if (key.getType() == InputConstants.Type.KEYSYM) {
                 long window = mc.getWindow().getWindow();
                 int code = key.getValue();
-                if (com.mojang.blaze3d.platform.InputConstants.isKeyDown(window, code)) {
+                if (InputConstants.isKeyDown(window, code)) {
                     return true;
                 }
-                if (code == org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT) {
-                    return com.mojang.blaze3d.platform.InputConstants.isKeyDown(
-                            window, org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT);
+                if (code == GLFW.GLFW_KEY_LEFT_SHIFT) {
+                    return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
                 }
-                if (code == org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT) {
-                    return com.mojang.blaze3d.platform.InputConstants.isKeyDown(
-                            window, org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT);
+                if (code == GLFW.GLFW_KEY_RIGHT_SHIFT) {
+                    return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT);
                 }
             }
         } catch (Throwable ignored) {

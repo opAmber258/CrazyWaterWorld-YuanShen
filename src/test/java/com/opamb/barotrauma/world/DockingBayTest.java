@@ -59,8 +59,9 @@ class DockingBayTest {
         assertTrue(DockingBay.isStationDockHatch(new net.minecraft.core.BlockPos(site.x(), -64, site.z())));
         assertTrue(DockingBay.isStationDockHatch(new net.minecraft.core.BlockPos(site.x() + 1, -68, site.z())));
         assertTrue(DockingBay.isStationSideDoor(new net.minecraft.core.BlockPos(site.x() + 3, -67, site.z())));
-        assertTrue(DockingBay.isDockCapRow(new net.minecraft.core.BlockPos(site.x(), -68, site.z() + 7)));
-        assertFalse(DockingBay.isDockCapRow(new net.minecraft.core.BlockPos(site.x(), -68, site.z() + 8)));
+        assertTrue(DockingBay.isDockCapRow(site.at(-1, -68, 0)));
+        assertFalse(DockingBay.isDockCapRow(site.at(0, -68, 1)));
+        assertFalse(DockingBay.isDockCapRow(site.at(2, -68, 0)));
         assertTrue(DockingBay.inDryZone(site.x() + 0.5D, site.z() + 0.5D, DockingBay.SUB_HATCH_Y));
     }
 
@@ -161,6 +162,9 @@ class DockingBayTest {
         assertTrue(DockingBay.inDryZone(0.5D, 0.5D, DockingBay.STATION_HATCH_Y), "站侧舱口层也属于通道");
         assertFalse(DockingBay.inDryZone(3.5D, 0.5D, DockingBay.ROOM_MAX_Y), "气闸室外墙外是海");
         assertFalse(DockingBay.inDryZone(0.5D, 2.5D, DockingBay.SHAFT_TOP_Y), "竖井外是海");
+        assertFalse(DockingBay.inDryZone(0.5D, -1.5D, DockingBay.SUB_HATCH_Y + 0.5D), "旧井的外沿是海");
+        assertFalse(DockingBay.inDryZone(0.5D, 1.0D, DockingBay.MID_HATCH_Y + 0.5D), "舱口外的中层格不借用干区");
+        assertFalse(DockingBay.inDryZone(12.686D, 1.838D, -68.633D), "儒艮号顶上远离对接口的空气格是海");
         assertFalse(DockingBay.inDryZone(0.5D, 0.5D, DockingBay.STATION_FLOOR_UPPER_Y + 1),
                 "站内地板以上归哨站干燥区，不由对接通道负责");
     }

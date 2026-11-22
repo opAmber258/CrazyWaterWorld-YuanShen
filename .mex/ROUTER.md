@@ -38,7 +38,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-21
+last_updated: 2026-11-22
 ---
 
 # Session Bootstrap
@@ -53,7 +53,7 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## 交接快照（2026-11-16）
 
-**新会话先读仓库根 `STATUS.md` 顶部「2026-11-15」一节。** 那里是当前交接：
+仓库根 `STATUS.md` 顶部是最近的舱室水体交接。以下是「2026-11-15」的 PR #61 交接：
 哨站服务 + 关卡洞窟网络 + 电力/采矿/装备批次在 PR #61
 （`feat/outpost-batch-20261115`）等 CodeRabbit 复审；PR 的修复在独立 worktree
 `barotrauma-pr61` 完成，主工作区还有未验收的电池/修理改动，**本地 `main` 还没 pull**。
@@ -68,6 +68,17 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 这是随 Git 分享的开工阅读入口，不是自动通知；合作者获取包含本提醒的提交后才能看到。
 
 ## Current Project State
+
+- **水流可视化 + 泳姿/门/流体审查修复（2026-11-22，任务分支 `feat/water-flow-visuals-20261122`，PR #81）**：
+  水面改 `ShipWaterMesh`/`ShipWaterFlowMesh`/`ShipWaterMaterial` + `shaders/core/ship_water`，
+  `ShipWaterStreams` 按实际流量画下落/侧门溢流（协议 26/27）；`AirOceanSwimmer` + `EntitySwimmingMixin`
+  拆分浸没与疾游，`VsPlayerCollision` 用 VS2 实际碰撞形状测试站立姿态。CodeRabbit 20 条审查全部处理：
+  门 `WATERTIGHT` 改为“运动 + 水密”（水只关不开、手动关门清 `motionHold`、门洞通行轴过滤、
+  记录所有关闭门格）；`ShipClearance` 泳姿迟滞（测量与状态解耦）；破口进水去掉重复除洞数、
+  溢流按出口平分守恒、粗化水盒按“舱+层”拆、多船干湿遍历所有候选核心、方块船水包带源维度
+  （协议 29）、视锥外不重建网格、粒子共用预算、`bodyWater` 增量更新。全量 **414 项测试全绿**。
+  参考 `patterns/ship-fluid-field.md`。已知遗留：#3 无折射时无浸水提示、#5 `client/` 直接引用 VS2
+  `ShipTransform`、#9 飞溅/冲击点未共用网格落点。
 
 - **逐格流体场水系统 + 潜望镜/超级电容器（2026-11-21，任务分支 `feat/water-fluid-field-20261120`，PR #80）**：
   新增 `ship/water/ShipFluidField` 逐格流体场（密封舱室优先成 body、连海空腔单列、门走 `DoorLink` 限速、
@@ -189,7 +200,9 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 - **开发者工具（PR #37/#38/#40，2026-11-08）**：创造模式独立页签 `itemGroup.barotrauma.dev`（图标医疗调试器）。内容：`medical_debugger`（右键开面板，六部位+全身逐病症 ±1/±10/±100、活力覆盖可设负数；`MedicalDebugPacket` 服务端校验创造/权限≥2；`AfflictionContainer.vitalityOverride` 以 `v|值` 行持久化）、`67`（从主页签挪来）、`cpu_6700x3d`（Blockbench 建模的 2-element 方块，128×64 双贴图 + 32×32 物品栏图标）、`cthulhu_trigger`（一个物品选全部预设/档位/时长）。**坑**：创造模式每秒清空病况的上帝模式要对携带调试器的玩家豁免；`PostChain.passes` 在正式包是 SRG `f_110009_`，反射必须走 `ObfuscationReflectionHelper`。详见 `patterns/developer-tools.md`、`patterns/cthulhu-post-processing.md`、`patterns/blockbench-modeling.md`。
 - **物品与材料页签（2026-11-09）**：创造模式新增 `itemGroup.barotrauma.materials`「潜渊症-物品与材料」，首批两个乐器：`clown_horn`（右键一声，服务端 tick 限流，不使用物品冷却 UI）与 `guitar`（长按右键持续演奏 C–Am–F–G 琶音占位曲目，松手停止）。贴图与音效全部程序化生成（`tools/gen_instrument_textures.py`、`tools/gen_instrument_sounds.py`），**不复制原版/维基素材**；6700X3D 放置时不弹提示，右键已放置的方块显示 CPU/GPU/内存面板。
 - **克苏鲁的注视（PR #38/#40，2026-11-08；2026-11-09 加平面凝视/万花筒）**：8 个纯视觉 MobEffect 预设（鱼眼/深渊低语/星之彩/时间涟漪/静电噪点/梦境漂移/平面凝视/万花筒），共用一套后处理 `shaders/post/cthulhu_gaze.json`（`Mode` 0–7 + `Strength` uniform）；客户端按 amplifier 换算 0.35/0.65/1.0 强度，按 0.05/tick 淡入、0.028/tick 淡出（中档约 0.7s / 1.2s，满档约 1.0s / 1.8s），叠加 FOV 呼吸与镜头滚转；8 张 18×18 `textures/mob_effect/cthulhu_*.png` 统一暗紫眼图标。静电是 3 像素细行带 + 16Hz 重掷 + 3% 概率错位；梦境是 6×4 网格规则透视错位（阈限空间感）。**平面凝视走投影矩阵**：`CameraProjectionMixin` 把透视与正交按 `FLAT_BASE 0.28 ± FLAT_WOBBLE 0.09` 混合，第四档「满」（仅该预设，amplifier 3）= 完全正交。**万花筒走核心顶点着色器**：`tools/gen_kaleido_shaders.py` 生成 5 个 `assets/minecraft/shaders/core/*.vsh` 覆盖（地形 4 + 粒子；**不覆盖 entity 系列**，否则背包/快捷栏图标和掉落物会被一起折），`ShaderUniformMixin` 用实例字段缓存 location 直传 `Kaleido`；形变是连续径向折返 + 六瓣角向调制（不要用无条件镜像，最弱档也会不可玩），强度 `strength × 0.5 × 呼吸`。详见 `patterns/cthulhu-post-processing.md`。
-- **泳姿闪烁修复（PR #36）**：客户端不再用 `isSwimming`（医疗钩子也会设置）判断干湿；服务端用 `OceanEnvironment.isOceanWaterAt`（干舱/哨站优先）判定脚部浸没，经 `SwimStatePacket` 推给 `ClientSwimState`，水中移动入口以服务端状态为准。
+- **舱室进水、压载与泳姿（2026-11-22）**。门洞按两舱水头限速均压。水面包协议 28 同步沿实际舱壁和甲板的路径。强流沿开口铺展，弱流和落点以飞溅表现，淹没后冒泡。喷溅和气泡随世界刻发射。压载和自动泵按本舱容量或水量调整。服务端用躯干浸没、实际地板和净高决定游泳，浅水可直立涉水。疾游沿用原版疾跑绑定的按住或切换状态。见 [船内逐格流体场](patterns/ship-fluid-field.md)。
+- **舱内水面渲染（2026-11-22）**。同一格列的湿区间合并，邻列只扣实际覆盖的边段。同舱多格设备的模型空隙接上同一水线。相连水面的顶边共享采样，落水和侧流驱动衰减涟漪。可见水界面按法向厚度控制折射，水下直视地板按水程着色。实机验收方法见 [水面排查](patterns/debug-ship-water.md)。
+- **寒冷深穴和对接干区（2026-11-22）**。人物外海水雾从约 7.4 格过渡至 18.7 格，取原作寒冷深穴调色。对接封盖只认站侧 3×1 开口，整船外接包围盒里的船外格仍是海。见 [水面排查](patterns/debug-ship-water.md)。
 
 **Not yet built:**
 - Multi-ship support (one `VsPilot` singleton manages one physical ship).
@@ -227,6 +240,7 @@ Load the relevant file based on the current task. Always load `context/architect
 | Setting up or running the project | `context/setup.md` |
 | Changing dev scripts, textures, or GameTest templates | `context/tools.md` |
 | Debugging hull damage, durability bars, or welding | `patterns/debug-hull-damage.md` |
+| Debugging swim poses, opening flow, water occlusion, or open-ocean visuals | `patterns/debug-ship-water.md`, `patterns/ship-fluid-field.md` |
 | Building or debugging a `java_block` Java block model in Blockbench | `patterns/blockbench-modeling.md` |
 | Delivering a Bedrock-format asset that ships a geo.json | `patterns/deliver-model-asset.md` |
 | Adding/tuning a Cthulhu-gaze preset | `patterns/cthulhu-post-processing.md` |

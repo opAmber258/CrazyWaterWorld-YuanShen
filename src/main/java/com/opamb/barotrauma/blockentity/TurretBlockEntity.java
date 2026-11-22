@@ -298,8 +298,7 @@ public class TurretBlockEntity extends BlockEntity {
         }
         if (stationPos == null) {
             // 物理船上的炮塔/潜望镜都在船坞里，直接用船坞坐标比距离永远是 3e7 格。
-            // 用换算后的世界镜头位置做距离校验，潜望镜才进得去。
-            Vec3 anchor = cameraAnchorFor(getBlockState(), getBlockPos(), controllerPos);
+            Vec3 anchor = interactionAnchor(controllerPos);
             if (player.distanceToSqr(anchor) > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE) {
                 return InteractionResult.FAIL;
             }
@@ -379,7 +378,6 @@ public class TurretBlockEntity extends BlockEntity {
         }
         if (turret.operator != null) {
             ServerPlayer player = server.getServer().getPlayerList().getPlayer(turret.operator);
-            Vec3 anchor = turret.cameraAnchor();
             boolean invalid = player == null
                     || player.level() != server
                     || player.isDeadOrDying()
@@ -393,11 +391,12 @@ public class TurretBlockEntity extends BlockEntity {
                         // 潜望镜：区块未加载时不要 getBlockEntity（会同步加载区块）。
                         invalid = !server.hasChunkAt(turret.controllerPos)
                                 || !(server.getBlockEntity(turret.controllerPos)
-                                instanceof PeriscopeBlockEntity);
+                                instanceof PeriscopeBlockEntity)
+                                || !com.opamb.barotrauma.block.PeriscopeBlock
+                                        .hasStand(server, turret.controllerPos);
                     }
                     if (!invalid) {
-                        invalid = player.distanceToSqr(anchor)
-                                > MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
+                        invalid = !turret.withinReach(player);
                     }
                 }
             }
@@ -407,8 +406,7 @@ public class TurretBlockEntity extends BlockEntity {
                 if (turret.aimTargetSet) {
                     turret.stepAim();
                 }
-                // 物理船会移动/转向：潜望镜镜头锚点是世界坐标，必须每 tick 重算并
-                // 下发，否则船开走了镜头还留在原地（画面只剩海）。顺带同步冷却。
+                // 同步冷却和已随船变换的炮塔镜头位置。
                 turret.broadcastState();
             }
         }
@@ -531,7 +529,8 @@ public class TurretBlockEntity extends BlockEntity {
             // 站台接管不限操作距离；但连接本身必须仍然有效。
             return level instanceof ServerLevel server && stationAnchorValid(server);
         }
-        return player.distanceToSqr(cameraAnchor()) <= MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
+        return player.distanceToSqr(interactionAnchor(controllerPos))
+                <= MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
     }
 
     /**
@@ -543,33 +542,19 @@ public class TurretBlockEntity extends BlockEntity {
      * （未上船的炮塔）保持原坐标。</p>
      */
     public Vec3 cameraAnchor() {
-        return cameraAnchorFor(getBlockState(), getBlockPos(), controllerPos);
+        BlockPos pos = getBlockPos();
+        return toWorld(pos, cameraPosition(getBlockState(), pos));
     }
 
-    private static Vec3 cameraAnchorFor(BlockState state, BlockPos turretPos,
-                                        @Nullable BlockPos controller) {
-        if (controller != null) {
-            // 潜望镜眼位：方块中心 + 0.58 = 方块底面 + 1.08。
-            return blockCenterWorld(controller).add(0.0D, 0.58D, 0.0D);
-        }
-        // 相机高度/轴心由炮塔规格给：eye 相对方块底面，pivot 相对方块最小角。
-        TurretSpec spec = spec(state);
-        double eye = mount(state) == Direction.DOWN ? spec.ceilingEyeHeight() : spec.eyeHeight();
-        return blockCenterWorld(turretPos)
-                .add(spec.pivotX() - 0.5D, eye - 0.5D, spec.pivotZ() - 0.5D);
+    private Vec3 interactionAnchor(@Nullable BlockPos controller) {
+        return controller == null ? cameraAnchor()
+                : toWorld(controller, Vec3.atCenterOf(controller).add(0.0D, 0.58D, 0.0D));
     }
 
-    private static Vec3 blockCenterWorld(BlockPos pos) {
-        if (com.opamb.barotrauma.ship.vs.VsState.active()
-                && com.opamb.barotrauma.ship.vs.VsPilot.isYardBlock(pos)) {
-            BlockPos assembly = com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(pos);
-            Vec3 world = assembly == null ? null
-                    : com.opamb.barotrauma.ship.vs.VsPilot.assemblyToWorld(assembly);
-            if (world != null) {
-                return world;
-            }
-        }
-        return Vec3.atCenterOf(pos);
+    private Vec3 toWorld(BlockPos block, Vec3 localPoint) {
+        return com.opamb.barotrauma.ship.vs.VsState.active()
+                ? com.opamb.barotrauma.ship.vs.VsPilot.shipyardPointToWorld(level, block, localPoint)
+                : localPoint;
     }
 
     /** 占用锚点是否仍是一个“绑定到本炮塔”的瞄准站。 */

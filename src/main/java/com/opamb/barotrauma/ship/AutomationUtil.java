@@ -15,6 +15,8 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public final class AutomationUtil {
 
+    public static final int MOTION_HOLD_TICKS = 80;
+
     private AutomationUtil() {
     }
 

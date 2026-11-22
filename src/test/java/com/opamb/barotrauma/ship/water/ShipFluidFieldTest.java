@@ -96,6 +96,31 @@ class ShipFluidFieldTest {
     }
 
     @Test
+    @DisplayName("满舱溢流分叉到多个出口时不会把同一份水复制出去")
+    void overflowThroughBranchingGatesConservesWater() {
+        BlockPos a = new BlockPos(0, 0, 0);
+        BlockPos b = new BlockPos(1, 0, 0);
+        BlockPos c = new BlockPos(2, 0, 0);
+        BlockPos d = new BlockPos(1, 0, 1);
+        ShipFluidField field = ShipFluidField.of(List.of(
+                cell(0, 0, 0, 0), cell(1, 0, 0, 1),
+                cell(2, 0, 0, 2), cell(2, 1, 0, 2),
+                cell(1, 0, 1, 3), cell(1, 1, 1, 3)),
+                List.of(new ShipFluidField.Gate(a, b, true),
+                        new ShipFluidField.Gate(b, c, true),
+                        new ShipFluidField.Gate(b, d, true)), 4);
+        field.inject(a, ShipFluidField.MAX_CELL_WATER);
+        field.inject(b, ShipFluidField.MAX_CELL_WATER);
+        double added = field.injectFlood(0, 600.0D, 300.0D);
+
+        assertEquals(300.0D, added, 1.0E-6D,
+                "A 只经一道门过了 300，B 分叉后不能再凭空多出 300");
+        assertEquals(300.0D, field.waterAt(c) + field.waterAt(new BlockPos(2, 1, 0))
+                + field.waterAt(d) + field.waterAt(new BlockPos(1, 1, 1)), 1.0E-6D,
+                "两个出口合计不能超过上游实际到达量");
+    }
+
+    @Test
     @DisplayName("两侧同时向中间灌水不会把中间格灌到 100 以上")
     void multipleInflowsRespectCellCapacity() {
         ShipFluidField field = ShipFluidField.of(List.of(

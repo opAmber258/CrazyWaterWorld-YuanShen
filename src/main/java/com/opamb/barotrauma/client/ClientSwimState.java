@@ -15,8 +15,7 @@ import net.minecraftforge.fml.common.Mod;
 public final class ClientSwimState {
 
     private static volatile boolean known;
-    private static volatile boolean waterAtFeet;
-    private static volatile boolean swimPose;
+    private static volatile boolean swimMovement;
     private static volatile long dragShipId = -1L;
 
     private ClientSwimState() {
@@ -25,8 +24,7 @@ public final class ClientSwimState {
     /** 渲染线程调用（包处理器 enqueueWork 后已经在客户端主线程）。 */
     public static void accept(SwimStatePacket packet) {
         known = true;
-        waterAtFeet = packet.waterAtFeet();
-        swimPose = packet.swimPose();
+        swimMovement = packet.swimMovement();
         dragShipId = packet.dragShipId();
     }
 
@@ -35,14 +33,9 @@ public final class ClientSwimState {
         return known;
     }
 
-    /** 脚部浸没：true = 水中移动入口生效。 */
-    public static boolean waterAtFeet() {
-        return waterAtFeet;
-    }
-
-    /** 服务端权威泳姿：true = 保持游泳碰撞箱（疾跑或舱顶太低）。 */
-    public static boolean swimPose() {
-        return swimPose;
+    /** 当前水深允许游泳。 */
+    public static boolean swimMovement() {
+        return swimMovement;
     }
 
     /** 服务端权威随船拖拽：船 id；-1 = 不拖。 */
@@ -53,8 +46,7 @@ public final class ClientSwimState {
     @SubscribeEvent
     public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {
         known = false;
-        waterAtFeet = false;
-        swimPose = false;
+        swimMovement = false;
         dragShipId = -1L;
         VsClientDrag.reset();
     }

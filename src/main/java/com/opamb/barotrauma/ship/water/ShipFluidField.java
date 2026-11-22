@@ -2,6 +2,7 @@ package com.opamb.barotrauma.ship.water;
 
 import com.opamb.barotrauma.ship.ShipGeometry;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -64,19 +65,28 @@ public final class ShipFluidField {
     private final int[][] bodyCellsByY;
     private final int[][] columns;
     private final Edge[] edges;
+    private final Edge[] gateEdges;
     private final int[] seaDoors;
-    /** 每个 body 通过"开着的门/舱口"直接相邻的其它 body（满舱溢流用）。 */
-    private final int[][] gateNeighbours;
+    private final Set<BlockPos> ceilingSeaDoors;
+    private final Map<BlockPos, Direction> sideSeaDoors;
+    private final ShipWaterStreams streams;
+    /** 溢流使用每对舱室之间最低的开放门槛。边按来源舱到接收舱定向。 */
+    private final List<Map<Integer, Edge>> spillGates;
     private final int bodyCount;
 
     private final Map<Long, Integer> indexByKey = new HashMap<>();
 
-    private record Edge(int a, int b, boolean door) {
+    private record Edge(int a, int b) {
     }
 
     private ShipFluidField(List<Cell> cells, List<Gate> gates, int bodyCount,
-                           List<BlockPos> seaDoors) {
+                           List<BlockPos> seaDoors, Set<BlockPos> ceilingSeaDoors,
+                           Map<BlockPos, Direction> sideSeaDoors, Set<BlockPos> closedDoors,
+                           Set<BlockPos> hull) {
         this.bodyCount = bodyCount;
+        this.ceilingSeaDoors = Set.copyOf(ceilingSeaDoors);
+        this.sideSeaDoors = Map.copyOf(sideSeaDoors);
+        this.streams = new ShipWaterStreams(this, closedDoors, hull);
         int n = cells.size();
         positions = new BlockPos[n];
         xs = new int[n];
@@ -158,40 +168,29 @@ public final class ShipFluidField {
         Arrays.sort(this.seaDoors);
 
         List<Edge> edgeList = new ArrayList<>();
+        List<Edge> passages = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             // 只向 +X / +Z / +Y 找，避免每条边生成两次。
-            addEdgeIfPresent(edgeList, gateOpen, i, xs[i] + 1, ys[i], zs[i]);
-            addEdgeIfPresent(edgeList, gateOpen, i, xs[i], ys[i], zs[i] + 1);
-            addEdgeIfPresent(edgeList, gateOpen, i, xs[i], ys[i] + 1, zs[i]);
+            addEdgeIfPresent(edgeList, passages, gateOpen, i, xs[i] + 1, ys[i], zs[i]);
+            addEdgeIfPresent(edgeList, passages, gateOpen, i, xs[i], ys[i], zs[i] + 1);
+            addEdgeIfPresent(edgeList, passages, gateOpen, i, xs[i], ys[i] + 1, zs[i]);
         }
         edges = edgeList.toArray(new Edge[0]);
-        // 开着的门/舱口两侧的 body 对：满舱溢流用。只收 door 边（门/舱口），
-        // 普通同 body 边不跨水体。
-        List<java.util.Set<Integer>> gateSets = new ArrayList<>(Math.max(0, bodyCount));
+        gateEdges = passages.toArray(new Edge[0]);
+        spillGates = new ArrayList<>(bodyCount);
         for (int i = 0; i < bodyCount; i++) {
-            gateSets.add(new java.util.LinkedHashSet<>());
+            spillGates.add(new LinkedHashMap<>());
         }
-        for (Edge edge : edges) {
-            if (!edge.door()) {
-                continue;
-            }
-            int a = bodyOf[edge.a()];
-            int b = bodyOf[edge.b()];
-            if (a >= 0 && a < bodyCount && b >= 0 && b < bodyCount && a != b) {
-                gateSets.get(a).add(b);
-                gateSets.get(b).add(a);
-            }
-        }
-        gateNeighbours = new int[bodyCount][];
-        for (int i = 0; i < bodyCount; i++) {
-            gateNeighbours[i] = gateSets.get(i).stream().mapToInt(Integer::intValue).toArray();
+        for (Edge edge : gateEdges) {
+            addSpillGate(edge);
+            addSpillGate(new Edge(edge.b(), edge.a()));
         }
         refreshBodyWater();
     }
 
     /** 测试/工具用：给定格、门和 body 数直接建场。 */
     public static ShipFluidField of(List<Cell> cells, List<Gate> gates, int bodyCount) {
-        return new ShipFluidField(cells, gates, bodyCount, List.of());
+        return new ShipFluidField(cells, gates, bodyCount, List.of(), Set.of(), Map.of(), Set.of(), Set.of());
     }
 
     /** 从扫描结果建场：密封舱全部格、连海空腔只取船壳内的格，再补上门格。 */
@@ -246,6 +245,9 @@ public final class ShipFluidField {
         Set<Integer> bodiesWithCells = new HashSet<>(bodyByPos.values());
         List<Gate> gates = new ArrayList<>();
         List<BlockPos> seaDoors = new ArrayList<>();
+        Set<BlockPos> ceilingSeaDoors = new HashSet<>();
+        Map<BlockPos, Direction> sideSeaDoors = new HashMap<>();
+        Set<BlockPos> closedDoors = new HashSet<>(geometry.closedDoorways());
         for (ShipGeometry.DoorLink link : geometry.doorLinks()) {
             BlockPos door = link.cell();
             if (!bodyByPos.containsKey(door)) {
@@ -255,15 +257,47 @@ public final class ShipFluidField {
                 addCell(cells, bodyByPos, door, link.body());
             }
             if (!link.open()) {
+                closedDoors.add(door);
                 continue;
             }
             if (link.other() == ShipGeometry.SEA_BODY) {
+                Direction outside = link.seaSide();
+                if (outside == null || bodyByPos.containsKey(door.relative(outside))) {
+                    // 有破口的邻舱可能被外部搜索标记，却仍有自己的有限水量。
+                    continue;
+                }
+                Direction inward = outside.getOpposite();
+                Integer inwardBody = bodyByPos.get(door.relative(inward));
+                if (inwardBody == null) {
+                    continue;
+                }
+                // 扫描可能先遇到门格，把它单独扫成一个单格水体（门格不扩展）。
+                // 海门必须按门内侧的真实舱室算，否则“门格 body ≠ 舱室 body”
+                // 会让这条通海连线被丢掉，开门后干舱没有进水来源。
+                if (!Integer.valueOf(inwardBody).equals(bodyByPos.get(door))) {
+                    reassignBody(cells, bodyByPos, door, inwardBody);
+                }
                 seaDoors.add(door);
+                if (outside == Direction.UP) {
+                    ceilingSeaDoors.add(door);
+                } else if (outside.getAxis().isHorizontal()) {
+                    sideSeaDoors.put(door, inward);
+                }
                 continue;
             }
-            for (BlockPos next : neighbours(door)) {
+            // 水只能沿门洞的通行轴流过：门格侧面的邻格可能属于另一侧水体
+            // （L 形/绕行几何），按六邻接建边会让水从门侧边流进隔壁舱，
+            // 而水盒（doorSurfaces）不认这个方向。没有轴向信息的旧几何保持原行为。
+            Direction.Axis axis = geometry.doorwayAxes().get(door);
+            for (Direction side : Direction.values()) {
+                if (axis != null && side.getAxis() != axis) {
+                    continue;
+                }
+                BlockPos next = door.relative(side);
                 Integer other = bodyByPos.get(next);
-                if (other != null && other == link.other() && other != link.body()) {
+                if (other != null && other == link.other() && other != link.body()
+                        && Integer.valueOf(link.body())
+                        .equals(bodyByPos.get(door.relative(side.getOpposite())))) {
                     gates.add(new Gate(door, next, true));
                 }
             }
@@ -275,14 +309,31 @@ public final class ShipFluidField {
                 continue;
             }
             BlockPos door = link.cell();
-            for (BlockPos next : neighbours(door)) {
+            Direction.Axis axis = geometry.doorwayAxes().get(door);
+            for (Direction side : Direction.values()) {
+                if (axis != null && side.getAxis() != axis) {
+                    continue;
+                }
+                BlockPos next = door.relative(side);
                 Integer other = bodyByPos.get(next);
-                if (other != null && other == link.other() && other != link.body()) {
+                if (other != null && other == link.other() && other != link.body()
+                        && Integer.valueOf(link.body())
+                        .equals(bodyByPos.get(door.relative(side.getOpposite())))) {
                     gates.add(new Gate(door, next, false));
                 }
             }
         }
-        return new ShipFluidField(cells, gates, sealed.size() + pockets.size(), seaDoors);
+        return new ShipFluidField(cells, gates, sealed.size() + pockets.size(), seaDoors,
+                ceilingSeaDoors, sideSeaDoors, closedDoors, geometry.hull());
+    }
+
+    private void addSpillGate(Edge edge) {
+        spillGates.get(bodyOf[edge.a()]).merge(bodyOf[edge.b()], edge,
+                (first, next) -> sill(first) <= sill(next) ? first : next);
+    }
+
+    private int sill(Edge edge) {
+        return Math.max(ys[edge.a()], ys[edge.b()]);
     }
 
     private static void addCell(List<Cell> cells, Map<BlockPos, Integer> bodyByPos,
@@ -293,7 +344,20 @@ public final class ShipFluidField {
         }
     }
 
-    private void addEdgeIfPresent(List<Edge> out, Map<Long, Boolean> gateOpen,
+    /** 把已经建过的格改到另一个水体（海门格被扫描单独成体时用）。 */
+    private static void reassignBody(List<Cell> cells, Map<BlockPos, Integer> bodyByPos,
+                                     BlockPos pos, int body) {
+        BlockPos immutable = pos.immutable();
+        bodyByPos.put(immutable, body);
+        for (int i = 0; i < cells.size(); i++) {
+            if (cells.get(i).pos().equals(immutable)) {
+                cells.set(i, new Cell(immutable, body));
+                return;
+            }
+        }
+    }
+
+    private void addEdgeIfPresent(List<Edge> normal, List<Edge> passages, Map<Long, Boolean> gateOpen,
                                   int from, int x, int y, int z) {
         Integer to = indexByKey.get(BlockPos.asLong(x, y, z));
         if (to == null) {
@@ -304,12 +368,12 @@ public final class ShipFluidField {
             if (ys[from] != ys[to]) {
                 return;
             }
-            out.add(new Edge(from, to, false));
+            normal.add(new Edge(from, to));
             return;
         }
         Boolean open = gateOpen.get(pairKey(from, to));
         if (Boolean.TRUE.equals(open)) {
-            out.add(new Edge(from, to, true));
+            passages.add(new Edge(from, to));
         }
     }
 
@@ -324,7 +388,7 @@ public final class ShipFluidField {
                 for (int i = column.length - 1; i > 0; i--) {
                     int lower = column[i - 1];
                     int upper = column[i];
-                    if (bodyOf[lower] != bodyOf[upper]) {
+                    if (bodyOf[lower] != bodyOf[upper] || ys[upper] != ys[lower] + 1) {
                         continue;
                     }
                     double room = MAX_CELL_WATER - water[lower];
@@ -344,13 +408,45 @@ public final class ShipFluidField {
         refreshBodyWater();
     }
 
+    /** 开向海的开口注水后，推进各舱水位及门洞流量。 */
+    public void tick(double dt) {
+        if (dt <= 0.0D) {
+            streams.beginStep(dt);
+            return;
+        }
+        for (int index : seaDoors) {
+            BlockPos door = positions[index];
+            double added = injectFlood(bodyOf[index], DOOR_FLOW_PER_CELL * dt,
+                    DOOR_FLOW_PER_CELL * dt);
+            if (added > 0.0D) {
+                Direction inward = sideSeaDoors.get(door);
+                if (inward != null) {
+                    streams.recordSideInflow(door.relative(inward.getOpposite()), door, door.getY() + 1.0D, added);
+                } else {
+                    BlockPos receiver = ceilingSeaDoors.contains(door) ? door.below() : door;
+                    streams.recordInflow(door, receiver, added);
+                }
+            }
+        }
+        streams.beginStep(dt);
+        level();
+        flowThroughGates(dt);
+    }
+
+    /** 压力平衡，不从外海注水（测试用）。 */
+    public void flow(double dt) {
+        streams.beginStep(dt);
+        flowWithinBodies(dt);
+        flowThroughGates(dt);
+    }
+
     /**
-     * 水平/门洞压力平衡。
+     * 舱内水平压力平衡。
      *
      * <p>每条边先按当前水位算流量，再按"每格最大流出"统一缩放；这样一次 tick
      * 里既有双向流动，也不会把一格的水抽成负数。两轮迭代让大舱的水更快拉平。</p>
      */
-    public void flow(double dt) {
+    private void flowWithinBodies(double dt) {
         if (dt <= 0.0D || edges.length == 0) {
             return;
         }
@@ -382,14 +478,10 @@ public final class ShipFluidField {
                 } else {
                     continue;
                 }
-                double coeff = edge.door() ? DOOR_FLOW_COEFF : NORMAL_FLOW_COEFF;
                 // 两个 1 格截面的格把水头差抹平只需要 diff×50 units（各让一半）；
                 // 超过这个量就会来回过冲。流量系数再大也只能到这个上限。
-                double amount = Math.min(coeff * diff * dt,
+                double amount = Math.min(NORMAL_FLOW_COEFF * diff * dt,
                         diff * MAX_CELL_WATER * 0.5D);
-                if (edge.door()) {
-                    amount = Math.min(amount, DOOR_FLOW_PER_CELL * dt);
-                }
                 amount = Math.min(amount, water[from]);
                 amount = Math.min(amount, inRoom[to]);
                 if (amount <= 1.0E-4D) {
@@ -423,16 +515,89 @@ public final class ShipFluidField {
                     continue;
                 }
                 Edge edge = edges[e];
-                if (flow > 0.0D) {
-                    water[edge.a()] -= flow;
-                    water[edge.b()] += flow;
-                } else {
-                    water[edge.b()] += flow;
-                    water[edge.a()] -= flow;
-                }
+                water[edge.a()] -= flow;
+                water[edge.b()] += flow;
             }
         }
         refreshBodyWater();
+    }
+
+    /**
+     * 门洞压力由两侧舱室的水头决定。同一扇门两侧的格都灌满时，水位更高的
+     * 一侧仍能把水挤到接收舱的空余容积里。
+     */
+    private void flowThroughGates(double dt) {
+        if (dt <= 0.0D) {
+            return;
+        }
+        for (Edge edge : gateEdges) {
+            int a = edge.a();
+            int b = edge.b();
+            int sill = sill(edge);
+            int from = a;
+            int to = b;
+            double source = Math.max(sill, bodyLevel(bodyOf[a]));
+            double target = Math.max(sill, bodyLevel(bodyOf[b]));
+            if (source < target) {
+                from = b;
+                to = a;
+            }
+            double head = Math.abs(source - target);
+            if (head <= FLOW_DEADBAND) {
+                continue;
+            }
+            int donor = bodyOf[from];
+            int receiver = bodyOf[to];
+            double aboveSill = bodyWater[donor] - capacityBelow(donor, sill);
+            double room = bodyCapacityUnits[receiver] - bodyWater[receiver];
+            double amount = Math.min(DOOR_FLOW_COEFF * head * dt, DOOR_FLOW_PER_CELL * dt);
+            // 每侧水面至少有一格面积，限制单次水头变化以免过冲。
+            amount = Math.min(amount, head * UNITS_PER_BLOCK * 0.5D);
+            amount = Math.min(amount, Math.min(aboveSill, room));
+            if (amount <= 1.0E-6D) {
+                continue;
+            }
+            double removed = removeBody(donor, amount);
+            double moved = addBody(receiver, removed, Double.POSITIVE_INFINITY);
+            if (removed - moved > 1.0E-6D) {
+                addBody(donor, removed - moved, Double.POSITIVE_INFINITY);
+            }
+            if (moved > 0.0D) {
+                if (ys[from] == ys[to]) {
+                    streams.sideOpening(positions[from], positions[to], Math.max(source, target), moved);
+                } else {
+                    streams.opening(positions[from], positions[to], moved / dt);
+                }
+            }
+        }
+    }
+
+    /** 破口紧邻的实际舱内格，与渲染数据共用同一个开口。 */
+    public BlockPos breachReceiver(BlockPos breach, int body, Set<BlockPos> breachCells) {
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            BlockPos side = breach.relative(direction);
+            if (bodyOf(side) == body && !breachCells.contains(side)) {
+                return side;
+            }
+        }
+        BlockPos below = breach.below();
+        if (bodyOf(below) == body && !breachCells.contains(below)) {
+            return below;
+        }
+        BlockPos above = breach.above();
+        return bodyOf(above) == body && !breachCells.contains(above) ? above : null;
+    }
+
+    public void recordInflow(BlockPos opening, BlockPos receiver, double amount) {
+        streams.recordInflow(opening, receiver, amount);
+    }
+
+    public List<ShipWaterStreams.Segment> waterStreams() {
+        return streams.segments();
+    }
+
+    public List<ShipWaterStreams.SideFlow> sideFlows() {
+        return streams.sideFlows();
     }
 
     /**
@@ -537,11 +702,11 @@ public final class ShipFluidField {
         double remaining = units;
         double added = 0.0D;
         ArrayDeque<Integer> queue = new ArrayDeque<>();
-        Set<Integer> visited = new HashSet<>();
+        Map<Integer, Edge> arrival = new HashMap<>();
         // 每个水体这步最多能进多少：起点是全额，跨过一道门后受门的预算限制。
         Map<Integer, Double> allowance = new HashMap<>();
         queue.add(body);
-        visited.add(body);
+        arrival.put(body, null);
         allowance.put(body, units);
         while (!queue.isEmpty() && remaining > 1.0E-6D) {
             int current = queue.poll();
@@ -549,10 +714,21 @@ public final class ShipFluidField {
             double took = addBody(current, allow, Double.POSITIVE_INFINITY);
             remaining -= took;
             added += took;
+            if (took > 0.0D) {
+                for (Edge edge = arrival.get(current); edge != null; edge = arrival.get(bodyOf[edge.a()])) {
+                    if (ys[edge.a()] == ys[edge.b()]) {
+                        streams.recordSideInflow(positions[edge.a()], positions[edge.b()],
+                                bodyLevel(bodyOf[edge.a()]), took);
+                    }
+                }
+            }
             if (remaining <= 1.0E-6D) {
                 break;
             }
             // 本舱没装下的那部分才能继续往外溢，而且每过一道门都要计入门的预算。
+            // 多个出口平分“能外溢的量”，不能每个出口都拿一份完整的 pass：
+            // 否则 A→B 只过了一道门的预算，B 却能把同样多的水分别送进 C 和 D
+            // （凭空造水）。单出口仍然能拿到完整的预算。
             double excess = allow - took;
             if (excess <= 1.0E-6D) {
                 continue;
@@ -561,19 +737,33 @@ public final class ShipFluidField {
             if (pass <= 1.0E-9D) {
                 continue;
             }
-            for (int next : gateNeighbours[current]) {
-                if (visited.add(next)) {
-                    allowance.put(next, pass);
+            var outlets = spillGates.get(current);
+            if (outlets == null || outlets.isEmpty()) {
+                continue;
+            }
+            int open = 0;
+            for (int next : outlets.keySet()) {
+                if (!arrival.containsKey(next)) {
+                    open++;
+                }
+            }
+            if (open <= 0) {
+                continue;
+            }
+            double share = pass / open;
+            if (share <= 1.0E-9D) {
+                continue;
+            }
+            for (var connection : outlets.entrySet()) {
+                int next = connection.getKey();
+                if (!arrival.containsKey(next)) {
+                    arrival.put(next, connection.getValue());
+                    allowance.put(next, share);
                     queue.add(next);
                 }
             }
         }
         return added;
-    }
-
-    /** 从外海开着的门注水：和普通注入一样，但按门流量封顶。 */
-    public double injectSeaDoor(BlockPos pos, double units) {
-        return inject(pos, Math.min(units, DOOR_FLOW_PER_CELL));
     }
 
     /** 往 body 注水，从最低水位格开始铺平；{@code maxYExclusive} 限制最高格（压载舱门限）。 */
@@ -622,7 +812,8 @@ public final class ShipFluidField {
             }
             remaining -= take;
         }
-        refreshBodyWater();
+        // 增量更新本舱汇总，避免每次注水都全格重扫（门流每步会调很多次）。
+        bodyWater[body] += added;
         return added;
     }
 
@@ -673,7 +864,8 @@ public final class ShipFluidField {
             }
             remaining -= take;
         }
-        refreshBodyWater();
+        // 增量更新本舱汇总：每道门都全格重扫会让 100 道门 × 3 万格变成 600 万次/步。
+        bodyWater[body] -= removed;
         return removed;
     }
 
@@ -855,12 +1047,6 @@ public final class ShipFluidField {
 
     private static long packXZ(int x, int z) {
         return ((long) x << 32) | (z & 0xFFFFFFFFL);
-    }
-
-    private static BlockPos[] neighbours(BlockPos pos) {
-        return new BlockPos[]{
-                pos.east(), pos.west(), pos.north(), pos.south(), pos.above(), pos.below()
-        };
     }
 
     private static double clamp01(double value) {

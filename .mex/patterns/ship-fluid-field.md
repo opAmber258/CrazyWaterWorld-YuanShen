@@ -1,3 +1,9 @@
+---
+name: ship-fluid-field
+description: 船舱模拟水位、门洞交换、落水表现与干湿判定。
+last_updated: 2026-11-22
+---
+
 # 船内逐格流体场（ShipFluidField）
 
 ## 何时用
@@ -10,28 +16,35 @@
 
 - `ship/water/ShipFluidField.java`：逐格流体场。每格一个水量，按“水体（body）”分组：
   **密封舱室优先**，连通海水的空腔单独成 body；同一 body 内整舱水面归平。
-- 门格：算舱内，但不直接透水；开门走 `DoorLink` 限速搬运，所以门两侧不会瞬间拉平。
-- 破口格：按 tick 往所属 body 注入海水（速率在 `ShipWater`/`ShipSimulation` 一侧调）。
+- 门格：按 `DoorLink` 分隔两舱。开门时按洞口两侧的舱室水头交换，受洞口高度、来源水量、接收舱余量和每格 3000 units/s 限制。洞口两侧的格都被水淹没时，仍可向低水位舱进水。
+- 跨水体的门边只沿 `ShipGeometry.doorwayAxes` 的通行轴生成，并要求门格两侧水体各自匹配；门格侧邻属于另一水体时不能从侧边过水（水盒不认那个方向）。
+- 关闭的门/舱口全部记进 `ShipGeometry.Result.closedDoorways`（不只跨水体的 `DoorLink`），落水路径不穿过关闭舱口。海门格如果被扫描单独扫成水体，按门内侧真实水体重新归属后再建海链。
+- 门的自动化：`MOTION` = 原作自动关门（运动探测 + 4 秒保持）；`WATERTIGHT` = 运动 + 水密，干舱有人靠近才开、水 >0.3 强制关并清保持、0.1~0.3 滞回保持现状、通海门永不自动开。**水只触发关，不触发开**；手动关门要清 `motionHold`，否则会被自动模式顶开。
+- 通海外门可能位于整艘船的包围盒以内。`ShipGeometry` 沿舱门朝向或舱口的竖直方向查外部空气，记录海侧方向。构造水场时用历史舱内格排除仍有有限容积的邻舱。物理船读档并定位船坞后从实际方块重扫门洞。
+- `ShipWaterStreams` 只跟踪本步实际通过破口和门洞的水。落水沿水体内相邻格向下，遇甲板沿同层找下行口，截到接收水面。侧门单独跟踪穿过洞口横向的水量，压力交换和满舱溢流都记录到对应的开口。
+- 破口格：`ShipSimulation.tickSeaFlood` 往接水舱注水，按实际接受的量分给该舱的各个破口。液体容积按格和舱室结算，路径用于绘制。破口总速率已经乘过破口数（`breachSize`），不要再除一次；只有绘制来水路径时才按洞平分。
+- 满舱溢流（`injectFlood`）：沿开着的门往相邻水体顶，受每道门每步 `DOOR_FLOW_PER_CELL * dt` 限制；一个舱有多个出口时按出口数平分“可外溢量”，不能每个出口各拿一份完整预算（会凭空造水）。
 - 水泵：只抽自己所在 body；自动模式用滞回阈值（`DrainPumpBlockEntity.autoWet`：
   ≥0.1 起抽、≤0.02 停），不要改回单阈值，否则会 0%/100% 抖。
+- 自动压载泵按所在舱的水量和舵台目标分别注排。首次装配的 7% 全船水量按各压载舱剩余可注水容积分配，舱门下沿限制每舱可注水量。读档沿用已标定的中性值，供电后各舱自行回到目标。`ShipSimulation` 分别结算自动目标和手动流量。
 
 ## 水盒生成（客户端渲染 / 干湿判定共用）
 
 `ShipWaterStateBuilder.build(...)`：
 
-1. 密封舱室 → 拆矩形棱柱；连海空腔 → 1×1 列。
-2. `appendSolidHoles` 跳过**整格方块**（`isCollisionShapeFullBlock`），否则水盒会画进墙/地板里，
-   旁观者也能钻进墙里“游泳”。调用方必须传真实 level 的整格判定，物理船要先把船坞坐标
-   `VsPilot.toYard/toAssembly` 换回来再查。
-3. `appendMissingDryCoverage` 给“属于舱内但没有任何水盒覆盖”的格子补一个干燥 bbox：
-   干舱（货舱等）没有水盒时，客户端才不会把它当海里。
-4. 最后才是粗包围盒兜底。
+1. 各水体按格列生成水盒。保留每个门格的开口方向，独立记录干区或共同水深。只有开启的门洞两侧都触到水时才补连续水面。水平舱口上下接水、且下侧灌到舱口边缘时才连通可见水柱。
+2. `appendSolidHoles` 给柜架等非整格设备旁的空隙补齐干湿覆盖。`isCollisionShapeFullBlock` 用于跳过整格墙壁和地板。
+3. `appendMissingDryCoverage` 按列给遗漏的舱内格补干盒。查询时按盒子的实际边界和水面判断。
+4. 盒子数超过 `MAX_TOTAL_BOXES` 时先按“舱 + 层”拆包围盒（层内水面夹在本层底/顶之间），层盒仍超限才退回每舱一个 bbox。整舱 bbox 会覆盖凹角里别舱的干格，导致干区被判湿。
+5. 贴着破口的设备缺口算“无界”，不补洞：破口格虽然也在 `solid` 集合里，但它本身就是开口。
 
 ## 客户端/服务端分工
 
-- 服务端权威：水量、进水、泵、`VsPilot.isPlayerInDryCompartment` / `isInsideInterior`。
-- 客户端只用 `ShipWaterStatePacket` 下发的盒子做渲染和浸没查询
-  （`ShipWaterRenderer`、`VsClientCompartments`、`UnderwaterEffects`）。
+- 服务端用流体场判定浸没，设备空隙可查询水盒。客户端用 `ShipWaterStatePacket` 的水盒和落水数据绘制及查询。
+- 服务端干湿**直接用逐格场**（`VsPilot.isPlayerInDryCompartment` 按格子查 `bodyOf/levelAt`），不要回落到客户端水盒：粗化 bbox 会盖住别舱的干格。方块船 `OceanEnvironment.blockShipDryAt` 按距离遍历所有候选核心，第一个覆盖该点的水盒结果才算数（只看最近核心会在两船相邻时选错船）。
+- 方块船水包是广播的：`ShipWaterStatePacket` 带源维度（协议 29），客户端在别的维度拒绝该包，渲染阶段也不画旧维度残留的水体。
+- `OceanEnvironment.isSubmerged` 先排除真实碰撞形状。物理船用逆变换查船坞中的方块；相机按渲染变换取样。旁观模式跳过假水泳姿和随船拖拽。
+- `SwimStatePacket` 同步可游水深、疾游和随船拖拽。舱内先检测固定站姿躯干浸没，再按实际地板和净空判断是否仍能涉水。泳姿判定走 `SwimClearance`：净空测量与当前状态无关，`STAND_MARGIN=0.05` / `SWIM_MARGIN=0.10` 迟滞带内保持现状；调用点要传当前泳姿而不是浸没状态，否则带里会永远判成游泳。`ToggleKeyMapping` 决定疾游，`EntitySwimmingMixin` 在恢复站姿时检查真实舱顶碰撞。
 - 物理船的方块坐标是船坞坐标：任何“世界里的位置”都要换算，否则镜头/粒子会跑到
   x≈-2800 万的船坞虚空里。
 
@@ -40,10 +53,16 @@
 - 薄水层（贴地 1/32 格）的波浪幅度要同时受**天花板净空**和**水深**限制，
   否则波谷穿到地板下面，看起来一会干一会湿。
 - 水面必须逐帧连续（10 Hz 包 + 插值），不要退回按 tick 台阶更新。
+- `ShipWaterMesh` 按整格的 XZ 足迹合并湿区间。侧边逐格裁掉邻列确实覆盖的湿区间，贴水面的侧边和顶面使用同一组角点。横向连接同时检查两侧水线高度和客户端的侧门开口形状。
+- `ShipWaterMaterial` 在 `AFTER_LEVEL` 从同一帧的世界颜色和深度副本采样。顶点用先前地形阶段记录的相机姿态以及 VS2 的渲染变换。射线被门框或前景挡住时减少折射偏移，绘制完成后还原世界深度。`-Dbarotrauma.waterFix=false` 可用同一网格的透明材质对照。
+- 水面服从实心表面遮挡。着色器检查与场景深度的法向间距，掠过地板的薄水层只产生很弱的吸收。外海沿视线在水柱内的距离吸收光线，和舱内水共用散射色与场景副本。
+- 镜头在水下时，用 `ShipWaterMesh` 的顶面三角形判定镜头是否在水里。整张场景直接按水程着色，可见水界面再按到界面的距离合成。同一舱的相连设备空隙取相邻水盒的高度，模型深度负责挡水。`ShipWaterFlowMesh` 绘制连续的舱口来水和侧门水面，落水末端接当前插值水面。
+- `ShipWaterStatePacket.streams` 每段 7 个 float：起点和终点的装配坐标加实际流量强度。客户端沿路径画薄地面水流和展开的水幕，水幕末端随接收面变化。涟漪按落点高度作用于对应甲板。
+- 协议 28 的 `ShipWaterStatePacket.sideFlows` 每段 8 个 float：门槛坐标、侧向方向、过水高度、接收水面和实际流量。露出水面的强流向接收面的宽度展开，水珠从实际过水高度和宽度发出。淹没开口后绘制流向接收舱的气泡。
 
 ## 验证
 
 - `ShipFluidFieldTest`、`ShipWaterBoxesTest`、`ShipWaterNbtTest`、
-  `ShipWaterStateBuilderTest`、`ShipFluidDoorTest`、`ShipPocketAirTest`。
-- 改这块至少跑 `./gradlew test --offline`（纯 L1，不需要客户端）。
-- 实机复测点：舱壁内不能游泳、货舱保持干、泵不抖、贴地水面不闪、破口进水有下压气泡。
+  `ShipWaterStateBuilderTest`、`ShipFluidDoorTest`、`ShipFloodingTest.upperWallBreachFollowsDeckToShaft`、`ShipPocketAirTest`、`ShipWaterMeshTest`、`SwimClearanceTest`。
+- 改这块至少跑 `./gradlew test --offline`（纯 L1，不需要客户端）。当前基线 **414 项**。
+- 实机复测点：上层侧壁水流沿甲板落下，打开侧门后的喷流与淹没后的气泡，出舱游速和泳姿。以客户端日志里的 `streams`、`sideFlows` 核对送达的路径。压载舱问题先查每台泵所在水体的实际水量和目标，再查水盒。

@@ -265,11 +265,6 @@ public final class TurretClient {
         if (activeCamera != null) {
             return activeCamera;
         }
-        // 潜望镜：镜头锚在潜望镜方块上，旋转仍然用炮塔 aim（准星方向 = 炮口方向）。
-        if (activeAnchor != null) {
-            return new Vec3(activeAnchor.getX() + 0.5D, activeAnchor.getY() + 1.08D,
-                    activeAnchor.getZ() + 0.5D);
-        }
         BlockState state = minecraft.level.getBlockState(activePos);
         return TurretBlockEntity.cameraPosition(state, activePos);
     }

@@ -23,7 +23,11 @@ public final class ModNetwork {
     // 23：TurretStatePacket 增加潜望镜控制器位置（客户端镜头锚点）。
     // 24：TurretStatePacket 增加服务端换算好的世界镜头位置（物理船船坞坐标 → 世界坐标）。
     // 25：TurretStatePacket 增加 fromStation（瞄准站遥控标记），客户端命中预判据此处理操作者本体。
-    private static final String PROTOCOL = "25";
+    // 26：ShipWaterStatePacket 同步门洞实际下落水流。
+    // 27：ShipWaterStatePacket 增加侧门溢流行（8 float：门槛/方向/水柱顶/接收水面/流量）。
+    // 28：SwimStatePacket 首字段语义改为“是否启用水中移动”（疾跑泳姿改由客户端预测）。
+    // 29：ShipWaterStatePacket 增加源维度（方块船水包是广播的，客户端拒绝异维度同坐标）。
+    private static final String PROTOCOL = "29";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
