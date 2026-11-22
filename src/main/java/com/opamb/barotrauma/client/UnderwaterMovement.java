@@ -137,7 +137,9 @@ public final class UnderwaterMovement {
     public static boolean hasAirOceanWater(LocalPlayer player) {
         return AirOceanSwimmer.canUseAirOceanMovement(player)
                 && (ClientSwimState.known() ? ClientSwimState.swimMovement()
-                : AirOceanSwimmer.canSwimAtDepth(player, ((AirOceanSwimmer) player).barotrauma$isInAirOceanWater()));
+                // 迟滞带内要传“当前泳姿”，不能传浸没状态，否则带里会被永远判成游泳。
+                : AirOceanSwimmer.canSwimAtDepth(player,
+                        ((AirOceanSwimmer) player).barotrauma$isAirOceanSwimming()));
     }
 
     /**

@@ -196,7 +196,7 @@
   "power.battery_broken": "电池已损坏，需要螺丝刀维修",
   "automation.mode.manual": "门：手动",
   "automation.mode.motion": "门：运动感应",
-  "automation.mode.watertight": "门：进水自动关",
+  "automation.mode.watertight": "门：运动 + 水密",
   "block.barotrauma.medium_steel_cabinet": "中型钢柜",
   "item.barotrauma.medium_steel_cabinet": "中型钢柜",
   "block.barotrauma.medium_windowed_steel_cabinet": "中型带窗钢柜",

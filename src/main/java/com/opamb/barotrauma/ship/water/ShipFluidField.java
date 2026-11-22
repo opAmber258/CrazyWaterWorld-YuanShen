@@ -247,7 +247,7 @@ public final class ShipFluidField {
         List<BlockPos> seaDoors = new ArrayList<>();
         Set<BlockPos> ceilingSeaDoors = new HashSet<>();
         Map<BlockPos, Direction> sideSeaDoors = new HashMap<>();
-        Set<BlockPos> closedDoors = new HashSet<>();
+        Set<BlockPos> closedDoors = new HashSet<>(geometry.closedDoorways());
         for (ShipGeometry.DoorLink link : geometry.doorLinks()) {
             BlockPos door = link.cell();
             if (!bodyByPos.containsKey(door)) {
@@ -278,9 +278,19 @@ public final class ShipFluidField {
                 }
                 continue;
             }
-            for (BlockPos next : neighbours(door)) {
+            // 水只能沿门洞的通行轴流过：门格侧面的邻格可能属于另一侧水体
+            // （L 形/绕行几何），按六邻接建边会让水从门侧边流进隔壁舱，
+            // 而水盒（doorSurfaces）不认这个方向。没有轴向信息的旧几何保持原行为。
+            Direction.Axis axis = geometry.doorwayAxes().get(door);
+            for (Direction side : Direction.values()) {
+                if (axis != null && side.getAxis() != axis) {
+                    continue;
+                }
+                BlockPos next = door.relative(side);
                 Integer other = bodyByPos.get(next);
-                if (other != null && other == link.other() && other != link.body()) {
+                if (other != null && other == link.other() && other != link.body()
+                        && Integer.valueOf(link.body())
+                        .equals(bodyByPos.get(door.relative(side.getOpposite())))) {
                     gates.add(new Gate(door, next, true));
                 }
             }
@@ -292,9 +302,16 @@ public final class ShipFluidField {
                 continue;
             }
             BlockPos door = link.cell();
-            for (BlockPos next : neighbours(door)) {
+            Direction.Axis axis = geometry.doorwayAxes().get(door);
+            for (Direction side : Direction.values()) {
+                if (axis != null && side.getAxis() != axis) {
+                    continue;
+                }
+                BlockPos next = door.relative(side);
                 Integer other = bodyByPos.get(next);
-                if (other != null && other == link.other() && other != link.body()) {
+                if (other != null && other == link.other() && other != link.body()
+                        && Integer.valueOf(link.body())
+                        .equals(bodyByPos.get(door.relative(side.getOpposite())))) {
                     gates.add(new Gate(door, next, false));
                 }
             }
@@ -988,12 +1005,6 @@ public final class ShipFluidField {
 
     private static long packXZ(int x, int z) {
         return ((long) x << 32) | (z & 0xFFFFFFFFL);
-    }
-
-    private static BlockPos[] neighbours(BlockPos pos) {
-        return new BlockPos[]{
-                pos.east(), pos.west(), pos.north(), pos.south(), pos.above(), pos.below()
-        };
     }
 
     private static double clamp01(double value) {

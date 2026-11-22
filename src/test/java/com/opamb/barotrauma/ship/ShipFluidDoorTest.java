@@ -94,6 +94,32 @@ class ShipFluidDoorTest {
     }
 
     @Test
+    @DisplayName("门只沿门洞通行轴过水：侧邻格属于另一水体时也不生成侧向水流")
+    void doorGateFollowsDoorwayAxis() {
+        BlockPos door = new BlockPos(1, 0, 0);
+        // 左舱（含门格）body 0；右舱 body 1 绕到门格的北侧，形成“侧邻格属于另一水体”。
+        var left = new ShipGeometry.Compartment(Set.of(new BlockPos(0, 0, 0), door), 0);
+        var right = new ShipGeometry.Compartment(Set.of(new BlockPos(2, 0, 0),
+                new BlockPos(1, 0, 1)), 0);
+        var geometry = new ShipGeometry.Result(List.of(left, right), List.of(), 0, 4,
+                new ShipGeometry.Bounds(0, 0, 0, 2, 0, 1), Set.of(),
+                List.of(new ShipGeometry.DoorLink(door, 0, 1, true)), Set.of(),
+                java.util.Map.of(door, Direction.Axis.X));
+        var state = new ShipState(geometry, MachineCount.EMPTY);
+        state.simulation().flood(0, 100.0D);
+        state.simulation().tickWaterFlow(0.1D);
+
+        var flows = state.simulation().fluid().sideFlows();
+        boolean east = false;
+        for (var flow : flows) {
+            assertTrue(flow.dz() == 0,
+                    "门格的侧邻不应生成侧向水流（dz=" + flow.dz() + "）");
+            east |= flow.dx() != 0;
+        }
+        assertTrue(east, "开着的门仍应沿通行轴（X）产生水流");
+    }
+
+    @Test
     void reverseFlowAndFloodOverflowKeepTheirDirectionInSnapshot() {
         var state = state(true);
         var simulation = state.simulation();

@@ -196,7 +196,7 @@
   "power.battery_broken": "Battery is broken; repair it with a screwdriver",
   "automation.mode.manual": "Door: Manual",
   "automation.mode.motion": "Door: Motion",
-  "automation.mode.watertight": "Door: Watertight",
+  "automation.mode.watertight": "Door: Motion + Watertight",
   "block.barotrauma.medium_steel_cabinet": "Medium Steel Cabinet",
   "item.barotrauma.medium_steel_cabinet": "Medium Steel Cabinet",
   "block.barotrauma.medium_windowed_steel_cabinet": "Medium Windowed Steel Cabinet",

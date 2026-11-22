@@ -207,9 +207,14 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
                 }
             }
             boolean open = !state.getValue(OPEN);
-            if (setOpen(level, pos, state, open) && open
+            if (setOpen(level, pos, state, open)
                     && level.getBlockEntity(lower) instanceof BulkheadDoorBlockEntity door) {
-                door.holdAfterManualOpen();
+                if (open) {
+                    door.holdAfterManualOpen();
+                } else {
+                    // 手动关门必须清掉运动保持，否则自动模式会立刻把门顶开。
+                    door.releaseManualHold();
+                }
             }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);

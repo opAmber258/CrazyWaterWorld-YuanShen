@@ -138,11 +138,21 @@ public final class ShipGeometry {
     public record Result(List<Compartment> compartments, List<Compartment> openPockets,
                          int hullBlocks, int scannedCells, Bounds bounds, Set<BlockPos> hull,
                          List<DoorLink> doorLinks, Set<BlockPos> equipment,
-                         Map<BlockPos, Direction.Axis> doorwayAxes) {
+                         Map<BlockPos, Direction.Axis> doorwayAxes,
+                         Set<BlockPos> closedDoorways) {
         public Result(List<Compartment> compartments, List<Compartment> openPockets,
                       int hullBlocks, int scannedCells, Bounds bounds, Set<BlockPos> hull,
                       List<DoorLink> doorLinks, Set<BlockPos> equipment) {
-            this(compartments, openPockets, hullBlocks, scannedCells, bounds, hull, doorLinks, equipment, Map.of());
+            this(compartments, openPockets, hullBlocks, scannedCells, bounds, hull, doorLinks,
+                    equipment, Map.of(), Set.of());
+        }
+
+        public Result(List<Compartment> compartments, List<Compartment> openPockets,
+                      int hullBlocks, int scannedCells, Bounds bounds, Set<BlockPos> hull,
+                      List<DoorLink> doorLinks, Set<BlockPos> equipment,
+                      Map<BlockPos, Direction.Axis> doorwayAxes) {
+            this(compartments, openPockets, hullBlocks, scannedCells, bounds, hull, doorLinks,
+                    equipment, doorwayAxes, Set.of());
         }
 
         public int totalVolume() {
@@ -186,9 +196,13 @@ public final class ShipGeometry {
             }
             Map<BlockPos, Direction.Axis> movedAxes = new HashMap<>();
             doorwayAxes.forEach((cell, axis) -> movedAxes.put(cell.offset(dx, dy, dz), axis));
+            Set<BlockPos> movedClosed = new HashSet<>(Math.max(4, closedDoorways.size() * 2));
+            for (BlockPos pos : closedDoorways) {
+                movedClosed.add(pos.offset(dx, dy, dz));
+            }
             return new Result(shift(compartments, dx, dy, dz), shift(openPockets, dx, dy, dz),
                     hullBlocks, scannedCells, bounds.shifted(dx, dy, dz), movedHull, movedDoors,
-                    movedEquipment, Map.copyOf(movedAxes));
+                    movedEquipment, Map.copyOf(movedAxes), Set.copyOf(movedClosed));
         }
 
         private static List<Compartment> shift(List<Compartment> source, int dx, int dy, int dz) {
@@ -327,14 +341,20 @@ public final class ShipGeometry {
         Bounds bounds = new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
         List<DoorLink> doorLinks = collectDoorLinks(doorways, compartments, openPockets, probe, bounds, exterior);
         Map<BlockPos, Direction.Axis> axes = new HashMap<>();
+        Set<BlockPos> closedDoorways = new HashSet<>();
         for (BlockPos cell : doorways) {
             Direction.Axis axis = probe.doorwayAxis(cell);
             if (axis != null) {
                 axes.put(cell, axis);
             }
+            // 关闭的门/舱口全部记下来（不只跨水体的 DoorLink）：同一水体里经楼梯
+            // 连通的关闭舱口，落水路线不能穿过去。
+            if (!probe.isOpenDoorway(cell)) {
+                closedDoorways.add(cell);
+            }
         }
         return new Result(compartments, openPockets, hull.size(), scanned, bounds, hull, doorLinks,
-                pick.equipment(), Map.copyOf(axes));
+                pick.equipment(), Map.copyOf(axes), Set.copyOf(closedDoorways));
     }
 
     /** 把被连海空腔占走的门格挪给相邻的密闭舱室（先按邻居找，找不到就留着）。 */

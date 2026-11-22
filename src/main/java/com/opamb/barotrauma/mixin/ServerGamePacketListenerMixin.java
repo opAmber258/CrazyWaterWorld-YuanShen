@@ -31,7 +31,9 @@ public abstract class ServerGamePacketListenerMixin {
     @Inject(method = "handleMovePlayer", at = @At("RETURN"))
     private void barotrauma$acceptWaterMovement(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
         if (clientIsFloating && AirOceanSwimmer.canUseAirOceanMovement(player)
-                && AirOceanSwimmer.canSwimAtDepth(player, ((AirOceanSwimmer) player).barotrauma$isInAirOceanWater())) {
+                // 迟滞带内保持“当前泳姿”；传浸没状态会让带里永远判成游泳。
+                && AirOceanSwimmer.canSwimAtDepth(player,
+                        ((AirOceanSwimmer) player).barotrauma$isAirOceanSwimming())) {
             clientIsFloating = false;
         }
     }
