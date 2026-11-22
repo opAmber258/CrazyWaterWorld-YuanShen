@@ -69,6 +69,17 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## Current Project State
 
+- **水流可视化 + 泳姿/门/流体审查修复（2026-11-22，任务分支 `feat/water-flow-visuals-20261122`，PR #81）**：
+  水面改 `ShipWaterMesh`/`ShipWaterFlowMesh`/`ShipWaterMaterial` + `shaders/core/ship_water`，
+  `ShipWaterStreams` 按实际流量画下落/侧门溢流（协议 26/27）；`AirOceanSwimmer` + `EntitySwimmingMixin`
+  拆分浸没与疾游，`VsPlayerCollision` 用 VS2 实际碰撞形状测试站立姿态。CodeRabbit 20 条审查全部处理：
+  门 `WATERTIGHT` 改为“运动 + 水密”（水只关不开、手动关门清 `motionHold`、门洞通行轴过滤、
+  记录所有关闭门格）；`ShipClearance` 泳姿迟滞（测量与状态解耦）；破口进水去掉重复除洞数、
+  溢流按出口平分守恒、粗化水盒按“舱+层”拆、多船干湿遍历所有候选核心、方块船水包带源维度
+  （协议 29）、视锥外不重建网格、粒子共用预算、`bodyWater` 增量更新。全量 **414 项测试全绿**。
+  参考 `patterns/ship-fluid-field.md`。已知遗留：#3 无折射时无浸水提示、#5 `client/` 直接引用 VS2
+  `ShipTransform`、#9 飞溅/冲击点未共用网格落点。
+
 - **逐格流体场水系统 + 潜望镜/超级电容器（2026-11-21，任务分支 `feat/water-fluid-field-20261120`，PR #80）**：
   新增 `ship/water/ShipFluidField` 逐格流体场（密封舱室优先成 body、连海空腔单列、门走 `DoorLink` 限速、
   整舱归平），删除旧的 `ShipPocketWater`；船内水盒改由流体场生成，`ShipWaterStateBuilder` 用整格方块判定
