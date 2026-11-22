@@ -79,7 +79,7 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
             // 没人后保持 4 秒再关，对应 80 tick。
             boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
             if (near) {
-                be.motionHold = 80;
+                be.motionHold = AutomationUtil.MOTION_HOLD_TICKS;
             } else if (be.motionHold > 0) {
                 be.motionHold--;
             }
@@ -117,6 +117,12 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
         }
         lastManualUseTick = gameTime;
         return true;
+    }
+
+    public void holdAfterManualOpen() {
+        if (automation == AutomationMode.MOTION) {
+            motionHold = AutomationUtil.MOTION_HOLD_TICKS;
+        }
     }
 
     public void cycleAutomation() {

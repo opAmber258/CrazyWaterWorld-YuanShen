@@ -14,7 +14,7 @@ edges:
   - target: context/decisions.md
     condition: when a rule exists because of an earlier design decision
 grounds_to: []
-last_updated: 2026-11-03
+last_updated: 2026-11-21
 mex:
   id: mx_01M6FTBTB77P4PT8TV3HT78NGZ
   type: convention
@@ -85,7 +85,7 @@ public record MyPacket(int value) {
 
 ### 3. 干湿判定
 
-不要在业务代码里直接读 `FluidState` 判断水下。统一调用 `OceanEnvironment.isSubmerged(level, pos)`；船内干燥区按 side 分开注册：服务端由 `VsPilot` 调 `OceanEnvironment.setServerDryZone()`，客户端由 `ClientSetup` 把 `ShipWaterRenderer::isInsideDryZone` 注册到 `OceanEnvironment.setClientDryZone()`。单人存档客户端与服务端同 JVM，只留一份静态注册会被覆盖。
+假水统一调用 `OceanEnvironment.isSubmerged(level, pos)`。服务端用 `VsState` 和方块船状态查询干湿，客户端由 `ClientSetup` 注册 `ShipWaterRenderer::dryAt`。两端都要排除方块的真实碰撞体，物理船先将采样点转换到船坞坐标。
 
 ### 4. 物理船状态访问
 

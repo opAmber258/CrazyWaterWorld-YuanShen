@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
+import net.minecraftforge.client.event.RegisterShadersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -35,19 +36,7 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            OceanEnvironment.setClientDryZone(new OceanEnvironment.DryZone() {
-                @Override
-                public boolean isDry(net.minecraft.world.level.Level level,
-                                     net.minecraft.world.phys.Vec3 pos) {
-                    return ShipWaterRenderer.isInsideDryZone(level, pos);
-                }
-
-                @Override
-                public boolean isInsideCompartment(net.minecraft.world.level.Level level,
-                                                   net.minecraft.world.phys.Vec3 pos) {
-                    return ShipWaterRenderer.isInsideCompartment(level, pos);
-                }
-            });
+            OceanEnvironment.setClientDryZone(ShipWaterRenderer::dryAt);
             ItemBlockRenderTypes.setRenderLayer(ModShipBlocks.HULL_GLASS.get(), RenderType.cutout());
             // 测试船壳要真的透过去看见里面，cutout 只有全透明/全不透明两态，不够
             ItemBlockRenderTypes.setRenderLayer(ModShipBlocks.TEST_HULL.get(), RenderType.translucent());
@@ -87,9 +76,15 @@ public final class ClientSetup {
     public static void onRegisterParticleProviders(RegisterParticleProvidersEvent event) {
         event.registerSpriteSet(ModParticles.SHIP_BUBBLE.get(), ShipBubbleParticle.Provider::new);
         event.registerSpriteSet(ModParticles.SHIP_SPRAY.get(), ShipSprayParticle.Provider::new);
+        event.registerSpriteSet(ModParticles.MARINE_SNOW.get(), MarineSnowParticle.Provider::new);
         event.registerSpriteSet(ModParticles.TURRET_TRACER.get(), TurretTracerParticle.Provider::new);
         event.registerSpriteSet(ModParticles.TURRET_BUBBLE.get(), TurretBubbleParticle.Provider::new);
         event.registerSpriteSet(ModParticles.TURRET_SEDIMENT.get(), TurretSedimentParticle.Provider::new);
+    }
+
+    @SubscribeEvent
+    public static void onRegisterShaders(RegisterShadersEvent event) {
+        ShipWaterMaterial.register(event);
     }
 
 

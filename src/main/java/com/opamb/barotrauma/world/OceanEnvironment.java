@@ -3,10 +3,14 @@ package com.opamb.barotrauma.world;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.ship.ShipWaterBoxes;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.Shapes;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * 空气海域的“是否在水下”判定。
@@ -22,26 +26,14 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class OceanEnvironment {
 
-    /** 船内干燥区判定。服务端用 VsPilot，客户端用 ShipWaterRenderer。 */
+    /** 客户端的船内干湿判定。服务端直接读取流体场。 */
+    @FunctionalInterface
     public interface DryZone {
-        boolean isDry(Level level, Vec3 pos);
-
-        /**
-         * 这个位置是不是在某艘船的舱室里（不管有没有进水）。
-         *
-         * <p>船舱进水后必须按"浸没"处理——哪怕船正停在哨站干燥区里。
-         * 所以先看这个，再决定要不要套用哨站的干燥判断。</p>
-         */
-        default boolean isInsideCompartment(Level level, Vec3 pos) {
-            return false;
-        }
+        /** true 干燥，false 浸没，null 不在已知船体范围内。 */
+        @Nullable Boolean dryAt(Level level, Vec3 pos);
     }
 
-    // 客户端和集成服务端共用同一个 JVM（单人存档），必须分开存：
-    // 只留一份 volatile 的话，服务端启动时注册的 VsPilot 会覆盖客户端注册的
-    // ShipWaterRenderer，方块船还没装成刚体时 VsPilot 无法判定舱内，滤镜就会漏进舱里。
     private static volatile DryZone clientDryZone;
-    private static volatile DryZone serverDryZone;
 
     private OceanEnvironment() {
     }
@@ -49,11 +41,6 @@ public final class OceanEnvironment {
     /** 客户端（渲染/滤镜）用的干燥区；由客户端初始化时注册。 */
     public static void setClientDryZone(DryZone zone) {
         clientDryZone = zone;
-    }
-
-    /** 服务端（氧气/生存）用的干燥区；由物理船模块注册。 */
-    public static void setServerDryZone(DryZone zone) {
-        serverDryZone = zone;
     }
 
     /** 这个位置是否位于深海的水柱体积内（不代表一定浸没，还要排除干燥区）。 */
@@ -65,7 +52,7 @@ public final class OceanEnvironment {
     }
 
     /** 哨站内部固定是干燥的；门外平台不算。主站和每个副本顶部的站都一样。 */
-    public static boolean isInOutpostDryZone(Vec3 pos) {
+    public static boolean isInOutpostDryZone(Level level, Vec3 pos) {
         if (pos == null) {
             return false;
         }
@@ -78,7 +65,7 @@ public final class OceanEnvironment {
             return true;
         }
         // 对接通道（站内地板到潜艇顶舱口之间）也算站内干燥区
-        if (DockingBay.inDryZone(pos.x, pos.z, pos.y)) {
+        if (DockingBay.isDryPassage(level, pos)) {
             return true;
         }
         // B 中继站（任务交付点）的内部干燥区
@@ -87,88 +74,49 @@ public final class OceanEnvironment {
     }
 
     /**
-     * 初始潜艇“方块船形态”的固定干燥区。
-     *
-     * <p>方块船的 {@code ShipWaterStatePacket} 在部分时序下还没到客户端时，滤镜会把舱内
-     * 误判成水下；这艘船的位置是写死的，直接用内腔包围盒兜底。装配成物理船后会走
-     * {@link #dryZone} 的实时舱室判断。</p>
-     */
-    public static boolean isInsideStarterSubDryZone(Vec3 pos) {
-        if (pos == null) {
-            return false;
-        }
-        // 新世界船在 -76；旧存档没迁移，船还在 -78，两个盒子都认一下。
-        // 儒艮号（旧/新两代蓝图）在站外侧，按布局表逐个盒子兜底。
-        if (insideSubBox(pos, StarterSub.ORIGIN_Y)
-                || insideSubBox(pos, StarterSub.LEGACY_ORIGIN_Y)) {
-            return true;
-        }
-        for (StarterSub.Layout layout : StarterSub.Layout.values()) {
-            if (layout.dugong() && insideDugongBox(pos, layout)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** 儒艮号（任何一版布局）的内腔兜底干燥区。 */
-    private static boolean insideDugongBox(Vec3 pos, StarterSub.Layout layout) {
-        return pos.x > layout.originX
-                && pos.x < layout.originX + layout.sizeX - 1
-                && pos.y >= layout.originY + 1
-                && pos.y < layout.originY + layout.sizeY - 0.5D
-                && pos.z > layout.originZ
-                && pos.z < layout.originZ + layout.sizeZ - 1;
-    }
-
-    private static boolean insideSubBox(Vec3 pos, int originY) {
-        return pos.x > StarterSub.ORIGIN_X && pos.x < StarterSub.ORIGIN_X + StarterSub.SIZE_X - 1
-                // 上界留半格余量：跳跃顶点眼睛会贴到屋顶，放宽到顶层方块中间，
-                // 既不会闪滤镜，也不会把贴着屋顶游泳的人算成干燥。
-                && pos.y >= originY + 1
-                && pos.y < originY + StarterSub.SIZE_Y - 0.5D
-                && pos.z > StarterSub.ORIGIN_Z && pos.z < StarterSub.ORIGIN_Z + StarterSub.SIZE_Z - 1;
-    }
-
-    /**
      * 方块船（还没收成 VS2 刚体的初始潜艇等）的干燥区。
      *
      * <p>服务端没有客户端水面包，只能找附近已加载的船核心；玩家出生在初始潜艇里时，
-     * 这条判断保证不会一进游戏就开始掉氧。物理船的干燥区由 {@link #dryZone} 负责，
+     * 这条判断保证不会一进游戏就开始掉氧。物理船的干燥区由 VsState 负责，
      * 这里在物理船激活时直接跳过。</p>
      */
     public static boolean isInsideBlockShipDryZone(Level level, Vec3 pos) {
-        if (!isInOcean(level, pos) || isInOutpostDryZone(pos) || VsState.active()) {
+        if (!isInOcean(level, pos) || isInOutpostDryZone(level, pos)) {
             return false;
         }
-        boolean starterFallback = isInsideStarterSubDryZone(pos);
+        return Boolean.TRUE.equals(blockShipDryAt(level, pos));
+    }
+
+    @Nullable
+    private static Boolean blockShipDryAt(Level level, Vec3 pos) {
         ShipCoreBlockEntity core = ShipCores.nearestCore(level, BlockPos.containing(pos), 32.0D);
         ShipState state = core == null ? null : core.state();
-        if (state == null) {
-            // 船状态还没扫出来：初始潜艇内腔按干燥兜底，别让玩家一出生就掉氧。
-            return starterFallback;
+        if (state == null || state == VsState.activeState()) {
+            return null;
         }
         // 按游戏刻缓存：同一 tick 里每个玩家都会问一次，不能每次都重建水面包
         // （build 里的矩形分解和连海空腔松弛远比这次包围盒判定贵）。
         float[] boxes = state.waterBoxesFor(level, level.getGameTime()).boxes();
-        if (boxes.length < 7) {
-            return starterFallback;
+        return ShipWaterBoxes.dryAt(boxes, pos.x, pos.y, pos.z);
+    }
+
+    /** 检查真实碰撞形状。pos 与 cell 使用同一坐标系（世界或船坞）。 */
+    public static boolean insideCollision(Level level, BlockPos cell, Vec3 pos) {
+        if (!level.hasChunkAt(cell)) {
+            return false;
         }
-        for (int i = 0; i + 6 < boxes.length; i += 7) {
-            float minX = boxes[i];
-            float minY = boxes[i + 1];
-            float minZ = boxes[i + 2];
-            float maxX = boxes[i + 3] + 1.0F;
-            float maxY = boxes[i + 4] + 1.0F;
-            float maxZ = boxes[i + 5] + 1.0F;
-            float surface = boxes[i + 6];
-            // 干燥舱室允许眼睛在跳跃顶点短暂高过顶格；进水后仍以水面为准。
-            boolean dryBox = surface <= minY + 0.01F;
-            float top = maxY + (dryBox ? 1.0F : 0.0F);
-            if (pos.x >= minX && pos.x <= maxX
-                    && pos.y >= minY && pos.y <= top
-                    && pos.z >= minZ && pos.z <= maxZ
-                    && (dryBox || pos.y > surface + 0.01F)) {
+        var shape = level.getBlockState(cell).getCollisionShape(level, cell);
+        if (shape.isEmpty()) {
+            return false;
+        }
+        if (shape == Shapes.block()) {
+            return true;
+        }
+        double x = pos.x - cell.getX();
+        double y = pos.y - cell.getY();
+        double z = pos.z - cell.getZ();
+        for (AABB box : shape.toAabbs()) {
+            if (box.contains(x, y, z)) {
                 return true;
             }
         }
@@ -179,17 +127,21 @@ public final class OceanEnvironment {
      * 这个位置是否应该按“浸没”处理：在水柱内、不在哨站、也不在未进水的船舱里。
      */
     public static boolean isSubmerged(Level level, Vec3 pos) {
-        if (!isInOcean(level, pos)) {
+        if (!isInOcean(level, pos) || insideCollision(level, BlockPos.containing(pos), pos)) {
             return false;
         }
-        DryZone zone = level.isClientSide() ? clientDryZone : serverDryZone;
-        if (zone != null && zone.isInsideCompartment(level, pos)) {
-            return !zone.isDry(level, pos);
+        Boolean dry;
+        if (level.isClientSide()) {
+            DryZone zone = clientDryZone;
+            dry = zone == null ? null : zone.dryAt(level, pos);
+        } else {
+            dry = VsState.queryPlayerInDryCompartment(level, pos);
+            if (dry == null) {
+                dry = blockShipDryAt(level, pos);
+            }
         }
-        if (isInOutpostDryZone(pos)) {
-            return false;
-        }
-        return zone == null || !zone.isDry(level, pos);
+        // 已知船舱的水位优先，进水舱靠在站内干燥区也仍然有水。
+        return dry != null ? !dry : !isInOutpostDryZone(level, pos);
     }
 
     /**
@@ -205,12 +157,12 @@ public final class OceanEnvironment {
         }
         // 物理船用实时逆变换查询：返回值非 null 就说明在舱内（干舱/进水舱都算），
         // 不能拿干湿布尔值判断，否则进水舱里的潜行保护会失效。
-        if (com.opamb.barotrauma.ship.vs.VsState
-                .queryPlayerInDryCompartment(level, pos) != null) {
-            return true;
+        if (level.isClientSide()) {
+            DryZone zone = clientDryZone;
+            return zone != null && zone.dryAt(level, pos) != null;
         }
-        DryZone zone = level.isClientSide() ? clientDryZone : serverDryZone;
-        return zone != null && zone.isInsideCompartment(level, pos);
+        return Boolean.TRUE.equals(VsState.queryInsideCompartment(level, pos))
+                || blockShipDryAt(level, pos) != null;
     }
 
     /** 只判物理船舱室（不含方块船干舱）：潜行防掉边 mixin 专用。 */
@@ -226,39 +178,13 @@ public final class OceanEnvironment {
                     () -> () -> com.opamb.barotrauma.client.ShipWaterRenderer
                             .isInsidePhysicalCompartment(level, pos)));
         }
-        // 查询桥装好时一定返回 true/false（true = 干燥舱，false = 进水舱，两者都算在舱内），
-        // 只有没有物理船/没装 VS2 才是 null。不能再退回只减平移量的旧查询：
-        // 船偏航后舱外位置会落进未旋转的水盒里，被误判成舱内。
-        return com.opamb.barotrauma.ship.vs.VsState
-                .queryPlayerInDryCompartment(level, pos) != null;
+        return Boolean.TRUE.equals(VsState.queryInsideCompartment(level, pos));
     }
 
     /**
-     * 游泳/溺水的权威浸没判定（issue #31）：在 {@link #isSubmerged} 之上追加
-     * 方块船干舱兜底与物理船舱内干湿询问。
-     *
-     * <p>{@code isSubmerged} 的 zone 链在船被传送到任务海域实例锚点后会失真
-     * （船坞偏移不再等于装配↔世界变换），干舱会被判成浸没。这里优先问
-     * {@code VsPilot} 的实时 transform 逆变换；方块船走干舱兜底；
-     * 不在舱内才回落到 {@link #isSubmerged}。</p>
+     * 游泳/溺水与相机滤镜共用同一套浸没判定。
      */
     public static boolean isOceanWaterAt(Level level, Vec3 pos) {
-        if (!isInOcean(level, pos)) {
-            return false;
-        }
-        // 物理船的进水舱室先于哨站干燥区：进水的船哪怕停在哨站里也是浸没
-        // （CodeRabbit 审查意见：先判哨站会让水下玩家无法游泳、氧气反而恢复）。
-        Boolean inDry = com.opamb.barotrauma.ship.vs.VsState
-                .queryPlayerInDryCompartment(level, pos);
-        if (inDry != null) {
-            return !inDry;
-        }
-        if (isInOutpostDryZone(pos)) {
-            return false;
-        }
-        if (isInsideBlockShipDryZone(level, pos)) {
-            return false;
-        }
         return isSubmerged(level, pos);
     }
 

@@ -8,12 +8,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * 哨站与潜艇之间的对接结构（2026-11-07 按实机存档重做）。
@@ -238,26 +240,9 @@ public final class DockingBay {
                 && core.getY() <= StarterSub.ORIGIN_Y + 1;
     }
 
-    /**
-     * 对接时潜艇头顶那一层（-68）的“虚拟密封盖”：中层平台、中层舱口和平台外的空气
-     * 在船体分舱里都当实心。这样拆掉潜艇顶舱口后，水也只会灌到 -69 的舱口格，
-     * 不会把 -68 的空气判成连海；同时舱口水面不会被额外的单格舱室切碎。
-     */
+    /** 船体扫描用站侧中层舱口封住对接缝。站侧平台以外的空格仍通海。 */
     public static boolean isDockCapRow(BlockPos pos) {
-        Site site = siteAt(pos.getX(), pos.getZ());
-        if (site == null || pos.getY() != MID_HATCH_Y) {
-            return false;
-        }
-        // 三代布局的船顶足迹都算：旧档的船可能还是老小艇/旧儒艮号。
-        for (StarterSub.Layout layout : StarterSub.Layout.values()) {
-            if (pos.getX() >= site.x() + layout.originX
-                    && pos.getX() <= site.x() + layout.originX + layout.sizeX - 1
-                    && pos.getZ() >= site.z() + layout.originZ
-                    && pos.getZ() <= site.z() + layout.originZ + layout.sizeZ - 1) {
-                return true;
-            }
-        }
-        return false;
+        return pos.getY() == MID_HATCH_Y && isStationDockHatch(pos);
     }
 
     /** 站侧/中层 3×1 舱口格（中层舱口现在就是潜艇顶部舱口）。 */
@@ -286,34 +271,32 @@ public final class DockingBay {
                 && pos.getY() >= MID_HATCH_Y && pos.getY() <= STATION_FLOOR_UPPER_Y;
     }
 
-    /** 该位置是否算“通道干燥区”（含气闸室、竖井，给客户端滤镜用）。 */
+    /** 站侧气闸室和相邻的舱口足迹，使用各格实际占用的半开区间。 */
     public static boolean inDryZone(double x, double z, double y) {
-        if (y < SUB_HATCH_Y || y > STATION_FLOOR_UPPER_Y) {
+        int layer = (int) Math.floor(y);
+        if (layer < SUB_HATCH_Y || layer > STATION_FLOOR_UPPER_Y) {
             return false;
         }
         Site site = siteAt((int) Math.floor(x), (int) Math.floor(z));
         if (site == null) {
             return false;
         }
-        double lx = x - site.x();
-        double lz = z - site.z();
-        // 气闸室 + 中层平台 + 站内地板洞口
-        if (y >= MID_HATCH_Y
-                && lx >= -ROOM_HALF_X && lx <= ROOM_HALF_X + 1
-                && lz >= -ROOM_HALF_Z && lz <= ROOM_HALF_Z + 1) {
-            return true;
+        int lx = (int) Math.floor(x) - site.x();
+        int lz = (int) Math.floor(z) - site.z();
+        return layer >= ROOM_MIN_Y && layer <= ROOM_MAX_Y
+                ? inRoom(lx, lz) : inTube(lx, lz);
+    }
+
+    public static boolean isDryPassage(Level level, Vec3 point) {
+        if (!inDryZone(point.x, point.z, point.y)) {
+            return false;
         }
-        // 下层梯子通道（3×1）
-        if (y >= SUB_HATCH_Y
-                && lx >= -HALF_WIDTH && lx <= HALF_WIDTH + 1
-                && lz >= 0 && lz <= 1) {
-            return true;
+        BlockPos cell = BlockPos.containing(point);
+        if (cell.getY() == SUB_HATCH_Y) {
+            return level.getBlockState(cell).getBlock() instanceof HatchBlock
+                    && level.getBlockState(cell.above()).getBlock() instanceof HatchBlock;
         }
-        // 旧存档还是 3×4 的井，只有主站有这一版，别把老档的通道误判成水下。
-        return site.equals(Site.MAIN)
-                && y >= LEGACY_SUB_HATCH_Y
-                && Math.abs(lx) <= HALF_WIDTH + 1
-                && lz >= -2.5D && lz <= 1.5D;
+        return true;
     }
 
     // ------------------------------------------------------------------

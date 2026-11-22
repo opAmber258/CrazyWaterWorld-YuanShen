@@ -1033,7 +1033,7 @@ public final class ShipState {
             }
             double rate = health <= 0.3F ? BIG_LEAK_UNITS_PER_SECOND
                     : SMALL_LEAK_UNITS_PER_SECOND;
-            // 从破损格旁边注入，让水先出现在漏点，再由逐格场流开。
+            // 漏点随实际接水量发流路，水量计入相邻舱室。
             sim.addWaterAt(compartment, pos, rate * dt);
         }
     }

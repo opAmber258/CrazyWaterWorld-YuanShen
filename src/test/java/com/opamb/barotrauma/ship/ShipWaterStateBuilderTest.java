@@ -2,13 +2,16 @@ package com.opamb.barotrauma.ship;
 
 import com.opamb.barotrauma.network.ShipWaterStatePacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -19,6 +22,58 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 底面积 4 格、实际每层只有 3/1 格，两种算法结果明显不同。</p>
  */
 class ShipWaterStateBuilderTest {
+
+    @Test
+    @DisplayName("干舱覆盖柜架前沿的空隙，舱壁不被补成水盒")
+    void dryCoverageReachesFurnitureButNotWalls() {
+        var room = new ShipGeometry.Compartment(Set.of(BlockPos.ZERO), 0);
+        BlockPos cabinet = BlockPos.ZERO.east();
+        BlockPos wall = BlockPos.ZERO.south();
+        var geometry = new ShipGeometry.Result(List.of(room), List.of(), 0, 1,
+                new ShipGeometry.Bounds(0, 0, -1, 2, 0, 1),
+                Set.of(cabinet, wall, cabinet.north(), cabinet.south(), cabinet.east()),
+                List.of(), Set.of());
+        var state = new ShipState(geometry, MachineCount.EMPTY);
+
+        var dry = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0,
+                pos -> !pos.equals(cabinet));
+        assertEquals(Boolean.TRUE, ShipWaterBoxes.dryAt(dry.boxes(), 1.25, 0.2, 0.5));
+        assertNull(ShipWaterBoxes.dryAt(dry.boxes(), 0.5, 0.2, 1.0));
+
+        state.simulation().flood(0, 50.0D);
+        var wet = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0,
+                pos -> !pos.equals(cabinet));
+        assertEquals(Boolean.FALSE, ShipWaterBoxes.dryAt(wet.boxes(), 1.25, 0.2, 0.5));
+        assertNull(ShipWaterBoxes.dryAt(wet.boxes(), 0.5, 0.2, 1.0));
+    }
+
+    @Test
+    void waterLineReachesMultipleConnectedEquipmentCells() {
+        BlockPos near = BlockPos.ZERO.east();
+        BlockPos far = near.east();
+        var room = new ShipGeometry.Compartment(Set.of(BlockPos.ZERO), 0);
+        var otherRoom = new ShipGeometry.Compartment(Set.of(far.east()), 0);
+        var boundaries = Set.of(near.north(), near.south(), far.north(), far.south());
+        var solids = new java.util.HashSet<>(boundaries);
+        solids.add(far.east());
+        var bounds = new ShipGeometry.Bounds(0, 0, -1, 3, 0, 1);
+        var singleRoom = new ShipGeometry.Result(List.of(room), List.of(), 0, 1,
+                bounds, solids, List.of(), Set.of(near, far));
+        var state = new ShipState(singleRoom, MachineCount.EMPTY);
+        state.simulation().flood(0, 50.0D);
+        float[] boxes = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0,
+                pos -> !pos.equals(near) && !pos.equals(far)).boxes();
+        assertEquals(Boolean.FALSE, ShipWaterBoxes.dryAt(boxes, 2.4D, 0.45D, 0.5D));
+        assertEquals(Boolean.TRUE, ShipWaterBoxes.dryAt(boxes, 2.4D, 0.55D, 0.5D));
+
+        var twoRooms = new ShipGeometry.Result(List.of(room, otherRoom), List.of(), 0, 2,
+                bounds, boundaries, List.of(), Set.of(near, far));
+        var separated = new ShipState(twoRooms, MachineCount.EMPTY);
+        separated.simulation().flood(0, 50.0D);
+        float[] isolated = ShipWaterStateBuilder.build(separated, 1L, false, 0, 0, 0,
+                pos -> !pos.equals(near) && !pos.equals(far)).boxes();
+        assertNull(ShipWaterBoxes.dryAt(isolated, 2.4D, 0.45D, 0.5D));
+    }
 
     /** L 形：y=0 有 3 格，y=1 有 1 格；包围盒是 2×2×2。 */
     private static ShipGeometry.Compartment lShape() {
@@ -144,74 +199,61 @@ class ShipWaterStateBuilderTest {
     }
 
     @Test
-    @DisplayName("开着的门：门格水柱抬到较高一侧，不再额外发 1×1 补面")
-    void openDoorFillsDoorwayWithoutExtraSheet() {
-        // 门格 (0,0,0) 属于干舱 body 0；(0,0,1) 是进水舱 body 1。
-        ShipGeometry.Compartment dry = new ShipGeometry.Compartment(Set.of(
-                new BlockPos(0, 0, 0), new BlockPos(1, 0, 0)), 0);
-        ShipGeometry.Compartment wet = new ShipGeometry.Compartment(Set.of(
-                new BlockPos(0, 0, 1)), 0);
-        ShipGeometry.Bounds bounds = new ShipGeometry.Bounds(0, 0, 0, 1, 0, 1);
-        ShipGeometry.Result geometry = new ShipGeometry.Result(
-                List.of(dry, wet), List.of(), 0, 3, bounds, Set.of(),
-                List.of(new ShipGeometry.DoorLink(new BlockPos(0, 0, 0), 0, 1, true)),
-                Set.of());
+    @DisplayName("侧门只连接两侧都有的水深，高侧水量通过实际来水路径表现")
+    void sideDoorSharesOnlyWaterThatTouchesBothSides() {
+        BlockPos door = BlockPos.ZERO;
+        var receiving = new ShipGeometry.Compartment(Set.of(door, door.north()), 0);
+        var donor = new ShipGeometry.Compartment(Set.of(door.south()), 0);
+        var geometry = new ShipGeometry.Result(List.of(receiving, donor), List.of(), 0, 3,
+                new ShipGeometry.Bounds(0, 0, -1, 0, 0, 1), Set.of(door),
+                List.of(new ShipGeometry.DoorLink(door, 0, 1, true)), Set.of(),
+                Map.of(door, Direction.Axis.Z));
         ShipState state = new ShipState(geometry, MachineCount.EMPTY);
         state.simulation().flood(1, 100.0D);
 
-        ShipWaterStatePacket packet = ShipWaterStateBuilder.build(
-                state, 1L, false, 0.0F, 0.0F, 0.0F);
+        var dry = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        assertEquals(Boolean.TRUE, ShipWaterBoxes.dryAt(dry.boxes(), 0.5, 0.4, 0.5));
+        assertEquals(Boolean.FALSE, ShipWaterBoxes.dryAt(dry.boxes(), 0.5, 0.4, 1.5));
 
-        assertEquals(0, packet.breaches().length,
-                "门格不再发 1×1 补面（用户看到的“格子”）");
-        float[] boxes = packet.boxes();
-        boolean doorBoxFound = false;
-        for (int i = 0; i + 6 < boxes.length; i += 7) {
-            if (boxes[i] == 0.0F && boxes[i + 1] == 0.0F && boxes[i + 2] == 0.0F) {
-                assertEquals(1.0F, boxes[i + 6], 1.0E-4F,
-                        "干舱里的门格要画到进水侧的水面，门洞里才有水");
-                doorBoxFound = true;
-            }
-        }
-        assertTrue(doorBoxFound, "门格必须仍然有水体");
+        state.simulation().fluid().flow(0.05D);
+        var flowing = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        assertTrue(flowing.sideFlows().length >= ShipWaterStatePacket.SIDE_FLOW_STRIDE);
+        assertEquals(Boolean.TRUE, ShipWaterBoxes.dryAt(flowing.boxes(), 0.5, 0.4, 0.5));
+
+        state.simulation().flood(0, 50.0D);
+        var connected = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        assertEquals(Boolean.FALSE, ShipWaterBoxes.dryAt(connected.boxes(), 0.5, 0.2, 0.5));
+        assertEquals(Boolean.TRUE, ShipWaterBoxes.dryAt(connected.boxes(), 0.5, 0.75, 0.5));
     }
 
     @Test
-    @DisplayName("门格补水只抬门格，门下的干格不能跟着变湿")
-    void doorFillDoesNotRaiseDryCellsBelow() {
-        // 门格 (0,2,0) 属于干舱 body 0，下面 (0,0,0)/(0,1,0) 也是干舱；
-        // (0,2,1) 是进水舱 body 1，灌满后水面到 3.0。
-        ShipGeometry.Compartment dry = new ShipGeometry.Compartment(Set.of(
-                new BlockPos(0, 0, 0), new BlockPos(0, 1, 0), new BlockPos(0, 2, 0)), 0);
-        ShipGeometry.Compartment wet = new ShipGeometry.Compartment(Set.of(
-                new BlockPos(0, 2, 1)), 0);
-        ShipGeometry.Bounds bounds = new ShipGeometry.Bounds(0, 0, 0, 0, 2, 1);
-        ShipGeometry.Result geometry = new ShipGeometry.Result(
-                List.of(dry, wet), List.of(), 0, 4, bounds, Set.of(),
-                List.of(new ShipGeometry.DoorLink(new BlockPos(0, 2, 0), 0, 1, true)),
-                Set.of());
-        ShipState state = new ShipState(geometry, MachineCount.EMPTY);
-        state.simulation().flood(1, 100.0D);
+    @DisplayName("水平舱口只有开着且实际连接上下的水柱时才显示积水")
+    void hatchRequiresOpenAndSubmergedOnBothDecks() {
+        BlockPos hatch = BlockPos.ZERO.above();
+        var lower = new ShipGeometry.Compartment(Set.of(hatch.below()), 0);
+        var upper = new ShipGeometry.Compartment(Set.of(hatch, hatch.above()), 0);
+        var bounds = new ShipGeometry.Bounds(0, 0, 0, 0, 2, 0);
+        var axes = Map.of(hatch, Direction.Axis.Y);
+        var open = new ShipGeometry.Result(List.of(lower, upper), List.of(), 0, 3,
+                bounds, Set.of(hatch), List.of(new ShipGeometry.DoorLink(hatch, 1, 0, true)), Set.of(), axes);
+        ShipState state = new ShipState(open, MachineCount.EMPTY);
+        state.simulation().flood(1, 200.0D);
 
-        ShipWaterStatePacket packet = ShipWaterStateBuilder.build(
-                state, 1L, false, 0.0F, 0.0F, 0.0F);
-        float[] boxes = packet.boxes();
-        boolean doorBoxFound = false;
-        for (int i = 0; i + 6 < boxes.length; i += 7) {
-            if (boxes[i] != 0.0F || boxes[i + 2] != 0.0F) {
-                continue;
-            }
-            float minY = boxes[i + 1];
-            float surface = boxes[i + 6];
-            if (minY < 2.0F) {
-                assertTrue(surface <= minY + 0.01F,
-                        "门下干格 (y=" + minY + ") 不能被门格补水抬成湿的");
-            } else {
-                assertEquals(3.0F, surface, 1.0E-4F, "门格自己要画到进水侧水面");
-                doorBoxFound = true;
-            }
-        }
-        assertTrue(doorBoxFound, "门格必须仍然有水体");
+        var oneSide = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        assertEquals(Boolean.TRUE, ShipWaterBoxes.dryAt(oneSide.boxes(), 0.5, 1.4, 0.5));
+        assertEquals(Boolean.TRUE, ShipWaterBoxes.dryAt(oneSide.boxes(), 0.5, 0.7, 0.5));
+        state.simulation().flood(0, 100.0D);
+        var connected = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        assertEquals(Boolean.FALSE, ShipWaterBoxes.dryAt(connected.boxes(), 0.5, 1.4, 0.5));
+
+        var closed = new ShipGeometry.Result(List.of(lower, upper), List.of(), 0, 3,
+                bounds, Set.of(hatch), List.of(new ShipGeometry.DoorLink(hatch, 1, 0, false)), Set.of(), axes);
+        state = new ShipState(closed, MachineCount.EMPTY);
+        state.simulation().flood(0, 100.0D);
+        state.simulation().flood(1, 200.0D);
+        var separated = ShipWaterStateBuilder.build(state, 1L, false, 0, 0, 0);
+        assertEquals(Boolean.TRUE, ShipWaterBoxes.dryAt(separated.boxes(), 0.5, 1.4, 0.5));
+        assertEquals(Boolean.FALSE, ShipWaterBoxes.dryAt(separated.boxes(), 0.5, 2.4, 0.5));
     }
 
     @Test

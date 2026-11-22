@@ -1,10 +1,12 @@
 package com.opamb.barotrauma.mixin;
 
 import com.opamb.barotrauma.equipment.DivingSuitState;
+import com.opamb.barotrauma.world.AirOceanSwimmer;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -15,6 +17,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(Player.class)
 public abstract class PlayerMixin implements DivingSuitState {
+
+    @Redirect(method = "updatePlayerPose", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/entity/player/Player;isShiftKeyDown()Z"))
+    private boolean barotrauma$crouchOnLand(Player player) {
+        return !((AirOceanSwimmer) player).barotrauma$isInAirOceanWater() && player.isShiftKeyDown();
+    }
 
     @Inject(method = "defineSynchedData", at = @At("TAIL"))
     private void barotrauma$defineDivingSuit(CallbackInfo ci) {

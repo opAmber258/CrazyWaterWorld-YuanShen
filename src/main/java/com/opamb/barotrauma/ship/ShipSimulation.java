@@ -1,9 +1,15 @@
 package com.opamb.barotrauma.ship;
 
 import com.opamb.barotrauma.ship.water.ShipFluidField;
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 船网数值模拟（M3.A3）。
@@ -155,6 +161,30 @@ public final class ShipSimulation {
                               boolean keepBelowDoor, double ballastTarget) {
     }
 
+    private static final class PumpRates {
+        double manualOut;
+        double manualIn;
+        double autoOut;
+        double autoIn;
+        double target = -1.0D;
+        boolean ballast;
+        boolean keepBelowDoor;
+
+        void add(PumpReport report) {
+            ballast |= report.ballast();
+            keepBelowDoor |= report.keepBelowDoor();
+            double rate = report.rate();
+            if (report.ballast() && report.ballastTarget() >= 0.0D) {
+                target = report.ballastTarget();
+                autoOut += Math.max(0.0D, rate);
+                autoIn += Math.max(0.0D, -rate);
+            } else {
+                manualOut += Math.max(0.0D, rate);
+                manualIn += Math.max(0.0D, -rate);
+            }
+        }
+    }
+
     /**
      * 用电设备上报表：设备格 → (耗电 kW, 最低电压, 绑定的接线盒, 最后上报 tick)。
      *
@@ -228,8 +258,6 @@ public final class ShipSimulation {
                                double minVoltage, net.minecraft.core.BlockPos box) {
     }
 
-    /** 上一 tick 由压载泵登记为压载舱的水体下标（用于浮力/进水比例）。 */
-    private final java.util.Set<Integer> ballastBodies = new java.util.HashSet<>();
     /** 格子 → 水体下标的缓存；换几何时整个 simulated 对象会重建，缓存自然失效。 */
     private java.util.Map<net.minecraft.core.BlockPos, Integer> bodyIndexOfCell;
     /**
@@ -305,8 +333,8 @@ public final class ShipSimulation {
      * 破口进水：只从真实破口格往相邻舱内格注水，再由逐格场向四周流动。
      *
      * <p>旧版是按整个连海空腔的容量直接灌一个标量，破口在哪一格没有意义。现在每个
-     * 空腔的总速率仍按原作 {@code 500 * Size * open² * dt} 的量级折算，但会均分到
-     * 该空腔的破口格，水从洞口附近开始涨。</p>
+     * 空腔的总速率仍按原作 {@code 500 * Size * open² * dt} 的量级折算。水量计入
+     * 接水的舱，实际注入量再分给各个破口用于绘制来水路径。</p>
      */
     public void tickSeaFlood(double dt, double depthMeters) {
         tickSeaFlood(dt, depthMeters, List.of());
@@ -324,17 +352,15 @@ public final class ShipSimulation {
         int sealedCount = geometry.compartments().size();
         double depthFactor = 1.0D + Math.max(0.0D, depthMeters) / 100.0D;
         double pocketRate = SEA_INFLOW_PER_SECOND * depthFactor * Math.max(1, breachSize);
-        boolean hasBreachInfo = breachCells != null && !breachCells.isEmpty();
+        Set<BlockPos> openings = breachCells == null ? Set.of() : new LinkedHashSet<>(breachCells);
         // 破口格本身通常属于"船外空气"那个大空腔（被打掉的墙格），按格归属会把
         // 整股进水灌到船外。这里按破口四周的格子找真正接水的舱内空腔，并优先
         // 取体量最小的那个（房间而不是包住它的外部空气）。
-        java.util.Map<Integer, Integer> holesByPocket = new java.util.HashMap<>();
-        if (hasBreachInfo) {
-            for (net.minecraft.core.BlockPos breach : breachCells) {
-                int pocket = pocketForBreach(pockets, breach);
-                if (pocket >= 0) {
-                    holesByPocket.merge(pocket, 1, Integer::sum);
-                }
+        Map<Integer, List<BlockPos>> holesByPocket = new HashMap<>();
+        for (BlockPos breach : openings) {
+            int pocket = pocketForBreach(breach);
+            if (pocket >= 0) {
+                holesByPocket.computeIfAbsent(pocket, key -> new ArrayList<>()).add(breach);
             }
         }
         java.util.Set<Integer> seaDoorBodies = new java.util.HashSet<>();
@@ -350,11 +376,11 @@ public final class ShipSimulation {
             if (fluid.bodyCapacity(body) <= 0.0D) {
                 continue;
             }
-            int holes = holesByPocket.getOrDefault(pocket, 0);
-            if (holes <= 0) {
+            List<BlockPos> holes = holesByPocket.getOrDefault(pocket, List.of());
+            if (holes.isEmpty()) {
                 // 有破口信息时，没有洞的空腔不进水；只有调用方完全没给破口
                 // （旧存档/测试）才按空腔底部兜底灌水。
-                if (!hasBreachInfo && !seaDoorBodies.contains(body)) {
+                if (openings.isEmpty() && !seaDoorBodies.contains(body)) {
                     fluid.injectFlood(body, pocketRate * UNITS_PER_BLOCK * dt,
                             DOOR_FLOW_PER_CELL * dt);
                 }
@@ -363,8 +389,13 @@ public final class ShipSimulation {
             // 本舱灌满后沿开着的舱门/舱口继续往相邻舱溢：破口一直进水时，
             // 水位必须能沿开着的水平舱口继续往上涌，不能把多余的水丢掉。
             // 溢流也受每道门每步的流量预算限制（DOOR_FLOW_PER_CELL * dt）。
-            fluid.injectFlood(body, pocketRate / holes * UNITS_PER_BLOCK * dt,
+            double added = fluid.injectFlood(body, pocketRate / holes.size() * UNITS_PER_BLOCK * dt,
                     DOOR_FLOW_PER_CELL * dt);
+            double amountPerHole = added / holes.size();
+            for (BlockPos breach : holes) {
+                BlockPos receiver = fluid.breachReceiver(breach, body, openings);
+                fluid.recordInflow(breach, receiver, amountPerHole);
+            }
         }
         refreshWaterAggregates();
     }
@@ -376,8 +407,8 @@ public final class ShipSimulation {
      * 所以优先选"包含破口邻居、但不包含破口本身"的空腔；同为候选时再优先
      * 船壳内有舱内格的、体量最小的那个（房间而不是包住它的外部空气）。</p>
      */
-    private int pocketForBreach(List<ShipGeometry.Compartment> pockets,
-                                net.minecraft.core.BlockPos breach) {
+    int pocketForBreach(BlockPos breach) {
+        List<ShipGeometry.Compartment> pockets = geometry.openPockets();
         int sealedCount = geometry.compartments().size();
         int best = -1;
         int bestRank = Integer.MAX_VALUE;
@@ -814,131 +845,7 @@ public final class ShipSimulation {
             oxygen[i] = Math.max(0.0D, Math.min(capacity, oxygen[i] - O2_DECAY_RATE * dt));
         }
 
-        // 水泵：由各泵方块实体上报到 pumpOutRates/pumpInRates 后按舱结算。
-        // 旧的 machines.pump() 全船标量路径已删（MachineCount.pump 恒 0，
-        // 直接改 water[] 聚合会绕过逐格场）。
-
-        // 排水泵方块：只抽自己所在的那个舱（原版水泵也是这样——关上的门后面
-        // 的水泵不归它管）。旧实现是把全船的水按顺序抽一遍，用户实测"门关着水还能
-        // 被泵出去"。水泵位置由方块实体每 tick 报上来（物理船是装配坐标）。
-        pumpTick++;
-        // 带符号流量：**正值泵出、负值泵入、0 停机**（和 ShipDrainPumpTest 一致）。
-        // 同舱多台泵分别汇总后再结算，避免"一台泵入一台泵出"互相抵消成不动作。
-        java.util.Map<Integer, Double> pumpOutRates = new java.util.HashMap<>();
-        java.util.Map<Integer, Double> pumpInRates = new java.util.HashMap<>();
-        java.util.Set<Integer> ballastBodies = new java.util.HashSet<>();
-        java.util.Set<Integer> keepBelowDoorBodies = new java.util.HashSet<>();
-        double autoBallastTarget = -1.0D;
-        var pumpIterator = pumps.entrySet().iterator();
-        while (pumpIterator.hasNext()) {
-            var entry = pumpIterator.next();
-            PumpReport report = entry.getValue();
-            if (pumpTick - report.lastSeen() > PUMP_STALE_TICKS) {
-                pumpIterator.remove();
-                continue;
-            }
-            int body = pumpBody(entry.getKey());
-            // 压载泵停机时也要登记舱室，否则水位不变时浮力会突然归零。
-            if (report.ballast() && body >= 0) {
-                ballastBodies.add(body);
-            }
-            if (report.ballast() && report.ballastTarget() >= 0.0D && autoBallastTarget < 0.0D) {
-                autoBallastTarget = report.ballastTarget();
-            }
-            if (report.keepBelowDoor() && body >= 0) {
-                keepBelowDoorBodies.add(body);
-            }
-            if (report.rate() == 0.0D || body < 0) {
-                continue;
-            }
-            if (report.rate() > 0.0D) {
-                pumpOutRates.merge(body, report.rate(), Double::sum);
-            } else {
-                pumpInRates.merge(body, -report.rate(), Double::sum);
-            }
-        }
-        // 自动压载泵的单步进/出水量不超过到目标水位的差值，避免大流量泵
-        // 在目标附近一整步灌满/抽空来回振荡（原作压载泵是逐步趋近目标水位）。
-        double ballastNow = 0.0D;
-        double ballastCapNow = 0.0D;
-        for (int body : ballastBodies) {
-            ballastNow += bodyWater(body);
-            ballastCapNow += bodyCapacity(body);
-        }
-        double outBudget = Double.MAX_VALUE;
-        double inBudget = Double.MAX_VALUE;
-        if (autoBallastTarget >= 0.0D) {
-            double targetUnits = autoBallastTarget * ballastCapNow;
-            outBudget = Math.max(0.0D, ballastNow - targetUnits);
-            inBudget = Math.max(0.0D, targetUnits - ballastNow);
-        }
-        for (var entry : pumpOutRates.entrySet()) {
-            double take = Math.min(bodyWater(entry.getKey()), entry.getValue() * dt);
-            if (ballastBodies.contains(entry.getKey())) {
-                take = Math.min(take, outBudget);
-                outBudget -= take;
-            }
-            if (take > 0.0D) {
-                removeBodyWater(entry.getKey(), take);
-            }
-        }
-        for (var entry : pumpInRates.entrySet()) {
-            int body = entry.getKey();
-            double room = Math.max(0.0D, bodyCapacity(body) - bodyWater(body));
-            double add = Math.min(room, entry.getValue() * dt);
-            double addLimit = Double.POSITIVE_INFINITY;
-            if (keepBelowDoorBodies.contains(body)) {
-                // 压载舱注水上限：水面到最近的舱门/舱口下方那一格为止。
-                double limit = doorBottomLevel(body);
-                if (bodyLevel(body) >= limit) {
-                    continue;
-                }
-                double capUnits = unitsBelowLevel(body, limit);
-                add = Math.min(add, Math.max(0.0D, capUnits - bodyWater(body)));
-                addLimit = limit;
-            }
-            if (ballastBodies.contains(body)) {
-                add = Math.min(add, inBudget);
-                inBudget -= add;
-            }
-            if (add > 0.0D) {
-                addBodyWater(body, add, addLimit);
-            }
-        }
-
-        // 压载舱 = 压载泵所在舱；水量/容量直接喂给 VsThruster 的浮力因子。
-        // 旧版 machines.pump() 的全局压载分支已经没人计数（MachineCount 恒 0），
-        // 这里以实际压载舱为准覆盖它。
-        this.ballastBodies.clear();
-        this.ballastBodies.addAll(ballastBodies);
-        double ballastWater = 0.0D;
-        double ballastCapacity = 0.0D;
-        for (int body : ballastBodies) {
-            ballastWater += bodyWater(body);
-            ballastCapacity += bodyCapacity(body);
-        }
-        this.ballast = ballastWater;
-        this.ballastCapacity = ballastCapacity;
-        // 压载舱有舱门时注不到 100%：算出真正可达的最大比例，舵台目标不要超过它
-        double usable = 0.0D;
-        for (int body : ballastBodies) {
-            double cap = bodyCapacity(body);
-            double limit = doorBottomLevel(body);
-            if (limit < Double.MAX_VALUE) {
-                cap = Math.min(cap, Math.max(0.0D, unitsBelowLevel(body, limit)));
-            }
-            usable += cap;
-        }
-        this.ballastMax = ballastCapacity > 0.0D
-                ? Math.min(1.0D, Math.max(0.0D, usable / ballastCapacity)) : 1.0D;
-
-        // 原版中性浮力：全船 7% 的水（SubmarineBody.NeutralBallastPercentage）。
-        // 物理船第一次启动时把压载舱注到"刚好让全船水量 = 7%"的相对水位，
-        // 之后舵台空闲就让压载泵保持这个水位；上浮排空、下潜注满。
-        if (ballastPrimePending && ballastCapacity > 0.0D) {
-            primeBallast();
-            ballastPrimePending = false;
-        }
+        tickPumps(dt);
 
         // 气闸：抽干 / 注水，完成后自动回到 CLOSED（此时另一侧门才允许开）
         if (airlockPhase == AirlockPhase.DRAINING) {
@@ -953,6 +860,70 @@ public final class ShipSimulation {
                 airlockPhase = AirlockPhase.CLOSED;
                 airlockCycles++;
             }
+        }
+    }
+
+    private void tickPumps(double dt) {
+        pumpTick++;
+        Map<Integer, PumpRates> ratesByBody = new HashMap<>();
+        var pumpIterator = pumps.entrySet().iterator();
+        while (pumpIterator.hasNext()) {
+            var entry = pumpIterator.next();
+            PumpReport report = entry.getValue();
+            if (pumpTick - report.lastSeen() > PUMP_STALE_TICKS) {
+                pumpIterator.remove();
+                continue;
+            }
+            int body = pumpBody(entry.getKey());
+            if (body >= 0) {
+                ratesByBody.computeIfAbsent(body, ignored -> new PumpRates()).add(report);
+            }
+        }
+
+        Set<Integer> ballastBodies = new LinkedHashSet<>();
+        double usable = 0.0D;
+        ballast = 0.0D;
+        ballastCapacity = 0.0D;
+        for (var entry : ratesByBody.entrySet()) {
+            int body = entry.getKey();
+            PumpRates rates = entry.getValue();
+            double limit = rates.keepBelowDoor ? doorBottomLevel(body) : Double.MAX_VALUE;
+            if (rates.manualOut > 0.0D) {
+                removeBodyWater(body, rates.manualOut * dt);
+            }
+            if (rates.manualIn > 0.0D) {
+                addPumpedWater(body, rates.manualIn * dt, limit);
+            }
+            if (rates.target >= 0.0D) {
+                double difference = rates.target * ballastUsableCapacity(body) - bodyWater(body);
+                if (difference > 0.0D && rates.autoIn > 0.0D) {
+                    addPumpedWater(body, Math.min(difference, rates.autoIn * dt), limit);
+                } else if (difference < 0.0D && rates.autoOut > 0.0D) {
+                    removeBodyWater(body, Math.min(-difference, rates.autoOut * dt));
+                }
+            }
+
+            // 停机或没电的压载泵仍代表所在舱，浮力继续计入舱里的水。
+            if (rates.ballast) {
+                ballastBodies.add(body);
+                ballast += bodyWater(body);
+                ballastCapacity += bodyCapacity(body);
+                usable += ballastUsableCapacity(body);
+            }
+        }
+
+        ballastMax = ballastCapacity > 0.0D ? usable / ballastCapacity : 1.0D;
+        if (ballastPrimePending && ballastCapacity > 0.0D) {
+            primeBallast(ballastBodies, usable);
+            ballastPrimePending = false;
+        }
+    }
+
+    private void addPumpedWater(int body, double units, double limit) {
+        double capacity = limit < Double.MAX_VALUE ? unitsBelowLevel(body, limit) : bodyCapacity(body);
+        double amount = Math.min(units, capacity - bodyWater(body));
+        if (amount > 0.0D) {
+            addBodyWater(body, amount, limit);
         }
     }
 
@@ -1187,6 +1158,12 @@ public final class ShipSimulation {
         return fluid == null ? 0.0D : fluid.capacityBelow(body, surfaceY);
     }
 
+    /** 压载舱在舱门下沿以下的可注水容积。 */
+    public double ballastUsableCapacity(int body) {
+        double limit = doorBottomLevel(body);
+        return limit < Double.MAX_VALUE ? unitsBelowLevel(body, limit) : bodyCapacity(body);
+    }
+
     /** 第 body 个水体现在的水量（单位）。 */
     public double bodyWater(int body) {
         return fluid == null ? 0.0D : fluid.bodyWater(body);
@@ -1212,21 +1189,14 @@ public final class ShipSimulation {
      * 逐格水场推进：外海开着的门先注水，然后整舱归平、重力下落、水平压力平衡。
      *
      * <p>归平（{@link ShipFluidField#level()}）对应原作整舱一个 {@code WaterVolume}
-     * 的瞬时水平面：同一间舱里的水不会堆在破口一小坨，而是整间一起涨。门/舱口
-     * 两侧属于不同 body，仍然只有 {@link ShipFluidField#flow(double)} 的限流边能过水。</p>
+     * 的瞬时水平面：同一间舱里的水不会堆在破口一小坨，而是整间一起涨。
+     * 门/舱口两侧按舱室水头限速交换。</p>
      */
     public void tickWaterFlow(double dt) {
         if (dt <= 0.0D || fluid == null) {
             return;
         }
-        // 开向海的门/舱口是无限水源：每格按门流量往门格注，注不下会向同舱溢。
-        for (int index : fluid.seaDoorCells()) {
-            fluid.injectSeaDoor(fluid.posAt(index), DOOR_FLOW_PER_CELL * dt);
-        }
-        fluid.level();
-        fluid.settle();
-        fluid.flow(dt);
-        fluid.level();
+        fluid.tick(dt);
         refreshWaterAggregates();
     }
 
@@ -1342,8 +1312,7 @@ public final class ShipSimulation {
     }
 
     /**
-     * @param ballastTarget 压载泵的自动目标水位（0..1）；-1 = 不做目标钳制。
-     *                      汇总时限制单步进/出水量，避免大流量泵在目标附近来回过冲。
+     * @param ballastTarget 自动目标占本舱可注水容积的比例（0..1）；-1 = 不做目标钳制。
      */
     public void reportPump(net.minecraft.core.BlockPos cell, double rate, boolean ballast,
                            double requestedRate, boolean keepBelowDoor, double ballastTarget) {
@@ -1908,15 +1877,18 @@ public final class ShipSimulation {
     }
 
     /**
-     * 往指定舱室注水（渗漏用）。逐格场现在是整舱水位语义：水量按舱底往上摊平，
-     * 所以不需要"在哪一格冒水"的位置参数；保留签名兼容调用点。
+     * 往指定舱室注水（渗漏用）。水量从舱底摊平，所接收的水量用于绘制漏点流入的路径。
      */
     public void addWaterAt(int compartmentIndex, net.minecraft.core.BlockPos near, double units) {
         if (compartmentIndex < 0 || compartmentIndex >= water.length || units <= 0.0D
                 || fluid == null) {
             return;
         }
-        fluid.addBody(compartmentIndex, units, Double.POSITIVE_INFINITY);
+        double added = fluid.addBody(compartmentIndex, units, Double.POSITIVE_INFINITY);
+        if (near != null && added > 0.0D) {
+            BlockPos receiver = fluid.breachReceiver(near, compartmentIndex, Set.of());
+            fluid.recordInflow(near, receiver, added);
+        }
         refreshWaterAggregates();
     }
 
@@ -2029,6 +2001,11 @@ public final class ShipSimulation {
         return ballastNeutral;
     }
 
+    /** 把存档记录的全压载容积比例换成各舱可注水容积的共同目标。 */
+    public double neutralBallastFill() {
+        return ballastMax > 0.0D ? Math.min(1.0D, ballastNeutral / ballastMax) : 0.0D;
+    }
+
     /** 压载舱可达的最大水位比例（舱门限幅后）。下潜目标不能超过它，否则泵会一直空转耗电。 */
     public double ballastMaxPercent() {
         return ballastMax;
@@ -2044,42 +2021,31 @@ public final class ShipSimulation {
         return ballastPrimed;
     }
 
-    private void primeBallast() {
+    private void primeBallast(Set<Integer> ballastBodies, double usable) {
         double total = 0.0D;
-        for (double volume : volumes) {
-            total += volume * UNITS_PER_BLOCK;
+        for (int body = 0; body < volumes.length + pocketWater.length; body++) {
+            total += bodyCapacity(body);
         }
-        double need = total * NEUTRAL_WATER_RATIO - waterUnits();
-        if (need > 0.0D) {
+        double nonBallastWater = Math.max(0.0D, waterUnits() + pocketWaterTotal() - ballast);
+        double target = Mth.clamp(total * NEUTRAL_WATER_RATIO - nonBallastWater, 0.0D, usable);
+        ballastNeutral = target / ballastCapacity;
+        // 按各舱剩余可注水空间同比例注入，保留存档或手动预注的水。
+        double available = 0.0D;
+        for (int body : ballastBodies) {
+            available += Math.max(0.0D, ballastUsableCapacity(body) - bodyWater(body));
+        }
+        if (target > ballast && available > 0.0D) {
+            double fill = Math.min(1.0D, (target - ballast) / available);
             for (int body : ballastBodies) {
-                double room = bodyCapacity(body) - bodyWater(body);
-                // 和压载泵注水一样：有舱门时最深只能注到舱门下方
-                double limit = doorBottomLevel(body);
-                if (limit < Double.MAX_VALUE) {
-                    room = Math.min(room, Math.max(0.0D,
-                            unitsBelowLevel(body, limit) - bodyWater(body)));
-                }
-                double add = Math.min(room, need);
+                double before = bodyWater(body);
+                double add = (ballastUsableCapacity(body) - before) * fill;
                 if (add > 0.0D) {
-                    addBodyWater(body, add, limit);
-                    need -= add;
-                }
-                if (need <= 0.0D) {
-                    break;
+                    addBodyWater(body, add, doorBottomLevel(body));
+                    ballast += bodyWater(body) - before;
                 }
             }
         }
-        double filled = 0.0D;
-        double capacity = 0.0D;
-        for (int body : ballastBodies) {
-            filled += bodyWater(body);
-            capacity += bodyCapacity(body);
-        }
-        this.ballast = filled;
-        this.ballastCapacity = capacity;
-        this.ballastNeutral = capacity > 0.0D
-                ? Math.min(1.0D, Math.max(0.0D, filled / capacity)) : 0.5D;
-        this.ballastPrimed = true;
+        ballastPrimed = true;
     }
 
     /** 压载舱当前水量（单位）。 */

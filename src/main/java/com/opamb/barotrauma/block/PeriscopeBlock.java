@@ -2,7 +2,6 @@ package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.PeriscopeBlockEntity;
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
-import com.opamb.barotrauma.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -10,12 +9,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Mirror;
@@ -37,7 +35,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>原作潜望镜是 {@code Controller}，通过电线把瞄准/扳机信号传给炮塔。本模组
  * 还没有信号线系统，所以这里直接找 48 格内最近的炮塔并进入它的操作会话；
- * 客户端镜头锚点由服务端随 {@code TurretStatePacket} 下发，镜头留在潜望镜处。</p>
+ * 服务端按潜望镜位置校验操作者，客户端显示炮塔的镜头。</p>
  *
  * <p>和炮塔一样属于世界坐标设备：暂不加入 {@code isShipBlock}，等炮塔船载化时
  * 一起接 VS2 变换。</p>
@@ -65,8 +63,13 @@ public class PeriscopeBlock extends BaseEntityBlock {
                 .setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
 
+    @Override
+    public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
+        return hasStand(level, pos);
+    }
+
     /** 上方或下方任意一侧有潜望镜底座。 */
-    public static boolean hasStand(net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+    public static boolean hasStand(BlockGetter level, BlockPos pos) {
         return level.getBlockState(pos.above()).getBlock() instanceof PeriscopeStandBlock
                 || level.getBlockState(pos.below()).getBlock() instanceof PeriscopeStandBlock;
     }
@@ -146,12 +149,6 @@ public class PeriscopeBlock extends BaseEntityBlock {
             }
         }
         return best;
-    }
-
-    @Override
-    public void setPlacedBy(Level level, BlockPos pos, BlockState state,
-                            @Nullable LivingEntity placer, ItemStack stack) {
-        super.setPlacedBy(level, pos, state, placer, stack);
     }
 
     @Nullable

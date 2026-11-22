@@ -76,7 +76,7 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
             // （Content/Items/Assemblies/AutoClosingHatch.xml，"nobody around for 4 seconds"）。
             boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
             if (near) {
-                be.motionHold = 80;
+                be.motionHold = AutomationUtil.MOTION_HOLD_TICKS;
             } else if (be.motionHold > 0) {
                 be.motionHold--;
             }
@@ -121,6 +121,12 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
         }
         lastManualUseTick = gameTime;
         return true;
+    }
+
+    public void holdAfterManualOpen() {
+        if (automation == AutomationMode.MOTION) {
+            motionHold = AutomationUtil.MOTION_HOLD_TICKS;
+        }
     }
 
     public void cycleAutomation() {

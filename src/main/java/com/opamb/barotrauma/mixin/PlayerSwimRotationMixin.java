@@ -1,6 +1,6 @@
 package com.opamb.barotrauma.mixin;
 
-import com.opamb.barotrauma.world.OceanEnvironment;
+import com.opamb.barotrauma.world.AirOceanSwimmer;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  * “空气海洋”（没有真实水方块），这个判定恒为 false，于是疾跑游泳时人物永远平躺，
  * 朝上/下游也不转身（用户实测“游泳动画的朝向被限制在平面”）。</p>
  *
- * <p>这里只把 {@link OceanEnvironment#isSubmerged} 补进这个判定，其余渲染逻辑保持原版。</p>
+ * <p>让渲染跟随权威泳姿，避免镜头或脚部掠过水面时人物突然回到水平。</p>
  */
 @Mixin(PlayerRenderer.class)
 public abstract class PlayerSwimRotationMixin {
@@ -27,7 +27,6 @@ public abstract class PlayerSwimRotationMixin {
                     target = "Lnet/minecraft/client/player/AbstractClientPlayer;isInWater()Z"))
     private boolean barotrauma$airOceanCountsAsWater(AbstractClientPlayer player) {
         return player.isInWater()
-                || OceanEnvironment.isSubmerged(player.level(),
-                        player.position().add(0.0D, 0.4D, 0.0D));
+                || ((AirOceanSwimmer) player).barotrauma$isAirOceanSwimming();
     }
 }

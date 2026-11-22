@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.ship;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
@@ -49,6 +50,11 @@ public final class ShipGeometry {
         default boolean isOpenDoorway(BlockPos pos) {
             return false;
         }
+
+        /** 舱门沿门面法线通海，舱口和地板格栅沿竖直方向通海。 */
+        default @Nullable Direction.Axis doorwayAxis(BlockPos pos) {
+            return null;
+        }
     }
 
     /**
@@ -56,14 +62,17 @@ public final class ShipGeometry {
      *
      * <p>{@code body} / {@code other} 是"水体下标"：先密闭舱室（0..n-1），再连海空腔
      * （n..n+m-1），和 {@link ShipSimulation} 的数组下标一致。门格本身属于
-     * {@code body}，{@code other} 是门另一侧相邻的水体。</p>
+     * {@code body}，{@code other} 是门另一侧相邻的水体。通海连线记录门外的方向。</p>
      */
-    public record DoorLink(BlockPos cell, int body, int other, boolean open) {
+    public record DoorLink(BlockPos cell, int body, int other, boolean open, @Nullable Direction seaSide) {
+        public DoorLink(BlockPos cell, int body, int other, boolean open) {
+            this(cell, body, other, open, null);
+        }
     }
 
     /**
-     * "外海"作为门连线的另一侧：门格直接开在船壳外表面（包围盒边界、外面没有方块）
-     * 时用它。船体模拟把这一侧当成无限大的水源，开门就往舱里灌。
+     * "外海"作为门连线的另一侧：船壳外的格可能在整船包围盒内。
+     * 船体模拟把这一侧当成无限大的水源，开门就往舱里灌。
      */
     public static final int SEA_BODY = -1;
 
@@ -128,7 +137,14 @@ public final class ShipGeometry {
      */
     public record Result(List<Compartment> compartments, List<Compartment> openPockets,
                          int hullBlocks, int scannedCells, Bounds bounds, Set<BlockPos> hull,
-                         List<DoorLink> doorLinks, Set<BlockPos> equipment) {
+                         List<DoorLink> doorLinks, Set<BlockPos> equipment,
+                         Map<BlockPos, Direction.Axis> doorwayAxes) {
+        public Result(List<Compartment> compartments, List<Compartment> openPockets,
+                      int hullBlocks, int scannedCells, Bounds bounds, Set<BlockPos> hull,
+                      List<DoorLink> doorLinks, Set<BlockPos> equipment) {
+            this(compartments, openPockets, hullBlocks, scannedCells, bounds, hull, doorLinks, equipment, Map.of());
+        }
+
         public int totalVolume() {
             return compartments.stream().mapToInt(Compartment::volume).sum();
         }
@@ -166,11 +182,13 @@ public final class ShipGeometry {
             List<DoorLink> movedDoors = new ArrayList<>(doorLinks.size());
             for (DoorLink link : doorLinks) {
                 movedDoors.add(new DoorLink(link.cell().offset(dx, dy, dz),
-                        link.body(), link.other(), link.open()));
+                        link.body(), link.other(), link.open(), link.seaSide()));
             }
+            Map<BlockPos, Direction.Axis> movedAxes = new HashMap<>();
+            doorwayAxes.forEach((cell, axis) -> movedAxes.put(cell.offset(dx, dy, dz), axis));
             return new Result(shift(compartments, dx, dy, dz), shift(openPockets, dx, dy, dz),
                     hullBlocks, scannedCells, bounds.shifted(dx, dy, dz), movedHull, movedDoors,
-                    movedEquipment);
+                    movedEquipment, Map.copyOf(movedAxes));
         }
 
         private static List<Compartment> shift(List<Compartment> source, int dx, int dy, int dz) {
@@ -291,8 +309,9 @@ public final class ShipGeometry {
         // 船壳包住的空气才算船内：圆角船体的包围盒四角是外海，连海空腔会把
         // 那些海水一起吞进去。先用"船壳当墙"从包围盒边界灌一遍标出船外空气，
         // 再从每个连海空腔里扣掉这部分。
+        Set<BlockPos> exterior = isShell == null
+                ? Set.of() : exteriorCells(minX, minY, minZ, maxX, maxY, maxZ, isShell);
         if (isShell != null) {
-            Set<BlockPos> exterior = exteriorCells(minX, minY, minZ, maxX, maxY, maxZ, isShell);
             List<Compartment> clipped = new ArrayList<>(openPockets.size());
             for (Compartment pocket : openPockets) {
                 Set<BlockPos> interior = new HashSet<>();
@@ -305,10 +324,17 @@ public final class ShipGeometry {
             }
             openPockets = clipped;
         }
-        List<DoorLink> doorLinks = collectDoorLinks(doorways, compartments, openPockets, probe,
-                minX, minY, minZ, maxX, maxY, maxZ);
-        return new Result(compartments, openPockets, hull.size(), scanned,
-                new Bounds(minX, minY, minZ, maxX, maxY, maxZ), hull, doorLinks, pick.equipment());
+        Bounds bounds = new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
+        List<DoorLink> doorLinks = collectDoorLinks(doorways, compartments, openPockets, probe, bounds, exterior);
+        Map<BlockPos, Direction.Axis> axes = new HashMap<>();
+        for (BlockPos cell : doorways) {
+            Direction.Axis axis = probe.doorwayAxis(cell);
+            if (axis != null) {
+                axes.put(cell, axis);
+            }
+        }
+        return new Result(compartments, openPockets, hull.size(), scanned, bounds, hull, doorLinks,
+                pick.equipment(), Map.copyOf(axes));
     }
 
     /** 把被连海空腔占走的门格挪给相邻的密闭舱室（先按邻居找，找不到就留着）。 */
@@ -354,8 +380,7 @@ public final class ShipGeometry {
     private static List<DoorLink> collectDoorLinks(Set<BlockPos> doorways,
                                                    List<Compartment> compartments,
                                                    List<Compartment> pockets, Probe probe,
-                                                   int minX, int minY, int minZ,
-                                                   int maxX, int maxY, int maxZ) {
+                                                   Bounds bounds, Set<BlockPos> exterior) {
         if (doorways.isEmpty()) {
             return List.of();
         }
@@ -379,31 +404,22 @@ public final class ShipGeometry {
             }
             // 一个门格可能同时贴着两个水体（三个格子宽的舱口下方是两个舱），都要连。
             Set<Integer> others = new java.util.LinkedHashSet<>();
-            boolean sea = false;
-            for (BlockPos next : neighbours(door)) {
-                boolean outside = next.getX() < minX || next.getX() > maxX
-                        || next.getY() < minY || next.getY() > maxY
-                        || next.getZ() < minZ || next.getZ() > maxZ;
-                if (outside) {
-                    // 门格直接开在船壳外表面上：包围盒外那一格就是海。
-                    // 外面还有实心方块（例如对接时站侧平台）就不算海——船还是密封的。
-                    if (!probe.isSolid(next)) {
-                        sea = true;
-                    }
-                    continue;
+            boolean open = probe.isOpenDoorway(door);
+            Direction.Axis axis = probe.doorwayAxis(door);
+            for (Direction side : Direction.values()) {
+                BlockPos next = door.relative(side);
+                if ((axis == null || axis == side.getAxis())
+                        && (!bounds.contains(next) || exterior.contains(next)) && !probe.isSolid(next)) {
+                    // 修剪过的船壳也能在整船包围盒以内直接接到外海。
+                    links.add(new DoorLink(door, owner, SEA_BODY, open, side));
                 }
                 Integer other = bodyOf.get(next);
                 if (other != null && !other.equals(owner)) {
                     others.add(other);
                 }
             }
-            boolean open = probe.isOpenDoorway(door);
             for (Integer other : others) {
                 links.add(new DoorLink(door, owner, other, open));
-            }
-            if (sea) {
-                // 顶舱口/底舱口开在海里时，必须有这条"通向海"的连线，否则开门不进水。
-                links.add(new DoorLink(door, owner, SEA_BODY, open));
             }
         }
         return links;

@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.ship;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -69,6 +70,66 @@ class ShipFloodingTest {
                 "舱底离破口最远的格也应该有水");
         assertTrue(sim.fluid().waterAt(new BlockPos(0, -1, 1)) > 0.0D,
                 "整层都应该铺开");
+    }
+
+    @Test
+    @DisplayName("同一双层舱室的上层侧壁破口，沿甲板到开口落水")
+    void upperWallBreachFollowsDeckToShaft() {
+        Set<BlockPos> solid = new HashSet<>();
+        BlockPos hole = new BlockPos(-3, 1, 0);
+        BlockPos shaft = new BlockPos(2, 0, 1);
+        for (int x = -3; x <= 3; x++) {
+            for (int y = -3; y <= 3; y++) {
+                for (int z = -2; z <= 2; z++) {
+                    BlockPos cell = new BlockPos(x, y, z);
+                    if (Math.abs(x) == 3 || Math.abs(y) == 3 || Math.abs(z) == 2
+                            || (y == 0 && !cell.equals(shaft))) {
+                        solid.add(cell);
+                    }
+                }
+            }
+        }
+        ShipState state = new ShipState(scan(solid), MachineCount.EMPTY);
+        assertEquals(1, state.compartments().size(), "两层通过甲板开口相连");
+        state.hullDamage().setHealth(hole, 0.2F);
+        state.tickLeaks(0.1D);
+        state.simulation().tickWaterFlow(0.1D);
+        assertTrue(state.simulation().fluid().waterStreams().stream()
+                .anyMatch(stream -> stream.from().y - stream.to().y > 1.0D),
+                "船壳尚未完全破开时，二层渗漏也沿同一通路下落");
+
+        solid.remove(hole);
+        state.replaceGeometry(scan(solid));
+        state.addBreaches(List.of(hole));
+        assertEquals(1, state.breaches().size());
+
+        ShipSimulation sim = state.simulation();
+        sim.tickSeaFlood(0.1D, 0.0D, List.of(hole));
+        sim.tickWaterFlow(0.1D);
+
+        var field = sim.fluid();
+        var streams = field.waterStreams();
+        assertTrue(streams.size() > 2, "应有破口、甲板薄流和落水");
+        assertTrue(streams.get(0).from().x < -1.9D, "从破口的舱内侧开始");
+        assertTrue(streams.stream().anyMatch(stream -> stream.from().y == stream.to().y),
+                "必须有跨过上层甲板的水流");
+        var fall = streams.get(streams.size() - 1);
+        assertEquals(shaft.getX(), (int) Math.floor(fall.from().x));
+        assertEquals(shaft.getZ(), (int) Math.floor(fall.from().z));
+        assertTrue(fall.to().x > shaft.getX() + 0.91D || fall.to().z > shaft.getZ() + 0.91D,
+                "落水应贴着竖井东侧或南侧的实墙");
+        assertEquals(fall.from().x, fall.to().x, 1.0E-6D);
+        assertEquals(fall.from().z, fall.to().z, 1.0E-6D);
+        assertEquals(field.bodyLevel(field.bodyOf(shaft)), fall.to().y, 1.0E-6D);
+        for (var stream : streams) {
+            for (int step = 0; step <= 10; step++) {
+                Vec3 point = stream.from().lerp(stream.to(), step / 10.0D);
+                assertFalse(solid.contains(BlockPos.containing(point)), "水流不能直接穿过甲板或舱壁");
+            }
+        }
+        assertTrue(ShipWaterStateBuilder.build(state, 4L, true, 0, 0, 0).streams().length > 0);
+        sim.tickWaterFlow(0.1D);
+        assertTrue(field.waterStreams().isEmpty(), "无后续来水时清除落水流");
     }
 
     @Test

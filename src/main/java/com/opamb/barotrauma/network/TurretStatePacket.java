@@ -19,7 +19,7 @@ import java.util.function.Supplier;
  * 客户端命中预判要把自己算进合法目标；直连炮塔时则要把自己排除。</p>
  *
  * <p>{@code controllerPos} 非空表示通过潜望镜进入：客户端用它校验控制器还在。
- * {@code cameraAnchor} 是服务端算好的世界镜头位置（潜望镜眼位/炮塔眼位）。
+ * {@code cameraAnchor} 是服务端算好的炮塔镜头世界坐标。
  * 物理船上的方块坐标是船坞坐标，不能直接当镜头，所以必须由服务端换算后下发。</p>
  */
 public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldown,

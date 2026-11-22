@@ -8,6 +8,7 @@ import com.opamb.barotrauma.block.NavigationTerminalBlock;
 import com.opamb.barotrauma.block.PumpProxyBlock;
 import com.opamb.barotrauma.block.SonarBlock;
 import com.opamb.barotrauma.block.SonarProxyBlock;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -239,6 +240,11 @@ public final class ModShipBlocks {
                 || state.getBlock() instanceof BulkheadDoorBlock
                 // 排水口 = 原版 duct block：地板上的通水格栅，水可以穿过去
                 || state.getBlock() == ModBlocks.DRAIN_OUTLET.get();
+    }
+
+    public static Direction.Axis doorwayAxis(BlockState state) {
+        return state.getBlock() instanceof BulkheadDoorBlock
+                ? state.getValue(BulkheadDoorBlock.FACING).getAxis() : Direction.Axis.Y;
     }
 
     /** 门格当前是不是开着（只有开着的门才有两侧水流）。 */

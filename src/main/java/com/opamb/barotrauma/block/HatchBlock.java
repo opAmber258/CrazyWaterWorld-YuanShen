@@ -203,7 +203,11 @@ public class HatchBlock extends BaseEntityBlock {
                     return InteractionResult.CONSUME;
                 }
             }
-            setOpen(level, pos, state, !state.getValue(OPEN));
+            boolean open = !state.getValue(OPEN);
+            if (setOpen(level, pos, state, open) && open
+                    && level.getBlockEntity(middle) instanceof HatchBlockEntity hatch) {
+                hatch.holdAfterManualOpen();
+            }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }

@@ -13,6 +13,23 @@ public final class ShipWaterBoxes {
     private ShipWaterBoxes() {
     }
 
+    /** 水盒内的干湿状态。盒子上边界不属于本格，重叠处有实际水面时按浸没处理。 */
+    public static Boolean dryAt(float[] boxes, double x, double y, double z) {
+        boolean covered = false;
+        for (int i = 0; i + 6 < boxes.length; i += 7) {
+            if (x < boxes[i] || x >= boxes[i + 3] + 1.0D
+                    || y < boxes[i + 1] || y >= boxes[i + 4] + 1.0D
+                    || z < boxes[i + 2] || z >= boxes[i + 5] + 1.0D) {
+                continue;
+            }
+            covered = true;
+            if (y < boxes[i + 6]) {
+                return Boolean.FALSE;
+            }
+        }
+        return covered ? Boolean.TRUE : null;
+    }
+
     /**
      * 玩家脚位置所在的水盒里，是否有 {@code height} 格的站立空间。
      *

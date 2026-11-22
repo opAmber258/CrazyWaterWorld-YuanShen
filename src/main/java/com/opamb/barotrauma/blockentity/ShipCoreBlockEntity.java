@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.blockentity;
 
+import com.opamb.barotrauma.block.HatchBlock;
 import com.opamb.barotrauma.block.HullBlock;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.ShipHullDamagePacket;
@@ -11,6 +12,7 @@ import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.MachineCount;
 import com.opamb.barotrauma.ship.ShipGeometry;
 import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.world.DockingBay;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -18,6 +20,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
@@ -38,6 +41,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * 船核心方块实体：持有船体扫描结果。
@@ -469,7 +473,9 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             }
         }
         BlockPos corePos = worldPosition;
-        final boolean docked = com.opamb.barotrauma.world.DockingBay.isDockedCore(corePos);
+        boolean docked = DockingBay.isDockedCore(corePos);
+        Predicate<BlockPos> dockCap = pos -> docked && DockingBay.isDockCapRow(pos)
+                && level.getBlockState(pos).getBlock() instanceof HatchBlock;
         ShipGeometry.Probe probe = new ShipGeometry.Probe() {
             @Override
             public boolean isSolid(BlockPos pos) {
@@ -477,8 +483,8 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                     // 核心自身占一格，不能把自己当成墙，否则洪水填充从起点就走不动
                     return false;
                 }
-                if (docked && com.opamb.barotrauma.world.DockingBay.isDockCapRow(pos)) {
-                    // 对接时头顶 -68 那一层是站侧平台/舱口，算虚拟密封盖。
+                if (dockCap.test(pos)) {
+                    // 站侧舱口把这条实际对接缝和外海隔开。
                     return true;
                 }
                 BlockState state = level.getBlockState(pos);
@@ -492,7 +498,7 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
 
             @Override
             public boolean isDoorway(BlockPos pos) {
-                if (docked && com.opamb.barotrauma.world.DockingBay.isDockCapRow(pos)) {
+                if (dockCap.test(pos)) {
                     return false;
                 }
                 return ModShipBlocks.isDoorway(level.getBlockState(pos));
@@ -500,10 +506,15 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
 
             @Override
             public boolean isOpenDoorway(BlockPos pos) {
-                if (docked && com.opamb.barotrauma.world.DockingBay.isDockCapRow(pos)) {
+                if (dockCap.test(pos)) {
                     return false;
                 }
                 return ModShipBlocks.isOpenDoorway(level.getBlockState(pos));
+            }
+
+            @Override
+            public Direction.Axis doorwayAxis(BlockPos pos) {
+                return ModShipBlocks.doorwayAxis(level.getBlockState(pos));
             }
         };
         ShipGeometry.Result geometry = ShipGeometry.scanShip(corePos, RADIUS,
@@ -516,7 +527,7 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                     if (pos.equals(corePos)) {
                         return false;
                     }
-                    if (docked && com.opamb.barotrauma.world.DockingBay.isDockCapRow(pos)) {
+                    if (dockCap.test(pos)) {
                         return true;
                     }
                     BlockState shell = level.getBlockState(pos);

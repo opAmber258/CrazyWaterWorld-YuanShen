@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.ShipSimulation;
 import com.opamb.barotrauma.ship.ShipState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -26,10 +27,8 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  */
 public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoBlockEntity {
 
-    /** 最近一次服务端读到的舵台垂直指令：负=下潜、正=上浮、0=停车。 */
-    private int helm;
-    /** 当前船状态；用来读全船压载比例和中性水位。 */
-    private ShipState ship;
+    private double target = -1.0D;
+    private int autoFlow;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
     public BallastPumpBlockEntity(BlockPos pos, BlockState state) {
@@ -46,9 +45,23 @@ public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoB
     }
 
     @Override
-    protected void beforeReport(ShipState ship) {
-        this.ship = ship;
-        helm = ship == null ? 0 : ship.throttleY();
+    protected void beforeReport(ShipState ship, BlockPos cell) {
+        ShipSimulation simulation = ship.simulation();
+        int body = simulation.pumpBody(cell);
+        target = -1.0D;
+        autoFlow = 0;
+        if (!auto() || body < 0 || !simulation.ballastPrimed()) {
+            return;
+        }
+        int helm = ship.throttleY();
+        target = helm < 0 ? 1.0D : helm > 0 ? 0.0D : simulation.neutralBallastFill();
+        double capacity = simulation.ballastUsableCapacity(body);
+        double difference = target * capacity - simulation.bodyWater(body);
+        if (Math.abs(difference) > 0.02D) {
+            // 原作以所在舱水位差的百分比乘 10 控制泵速，供电照常决定实际流量。
+            double magnitude = Math.abs(difference) * 1000.0D / Math.max(1.0D, capacity);
+            autoFlow = (int) Math.copySign(Math.ceil(Math.min(100.0D, magnitude)), difference);
+        }
     }
 
     /** 压载舱注水不许漫过舱门：水面最高到最近的舱门/舱口下方那一格。 */
@@ -57,44 +70,15 @@ public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoB
         return true;
     }
 
-    /**
-     * 自动模式：舵台给目标水位，泵按全船压载比例注/排到目标。
-     * flow 的约定是正值泵入、负值泵出；{@link #signedRate} 会再取负成
-     * "正=泵出"交给船体模拟。
-     */
+    /** 正值泵入，负值泵出。 */
     @Override
     public int effectiveFlow() {
-        if (!auto()) {
-            return super.effectiveFlow();
-        }
-        double target = autoTarget();
-        if (target < 0.0D) {
-            return 0;
-        }
-        double current = ship.simulation().ballastPercent();
-        if (current > target + 0.02D) {
-            return -100;
-        }
-        if (current < target - 0.02D) {
-            return 100;
-        }
-        return 0;
-    }
-
-    /** 自动压载目标水位（0..1）；手动/未标定返回 -1。 */
-    private double autoTarget() {
-        // 停靠中的方块船 / 还没标定中性水位的物理船：不自动注排
-        if (ship == null || !ship.simulation().ballastPrimed()) {
-            return -1.0D;
-        }
-        double max = ship.simulation().ballastMaxPercent();
-        return helm < 0 ? max : helm > 0 ? 0.0D
-                : Math.min(ship.simulation().ballastNeutral(), max);
+        return auto() ? autoFlow : super.effectiveFlow();
     }
 
     @Override
     protected double ballastTarget() {
-        return auto() ? autoTarget() : -1.0D;
+        return target;
     }
 
     /**
