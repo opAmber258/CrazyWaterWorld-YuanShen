@@ -94,6 +94,23 @@ class ShipFluidDoorTest {
     }
 
     @Test
+    @DisplayName("外墙门格被单独扫成水体时，通海进水仍然保留")
+    void seaDoorSurvivesDoorCellScannedAsOwnBody() {
+        BlockPos door = new BlockPos(0, 0, 0);
+        // 门格自己是一个单格舱室（扫描先遇到它、门格不扩展），内侧才是真舱室。
+        var inside = new ShipGeometry.Compartment(Set.of(new BlockPos(1, 0, 0)), 0);
+        var doorCell = new ShipGeometry.Compartment(Set.of(door), 0);
+        var geometry = new ShipGeometry.Result(List.of(inside, doorCell), List.of(), 0, 2,
+                new ShipGeometry.Bounds(-1, 0, 0, 1, 0, 0), Set.of(),
+                List.of(new ShipGeometry.DoorLink(door, 1, ShipGeometry.SEA_BODY, true,
+                        Direction.WEST)), Set.of());
+        var state = new ShipState(geometry, MachineCount.EMPTY);
+
+        assertEquals(1, state.simulation().fluid().seaDoorCells().length,
+                "门格单独成体时也不能丢掉通海进水");
+    }
+
+    @Test
     @DisplayName("门只沿门洞通行轴过水：侧邻格属于另一水体时也不生成侧向水流")
     void doorGateFollowsDoorwayAxis() {
         BlockPos door = new BlockPos(1, 0, 0);

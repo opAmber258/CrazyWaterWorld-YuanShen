@@ -267,8 +267,15 @@ public final class ShipFluidField {
                     continue;
                 }
                 Direction inward = outside.getOpposite();
-                if (!Integer.valueOf(link.body()).equals(bodyByPos.get(door.relative(inward)))) {
+                Integer inwardBody = bodyByPos.get(door.relative(inward));
+                if (inwardBody == null) {
                     continue;
+                }
+                // 扫描可能先遇到门格，把它单独扫成一个单格水体（门格不扩展）。
+                // 海门必须按门内侧的真实舱室算，否则“门格 body ≠ 舱室 body”
+                // 会让这条通海连线被丢掉，开门后干舱没有进水来源。
+                if (!Integer.valueOf(inwardBody).equals(bodyByPos.get(door))) {
+                    reassignBody(cells, bodyByPos, door, inwardBody);
                 }
                 seaDoors.add(door);
                 if (outside == Direction.UP) {
@@ -334,6 +341,19 @@ public final class ShipFluidField {
         BlockPos immutable = pos.immutable();
         if (bodyByPos.putIfAbsent(immutable, body) == null) {
             cells.add(new Cell(immutable, body));
+        }
+    }
+
+    /** 把已经建过的格改到另一个水体（海门格被扫描单独成体时用）。 */
+    private static void reassignBody(List<Cell> cells, Map<BlockPos, Integer> bodyByPos,
+                                     BlockPos pos, int body) {
+        BlockPos immutable = pos.immutable();
+        bodyByPos.put(immutable, body);
+        for (int i = 0; i < cells.size(); i++) {
+            if (cells.get(i).pos().equals(immutable)) {
+                cells.set(i, new Cell(immutable, body));
+                return;
+            }
         }
     }
 
