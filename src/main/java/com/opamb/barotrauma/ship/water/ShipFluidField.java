@@ -706,6 +706,9 @@ public final class ShipFluidField {
                 break;
             }
             // 本舱没装下的那部分才能继续往外溢，而且每过一道门都要计入门的预算。
+            // 多个出口平分“能外溢的量”，不能每个出口都拿一份完整的 pass：
+            // 否则 A→B 只过了一道门的预算，B 却能把同样多的水分别送进 C 和 D
+            // （凭空造水）。单出口仍然能拿到完整的预算。
             double excess = allow - took;
             if (excess <= 1.0E-6D) {
                 continue;
@@ -714,11 +717,28 @@ public final class ShipFluidField {
             if (pass <= 1.0E-9D) {
                 continue;
             }
-            for (var connection : spillGates.get(current).entrySet()) {
+            var outlets = spillGates.get(current);
+            if (outlets == null || outlets.isEmpty()) {
+                continue;
+            }
+            int open = 0;
+            for (int next : outlets.keySet()) {
+                if (!arrival.containsKey(next)) {
+                    open++;
+                }
+            }
+            if (open <= 0) {
+                continue;
+            }
+            double share = pass / open;
+            if (share <= 1.0E-9D) {
+                continue;
+            }
+            for (var connection : outlets.entrySet()) {
                 int next = connection.getKey();
                 if (!arrival.containsKey(next)) {
                     arrival.put(next, connection.getValue());
-                    allowance.put(next, pass);
+                    allowance.put(next, share);
                     queue.add(next);
                 }
             }

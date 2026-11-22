@@ -39,7 +39,14 @@ public final class ShipWaterStateBuilder {
 
     public static ShipWaterStatePacket build(ShipState state, long shipId, boolean physical,
                                              float anchorX, float anchorY, float anchorZ) {
-        return build(state, shipId, physical, anchorX, anchorY, anchorZ, null);
+        return build(state, shipId, physical, anchorX, anchorY, anchorZ, null, "");
+    }
+
+    /** 带源维度：方块船水包是广播的，客户端要靠它拒绝异维度的同坐标水体。 */
+    public static ShipWaterStatePacket build(ShipState state, long shipId, boolean physical,
+                                             float anchorX, float anchorY, float anchorZ,
+                                             String dimension) {
+        return build(state, shipId, physical, anchorX, anchorY, anchorZ, null, dimension);
     }
 
     /**
@@ -52,12 +59,20 @@ public final class ShipWaterStateBuilder {
                                              float anchorX, float anchorY, float anchorZ,
                                              @org.jetbrains.annotations.Nullable
                                              Predicate<BlockPos> fullCube) {
+        return build(state, shipId, physical, anchorX, anchorY, anchorZ, fullCube, "");
+    }
+
+    public static ShipWaterStatePacket build(ShipState state, long shipId, boolean physical,
+                                             float anchorX, float anchorY, float anchorZ,
+                                             @org.jetbrains.annotations.Nullable
+                                             Predicate<BlockPos> fullCube,
+                                             String dimension) {
         List<ShipGeometry.Compartment> compartments = state.compartments();
         List<ShipGeometry.Compartment> pockets = state.geometry().openPockets();
         ShipFluidField field = state.simulation().fluid();
         if (field == null) {
             return new ShipWaterStatePacket(shipId, physical, anchorX, anchorY, anchorZ,
-                    new float[0], new float[0], new float[0], new float[0]);
+                    new float[0], new float[0], new float[0], new float[0], dimension);
         }
         int bodyCount = compartments.size() + pockets.size();
         List<float[]> boxes = new ArrayList<>();
@@ -90,24 +105,64 @@ public final class ShipWaterStateBuilder {
         // “货舱明明是干的却在游泳、还有水下滤镜”。这里给这些舱补一个干燥 bbox；
         // 有水的舱不受影响（湿盒仍然优先判 wet）。
         appendMissingDryCoverage(boxes, boxByCell, state, compartments, pockets, field, doorSurfaces);
-        boolean coarse = false;
         if (boxes.size() > MAX_TOTAL_BOXES) {
-            coarse = true;
-            boxes.clear();
-            boxByCell.clear();
+            // 先按“舱 + 层”拆包围盒：整舱一个包围盒在 L 形舱/相邻舱时会把别舱的
+            // 干格也盖成湿的（客户端 dryAt 只看盒子覆盖）。按层拆能消掉跨层误覆盖；
+            // 层内仍是包围盒，极端凹形几何仍可能覆盖，但不会把整艘船的楼层混在一起。
+            List<float[]> layerBoxes = new ArrayList<>();
+            Map<BlockPos, Integer> layerBoxByCell = new HashMap<>();
+            java.util.Arrays.fill(bodyFirstBox, -1);
             for (int body = 0; body < bodyCount; body++) {
                 List<BlockPos> cells = field.cellsOfBody(body);
                 if (cells.isEmpty()) {
                     continue;
                 }
-                int[] bounds = boundsOf(cells);
-                if (bounds == null) {
-                    bodyFirstBox[body] = -1;
-                    continue;
+                TreeMap<Integer, List<BlockPos>> byLayer = new TreeMap<>();
+                for (BlockPos cell : cells) {
+                    byLayer.computeIfAbsent(cell.getY(), key -> new ArrayList<>()).add(cell);
                 }
-                bodyFirstBox[body] = boxes.size();
-                boxes.add(new float[]{bounds[0], bounds[1], bounds[2],
-                        bounds[3], bounds[4], bounds[5], quantize((float) field.bodyLevel(body))});
+                double level = field.bodyLevel(body);
+                for (List<BlockPos> layer : byLayer.values()) {
+                    int[] bounds = boundsOf(layer);
+                    if (bounds == null) {
+                        continue;
+                    }
+                    if (bodyFirstBox[body] < 0) {
+                        bodyFirstBox[body] = layerBoxes.size();
+                    }
+                    // 本层水面 = 全舱水面夹在本层底面和顶面之间。
+                    float top = quantize((float) Math.min(bounds[4] + 1.0D,
+                            Math.max(bounds[1], level)));
+                    int index = layerBoxes.size();
+                    layerBoxes.add(new float[]{bounds[0], bounds[1], bounds[2],
+                            bounds[3], bounds[4], bounds[5], top});
+                    for (BlockPos cell : layer) {
+                        layerBoxByCell.put(cell, index);
+                    }
+                }
+            }
+            boxes.clear();
+            boxByCell.clear();
+            if (layerBoxes.size() <= MAX_TOTAL_BOXES) {
+                boxes.addAll(layerBoxes);
+                boxByCell.putAll(layerBoxByCell);
+            } else {
+                // 层盒还是太多：退回每舱一个包围盒（覆盖凹角，但不会把包撑爆）。
+                java.util.Arrays.fill(bodyFirstBox, -1);
+                for (int body = 0; body < bodyCount; body++) {
+                    List<BlockPos> cells = field.cellsOfBody(body);
+                    if (cells.isEmpty()) {
+                        continue;
+                    }
+                    int[] bounds = boundsOf(cells);
+                    if (bounds == null) {
+                        continue;
+                    }
+                    bodyFirstBox[body] = boxes.size();
+                    boxes.add(new float[]{bounds[0], bounds[1], bounds[2],
+                            bounds[3], bounds[4], bounds[5],
+                            quantize((float) field.bodyLevel(body))});
+                }
             }
         }
 
@@ -128,7 +183,12 @@ public final class ShipWaterStateBuilder {
                 continue;
             }
             BlockPos target = field.breachReceiver(breach.pos(), body, breachCells);
-            int boxIndex = coarse ? bodyFirstBox[body] : boxIndex(boxByCell, target);
+            // 粗化时按“舱+层”拆盒，破口所在格能直接定位到自己的层盒；
+            // 只有退回整舱包围盒时才用该舱的第一个盒子。
+            int boxIndex = boxIndex(boxByCell, target);
+            if (boxIndex < 0) {
+                boxIndex = bodyFirstBox[body];
+            }
             if (boxIndex < 0) {
                 continue;
             }
@@ -153,7 +213,7 @@ public final class ShipWaterStateBuilder {
             offset += 7;
         }
         return new ShipWaterStatePacket(shipId, physical, anchorX, anchorY, anchorZ,
-                flat, breaches, streamRows(field), sideFlowRows(field));
+                flat, breaches, streamRows(field), sideFlowRows(field), dimension);
     }
 
     private static float[] streamRows(ShipFluidField field) {

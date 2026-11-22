@@ -24,7 +24,8 @@ import java.util.function.Supplier;
  */
 public record ShipWaterStatePacket(long shipId, boolean physical,
                                    float anchorX, float anchorY, float anchorZ,
-                                   float[] boxes, float[] breaches, float[] streams, float[] sideFlows) {
+                                   float[] boxes, float[] breaches, float[] streams, float[] sideFlows,
+                                   String dimension) {
 
     public static final int BOX_STRIDE = 7;
     public static final int BREACH_STRIDE = 9;
@@ -35,9 +36,16 @@ public record ShipWaterStatePacket(long shipId, boolean physical,
     public static final int MAX_BREACHES = 1024;
     public static final int MAX_STREAMS = 1024;
 
+    /** 旧签名（不带维度）：测试和没有关卡上下文的调用默认“未知”，客户端不做维度过滤。 */
+    public ShipWaterStatePacket(long shipId, boolean physical,
+                                float anchorX, float anchorY, float anchorZ,
+                                float[] boxes, float[] breaches, float[] streams, float[] sideFlows) {
+        this(shipId, physical, anchorX, anchorY, anchorZ, boxes, breaches, streams, sideFlows, "");
+    }
+
     public static ShipWaterStatePacket empty() {
         return new ShipWaterStatePacket(-1L, false, 0, 0, 0,
-                new float[0], new float[0], new float[0], new float[0]);
+                new float[0], new float[0], new float[0], new float[0], "");
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -46,6 +54,7 @@ public record ShipWaterStatePacket(long shipId, boolean physical,
         buf.writeFloat(anchorX);
         buf.writeFloat(anchorY);
         buf.writeFloat(anchorZ);
+        buf.writeUtf(dimension == null ? "" : dimension);
         writeRows(buf, boxes, BOX_STRIDE, MAX_BOXES);
         writeRows(buf, breaches, BREACH_STRIDE, MAX_BREACHES);
         writeRows(buf, streams, STREAM_STRIDE, MAX_STREAMS);
@@ -66,11 +75,13 @@ public record ShipWaterStatePacket(long shipId, boolean physical,
         float ax = buf.readFloat();
         float ay = buf.readFloat();
         float az = buf.readFloat();
+        String dimension = buf.readUtf(128);
         return new ShipWaterStatePacket(id, physical, ax, ay, az,
                 readRows(buf, BOX_STRIDE, MAX_BOXES),
                 readRows(buf, BREACH_STRIDE, MAX_BREACHES),
                 readRows(buf, STREAM_STRIDE, MAX_STREAMS),
-                readRows(buf, SIDE_FLOW_STRIDE, MAX_STREAMS));
+                readRows(buf, SIDE_FLOW_STRIDE, MAX_STREAMS),
+                dimension);
     }
 
     private static float[] readRows(FriendlyByteBuf buf, int stride, int maxRows) {

@@ -152,6 +152,13 @@ public final class ShipWaterRenderer {
     }
 
     public static void accept(ShipWaterStatePacket packet) {
+        // 方块船水包是广播的：带源维度时，别的维度同坐标不能画水/做干湿判定。
+        Minecraft minecraft = Minecraft.getInstance();
+        String dimension = packet.dimension();
+        if (dimension != null && !dimension.isEmpty() && minecraft.level != null
+                && !dimension.equals(minecraft.level.dimension().location().toString())) {
+            return;
+        }
         state = packet;
         if (++packetCount % 40L == 0L) {
             BarotraumaMod.LOGGER.info("[water] 收到水面包：physical={} ship={} boxes={} breaches={} streams={} sideFlows={} anchor=({},{},{})",
@@ -225,6 +232,12 @@ public final class ShipWaterRenderer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || (!mc.level.dimension().equals(ModDimensions.THE_DEEP)
                 && (!RENDER_WATER || state.boxes().length < BOX_STRIDE))) {
+            return;
+        }
+        // 切维度后旧包还在 state 里：源维度对不上就不画（否则另一维度同坐标会出水）。
+        String dimension = state.dimension();
+        if (dimension != null && !dimension.isEmpty()
+                && !dimension.equals(mc.level.dimension().location().toString())) {
             return;
         }
         var stage = event.getStage();

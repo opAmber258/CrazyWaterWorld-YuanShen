@@ -389,7 +389,9 @@ public final class ShipSimulation {
             // 本舱灌满后沿开着的舱门/舱口继续往相邻舱溢：破口一直进水时，
             // 水位必须能沿开着的水平舱口继续往上涌，不能把多余的水丢掉。
             // 溢流也受每道门每步的流量预算限制（DOOR_FLOW_PER_CELL * dt）。
-            double added = fluid.injectFlood(body, pocketRate / holes.size() * UNITS_PER_BLOCK * dt,
+            // 注意：pocketRate 已经乘过破口数（breachSize），这里不能再除一次，
+            // 否则“破口越多进得越快”会被抵消；只有绘制来水路径时才按洞平分。
+            double added = fluid.injectFlood(body, pocketRate * UNITS_PER_BLOCK * dt,
                     DOOR_FLOW_PER_CELL * dt);
             double amountPerHole = added / holes.size();
             for (BlockPos breach : holes) {

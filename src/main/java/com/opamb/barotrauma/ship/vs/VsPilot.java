@@ -2587,7 +2587,8 @@ public final class VsPilot {
             return state.isCollisionShapeFullBlock(lastLevel, yard);
         };
         ShipWaterStatePacket packet = com.opamb.barotrauma.ship.ShipWaterStateBuilder.build(st, shipId, true,
-                (float) assembledPos.x, (float) assembledPos.y, (float) assembledPos.z, fullCube);
+                (float) assembledPos.x, (float) assembledPos.y, (float) assembledPos.z, fullCube,
+                lastLevel == null ? "" : lastLevel.dimension().location().toString());
         lastWaterPacket = packet;
         ModNetwork.sendToAll(packet);
         // 船壳耐久和水平同步：同一套 anchor/坐标空间，客户端用同一个 render 变换映射。

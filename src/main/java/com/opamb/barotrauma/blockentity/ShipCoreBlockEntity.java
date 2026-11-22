@@ -239,7 +239,9 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                         com.opamb.barotrauma.ship.ShipWaterStateBuilder.build(
                                 be.state, -1L, false, 0.0F, 0.0F, 0.0F,
                                 cell -> level.getBlockState(cell)
-                                        .isCollisionShapeFullBlock(level, cell)));
+                                        .isCollisionShapeFullBlock(level, cell),
+                                // 水包是广播的：带源维度，客户端在别的维度同坐标不画。
+                                level.dimension().location().toString()));
             }
             // 船壳耐久：没受损时不发；有受损就低频刷新，受击/焊接时 force 立即发。
             // 第一次 tick 必须发一次（哪怕是空包），否则客户端可能留着上一艘船的血条。

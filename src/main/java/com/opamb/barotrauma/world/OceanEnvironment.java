@@ -89,15 +89,23 @@ public final class OceanEnvironment {
 
     @Nullable
     private static Boolean blockShipDryAt(Level level, Vec3 pos) {
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, BlockPos.containing(pos), 32.0D);
-        ShipState state = core == null ? null : core.state();
-        if (state == null || state == VsState.activeState()) {
-            return null;
+        // 只看最近的核心会选错船：A 的干舱覆盖这个点，但更近的核心属于另一艘船 B，
+        // B 的水盒不覆盖它 → 返回未知 → 回落到“海里”。按距离依次问所有候选核心，
+        // 第一个“盒子覆盖到该点”的结果才算数；都不覆盖才是真的不在方块船里。
+        for (ShipCoreBlockEntity core : ShipCores.coresNear(level, BlockPos.containing(pos), 32.0D)) {
+            ShipState state = core.state();
+            if (state == null || state == VsState.activeState()) {
+                continue;
+            }
+            // 按游戏刻缓存：同一 tick 里每个玩家都会问一次，不能每次都重建水面包
+            // （build 里的矩形分解和连海空腔松弛远比这次包围盒判定贵）。
+            float[] boxes = state.waterBoxesFor(level, level.getGameTime()).boxes();
+            Boolean dry = ShipWaterBoxes.dryAt(boxes, pos.x, pos.y, pos.z);
+            if (dry != null) {
+                return dry;
+            }
         }
-        // 按游戏刻缓存：同一 tick 里每个玩家都会问一次，不能每次都重建水面包
-        // （build 里的矩形分解和连海空腔松弛远比这次包围盒判定贵）。
-        float[] boxes = state.waterBoxesFor(level, level.getGameTime()).boxes();
-        return ShipWaterBoxes.dryAt(boxes, pos.x, pos.y, pos.z);
+        return null;
     }
 
     /** 检查真实碰撞形状。pos 与 cell 使用同一坐标系（世界或船坞）。 */

@@ -26,7 +26,8 @@ public final class ModNetwork {
     // 26：ShipWaterStatePacket 同步门洞实际下落水流。
     // 27：ShipWaterStatePacket 增加侧门溢流行（8 float：门槛/方向/水柱顶/接收水面/流量）。
     // 28：SwimStatePacket 首字段语义改为“是否启用水中移动”（疾跑泳姿改由客户端预测）。
-    private static final String PROTOCOL = "28";
+    // 29：ShipWaterStatePacket 增加源维度（方块船水包是广播的，客户端拒绝异维度同坐标）。
+    private static final String PROTOCOL = "29";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
