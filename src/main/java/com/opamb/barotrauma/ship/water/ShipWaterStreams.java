@@ -58,7 +58,9 @@ public final class ShipWaterStreams {
     }
 
     void recordInflow(BlockPos opening, BlockPos receiver, double amount) {
-        if (receiver != null && opening.getY() >= receiver.getY() && amount > 0.0D) {
+        // 舱底破口的水是“向上渗”的（opening 在接水格下方），也要记录：
+        // 以前只收 opening.y >= receiver.y，这种漏点只看得到水位涨、看不到水流。
+        if (receiver != null && amount > 0.0D) {
             pendingInflow.merge(new Inlet(opening.immutable(), receiver), amount, Double::sum);
         }
     }
@@ -109,6 +111,15 @@ public final class ShipWaterStreams {
             BlockPos receiver = inlet.receiver();
             int body = field.bodyOf(receiver);
             if (!canRunThrough(receiver, body)) {
+                return;
+            }
+            if (inlet.opening().getY() < receiver.getY()) {
+                // 舱底向上的渗漏：画一小段从洞口升到接水格的短流，不交给只向下寻路的 channel。
+                Vec3 from = Vec3.atBottomCenterOf(inlet.opening()).add(0, 0.08D, 0);
+                Vec3 to = Vec3.atBottomCenterOf(receiver).add(0, 0.34D, 0);
+                if (from.distanceToSqr(to) > MIN_LENGTH_SQUARED) {
+                    visible.merge(new Run(from, to), rate, Double::sum);
+                }
                 return;
             }
             double surface = field.bodyLevel(body);

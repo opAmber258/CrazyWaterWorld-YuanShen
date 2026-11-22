@@ -407,7 +407,9 @@ public final class ShipWaterStateBuilder {
                         if (box != null) {
                             surface = Math.max(surface, Math.min(cell.getY() + 1.0D, boxes.get(box)[6]));
                         }
-                    } else if (!solid.contains(neighbor)) {
+                    } else if (!solid.contains(neighbor) || excluded.contains(neighbor)) {
+                        // 破口格虽然也在 solid 里，但它本身就是开口：贴着破口的设备缺口
+                        // 应该算“无界”，不能因为破口格被当墙就补出一个水盒。
                         bounded = false;
                     }
                 }

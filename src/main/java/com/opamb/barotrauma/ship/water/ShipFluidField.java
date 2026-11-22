@@ -792,7 +792,8 @@ public final class ShipFluidField {
             }
             remaining -= take;
         }
-        refreshBodyWater();
+        // 增量更新本舱汇总，避免每次注水都全格重扫（门流每步会调很多次）。
+        bodyWater[body] += added;
         return added;
     }
 
@@ -843,7 +844,8 @@ public final class ShipFluidField {
             }
             remaining -= take;
         }
-        refreshBodyWater();
+        // 增量更新本舱汇总：每道门都全格重扫会让 100 道门 × 3 万格变成 600 万次/步。
+        bodyWater[body] -= removed;
         return removed;
     }
 

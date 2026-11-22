@@ -93,6 +93,8 @@ public final class ShipSimulation {
     private boolean ballastPrimePending;
     /** 中性水位已经算好；算好之前压载泵不动作（方块船停靠时也不乱注水）。 */
     private boolean ballastPrimed;
+    /** 标定时的压载舱总容量：后加/拆压载泵导致容量变化时按新容量重标中性水位。 */
+    private double primedBallastCapacity = -1.0D;
     private boolean pumpOut = true;
     /** 反应堆上报表：格子 → (输出 kW, 额定 kW, 温度, 过热, 熔毁, 最后上报 tick)。 */
     private final java.util.Map<net.minecraft.core.BlockPos, ReactorReport> reactors =
@@ -915,9 +917,16 @@ public final class ShipSimulation {
         }
 
         ballastMax = ballastCapacity > 0.0D ? usable / ballastCapacity : 1.0D;
+        if (ballastPrimed && Math.abs(ballastCapacity - primedBallastCapacity) > 1.0E-6D) {
+            // 压载舱集合变了（后加/拆了压载泵）：中性水位按新容量重算，
+            // 但不再注水，避免“放一台泵就往舱里灌水”。
+            recalibrateBallast(usable);
+            primedBallastCapacity = ballastCapacity;
+        }
         if (ballastPrimePending && ballastCapacity > 0.0D) {
             primeBallast(ballastBodies, usable);
             ballastPrimePending = false;
+            primedBallastCapacity = ballastCapacity;
         }
     }
 
@@ -2024,13 +2033,8 @@ public final class ShipSimulation {
     }
 
     private void primeBallast(Set<Integer> ballastBodies, double usable) {
-        double total = 0.0D;
-        for (int body = 0; body < volumes.length + pocketWater.length; body++) {
-            total += bodyCapacity(body);
-        }
-        double nonBallastWater = Math.max(0.0D, waterUnits() + pocketWaterTotal() - ballast);
-        double target = Mth.clamp(total * NEUTRAL_WATER_RATIO - nonBallastWater, 0.0D, usable);
-        ballastNeutral = target / ballastCapacity;
+        recalibrateBallast(usable);
+        double target = ballastNeutral * ballastCapacity;
         // 按各舱剩余可注水空间同比例注入，保留存档或手动预注的水。
         double available = 0.0D;
         for (int body : ballastBodies) {
@@ -2048,6 +2052,20 @@ public final class ShipSimulation {
             }
         }
         ballastPrimed = true;
+    }
+
+    /** 只按当前舱容重算中性水位，不注水；压载舱集合变化时用。 */
+    private void recalibrateBallast(double usable) {
+        if (ballastCapacity <= 0.0D) {
+            return;
+        }
+        double total = 0.0D;
+        for (int body = 0; body < volumes.length + pocketWater.length; body++) {
+            total += bodyCapacity(body);
+        }
+        double nonBallastWater = Math.max(0.0D, waterUnits() + pocketWaterTotal() - ballast);
+        double target = Mth.clamp(total * NEUTRAL_WATER_RATIO - nonBallastWater, 0.0D, usable);
+        ballastNeutral = target / ballastCapacity;
     }
 
     /** 压载舱当前水量（单位）。 */

@@ -405,8 +405,12 @@ public final class ShipWaterRenderer {
         float[] renderBoxes = withOpenBreaches(level, packetToShipyard, boxes, data.breaches());
         float[] sideFlows = sideFlowsAtOpenings(level, packetToShipyard, data.sideFlows());
         boolean poolInView = waterInView(event, renderBoxes, toCamera, cameraPos);
+        // 船完全在视锥外时，非空流数组也不该触发整船网格重建：先对流光端点做一次
+        // 保守视锥测试，只有池面或任一流路可能可见时才更新。
+        boolean flowsVisible = poolInView
+                || flowsInView(event, data.streams(), sideFlows, toCamera, cameraPos);
         int wetColumns = 0;
-        if (poolInView || data.streams().length > 0 || sideFlows.length > 0) {
+        if (flowsVisible) {
             collectStreamImpacts(data.streams(), sideFlows);
             BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
             wetColumns = waterMesh.update(renderBoxes, dt, seconds, streamImpacts, streamImpactCount,
@@ -455,7 +459,9 @@ public final class ShipWaterRenderer {
     private static boolean waterEdgeOpenAt(ClientLevel level, BlockPos offset, BlockPos.MutableBlockPos cursor,
                                            int x, int z, int nextX, int nextZ, float surface) {
         double y = surface + offset.getY();
-        cursor.set(x + offset.getX(), (int) Math.floor(y), z + offset.getZ());
+        // 水面正好落在整格边界（y 是整数）时，floor(y) 会读到水面之上的顶板格，
+        // 把这条共享边误判成墙、在连续水面上留下台阶。往水侧退 1e-4 再取格子。
+        cursor.set(x + offset.getX(), (int) Math.floor(y - 1.0E-4D), z + offset.getZ());
         BlockState block = level.getBlockState(cursor);
         if (!(block.getBlock() instanceof BulkheadDoorBlock)) {
             return block.isAir() || !block.isCollisionShapeFullBlock(level, cursor);
@@ -530,6 +536,49 @@ public final class ShipWaterRenderer {
         }
         return event.getFrustum().isVisible(new AABB(min.x + camera.x, min.y + camera.y, min.z + camera.z,
                 max.x + camera.x, max.y + camera.y, max.z + camera.z));
+    }
+
+    /**
+     * 流路是否可能出现在画面里。所有流端点合成一个保守包围盒做视锥测试：
+     * 只有“池面不可见、流路也全在视野外”时才跳过整船网格重建。
+     */
+    private static boolean flowsInView(RenderLevelStageEvent event, float[] streams, float[] sideFlows,
+                                       Matrix4d toCamera, Vec3 camera) {
+        if (streams.length == 0 && sideFlows.length == 0) {
+            return false;
+        }
+        if (event.getFrustum() == null) {
+            return true;
+        }
+        int boxes = (streams.length / ShipWaterStatePacket.STREAM_STRIDE) * 2
+                + sideFlows.length / ShipWaterStatePacket.SIDE_FLOW_STRIDE;
+        float[] flowBoxes = new float[Math.max(0, boxes) * BOX_STRIDE];
+        int at = 0;
+        for (int i = 0; i + ShipWaterStatePacket.STREAM_STRIDE <= streams.length;
+             i += ShipWaterStatePacket.STREAM_STRIDE) {
+            at = flowPointBox(flowBoxes, at, streams[i], streams[i + 1], streams[i + 2]);
+            at = flowPointBox(flowBoxes, at, streams[i + 3], streams[i + 4], streams[i + 5]);
+        }
+        for (int i = 0; i + ShipWaterStatePacket.SIDE_FLOW_STRIDE <= sideFlows.length;
+             i += ShipWaterStatePacket.SIDE_FLOW_STRIDE) {
+            at = flowPointBox(flowBoxes, at, sideFlows[i], sideFlows[i + 1], sideFlows[i + 2]);
+        }
+        return at > 0 && waterInView(event, flowBoxes, toCamera, camera);
+    }
+
+    /** 把流路上的一个点包成 1×1×1 的盒子（水面设到顶，免得被 dry 过滤掉）。 */
+    private static int flowPointBox(float[] boxes, int at, float x, float y, float z) {
+        if (at + BOX_STRIDE > boxes.length) {
+            return at;
+        }
+        boxes[at] = x;
+        boxes[at + 1] = y;
+        boxes[at + 2] = z;
+        boxes[at + 3] = x;
+        boxes[at + 4] = y;
+        boxes[at + 5] = z;
+        boxes[at + 6] = y + 1.0F;
+        return at + BOX_STRIDE;
     }
 
     /** 侧流行落在两格之间。实船的门板在门格中线，水和水花也从那里开始。 */
@@ -680,13 +729,14 @@ public final class ShipWaterRenderer {
         }
         Vec3 eye = camera.getPosition();
         WaterPlacement placement = waterPlacement(data, ship == null ? null : ship.getTransform(), eye);
-        spawnStreamSplashes(level, placement, eye, data.streams(), budget);
+        budget = spawnStreamSplashes(level, placement, eye, data.streams(), budget);
         float[] sideFlows = sideFlowsAtOpenings(level, placement.offset(), data.sideFlows());
-        spawnSideFlowParticles(level, placement.toCamera(), eye, sideFlows, budget);
+        budget = spawnSideFlowParticles(level, placement.toCamera(), eye, sideFlows, budget);
         spawnBreachBubbles(level, placement.toCamera(), eye, data.breaches(), data.boxes(), budget);
     }
 
-    private static void spawnStreamSplashes(ClientLevel level, WaterPlacement placement, Vec3 camera,
+    /** 返回剩余预算：三类开口粒子共用同一份配额，附近同时开口也不会超发。 */
+    private static int spawnStreamSplashes(ClientLevel level, WaterPlacement placement, Vec3 camera,
                                            float[] flows, int budget) {
         var random = level.random;
         for (int i = 0; i < flows.length && budget > 0; i += ShipWaterStatePacket.STREAM_STRIDE) {
@@ -722,9 +772,10 @@ public final class ShipWaterRenderer {
                         ModParticles.SHIP_SPRAY.get(), at, velocity);
             }
         }
+        return budget;
     }
 
-    private static void spawnSideFlowParticles(ClientLevel level, Matrix4d toCamera, Vec3 camera,
+    private static int spawnSideFlowParticles(ClientLevel level, Matrix4d toCamera, Vec3 camera,
                                                float[] flows, int budget) {
         var random = level.random;
         for (int i = 0; i < flows.length && budget > 0; i += ShipWaterStatePacket.SIDE_FLOW_STRIDE) {
@@ -754,14 +805,15 @@ public final class ShipWaterRenderer {
                         exposed ? ModParticles.SHIP_SPRAY.get() : ModParticles.SHIP_BUBBLE.get(), at, velocity);
             }
         }
+        return budget;
     }
 
     /** The moving spray follows the flow paths. Bubbles start inside the wet receiving cell of a breach. */
-    private static void spawnBreachBubbles(ClientLevel level, Matrix4d toCamera, Vec3 camera, float[] breaches,
+    private static int spawnBreachBubbles(ClientLevel level, Matrix4d toCamera, Vec3 camera, float[] breaches,
                                            float[] boxes, int budget) {
         int holes = breaches.length / BREACH_STRIDE;
         if (holes == 0) {
-            return;
+            return budget;
         }
         var random = level.random;
         int first = Math.floorMod(breachRoundRobin++, holes);
@@ -788,6 +840,7 @@ public final class ShipWaterRenderer {
             Vec3 motion = inward.scale(0.055D + random.nextDouble() * 0.14D).add(0, 0.015D, 0);
             budget -= spawnOpeningParticle(level, toCamera, camera, ModParticles.SHIP_BUBBLE.get(), at, motion);
         }
+        return budget;
     }
 
     private static int spawnOpeningParticle(ClientLevel level, Matrix4d toCamera, Vec3 camera, ParticleOptions type,
