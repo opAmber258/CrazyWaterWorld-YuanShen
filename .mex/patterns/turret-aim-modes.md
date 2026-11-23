@@ -20,12 +20,12 @@ edges:
     condition: when changing the turret block model or barrel rendering geometry
   - target: patterns/run-tests.md
     condition: when verifying the turret change beyond a compile
-last_updated: 2026-11-21
+last_updated: 2026-11-23
 mex:
   id: mx_01M7M7HRZYXWEE1W4VEB95FRVX
   type: pattern
   status: promoted
-  revision: 5
+  revision: 6
   title: turret-aim-modes
   relations:
     - type: related_to
@@ -44,8 +44,10 @@ mex:
 `tracking_turret`（视角自由、炮塔准心限速追中心）共用：
 
 - `TurretBlockEntity`：服务端权威 `yaw/pitch`，`aim()` 按 `MAX_TURN_PER_TICK = 6°`（120°/s）截断；
-  `fire()` 射程 48、冷却 10 tick、hitscan 命中方块或最近实体（`inflate(0.25)`）、12 点伤害。
-- 四个网络包：`TurretAimPacket` / `TurretFirePacket` / `TurretExitPacket` / `TurretStatePacket`（协议号见 `ModNetwork.PROTOCOL`）。
+  `fire()` 射程 48、单发冷却 10 tick、全自动冷却 4 tick（5 发/秒）、hitscan 命中方块或最近实体
+  （`inflate(0.25)`）、12 点伤害。
+- 五个网络包：`TurretAimPacket` / `TurretFirePacket` / `TurretModePacket` / `TurretExitPacket` /
+  `TurretStatePacket`（协议号见 `ModNetwork.PROTOCOL`）。
 - 客户端 `TurretClient`（状态机）、`TurretRenderer`（炮管旋转 + 后坐）、`TurretHud`（观察窗 + 准心）。
 
 模式差异只在客户端输入层，由方块类判断：`block instanceof FreeAimTurretBlock` 等。
@@ -67,9 +69,8 @@ mex:
    `TurretHud` 按透视把半宽/半高投成像素，竖边限制 3…7 px、横边至少 3× 竖边、上限 34 px。
 5. 曳光用自定义粒子 `ModParticles.TURRET_TRACER` + `TurretTracerParticle`，逐帧按
    `BEAM_SPEED * dt` 推进头部、沿新段落按间距撒点；不要给初速和抖动。
-6. **每发炮弹一个 `TurretShotFx`**：`TurretClient` 固定 8 个槽位（正常帧率射程 48 / 24 格每秒 = 2 秒，
-   本地冷却 0.6 秒最多 4 发并发；4–20 FPS 区间按帧推进变慢，8 个槽位足够兜底；低于约 1.7 FPS
-   仍可能占满，属于极端情况）。
+6. **每发炮弹一个 `TurretShotFx`**：`TurretClient` 固定 16 个槽位（正常帧率射程 48 / 24 格每秒 = 2 秒，
+   全自动 5 发/秒最多约 10 发并发，单发最多 4 发；低帧率时弹道按帧推进更慢，16 个槽位兜底）。
    弹速固定 24 格/秒，但**服务端 fire() 是瞬时 hitscan**：最远 48 格时客户端命中特效/标记会比真实伤害
    晚约 2 秒（已知限制，弹道表现优先）。
    空中间距 0.12，水下间距 0.24 且同时撒 `TURRET_TRACER` 能量核心 + `TURRET_BUBBLE` 气泡尾。
@@ -77,7 +78,10 @@ mex:
 7. **命中先分类再出特效**：`ImpactPrediction` 带 `HitKind`（CREATURE / HULL_INTACT /
    HULL_BREACHED / GLASS / STRUCTURE / SEABED / MISS）。破口方块碰撞为空，COLLIDER 射线会穿过去，
    必须再用 `ClipContext.Block.OUTLINE` 扫一次（`HullBlock#getShape` 在 breached 时仍返回整格）。
-   各分支的特效、声音和 hitmarker 见 `TurretClient#spawnImpactEffects`。
+   各分支的粒子和声音见 `TurretClient#spawnImpactEffects`；**命中示意指针只在 `CREATURE` 时播放**
+   （船壳/玻璃/结构/海床/打空都不触发），颜色白色、比主准心短、从 10°/24°/38°/52°/66°/80°
+   六个预设角中随机取一个（连续不重复），用 `QUADS` 原生四边形画 1.1 GUI px 斜线，
+   8 tick 线性淡出；新命中直接替换旧指针。
 8. **三段式模型（v2）**：`art/models/turret_20261119/` 提供固定底座 / 水平旋转基座 /
    俯仰炮管三组。固定底座导出为 Java 方块模型（只含 `base` 组），旋转基座与炮管由
    `TurretRenderer` 用 BER 绘制：yaw 只转基座，炮管再叠 pitch，后坐沿局部 -Z。
@@ -126,6 +130,13 @@ mex:
     事件前拒绝，检测到 `!damaged && targetPlayer.isCreative() && hurtTime <= 0` 时调用
     `MedicalEvents.applyDirectDamage()`（近战通用：躯干钝器伤 + 50% 概率出血），
     这样创造模式单机也能验收“炮塔打玩家”。`hurtTime` 检查防止绕过原版无敌帧双倍结算。
+13. **单发/全自动（Q）**：炮塔内按 `KeyMapping` Q（`key.barotrauma.turret_fire_mode`）发
+    `TurretModePacket`；服务端 `toggleFireMode()` 校验占用者/距离后翻转 `autoFire`，
+    `setChanged()` + `broadcastState()` 并给操作者 actionbar。全自动 `fire()` 冷却
+    `AUTO_FIRE_COOLDOWN_TICKS = 4`，客户端按住左键时按服务端每 tick 同步的 cooldown 续发；
+    `requestFire()` 用 `lastFireTick` 挡同 tick 的 `startAttack` + 轮询双触发。
+    模式随炮塔 NBT `AutoFire` 持久化；`TurretStatePacket` 末尾带 `autoFire`（协议 30）。
+    Q 与原版丢弃同键，`LocalPlayerMixin` 在 `TurretClient.isActive()` 时取消 `LocalPlayer#drop`。
 
 ## 模块边界（换模型 / 2×2·3×3 时只动这些）
 
@@ -163,8 +174,9 @@ mex:
   `TurretClient.effectiveFov()`，否则光标和落点括号会和画面错位。
 - breached 的 `HullBlock` 碰撞为空，`ClipContext.Block.COLLIDER` 射线会直接穿过去；
   判“打中破口”必须补一次 `ClipContext.Block.OUTLINE`（它的 `getShape` 仍返回整格）。
-- 命中特效、hitmarker、右键瞄准都只是客户端预测/表现；服务端仍按 hitscan 结算，且没有瞄准散布。
-  要做“腰射散、瞄准不散”必须让服务端知道瞄准状态并改 `fire()`，同时 bump 协议。
+- 命中指针、弹道特效、右键瞄准都只是客户端预测/表现；服务端仍按 hitscan 瞬时结算，且没有瞄准散布。
+  客户端弹道比服务端晚到、实体位置还差一 tick，所以指针可能“假阳性/假阴性”，**不能用它判定真实伤害**。
+  要做“腰射散、瞄准不散”或服务端确认命中，必须改 `fire()`/加确认包，同时 bump 协议。
 - 地面波 `TurretGroundWave` 只在命中点 0.9 格内能找到可站立地面时触发，且按每个角度单独采样地形；
   不要在每帧对所有环点做全量地形扫描。
 - 破口 `OUTLINE` 只用于特效分类，**不要**拿 `breachPoint` 截短实体搜索：服务端 fire() 只做
@@ -207,7 +219,10 @@ mex:
 - [ ] 三种炮塔分别能进入 / 瞄准 / 开火 / 左 Shift 退出，退出后玩家视角正常
 - [ ] 落点括号位置与实际命中一致（方块与实体各试一次）
 - [ ] 深海无光环境下粒子束仍可见，且不从镜头中心射出
-- [ ] 连发 0.6 秒冷却下两发弹道同时在飞，第一发尾迹不被覆盖
+- [ ] 单发 0.6 秒冷却 / 全自动 5 发每秒都能正常连发，弹道槽位不互相覆盖
+- [ ] 炮塔内 Q 切换单发/全自动；HUD 模式显示正确，模式退出重进后保留
+- [ ] 命中指针只在生物/玩家命中时出现；随机预设角、8 tick 淡出、新命中替换旧指针
+- [ ] 打船壳/玻璃/结构/海床/打空不出现命中指针
 - [ ] 水下能看到白蓝能量核心 + 气泡尾；空气/水下命中、破口、舷窗、海床分支可肉眼区分
 - [ ] 右键瞄准：FOV 缩到 55%，准心收拢；跟随炮塔的鼠标十字 alpha 降到 35%，松开恢复
 - [ ] 瞄准时 HUD 落点括号仍与实际命中一致（缩放后投影不能错位）

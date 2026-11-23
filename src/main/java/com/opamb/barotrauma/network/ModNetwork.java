@@ -27,7 +27,8 @@ public final class ModNetwork {
     // 27：ShipWaterStatePacket 增加侧门溢流行（8 float：门槛/方向/水柱顶/接收水面/流量）。
     // 28：SwimStatePacket 首字段语义改为“是否启用水中移动”（疾跑泳姿改由客户端预测）。
     // 29：ShipWaterStatePacket 增加源维度（方块船水包是广播的，客户端拒绝异维度同坐标）。
-    private static final String PROTOCOL = "29";
+    // 30：TurretStatePacket 增加 autoFire；新增 TurretModePacket（客户端请求切换单发/全自动）。
+    private static final String PROTOCOL = "30";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -136,6 +137,9 @@ CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(TurretFirePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(TurretFirePacket::encode).decoder(TurretFirePacket::decode)
                 .consumerNetworkThread(TurretFirePacket::handle).add();
+        CHANNEL.messageBuilder(TurretModePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TurretModePacket::encode).decoder(TurretModePacket::decode)
+                .consumerNetworkThread(TurretModePacket::handle).add();
         CHANNEL.messageBuilder(TurretExitPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(TurretExitPacket::encode).decoder(TurretExitPacket::decode)
                 .consumerNetworkThread(TurretExitPacket::handle).add();
