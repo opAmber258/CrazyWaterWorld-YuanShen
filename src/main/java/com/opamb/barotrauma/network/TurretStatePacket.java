@@ -21,10 +21,13 @@ import java.util.function.Supplier;
  * <p>{@code controllerPos} 非空表示通过潜望镜进入：客户端用它校验控制器还在。
  * {@code cameraAnchor} 是服务端算好的炮塔镜头世界坐标。
  * 物理船上的方块坐标是船坞坐标，不能直接当镜头，所以必须由服务端换算后下发。</p>
+ *
+ * <p>{@code autoFire} 是炮塔当前射击模式：true = 全自动（5 发/秒）。</p>
  */
 public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldown,
                                 int operatorEntityId, boolean fromStation,
-                                BlockPos controllerPos, Vec3 cameraAnchor) {
+                                BlockPos controllerPos, Vec3 cameraAnchor,
+                                boolean autoFire) {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
@@ -43,6 +46,7 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
             buf.writeDouble(cameraAnchor.y);
             buf.writeDouble(cameraAnchor.z);
         }
+        buf.writeBoolean(autoFire);
     }
 
     public static TurretStatePacket decode(FriendlyByteBuf buf) {
@@ -56,7 +60,7 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
         Vec3 camera = buf.readBoolean()
                 ? new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()) : null;
         return new TurretStatePacket(pos, yaw, pitch, cooldown, operator, fromStation,
-                controller, camera);
+                controller, camera, buf.readBoolean());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

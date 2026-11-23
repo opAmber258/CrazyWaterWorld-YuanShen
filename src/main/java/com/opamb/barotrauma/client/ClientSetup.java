@@ -30,6 +30,7 @@ public final class ClientSetup {
         event.register(CampaignClient.OPEN_MAP);
         event.register(UnderwaterMovement.TOGGLE_NATURAL_SINK);
         event.register(PowerClient.OPEN_POWER);
+        event.register(TurretClient.TOGGLE_FIRE_MODE);
     }
 
     /** 客户端初始化：干燥区回调、渲染层与菜单界面注册。 */

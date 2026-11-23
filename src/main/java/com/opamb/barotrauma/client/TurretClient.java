@@ -9,11 +9,13 @@ import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.TurretAimPacket;
 import com.opamb.barotrauma.network.TurretExitPacket;
 import com.opamb.barotrauma.network.TurretFirePacket;
+import com.opamb.barotrauma.network.TurretModePacket;
 import com.opamb.barotrauma.network.TurretStatePacket;
 import com.opamb.barotrauma.registry.ModParticles;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.world.OceanEnvironment;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
 import net.minecraft.core.BlockPos;
@@ -41,8 +43,10 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 炮塔视角的客户端状态机（原型）。
@@ -62,6 +66,10 @@ import java.util.Optional;
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID,
         bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class TurretClient {
+
+    /** 炮塔里按 Q 切换单发/全自动。默认 Q 与原版丢弃冲突，炮塔模式下由 mixin 拦掉丢弃。 */
+    public static final KeyMapping TOGGLE_FIRE_MODE = new KeyMapping(
+            "key.barotrauma.turret_fire_mode", GLFW.GLFW_KEY_Q, "key.categories.barotrauma");
 
     /** 本地预测冷却比服务端多 2 tick，避免包在途时被服务端拒绝。 */
     private static final int LOCAL_COOLDOWN = TurretBlockEntity.FIRE_COOLDOWN_TICKS + 2;
@@ -96,11 +104,11 @@ public final class TurretClient {
     private static final float AIM_BLEND_PER_SECOND = 12.0F;
 
     /**
-     * 同时在飞的炮弹特效槽位数：正常帧率下射程 48 格 / 24 格每秒 = 2 秒飞行，
-     * 本地冷却 12 tick（0.6 秒）最多 4 发并发；低帧率时弹道按帧推进会更慢，
-     * 留到 8 个槽位兜底，避免覆盖旧弹道时把它的命中特效一起吞掉。
+     * 同时在飞的炮弹特效槽位数：正常帧率下射程 48 格 / 24 格每秒 = 2 秒飞行。
+     * 全自动 5 发/秒最多约 10 发并发，单发最多 4 发；留到 16 个槽位兜底，
+     * 避免低帧率或连发时覆盖旧弹道，把它的命中特效一起吞掉。
      */
-    private static final int SHOT_SLOTS = 8;
+    private static final int SHOT_SLOTS = 16;
 
 
     private static boolean active;
@@ -121,10 +129,27 @@ public final class TurretClient {
     private static float lastSentPitch;
     private static final TurretShotFx[] SHOTS = new TurretShotFx[SHOT_SLOTS];
     private static int nextShotSlot;
-    /** 命中确认标记：剩余 tick 与类型；由 HUD 绘制，不显示伤害数字。 */
-    private static int hitMarkerTicks;
-    private static HitKind hitMarkerKind = HitKind.MISS;
+    /** 命中示意指针：显示 8 tick，约 0.4 秒淡出。 */
+    public static final int HIT_INDICATOR_TICKS = 8;
+    /** 命中指针的预设旋转角（弧度）：每次命中随机挑一个，连续两次不重复。 */
+    private static final float[] HIT_INDICATOR_ANGLES = {
+            (float) Math.toRadians(10.0D),
+            (float) Math.toRadians(24.0D),
+            (float) Math.toRadians(38.0D),
+            (float) Math.toRadians(52.0D),
+            (float) Math.toRadians(66.0D),
+            (float) Math.toRadians(80.0D)
+    };
+
+    /** 命中示意指针剩余 tick；每次命中重置，旧指针不做叠加。 */
+    private static int hitIndicatorTicks;
+    /** 当前使用的预设角下标；-1 表示还没命中过。 */
+    private static int hitIndicatorAngleIndex = -1;
     private static int cooldown;
+    /** 服务端下发的射击模式：true = 全自动（5 发/秒）。 */
+    private static boolean autoFire;
+    /** 上一次真正发出开火包的客户端 tick：全自动下 startAttack 与轮询可能同 tick 双触发。 */
+    private static long lastFireTick = Long.MIN_VALUE;
     /** 右键瞄准：按住生效；进入炮塔的那次右键要先松开，避免一进来就缩放。 */
     private static boolean aiming;
     private static boolean aimArmed;
@@ -229,6 +254,17 @@ public final class TurretClient {
         return cooldown;
     }
 
+    /** 当前模式的完整射击间隔，HUD 装填条按它算进度。 */
+    public static int fireCooldownTicks() {
+        return autoFire
+                ? TurretBlockEntity.AUTO_FIRE_COOLDOWN_TICKS
+                : TurretBlockEntity.FIRE_COOLDOWN_TICKS;
+    }
+
+    public static boolean isAutoFire() {
+        return autoFire;
+    }
+
     /** 跟随模式下相机（玩家视角）的水平角，和 {@link #aimYaw()} 的差就是炮塔准心偏移。 */
     public static float viewYaw() {
         return viewYaw;
@@ -314,7 +350,7 @@ public final class TurretClient {
         if (minecraft.level != null
                 && minecraft.level.getBlockEntity(state.pos()) instanceof TurretBlockEntity turret) {
             turret.applyClientState(state.yaw(), state.pitch(), state.cooldown(),
-                    state.operatorEntityId());
+                    state.operatorEntityId(), state.autoFire());
         }
         if (minecraft.player == null) {
             return;
@@ -330,9 +366,19 @@ public final class TurretClient {
             if (!active || activePos == null || !state.pos().equals(activePos)) {
                 activate(state.pos(), state.yaw(), state.pitch(), state.fromStation(),
                         state.controllerPos(), state.cameraAnchor());
+                // 进入时只取一次服务端剩余冷却；之后由本地门控，避免延迟到达的旧快照
+                // 把正在递减的冷却重新拉长（CodeRabbit review on PR #82）。
+                cooldown = state.cooldown();
+                autoFire = state.autoFire();
             } else {
-                // 以服务端冷却为准，避免本地连发被拒。
-                cooldown = Math.max(cooldown, state.cooldown());
+                boolean modeChanged = autoFire != state.autoFire();
+                autoFire = state.autoFire();
+                if (modeChanged) {
+                    // 切模式时按服务端同样的规则收紧/补足冷却，不靠状态包逐 tick 覆盖。
+                    cooldown = autoFire
+                            ? Math.min(cooldown, TurretBlockEntity.AUTO_FIRE_COOLDOWN_TICKS)
+                            : Math.max(cooldown, TurretBlockEntity.FIRE_COOLDOWN_TICKS);
+                }
                 fromStation = state.fromStation();
                 activeAnchor = state.controllerPos() == null ? null
                         : state.controllerPos().immutable();
@@ -356,6 +402,9 @@ public final class TurretClient {
         lastSentYaw = yaw;
         lastSentPitch = pitch;
         cooldown = 0;
+        autoFire = false;
+        hitIndicatorTicks = 0;
+        hitIndicatorAngleIndex = -1;
         // 进入炮塔用的那次右键还按着：先要求松开，避免一进来就直接进瞄准。
         aimArmed = !minecraft.options.keyUse.isDown();
         aiming = false;
@@ -408,8 +457,9 @@ public final class TurretClient {
         aimBlend = 0.0F;
         renderedFov = Float.NaN;
         // 不要清掉在飞的炮弹：退出炮塔后它们还要继续飞完并结算命中特效。
-        hitMarkerTicks = 0;
-        hitMarkerKind = HitKind.MISS;
+        hitIndicatorTicks = 0;
+        hitIndicatorAngleIndex = -1;
+        autoFire = false;
         freeAim = false;
         tracking = false;
         fromStation = false;
@@ -433,8 +483,17 @@ public final class TurretClient {
         if (!active || activePos == null || cooldown > 0) {
             return;
         }
+        Minecraft minecraft = Minecraft.getInstance();
+        long tick = minecraft.level != null ? minecraft.level.getGameTime() : 0L;
+        // startAttack 与全自动轮询可能在同一 tick 各调一次；只允许真正发出一包。
+        if (autoFire && tick == lastFireTick) {
+            return;
+        }
+        lastFireTick = tick;
         ModNetwork.sendToServer(new TurretFirePacket(activePos));
-        cooldown = LOCAL_COOLDOWN;
+        // 全自动按服务端同款 4 tick 本地门控，避免状态包到达前每 tick 都发包/画曳光；
+        // onState 里的 Math.max 再按服务端剩余冷却校正相位。
+        cooldown = autoFire ? TurretBlockEntity.AUTO_FIRE_COOLDOWN_TICKS : LOCAL_COOLDOWN;
         startBeam();
     }
 
@@ -876,22 +935,33 @@ public final class TurretClient {
         }
     }
 
-    /** 只有真正“打中目标”才亮命中标记；海床/打空/穿洞不给。 */
+    /**
+     * 命中示意指针：只在命中“能造成伤害的目标”（生物/玩家）时闪一下。
+     * 船壳、玻璃、结构、海床和打空都不触发；每次命中随机换一个预设旋转角。
+     */
     private static void markHit(HitKind kind) {
-        if (kind == HitKind.CREATURE || kind == HitKind.HULL_INTACT || kind == HitKind.GLASS) {
-            hitMarkerTicks = 8;
-            hitMarkerKind = kind;
+        if (kind != HitKind.CREATURE) {
+            return;
         }
-        // 非命中落点不要主动清零：多发同时在飞时，后落地的一发会提前掐掉
-        // 另一发刚亮起的标记；让 8 tick 自然过期即可。
+        int length = HIT_INDICATOR_ANGLES.length;
+        int next = ThreadLocalRandom.current().nextInt(length);
+        if (length > 1 && next == hitIndicatorAngleIndex) {
+            // 在剩下的 length-1 个角度里再取一个，避免 do-while 在数组只剩 1 项时卡死。
+            next = (next + 1 + ThreadLocalRandom.current().nextInt(length - 1)) % length;
+        }
+        hitIndicatorAngleIndex = next;
+        hitIndicatorTicks = HIT_INDICATOR_TICKS;
     }
 
-    public static int hitMarkerTicks() {
-        return hitMarkerTicks;
+    public static int hitIndicatorTicks() {
+        return hitIndicatorTicks;
     }
 
-    public static HitKind hitMarkerKind() {
-        return hitMarkerKind;
+    /** 当前示意指针的旋转角（弧度）。 */
+    public static float hitIndicatorAngle() {
+        return hitIndicatorAngleIndex < 0
+                ? HIT_INDICATOR_ANGLES[0]
+                : HIT_INDICATOR_ANGLES[hitIndicatorAngleIndex];
     }
 
     static Vec3 lookVector(float yaw, float pitch) {
@@ -1045,11 +1115,20 @@ public final class TurretClient {
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || !active) {
+        if (event.phase != TickEvent.Phase.END) {
             return;
         }
-        if (hitMarkerTicks > 0) {
-            hitMarkerTicks--;
+        // 即使不在炮塔里也要清空按键队列，避免进入炮塔后补触发一次切换。
+        while (TOGGLE_FIRE_MODE.consumeClick()) {
+            if (active && activePos != null) {
+                ModNetwork.sendToServer(new TurretModePacket(activePos));
+            }
+        }
+        if (!active) {
+            return;
+        }
+        if (hitIndicatorTicks > 0) {
+            hitIndicatorTicks--;
         }
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null || activePos == null) {
@@ -1092,6 +1171,10 @@ public final class TurretClient {
         aiming = aimArmed && useDown;
         if (cooldown > 0) {
             cooldown--;
+        }
+        // 全自动：按住左键，冷却归零就补一发；单发只走 startAttack。
+        if (autoFire && minecraft.options.keyAttack.isDown()) {
+            requestFire();
         }
         // F5 不能切回第一人称：否则本机模型被剔除，玩家会以为人消失了。
         if (minecraft.options.getCameraType() != CameraType.THIRD_PERSON_BACK) {
