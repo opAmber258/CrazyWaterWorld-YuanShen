@@ -133,7 +133,8 @@ mex:
 13. **单发/全自动（Q）**：炮塔内按 `KeyMapping` Q（`key.barotrauma.turret_fire_mode`）发
     `TurretModePacket`；服务端 `toggleFireMode()` 校验占用者/距离后翻转 `autoFire`，
     `setChanged()` + `broadcastState()` 并给操作者 actionbar。全自动 `fire()` 冷却
-    `AUTO_FIRE_COOLDOWN_TICKS = 4`，客户端按住左键时按服务端每 tick 同步的 cooldown 续发；
+    `AUTO_FIRE_COOLDOWN_TICKS = 4`，客户端按住左键时按同款 4 tick 本地门控续发；
+    进入炮塔时只取一次服务端剩余冷却，之后不再用逐 tick 状态包覆盖，避免延迟快照把冷却拉长。
     `requestFire()` 用 `lastFireTick` 挡同 tick 的 `startAttack` + 轮询双触发。
     模式随炮塔 NBT `AutoFire` 持久化；`TurretStatePacket` 末尾带 `autoFire`（协议 30）。
     Q 与原版丢弃同键，`LocalPlayerMixin` 在 `TurretClient.isActive()` 时取消 `LocalPlayer#drop`。

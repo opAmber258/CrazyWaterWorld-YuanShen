@@ -366,15 +366,24 @@ public final class TurretClient {
             if (!active || activePos == null || !state.pos().equals(activePos)) {
                 activate(state.pos(), state.yaw(), state.pitch(), state.fromStation(),
                         state.controllerPos(), state.cameraAnchor());
+                // 进入时只取一次服务端剩余冷却；之后由本地门控，避免延迟到达的旧快照
+                // 把正在递减的冷却重新拉长（CodeRabbit review on PR #82）。
+                cooldown = state.cooldown();
+                autoFire = state.autoFire();
             } else {
-                // 以服务端冷却为准，避免本地连发被拒。
-                cooldown = Math.max(cooldown, state.cooldown());
+                boolean modeChanged = autoFire != state.autoFire();
+                autoFire = state.autoFire();
+                if (modeChanged) {
+                    // 切模式时按服务端同样的规则收紧/补足冷却，不靠状态包逐 tick 覆盖。
+                    cooldown = autoFire
+                            ? Math.min(cooldown, TurretBlockEntity.AUTO_FIRE_COOLDOWN_TICKS)
+                            : Math.max(cooldown, TurretBlockEntity.FIRE_COOLDOWN_TICKS);
+                }
                 fromStation = state.fromStation();
                 activeAnchor = state.controllerPos() == null ? null
                         : state.controllerPos().immutable();
                 activeCamera = state.cameraAnchor();
             }
-            autoFire = state.autoFire();
         } else if (active && state.pos().equals(activePos)) {
             deactivate(true);
         }

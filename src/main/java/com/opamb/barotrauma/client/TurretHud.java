@@ -171,9 +171,12 @@ public final class TurretHud implements IGuiOverlay {
         }
         BufferBuilder.RenderedBuffer rendered = builder.end();
 
-        // GUI 阶段本来就已经开着 blend、关着剔除；这里只切 shader，避免把状态泄漏给后续 overlay。
+        // 前面的 GuiGraphics.fill 在 flush 后可能关掉 blend；显式开启才能让 alpha 淡出生效。
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         BufferUploader.drawWithShader(rendered);
+        RenderSystem.disableBlend();
     }
 
     /**
