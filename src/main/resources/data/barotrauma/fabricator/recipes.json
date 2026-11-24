@@ -34,6 +34,24 @@
       ]
     },
     {
+      "id": "flashlight",
+      "output": "barotrauma:flashlight",
+      "count": 1,
+      "time": 10.0,
+      "money": 0,
+      "category": "Equipment",
+      "ingredients": [
+        {
+          "item": "barotrauma:aluminium",
+          "count": 2
+        },
+        {
+          "item": "barotrauma:quartz",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "fulgurium_fuel_rod",
       "output": "barotrauma:fulgurium_fuel_rod",
       "count": 1,
@@ -192,6 +210,24 @@
         {
           "item": "barotrauma:lithium",
           "count": 1
+        }
+      ]
+    },
+    {
+      "id": "fulgurium_battery_cell",
+      "output": "barotrauma:fulgurium_battery_cell",
+      "count": 1,
+      "time": 15.0,
+      "money": 0,
+      "category": "Equipment,Electrical",
+      "ingredients": [
+        {
+          "item": "barotrauma:fulgurium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:zinc",
+          "count": 2
         }
       ]
     },
@@ -366,6 +402,21 @@
       ]
     },
     {
+      "id": "fulguriumbatterycell",
+      "input": "barotrauma:fulgurium_battery_cell",
+      "time": 10.0,
+      "outputs": [
+        {
+          "item": "barotrauma:zinc",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:fulgurium",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "bornite",
       "input": "barotrauma:bornite",
       "time": 5.0,
@@ -479,6 +530,21 @@
       ]
     },
     {
+      "id": "detonator",
+      "input": "barotrauma:detonator",
+      "time": 5.0,
+      "outputs": [
+        {
+          "item": "barotrauma:copper",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:plastic",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "diamond",
       "input": "barotrauma:diamond",
       "time": 5.0,
@@ -538,6 +604,21 @@
         },
         {
           "item": "barotrauma:lead",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "flashlight",
+      "input": "barotrauma:flashlight",
+      "time": 15.0,
+      "outputs": [
+        {
+          "item": "barotrauma:aluminium",
+          "count": 1
+        },
+        {
+          "item": "barotrauma:quartz",
           "count": 1
         }
       ]

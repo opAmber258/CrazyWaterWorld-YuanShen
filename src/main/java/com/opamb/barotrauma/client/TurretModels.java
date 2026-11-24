@@ -46,6 +46,8 @@ public final class TurretModels {
             new ResourceLocation(BarotraumaMod.MOD_ID, "textures/block/turret_atlas_freeaim.png");
     private static final ResourceLocation ATLAS_TRACKING =
             new ResourceLocation(BarotraumaMod.MOD_ID, "textures/block/turret_atlas_tracking.png");
+    private static final ResourceLocation ATLAS_COILGUN =
+            new ResourceLocation(BarotraumaMod.MOD_ID, "textures/block/turret_atlas_coilgun.png");
 
     /** {x1,y1,z1,x2,y2,z2,tile}；同一组共用一个淡出透明度。 */
     private static final float[][] TURNTABLE_BOXES = {
@@ -77,11 +79,15 @@ public final class TurretModels {
 
     public static final Model FREE_AIM = DEFAULT.withAtlas(ATLAS_FREE_AIM);
     public static final Model TRACKING = DEFAULT.withAtlas(ATLAS_TRACKING);
+    public static final Model COILGUN = DEFAULT.withAtlas(ATLAS_COILGUN);
 
     private TurretModels() {
     }
 
     public static Model forBlock(Block block) {
+        if (block instanceof com.opamb.barotrauma.block.CoilgunBlock) {
+            return COILGUN;
+        }
         if (block instanceof FreeAimTurretBlock) {
             return FREE_AIM;
         }

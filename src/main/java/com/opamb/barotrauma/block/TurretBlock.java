@@ -86,6 +86,17 @@ public class TurretBlock extends BaseEntityBlock {
                 : DEFAULT_SPEC;
     }
 
+    /** 当前方块类型的武器规格；电磁炮子类覆盖成 {@link TurretWeaponKind#COILGUN}。 */
+    public TurretWeaponKind weaponKind() {
+        return TurretWeaponKind.PROTOTYPE;
+    }
+
+    public static TurretWeaponKind weaponKind(BlockState state) {
+        return state.getBlock() instanceof TurretBlock turret
+                ? turret.weaponKind()
+                : TurretWeaponKind.PROTOTYPE;
+    }
+
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(FACING, MOUNT);
@@ -206,6 +217,15 @@ public class TurretBlock extends BaseEntityBlock {
             return createTickerHelper(type, ModBlockEntities.TURRET.get(), TurretBlockEntity::clientTick);
         }
         return createTickerHelper(type, ModBlockEntities.TURRET.get(), TurretBlockEntity::serverTick);
+    }
+
+    @Override
+    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        // 炮塔里装着的弹箱随方块掉落，不能被方块本身的掉落表吞掉。
+        if (!level.isClientSide && level.getBlockEntity(pos) instanceof TurretBlockEntity turret) {
+            turret.dropAmmo();
+        }
+        super.playerWillDestroy(level, pos, state, player);
     }
 
     @Override

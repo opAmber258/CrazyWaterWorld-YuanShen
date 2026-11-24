@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "light=0": {
+      "model": "barotrauma:block/fluorescent_light_off"
+    },
+    "light=1": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=2": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=3": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=4": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=5": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=6": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=7": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=8": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=9": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=10": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=11": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=12": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=13": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=14": {
+      "model": "barotrauma:block/fluorescent_light"
+    },
+    "light=15": {
+      "model": "barotrauma:block/fluorescent_light"
+    }
+  }
+}

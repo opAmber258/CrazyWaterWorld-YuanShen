@@ -71,8 +71,8 @@ public final class TurretClient {
     public static final KeyMapping TOGGLE_FIRE_MODE = new KeyMapping(
             "key.barotrauma.turret_fire_mode", GLFW.GLFW_KEY_Q, "key.categories.barotrauma");
 
-    /** 本地预测冷却比服务端多 2 tick，避免包在途时被服务端拒绝。 */
-    private static final int LOCAL_COOLDOWN = TurretBlockEntity.FIRE_COOLDOWN_TICKS + 2;
+    /** 本地防连点等待；真实射速以服务端 cooldown 为准（每 tick 回传）。 */
+    private static final int LOCAL_COOLDOWN = 2;
 
     /** 自由瞄准：跟随角速度上限（度/秒）。 */
     private static final float FREE_AIM_MAX_SPEED = 80.0F;
@@ -146,6 +146,10 @@ public final class TurretClient {
     /** 当前使用的预设角下标；-1 表示还没命中过。 */
     private static int hitIndicatorAngleIndex = -1;
     private static int cooldown;
+    /** 服务端同步的武器状态：决定 HUD 怎么画、空弹/无电时是否发开火包。 */
+    private static boolean syncedUsesAmmo;
+    private static int syncedAmmoShots;
+    private static boolean syncedPowered = true;
     /** 服务端下发的射击模式：true = 全自动（5 发/秒）。 */
     private static boolean autoFire;
     /** 上一次真正发出开火包的客户端 tick：全自动下 startAttack 与轮询可能同 tick 双触发。 */
@@ -254,6 +258,18 @@ public final class TurretClient {
         return cooldown;
     }
 
+    public static boolean syncedUsesAmmo() {
+        return syncedUsesAmmo;
+    }
+
+    public static int syncedAmmoShots() {
+        return syncedAmmoShots;
+    }
+
+    public static boolean syncedPowered() {
+        return syncedPowered;
+    }
+
     /** 当前模式的完整射击间隔，HUD 装填条按它算进度。 */
     public static int fireCooldownTicks() {
         return autoFire
@@ -355,6 +371,9 @@ public final class TurretClient {
         if (minecraft.player == null) {
             return;
         }
+        syncedUsesAmmo = state.usesAmmo();
+        syncedAmmoShots = state.ammoShots();
+        syncedPowered = state.powered();
         boolean mine = state.operatorEntityId() == minecraft.player.getId();
         if (mine) {
             // 站台绑定距离不限：炮塔区块没加载时客户端没有方块状态/地形可渲染，
@@ -481,6 +500,10 @@ public final class TurretClient {
     /** 由 {@code Minecraft#startAttack} 的 mixin 调用（左键开火）。 */
     public static void requestFire() {
         if (!active || activePos == null || cooldown > 0) {
+            return;
+        }
+        // 空弹/无电时不要先画一道本地曳光再被服务端拒绝。
+        if (syncedUsesAmmo && (!syncedPowered || syncedAmmoShots <= 0)) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();

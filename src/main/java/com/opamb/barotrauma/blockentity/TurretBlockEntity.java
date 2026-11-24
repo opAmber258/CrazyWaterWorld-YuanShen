@@ -2,10 +2,18 @@ package com.opamb.barotrauma.blockentity;
 
 import com.opamb.barotrauma.block.TurretBlock;
 import com.opamb.barotrauma.block.TurretSpec;
+import com.opamb.barotrauma.block.TurretWeaponKind;
+import com.opamb.barotrauma.item.CoilgunAmmoBoxItem;
 import com.opamb.barotrauma.medical.bridge.MedicalEvents;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.TurretStatePacket;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.registry.ModShipBlocks;
+import com.opamb.barotrauma.ship.ShipCores;
+import com.opamb.barotrauma.ship.ShipSimulation;
+import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.ship.vs.VsPilot;
+import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -18,9 +26,11 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -96,6 +106,17 @@ public class TurretBlockEntity extends BlockEntity {
     /** 通过潜望镜进入时的控制器位置（世界坐标）；直接操作炮塔时为 null。 */
     @Nullable
     private BlockPos controllerPos;
+
+    /** 电磁炮弹箱（空 = 未装填）；原型炮塔不使用。 */
+    private ItemStack ammo = ItemStack.EMPTY;
+    /** 是否在船体几何里（决定是否走电网电压）。 */
+    private boolean onShip;
+    private double powerVoltage = 1.0D;
+    private boolean powered = true;
+    /** 船核心缓存；找不到船时冷却 1 秒再扫。 */
+    @Nullable
+    private BlockPos cachedCorePos;
+    private int coreRetryTicks;
 
     public TurretBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TURRET.get(), pos, state);
@@ -189,6 +210,22 @@ public class TurretBlockEntity extends BlockEntity {
 
     public int cooldown() {
         return cooldown;
+    }
+
+    public TurretWeaponKind weaponKind() {
+        return TurretBlock.weaponKind(getBlockState());
+    }
+
+    public ItemStack ammo() {
+        return ammo;
+    }
+
+    public int ammoShots() {
+        return CoilgunAmmoBoxItem.shotsLeft(ammo);
+    }
+
+    public boolean powered() {
+        return powered;
     }
 
     public boolean autoFire() {
@@ -382,6 +419,10 @@ public class TurretBlockEntity extends BlockEntity {
         if (!(level instanceof ServerLevel server)) {
             return;
         }
+        TurretWeaponKind kind = turret.weaponKind();
+        if (kind.powerKw() > 0.0D) {
+            turret.updatePower(server, kind);
+        }
         if (turret.cooldown > 0) {
             turret.cooldown--;
         }
@@ -464,10 +505,11 @@ public class TurretBlockEntity extends BlockEntity {
     }
 
     public void fire(ServerPlayer player) {
+        TurretWeaponKind kind = weaponKind();
         if (!isOperator(player) || !withinReach(player) || cooldown > 0) {
             return;
         }
-        cooldown = autoFire ? AUTO_FIRE_COOLDOWN_TICKS : FIRE_COOLDOWN_TICKS;
+        cooldown = autoFire ? Math.min(AUTO_FIRE_COOLDOWN_TICKS, kind.cooldownTicks()) : kind.cooldownTicks();
 
         Vec3 origin = muzzlePosition();
         Vec3 direction = lookVector();
@@ -483,7 +525,8 @@ public class TurretBlockEntity extends BlockEntity {
         // 站台接管时身体在别处，属于合法目标（也方便单机验收“炮塔打玩家”）。
         LivingEntity target = findTarget(operatorAnchor == null ? player : null, origin, end);
         if (target != null) {
-            boolean damaged = target.hurt(level.damageSources().playerAttack(player), 12.0F);
+            float damage = kind.entityDamage();
+            boolean damaged = target.hurt(level.damageSources().playerAttack(player), damage);
             if (!damaged && target instanceof Player targetPlayer
                     && !targetPlayer.isDeadOrDying()
                     && !targetPlayer.isSpectator()
@@ -491,15 +534,99 @@ public class TurretBlockEntity extends BlockEntity {
                     && targetPlayer.isCreative()) {
                 // 原版 hurt 在创造模式会直接拒绝玩家伤害；炮塔是测试武器，这里绕过拦截，
                 // 直接按医疗系统的近战通用规则注入病症。
-                MedicalEvents.applyDirectDamage(targetPlayer, 12.0F);
+                MedicalEvents.applyDirectDamage(targetPlayer, damage);
             }
             level.playSound(null, target.getX(), target.getY(), target.getZ(),
                     SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 0.35F, 1.6F);
+        } else if (blockHit.getType() == HitResult.Type.BLOCK && kind.hullDamage() > 0.0F) {
+            // 生物挡在弹道上时只打生物，不穿过去继续扣船壳。
+            damageHullBlock(blockHit.getBlockPos(), player, kind.hullDamage());
         }
 
-        level.playSound(null, origin.x, origin.y, origin.z,
-                SoundEvents.CROSSBOW_SHOOT, SoundSource.PLAYERS, 1.6F, 0.7F);
+        if (kind.usesAmmo()) {
+            // 电磁炮：原版 Coilgun1..6，这里用三叉戟投掷声近似。
+            level.playSound(null, origin.x, origin.y, origin.z,
+                    SoundEvents.TRIDENT_THROW, SoundSource.PLAYERS, 1.4F, 0.8F);
+        } else {
+            level.playSound(null, origin.x, origin.y, origin.z,
+                    SoundEvents.CROSSBOW_SHOOT, SoundSource.PLAYERS, 1.6F, 0.7F);
+        }
         broadcastState();
+    }
+
+    /** 电磁炮弹头打中船壳：走逐格耐久/破口，物理船暂不处理（炮塔还没船载化）。 */
+    private void damageHullBlock(BlockPos hitPos, ServerPlayer player, float amount) {
+        if (!(level instanceof ServerLevel server)) {
+            return;
+        }
+        if (!ModShipBlocks.isRepairableHull(level.getBlockState(hitPos))) {
+            return;
+        }
+        ShipCoreBlockEntity core = ShipCores.nearestCore(server, hitPos, 64.0D);
+        if (core != null) {
+            core.damageBlock(server, hitPos, amount, player);
+        }
+    }
+
+    /* ------------------------------------------------------------ 弹药 */
+
+    /** 装填弹箱；已装填时提示并吞掉这次交互，避免又进入炮塔。 */
+    public boolean loadAmmo(ServerPlayer player, ItemStack stack) {
+        if (!weaponKind().usesAmmo()) {
+            return false;
+        }
+        if (!ammo.isEmpty()) {
+            player.displayClientMessage(
+                    Component.translatable("msg.barotrauma.turret.ammo_full"), true);
+            return true;
+        }
+        ItemStack loaded = stack.copy();
+        loaded.setCount(1);
+        ammo = loaded;
+        stack.shrink(1);
+        setChanged();
+        player.displayClientMessage(Component.translatable(
+                "msg.barotrauma.turret.ammo_loaded", ammoShots()), true);
+        return true;
+    }
+
+    public boolean unloadAmmo(ServerPlayer player) {
+        if (ammo.isEmpty()) {
+            return false;
+        }
+        ItemStack box = ammo.copy();
+        ammo = ItemStack.EMPTY;
+        if (!player.getInventory().add(box)) {
+            player.drop(box, false);
+        }
+        setChanged();
+        player.displayClientMessage(
+                Component.translatable("msg.barotrauma.turret.ammo_unloaded"), true);
+        return true;
+    }
+
+    /** 方块被拆时把弹箱掉出来。 */
+    public void dropAmmo() {
+        if (!ammo.isEmpty() && level != null) {
+            Block.popResource(level, getBlockPos(), ammo);
+        }
+        ammo = ItemStack.EMPTY;
+    }
+
+    private boolean consumeAmmo() {
+        if (ammoShots() <= 0) {
+            if (!ammo.isEmpty()) {
+                ammo = ItemStack.EMPTY;
+                setChanged();
+            }
+            return false;
+        }
+        ammo.setDamageValue(ammo.getDamageValue() + 1);
+        if (ammo.getDamageValue() >= ammo.getMaxDamage()) {
+            ammo = ItemStack.EMPTY;
+        }
+        setChanged();
+        return true;
     }
 
     /**
@@ -564,6 +691,59 @@ public class TurretBlockEntity extends BlockEntity {
                 <= MAX_OPERATOR_DISTANCE * MAX_OPERATOR_DISTANCE;
     }
 
+    /* ------------------------------------------------------------ 电网 */
+
+    /** 电磁炮占用时向附近船的电网报 1000 kW；电压不够时不能开火。 */
+    private void updatePower(ServerLevel server, TurretWeaponKind kind) {
+        ShipState ship = resolveShip(server);
+        if (ship == null) {
+            onShip = false;
+            powerVoltage = 1.0D;
+            powered = true;
+            return;
+        }
+        // 炮塔还不在 isShipBlock 里，不能用 tracksHullBlock 过滤；按最近核心认船，
+        // 船上的炮塔正常吃船电，荒野里单独摆的炮塔找不到核心就按“有电”处理。
+        onShip = true;
+        BlockPos cell = assemblyPos(getBlockPos());
+        ShipSimulation simulation = ship.simulation();
+        double demand = operator == null ? 0.0D : kind.powerKw();
+        simulation.reportConsumer(cell, demand, kind.minVoltage(), null);
+        powerVoltage = simulation.consumerVoltage(cell);
+        powered = powerVoltage >= kind.minVoltage();
+    }
+
+    private static BlockPos assemblyPos(BlockPos pos) {
+        return VsState.active() && VsPilot.isYardBlock(pos) ? VsPilot.toAssembly(pos) : pos;
+    }
+
+    /** 和电池/灯具同一套：缓存核心位置，找不到船冷却 1 秒再扫。 */
+    @Nullable
+    private ShipState resolveShip(ServerLevel server) {
+        if (VsState.active() && VsPilot.isYardBlock(getBlockPos())) {
+            return VsState.activeState();
+        }
+        if (cachedCorePos != null && server.hasChunkAt(cachedCorePos)
+                && server.getBlockEntity(cachedCorePos) instanceof ShipCoreBlockEntity core) {
+            ShipState state = core.state() != null ? core.state() : core.rescan(server);
+            if (state != null) {
+                return state;
+            }
+        }
+        if (coreRetryTicks > 0) {
+            coreRetryTicks--;
+            return null;
+        }
+        coreRetryTicks = 20;
+        // 炮塔不在船体几何里，按最近核心认船（相邻两船时取最近）。
+        ShipCoreBlockEntity core = ShipCores.nearestCore(server, assemblyPos(getBlockPos()), 48.0D);
+        cachedCorePos = core == null ? null : core.getBlockPos().immutable();
+        if (core == null) {
+            return null;
+        }
+        return core.state() != null ? core.state() : core.rescan(server);
+    }
+
     /**
      * 操作者看到的镜头位置（世界坐标）。
      *
@@ -605,7 +785,8 @@ public class TurretBlockEntity extends BlockEntity {
 
     public TurretStatePacket statePacket() {
         return new TurretStatePacket(getBlockPos(), yaw, pitch, cooldown, operatorEntityId,
-                operatorAnchor != null, controllerPos, cameraAnchor(), autoFire);
+                  operatorAnchor != null, controllerPos, cameraAnchor(),
+                  weaponKind().usesAmmo(), ammoShots(), powered, autoFire);
     }
 
     public void broadcastState() {
@@ -646,6 +827,9 @@ public class TurretBlockEntity extends BlockEntity {
         super.saveAdditional(tag);
         tag.putFloat("TurretYaw", yaw);
         tag.putFloat("TurretPitch", pitch);
+        if (!ammo.isEmpty()) {
+            tag.put("Ammo", ammo.save(new CompoundTag()));
+        }
         tag.putBoolean("AutoFire", autoFire);
     }
 
@@ -658,6 +842,7 @@ public class TurretBlockEntity extends BlockEntity {
         if (tag.contains("TurretPitch")) {
             this.pitch = tag.getFloat("TurretPitch");
         }
+        this.ammo = tag.contains("Ammo") ? ItemStack.of(tag.getCompound("Ammo")) : ItemStack.EMPTY;
         this.autoFire = tag.getBoolean("AutoFire");
         this.prevYaw = this.yaw;
         this.prevPitch = this.pitch;

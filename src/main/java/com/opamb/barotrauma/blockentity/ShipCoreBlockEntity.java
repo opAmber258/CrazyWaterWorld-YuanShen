@@ -89,6 +89,12 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     private long lastTickGameTime = Long.MIN_VALUE;
     /** 上次标脏时的存档签名（水量 + 压载标定）；每 40 tick 比一次。 */
     private long lastPersistedSignature = Long.MIN_VALUE;
+    /** 上次比较存档签名的 tick。 */
+    private long lastPersistCheckGameTime = Long.MIN_VALUE;
+    /** 上次检查船体破损（hullIntact）的 tick。 */
+    private long lastHullCheckGameTime = Long.MIN_VALUE;
+    /** 上次结算海压的 tick。 */
+    private long lastPressureGameTime = Long.MIN_VALUE;
     /** 方块船的水面同步计时。 */
     private long lastWaterSyncGameTime = Long.MIN_VALUE;
     /** 船壳耐久同步计时（受击/焊接时立即发，平时低频刷新）。 */
@@ -188,10 +194,21 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             com.opamb.barotrauma.ship.vs.VsState.observePhysicalCore(server, pos);
             return;
         }
+        // ShipState 不存档。世界重开后不主动补扫的话，方块船的模拟、水包和客户端
+        // 干区都要等玩家碰声纳/水泵才出现；这段时间客户端一个水盒都没有，
+        // 整艘船会被当成舱外海水（全船水下滤镜）。
+        if (be.state == null) {
+            be.rescan(level);
+        }
         if (be.state != null) {
             // P3：方块船也吃海压（深度 = 核心所在深度）
+            boolean pressureDue = due(now, be.lastPressureGameTime,
+                    com.opamb.barotrauma.ship.ShipPressure.INTERVAL_TICKS);
+            if (pressureDue) {
+                be.lastPressureGameTime = now;
+            }
             if (com.opamb.barotrauma.ship.ShipPressure.tick((ServerLevel) level,
-                    be.state, -pos.getY())) {
+                    be.state, -pos.getY(), pressureDue)) {
                 be.setChanged();
             }
             // 导航台/声纳终端耗电 110 kW（原作 Steering 10 + Sonar 100），
@@ -209,8 +226,9 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             // 逐格场：重力下落 + 开门/舱口压力流
             be.state.simulation().tickWaterFlow(0.1D);
             // 水量/压载标定变了必须标脏：未标脏的区块可能被存档跳过，
-            // 重进世界会把进水清空。每 40 tick 比一次签名，避免每 tick 写盘。
-            if (now % 40L == 0L) {
+            // 重进世界会把进水清空。每 40 tick 比一次，避免每 tick 写盘。
+            if (due(now, be.lastPersistCheckGameTime, 40L)) {
+                be.lastPersistCheckGameTime = now;
                 long signature = be.persistenceSignature();
                 if (signature != be.lastPersistedSignature) {
                     be.lastPersistedSignature = signature;
@@ -223,17 +241,23 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             // 不再把水位写成 MC 水方块：那会造成"无限水/海绵无效"，
             // 而且物理船体积内被流体拦截挡住也写不进去。水面由客户端自绘。
             // 每 40 tick 检查船体有没有破洞；破了就重新分舱（破口舱室会变成"连海"并灌满）
-            if (now % 40L == 0L && !be.state.hullIntact(level)) {
-                be.rescan(level);
-                com.opamb.barotrauma.BarotraumaMod.LOGGER.info(
-                        "[ship] 方块船船体破损，已重扫：舱室 {}｜连海 {}｜连海水 {} 单位",
-                        be.state.compartments().size(),
-                        be.state.geometry().openPockets().size(),
-                        Math.round(be.state.simulation().pocketWaterTotal()));
+            if (due(now, be.lastHullCheckGameTime, 40L)) {
+                be.lastHullCheckGameTime = now;
+                if (!be.state.hullIntact(level)) {
+                    be.rescan(level);
+                    com.opamb.barotrauma.BarotraumaMod.LOGGER.info(
+                            "[ship] 方块船船体破损，已重扫：舱室 {}｜连海 {}｜连海水 {} 单位",
+                            be.state.compartments().size(),
+                            be.state.geometry().openPockets().size(),
+                            Math.round(be.state.simulation().pocketWaterTotal()));
+                }
             }
             // 方块船也要把水面状态发给客户端（物理船走 VsPilot 的同步）。
             // 和模拟步进一样每 2 tick（10 Hz）发一次，客户端插值才不会看到台阶。
-            if (now % 2L == 0L && now != be.lastWaterSyncGameTime) {
+            // 这里必须用“距上次发送的差值”判断：本 tick 已经被上面的节流固定在
+            // 某一奇偶的 tick 上，用 now % 2 == 0 会在奇数会话里永远不成立，
+            // 客户端整船收不到水盒（干区失效 → 全船水下滤镜）。
+            if (due(now, be.lastWaterSyncGameTime, 2L)) {
                 be.lastWaterSyncGameTime = now;
                 com.opamb.barotrauma.network.ModNetwork.sendToAll(
                         com.opamb.barotrauma.ship.ShipWaterStateBuilder.build(
@@ -247,6 +271,17 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
             // 第一次 tick 必须发一次（哪怕是空包），否则客户端可能留着上一艘船的血条。
             be.sendHullDamage(level, be.lastHullSyncGameTime == Long.MIN_VALUE);
         }
+    }
+
+    /**
+     * 距上次执行是否已经过了 {@code interval} tick。
+     *
+     * <p>周期任务不能用 {@code gameTime % interval == 0}：{@link #serverTick} 只在
+     * 固定奇偶的 tick 上运行（每 2 tick 一次），落在奇数会话里偶数周期永远不命中，
+     * 海压/耐久落盘/水面同步会整局停摆。</p>
+     */
+    private static boolean due(long now, long last, long interval) {
+        return last == Long.MIN_VALUE || now - last >= interval;
     }
 
     // ------------------------------------------------------------------ 船壳耐久

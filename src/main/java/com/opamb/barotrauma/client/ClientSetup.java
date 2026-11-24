@@ -70,7 +70,22 @@ public final class ClientSetup {
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.DECONSTRUCTOR.get(),
                     DeconstructorScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.LIGHT.get(), LightScreen::new);
         });
+    }
+
+    @SubscribeEvent
+    public static void onRegisterBlockColors(
+            net.minecraftforge.client.event.RegisterColorHandlersEvent.Block event) {
+        // 每盏灯按坐标取色：Colorful Lighting 采样白色发光面板后乘这个 tint。
+        event.register(LightClientColors::tint,
+                com.opamb.barotrauma.registry.ModBlocks.LAMP.get(),
+                com.opamb.barotrauma.registry.ModBlocks.EMERGENCY_LIGHT.get(),
+                com.opamb.barotrauma.registry.ModBlocks.FLUORESCENT_LIGHT.get());
+        // 手电筒的隐形光源：固定纯白，别让自动取色把不可见方块当成黑色。
+        event.register((state, level, pos, tintIndex) -> 0xFFFFFF,
+                com.opamb.barotrauma.registry.ModBlocks.FLASHLIGHT_LIGHT.get());
     }
 
     @SubscribeEvent
@@ -86,6 +101,7 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void onRegisterShaders(RegisterShadersEvent event) {
         ShipWaterMaterial.register(event);
+        FlashlightRenderer.register(event);
     }
 
 

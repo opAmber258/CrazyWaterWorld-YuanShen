@@ -212,6 +212,59 @@ public final class ModBlocks {
                     .strength(6.0F, 200.0F)
                     .sound(SoundType.METAL)));
 
+    // ---- 占位灯具（2026-11-23） ----
+    /*
+     * 正式模型未到，先用舱顶薄板占位。原版儒艮号的三类灯具：
+     *   lamp           5 kW，主照明，可开关/调色；
+     *   emergencylight 0 W，常亮暗红，断电也亮；
+     *   lightfluorescentl01/l02/m04 5 kW，大舱室长条灯。
+     */
+    /** 吊灯（占位）：主照明。 */
+    public static final RegistryObject<Block> LAMP = BLOCKS.register("lamp",
+            () -> new com.opamb.barotrauma.block.LightBlock(
+                    com.opamb.barotrauma.block.LightBlock.Kind.LAMP,
+                    lightProps(com.opamb.barotrauma.block.LightBlock.Kind.LAMP)));
+
+    /** 应急灯（占位）：常亮暗红。 */
+    public static final RegistryObject<Block> EMERGENCY_LIGHT = BLOCKS.register("emergency_light",
+            () -> new com.opamb.barotrauma.block.LightBlock(
+                    com.opamb.barotrauma.block.LightBlock.Kind.EMERGENCY,
+                    lightProps(com.opamb.barotrauma.block.LightBlock.Kind.EMERGENCY)));
+
+    /** 荧光灯（占位）：大舱室长条灯。 */
+    public static final RegistryObject<Block> FLUORESCENT_LIGHT = BLOCKS.register("fluorescent_light",
+            () -> new com.opamb.barotrauma.block.LightBlock(
+                    com.opamb.barotrauma.block.LightBlock.Kind.FLUORESCENT,
+                    lightProps(com.opamb.barotrauma.block.LightBlock.Kind.FLUORESCENT)));
+
+    /** 旧手电筒光源的存档兼容注册。保留原亮度以便移除时触发一次光照清理。 */
+    public static final RegistryObject<Block> FLASHLIGHT_LIGHT = BLOCKS.register("flashlight_light",
+            () -> new com.opamb.barotrauma.block.FlashlightLightBlock(
+                    BlockBehaviour.Properties.of()
+                            .noCollission()
+                            .noOcclusion()
+                            .replaceable()
+                            .noLootTable()
+                            .strength(-1.0F, 3600000.0F)
+                            .lightLevel(state -> state.getValue(
+                                    net.minecraft.world.level.block.LightBlock.LEVEL))
+                            .isViewBlocking((state, level, pos) -> false)
+                            .isSuffocating((state, level, pos) -> false)));
+
+    private static BlockBehaviour.Properties lightProps(
+            com.opamb.barotrauma.block.LightBlock.Kind kind) {
+        return BlockBehaviour.Properties.of()
+                .mapColor(kind.mapColor())
+                .strength(2.0F, 6.0F)
+                .sound(SoundType.METAL)
+                // 薄板灯：不挡视线、不窒息、无碰撞，也不遮挡相邻方块的面。
+                .noOcclusion()
+                .noCollission()
+                .lightLevel(state -> state.getValue(com.opamb.barotrauma.block.LightBlock.LIGHT))
+                .isViewBlocking((state, level, pos) -> false)
+                .isSuffocating((state, level, pos) -> false);
+    }
+
     // ---- 潜渊症容器（2026-11-10） ----
     /** 中型钢柜：5×4 主格 + 3 个移动容器格。 */
     public static final RegistryObject<Block> MEDIUM_STEEL_CABINET = BLOCKS.register("medium_steel_cabinet",
@@ -313,6 +366,10 @@ public final class ModBlocks {
     /** 跟随炮塔（原型）：视角自由，炮塔准心限速追视角中心。 */
     public static final RegistryObject<Block> TRACKING_TURRET = BLOCKS.register("tracking_turret",
             () -> new TrackingTurretBlock(turretProperties()));
+
+    /** 电磁炮：复用炮塔瞄准，弹药箱装填 + 船电网 1000 kW。 */
+    public static final RegistryObject<Block> COILGUN = BLOCKS.register("coilgun",
+            () -> new com.opamb.barotrauma.block.CoilgunBlock(turretProperties()));
 
     /** 炮塔瞄准站（开发者工具）：绑定炮塔后右键接管瞄准视角。 */
     public static final RegistryObject<Block> TURRET_STATION = BLOCKS.register("turret_station",

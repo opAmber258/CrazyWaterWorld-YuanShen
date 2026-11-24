@@ -127,6 +127,15 @@ public final class ModBlockEntities {
                             ModBlocks.VENT.get())
                     .build(null));
 
+    /** 灯具：每盏灯的颜色/开关（三种灯共用一套方块实体）。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.LightBlockEntity>> LIGHT =
+            BLOCK_ENTITIES.register("light", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.LightBlockEntity::new,
+                            ModBlocks.LAMP.get(),
+                            ModBlocks.EMERGENCY_LIGHT.get(),
+                            ModBlocks.FLUORESCENT_LIGHT.get())
+                    .build(null));
+
     /** 潜渊症容器：钢柜/带窗钢柜/货架/潜水服柜/氧气瓶架共用一套方块实体。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.CabinetBlockEntity>> CABINET =
             BLOCK_ENTITIES.register("cabinet", () -> BlockEntityType.Builder
@@ -158,13 +167,21 @@ public final class ModBlockEntities {
                     .of(com.opamb.barotrauma.blockentity.TurretBlockEntity::new,
                             ModBlocks.TURRET.get(),
                             ModBlocks.FREE_AIM_TURRET.get(),
-                            ModBlocks.TRACKING_TURRET.get())
+                            ModBlocks.TRACKING_TURRET.get(),
+                            ModBlocks.COILGUN.get())
                     .build(null));
 
     /** 炮塔瞄准站：只存绑定的炮塔坐标，同步给客户端画绑定连线。 */
     public static final RegistryObject<BlockEntityType<TurretStationBlockEntity>> TURRET_STATION =
             BLOCK_ENTITIES.register("turret_station", () -> BlockEntityType.Builder
                     .of(TurretStationBlockEntity::new, ModBlocks.TURRET_STATION.get())
+                    .build(null));
+
+    /** 手电筒隐形光源：方块实体只负责在没有玩家追踪时自删。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.FlashlightLightBlockEntity>> FLASHLIGHT_LIGHT =
+            BLOCK_ENTITIES.register("flashlight_light", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.FlashlightLightBlockEntity::new,
+                            ModBlocks.FLASHLIGHT_LIGHT.get())
                     .build(null));
 
     // 船核心方块已经合并进声纳台（SonarBlockEntity extends ShipCoreBlockEntity），

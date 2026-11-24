@@ -5,7 +5,6 @@ import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.particle.TextureSheetParticle;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.world.phys.Vec3;
 
@@ -36,12 +35,6 @@ final class MarineSnowParticle extends TextureSheetParticle {
             return;
         }
         setAlpha(0.53F * Math.max(0.0F, Math.min(1.0F, Math.min(age / 8.0F, (lifetime - age) / 18.0F))));
-    }
-
-    @Override
-    protected int getLightColor(float partialTick) {
-        int light = super.getLightColor(partialTick);
-        return LightTexture.pack(Math.max(7, LightTexture.block(light)), LightTexture.sky(light));
     }
 
     @Override

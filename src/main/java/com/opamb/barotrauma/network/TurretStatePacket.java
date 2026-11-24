@@ -22,12 +22,14 @@ import java.util.function.Supplier;
  * {@code cameraAnchor} 是服务端算好的炮塔镜头世界坐标。
  * 物理船上的方块坐标是船坞坐标，不能直接当镜头，所以必须由服务端换算后下发。</p>
  *
+ * <p>{@code usesAmmo/ammoShots/powered} 供电磁炮 HUD 显示和空弹/无电时的本地开火拦截；
+ * 原型炮塔 {@code usesAmmo=false}，HUD 仍显示无限弹药。</p>
  * <p>{@code autoFire} 是炮塔当前射击模式：true = 全自动（5 发/秒）。</p>
  */
 public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldown,
                                 int operatorEntityId, boolean fromStation,
                                 BlockPos controllerPos, Vec3 cameraAnchor,
-                                boolean autoFire) {
+                                  boolean usesAmmo, int ammoShots, boolean powered, boolean autoFire) {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
@@ -46,6 +48,9 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
             buf.writeDouble(cameraAnchor.y);
             buf.writeDouble(cameraAnchor.z);
         }
+        buf.writeBoolean(usesAmmo);
+        buf.writeVarInt(ammoShots);
+        buf.writeBoolean(powered);
         buf.writeBoolean(autoFire);
     }
 
@@ -59,8 +64,11 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
         BlockPos controller = buf.readBoolean() ? buf.readBlockPos() : null;
         Vec3 camera = buf.readBoolean()
                 ? new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()) : null;
+        boolean usesAmmo = buf.readBoolean();
+        int ammoShots = buf.readVarInt();
+        boolean powered = buf.readBoolean();
         return new TurretStatePacket(pos, yaw, pitch, cooldown, operator, fromStation,
-                controller, camera, buf.readBoolean());
+                  controller, camera, usesAmmo, ammoShots, powered, buf.readBoolean());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

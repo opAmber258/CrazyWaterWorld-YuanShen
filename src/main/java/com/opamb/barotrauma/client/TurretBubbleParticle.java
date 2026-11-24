@@ -57,12 +57,6 @@ public final class TurretBubbleParticle extends TextureSheetParticle {
         }
     }
 
-    /** 深海没有光源，气泡也要保持可见。 */
-    @Override
-    protected int getLightColor(float partialTick) {
-        return 0xF000F0;
-    }
-
     @Override
     public ParticleRenderType getRenderType() {
         return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;

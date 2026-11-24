@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "barotrauma:headset"
+    "barotrauma:headset",
+    "barotrauma:flashlight"
   ]
 }

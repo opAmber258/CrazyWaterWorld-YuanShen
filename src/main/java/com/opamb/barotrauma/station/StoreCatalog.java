@@ -90,6 +90,8 @@ public final class StoreCatalog {
             add(list, ModItems.WELDING_TOOL, 150, 4, "tools", true);
             add(list, ModItems.PLASMA_CUTTER, 150, 4, "tools", true);
             add(list, ModItems.DIVING_KNIFE, 40, 6, "tools", true);
+            add(list, ModItems.FLASHLIGHT, 200, 4, "tools", true);
+            add(list, ModItems.BATTERY_CELL, 125, 8, "tools", true);
             // 燃料
             add(list, ModItems.URANIUM_FUEL_ROD, 150, 4, "fuel", true);
             add(list, ModItems.THORIUM_FUEL_ROD, 200, 3, "fuel", true);

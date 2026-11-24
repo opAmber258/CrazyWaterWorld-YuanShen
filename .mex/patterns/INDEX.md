@@ -28,6 +28,7 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [cthulhu-post-processing.md](cthulhu-post-processing.md) | Adding or tuning a Cthulhu-gaze visual preset, its shader mode, effect icon, or fade behavior |
 | [debug-hull-damage.md](debug-hull-damage.md) | Diagnosing missing hull durability, damage bars, welding, or “block won’t break” |
 | [debug-ship-water.md](debug-ship-water.md) | Diagnosing dry ships, missing flooding, or missing water visuals |
+| [debug-lighting.md](debug-lighting.md) | Diagnosing flashlight aim lag, light-related world loading stalls, or fixture tint |
 | [deliver-model-asset.md](deliver-model-asset.md) | Delivering a Bedrock-format model asset that ships a geo.json (prop / item / creature / GeckoLib block) — Java `java_block` models use blockbench-modeling.md |
 | [developer-tools.md](developer-tools.md) | Adding a creative-tab debug item, its screen, or a server-validated edit packet |
 | [publish.md](publish.md) | Publishing changes (走流程 / `/publish`): art-only checks → direct main push; code/shared tools/policies → MEX bookkeeping and PR |
