@@ -14,7 +14,7 @@ edges:
   - target: context/conventions.md
     condition: when adding the packet or screen for a new debug tool
 grounds_to: []
-last_updated: 2026-11-09
+last_updated: 2026-11-24
 mex:
   id: mx_01M6YVNYH6918E8JA3Z0MHSHW9
   type: pattern
@@ -36,12 +36,13 @@ mex:
 
 创造模式有独立的 `itemGroup.barotrauma.dev` 页签（`ModCreativeTabs` 里的 `DEV`，图标是医疗调试器），只放调试/彩蛋物品，不污染主页签。当前内容：`medical_debugger`、`67`、`cpu_6700x3d`、`cthulhu_trigger`。
 
-调试物品的模式固定为「客户端开面板，编辑走服务端包」：
+需要修改服务端状态的调试物品由客户端开面板，编辑走服务端包。
 
 - `MedicalDebuggerItem.use()`：`level.isClientSide` 时 `DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> MedicalDebugScreen.open())`，返回 `InteractionResultHolder.sidedSuccess(stack, level.isClientSide)`。
 - `MedicalDebugPacket` 动作 0–6：SET/ADD 病症、清部位、清全部、SET/ADD/CLEAR 活力覆盖。服务端校验 `isCreative() || hasPermissions(2)`，每次编辑回发一次 `MedicalSyncPacket` 快照，面板不用等每秒同步。
 - 活力覆盖存在 `AfflictionContainer.vitalityOverride`，以 `v|<值>` 行进 NBT/同步（`rows()`/`loadRow`），可以设负数测倒地、−100 测真死。
 - `CthulhuTriggerItem` + `CthulhuGazePacket` 用同一套校验（`canUse`），证明这套模式可以复用。
+- 深海亮度调试器只改本机光图。右键循环亮度，潜行右键回到 0%。限定未开放局域网的本地单人深海，必须是创造玩家或有管理员权限。切换世界、退出或失去权限后清除覆盖。状态无需同步或保存。
 
 ## Steps
 

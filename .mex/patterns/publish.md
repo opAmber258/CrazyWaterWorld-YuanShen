@@ -10,7 +10,7 @@ edges:
   - target: context/conventions.md
     condition: when the change touches code conventions or the verify checklist
 grounds_to: []
-last_updated: 2026-11-15
+last_updated: 2026-11-24
 mex:
   id: mx_01M6Y1VF5VEPY23G7RHKEJ5PDJ
   type: pattern
@@ -47,9 +47,15 @@ mex:
 2. **MEX 记账（必做）**：更新 `ROUTER.md` 的 Current Project State；可复用的踩坑写进 `patterns/` 并登记 `INDEX.md`；长期约定写进 `context/`；设计依据写进 `docs/`。确实无需文档时，发布时给 PR 加 `mex-skip` 标签并写明原因。
 3. 从最新 `main` 建 `<type>/<slug>` 分支；若当前已在任务分支且有未发布提交，**复用当前分支**，不要重开分支丢提交。代码与文档改动一起提交（中文信息，写动机与影响面）。
 4. 推送分支 → 创建或复用 PR：先 `gh pr list --head "<branch>" --state open --json number,headRepository` 并核对源仓库（`--head` 不支持 `owner:branch`，会跨 fork 命中同名分支），有则复用更新，为空才 `gh pr create`；正文按模板填写，明确 MEX 结论。
-5. 等 CodeRabbit 与 `mex-guard` 检查；每修完意见推送新提交后，重新等最新提交上的检查结果；未解决线程清零前不合并。
+5. 等首轮 CodeRabbit 审查和 `mex-guard`，按下方规则核对审查发现。合并前确认最新提交的适用 CI 和相关测试结果。
 6. 合并 PR，删除本地和远端任务分支。
 7. 报告：合并 hash、L1/实机验证、文档改动清单、遗留风险。
+
+## CodeRabbit 审查
+
+- 普通 PR 保留一轮独立的 CodeRabbit 审查。每条意见先核对改动涉及的路径，再用自动测试或可重复的实机步骤证实问题。
+- 只修改测试证实的问题，修完用相同用例复跑。未复现、重复或仅涉及个人偏好的意见，简单回复证据或保留理由后结案。已证实且未解决的问题阻止合并。
+- 修复后优先复跑相关用例和 CI。只有后续改动扩大影响范围，或出现新的可复现问题时，才针对变动范围追加审查。避免在 CodeRabbit 与其他模型之间反复转发整份 PR。最终合并由维护者决定。
 
 ## 门禁与豁免
 

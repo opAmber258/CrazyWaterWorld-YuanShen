@@ -28,7 +28,7 @@ public final class ShipPressure {
     public static final double RATING_PER_UPGRADE = 0.15D;
 
     /** 每 2 秒压伤一次。 */
-    private static final int INTERVAL_TICKS = 40;
+    public static final int INTERVAL_TICKS = 40;
     /** 每次压伤：随机一格扣 2% 最大血量。 */
     private static final float DAMAGE_FRACTION = 0.02F;
 
@@ -52,11 +52,19 @@ public final class ShipPressure {
      * @return 本次是否造成了伤害（调用方可据此刷新血条/存档）
      */
     public static boolean tick(ServerLevel level, ShipState state, double depthMeters) {
+        return tick(level, state, depthMeters, level.getGameTime() % INTERVAL_TICKS == 0L);
+    }
+
+    /**
+     * @param due 本次是否到了结算窗口。方块船的 tick 被固定在某一奇偶的 tick 上，
+     *            不能用 {@code gameTime % INTERVAL_TICKS == 0} 判断，由调用方按差值决定。
+     */
+    public static boolean tick(ServerLevel level, ShipState state, double depthMeters, boolean due) {
         if (state == null || depthMeters <= ratingMeters(state)) {
             return false;
         }
         long now = level.getGameTime();
-        if (now % INTERVAL_TICKS != 0L) {
+        if (!due) {
             return false;
         }
         List<BlockPos> hull = List.copyOf(state.geometry().hull());

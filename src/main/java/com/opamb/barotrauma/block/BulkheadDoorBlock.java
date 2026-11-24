@@ -323,12 +323,14 @@ public class BulkheadDoorBlock extends BaseEntityBlock {
 
     @Override
     public int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
-        return state.getValue(OPEN) ? 0 : super.getLightBlock(state, level, pos);
+        // 和水平舱口一致：关着的门完全挡光，打开才让光通过。
+        // super 对薄门板只衰减 1 级，隔壁舱室的灯会整片漏过来。
+        return state.getValue(OPEN) ? 0 : 15;
     }
 
     @Override
     public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
-        return state.getValue(OPEN) || super.propagatesSkylightDown(state, level, pos);
+        return state.getValue(OPEN);
     }
 
     @Override

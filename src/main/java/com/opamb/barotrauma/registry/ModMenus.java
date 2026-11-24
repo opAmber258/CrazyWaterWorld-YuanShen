@@ -90,6 +90,11 @@ public final class ModMenus {
             MENUS.register("crate", () -> IForgeMenuType.create(
                     com.opamb.barotrauma.menu.CrateMenu::new));
 
+    /** 灯具面板：一盏灯的 RGB 滑条 + 开关。 */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.LightMenu>> LIGHT =
+            MENUS.register("light", () -> IForgeMenuType.create(
+                    com.opamb.barotrauma.menu.LightMenu::new));
+
     private ModMenus() {
     }
 

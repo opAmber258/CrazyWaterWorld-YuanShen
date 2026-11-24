@@ -41,6 +41,7 @@ last_updated: 2026-11-22
 ## 客户端/服务端分工
 
 - 服务端用流体场判定浸没，设备空隙可查询水盒。客户端用 `ShipWaterStatePacket` 的水盒和落水数据绘制及查询。
+- 方块船的水包由 `ShipCoreBlockEntity.serverTick` 以 10 Hz 广播。该 tick 被节流成每 2 tick 且**奇偶固定**，所有周期任务（水面同步、海压、耐久落盘签名、破损重扫）必须用“距上次执行的差值”判断；`gameTime % N == 0` 在奇数会话里永远不会命中，表现为客户端整船没有水盒 → 全船水下滤镜。`ShipState` 不存档，核心 tick 在 `state == null` 时自己补扫，否则世界重开后要等玩家碰声纳/水泵才有干区。
 - 服务端干湿**直接用逐格场**（`VsPilot.isPlayerInDryCompartment` 按格子查 `bodyOf/levelAt`），不要回落到客户端水盒：粗化 bbox 会盖住别舱的干格。方块船 `OceanEnvironment.blockShipDryAt` 按距离遍历所有候选核心，第一个覆盖该点的水盒结果才算数（只看最近核心会在两船相邻时选错船）。
 - 方块船水包是广播的：`ShipWaterStatePacket` 带源维度（协议 29），客户端在别的维度拒绝该包，渲染阶段也不画旧维度残留的水体。
 - `OceanEnvironment.isSubmerged` 先排除真实碰撞形状。物理船用逆变换查船坞中的方块；相机按渲染变换取样。旁观模式跳过假水泳姿和随船拖拽。

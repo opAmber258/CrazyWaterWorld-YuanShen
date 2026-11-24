@@ -125,7 +125,7 @@ final class ShipWaterMaterial {
             if (!hasGeometry) {
                 return new Result(0, 0, refract);
             }
-            ShipWaterMesh.VertexSink sink = vertices(view, toCamera, refract, light);
+            ShipWaterMesh.VertexSink sink = vertices(view, toCamera, refract);
             int flowTriangles = 0;
             if (refract && eyeWet) {
                 if (flows != null && flows.hasPaths()) {
@@ -176,8 +176,7 @@ final class ShipWaterMaterial {
         }
     }
 
-    private static ShipWaterMesh.VertexSink vertices(Matrix4f view, Matrix4d toCamera, boolean refract,
-                                                     UnderwaterEffects.WaterLight light) {
+    private static ShipWaterMesh.VertexSink vertices(Matrix4f view, Matrix4d toCamera, boolean refract) {
         return (x, y, z, belowSurface, strength) -> {
             toCamera.transformPosition(POSITION.set(x, y, z));
             var vertex = BUFFER.vertex(view, (float) POSITION.x, (float) POSITION.y, (float) POSITION.z);
@@ -187,8 +186,8 @@ final class ShipWaterMaterial {
                 float lip = strength * (1.0F - Math.min(1.0F, Math.abs(belowSurface) / 0.24F));
                 float opacity = belowSurface < 0.0F
                         ? 0.07F + Math.min(0.18F, -belowSurface) + lip * 0.08F : 0.22F + lip * 0.08F;
-                vertex.color(0.032F + light.red() + lip * 0.035F, 0.10F + light.green() + lip * 0.08F,
-                        0.13F + light.blue() + lip * 0.08F, opacity).endVertex();
+                // 无法采样场景色时只衰减背后的光，透明备用水网格不能自行发光。
+                vertex.color(0.0F, 0.0F, 0.0F, opacity).endVertex();
             }
         };
     }

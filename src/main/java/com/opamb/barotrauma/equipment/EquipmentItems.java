@@ -65,6 +65,7 @@ public final class EquipmentItems {
                         output.accept(ModItems.OXYGEN_TANK.get());
                         output.accept(ID_CARD.get());
                         output.accept(HEADSET.get());
+                        output.accept(ModItems.FLASHLIGHT.get());
                         output.accept(BALLISTIC_HELMET.get());
                         output.accept(BODY_ARMOR.get());
                         output.accept(TOOLBELT.get());

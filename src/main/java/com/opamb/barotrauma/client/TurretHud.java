@@ -325,6 +325,8 @@ public final class TurretHud implements IGuiOverlay {
                 ? "gui.barotrauma.turret.tracking.title"
                 : freeAim
                 ? "gui.barotrauma.turret.free_aim.title"
+                : TurretClient.syncedUsesAmmo()
+                ? "gui.barotrauma.turret.coilgun.title"
                 : "gui.barotrauma.turret.title");
         graphics.drawString(minecraft.font, title, textX, panelY + 6, TEXT, true);
 
@@ -333,8 +335,14 @@ public final class TurretHud implements IGuiOverlay {
         graphics.drawString(minecraft.font,
                 Component.translatable("gui.barotrauma.turret.aim", yaw, pitch),
                 textX, panelY + 19, TEXT_DIM, false);
-        graphics.drawString(minecraft.font,
-                Component.translatable("gui.barotrauma.turret.ammo"), textX, panelY + 31, TEXT_DIM, false);
+        Component ammoText = TurretClient.syncedUsesAmmo()
+                ? Component.translatable("gui.barotrauma.turret.ammo_count",
+                        TurretClient.syncedAmmoShots(),
+                        com.opamb.barotrauma.item.CoilgunAmmoBoxItem.SHOTS)
+                : Component.translatable("gui.barotrauma.turret.ammo");
+        boolean noPower = TurretClient.syncedUsesAmmo() && !TurretClient.syncedPowered();
+        graphics.drawString(minecraft.font, ammoText, textX, panelY + 31,
+                noPower ? 0xFFFF6B5E : TEXT_DIM, false);
         if (freeAim) {
             graphics.drawString(minecraft.font,
                     Component.translatable("gui.barotrauma.turret.free_aim.offset",
@@ -359,10 +367,14 @@ public final class TurretHud implements IGuiOverlay {
             }
         }
 
-        Component status = Component.translatable(ready
-                ? "gui.barotrauma.turret.ready" : "gui.barotrauma.turret.reloading");
+        boolean noAmmo = TurretClient.syncedUsesAmmo() && TurretClient.syncedAmmoShots() <= 0;
+        Component status = Component.translatable(noPower
+                ? "gui.barotrauma.turret.no_power"
+                : noAmmo
+                ? "gui.barotrauma.turret.no_ammo_status"
+                : ready ? "gui.barotrauma.turret.ready" : "gui.barotrauma.turret.reloading");
         graphics.drawString(minecraft.font, status, panelX + panelWidth - 7 - minecraft.font.width(status),
-                panelY + 6, ready ? READY : COOLING, true);
+                panelY + 6, noPower || noAmmo ? 0xFFFF6B5E : ready ? READY : COOLING, true);
 
         Component hint = Component.translatable(tracking
                 ? "gui.barotrauma.turret.tracking.hint"

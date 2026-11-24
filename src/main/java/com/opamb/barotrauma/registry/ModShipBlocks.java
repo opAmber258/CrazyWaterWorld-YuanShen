@@ -211,6 +211,14 @@ public final class ModShipBlocks {
         if (state.getBlock() == ModBlocks.SMALL_PUMP.get()) {
             return false;
         }
+        // 灯具是舱顶薄板（无碰撞），不能把舱室隔开，也不能挡水。
+        if (state.getBlock() instanceof com.opamb.barotrauma.block.LightBlock) {
+            return false;
+        }
+        // 手电筒的隐形光源只是临时放的一格空气灯，不能隔舱/挡水。
+        if (state.getBlock() instanceof com.opamb.barotrauma.block.FlashlightLightBlock) {
+            return false;
+        }
         // 接线盒是墙挂小盒（0.625×1×0.55），不该占满整格挡水/分舱。
         if (state.getBlock() == ModBlocks.JUNCTION_BOX.get()) {
             return false;
@@ -275,6 +283,7 @@ public final class ModShipBlocks {
                 || block == ModBlocks.DECONSTRUCTOR.get()
                 || block == ModBlocks.OXYGEN_GENERATOR.get()
                 || block == ModBlocks.VENT.get()
+                || block instanceof com.opamb.barotrauma.block.LightBlock
                 || block == ModBlocks.REACTOR.get()
                 || block == ModBlocks.ENGINE.get()
                 || block == SONAR.get()
@@ -309,6 +318,7 @@ public final class ModShipBlocks {
                 || block == ModBlocks.DECONSTRUCTOR.get()
                 || block == ModBlocks.OXYGEN_GENERATOR.get()
                 || block == ModBlocks.VENT.get()
+                || block instanceof com.opamb.barotrauma.block.LightBlock
                 // 容器家具也要跟船走，否则装配后钢柜/货架留在码头原地。
                 || block == ModBlocks.MEDIUM_STEEL_CABINET.get()
                 || block == ModBlocks.MEDIUM_WINDOWED_STEEL_CABINET.get()

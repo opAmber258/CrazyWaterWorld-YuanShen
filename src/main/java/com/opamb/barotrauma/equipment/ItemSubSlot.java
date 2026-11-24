@@ -1,6 +1,8 @@
 package com.opamb.barotrauma.equipment;
 
+import com.opamb.barotrauma.item.BatteryCellItem;
 import com.opamb.barotrauma.item.DivingSuitItem;
+import com.opamb.barotrauma.item.FlashlightItem;
 import com.opamb.barotrauma.item.WeldingToolItem;
 import com.opamb.barotrauma.registry.ModItems;
 import net.minecraft.nbt.CompoundTag;
@@ -20,12 +22,13 @@ public final class ItemSubSlot {
     private ItemSubSlot() {
     }
 
-    /** 宿主物品是不是有子格（潜水服 / 焊接工具 / 等离子切割机）。 */
+    /** 宿主物品是不是有子格（潜水服 / 焊接工具 / 等离子切割机 / 手电筒）。 */
     public static boolean hasSubSlot(ItemStack host) {
         return !host.isEmpty()
                 && (host.getItem() instanceof DivingSuitItem
                 || host.getItem() instanceof WeldingToolItem
-                || host.getItem() instanceof com.opamb.barotrauma.item.PlasmaCutterItem);
+                || host.getItem() instanceof com.opamb.barotrauma.item.PlasmaCutterItem
+                || host.getItem() instanceof FlashlightItem);
     }
 
     /** 子格里现在装的东西。 */
@@ -76,6 +79,10 @@ public final class ItemSubSlot {
             // tools.xml 里对 weldingfueltank 有 OnUse 爆炸效果），所以这里直接拒绝。
             return candidate.is(EquipmentTags.OXYGEN_TANK);
         }
+        if (host.getItem() instanceof FlashlightItem) {
+            // 原作 flashlight 的 ItemContainer 只收 mobilebattery（电池 cell）。
+            return candidate.getItem() instanceof BatteryCellItem;
+        }
         return false;
     }
 
@@ -90,6 +97,9 @@ public final class ItemSubSlot {
         }
         if (host.getItem() instanceof WeldingToolItem) {
             return "FUEL";
+        }
+        if (host.getItem() instanceof FlashlightItem) {
+            return "BAT";
         }
         return "";
     }
