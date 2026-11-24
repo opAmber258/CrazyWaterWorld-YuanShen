@@ -19,7 +19,7 @@
 - 已读原作 1.13.5.0 `tools.xml` 748–798、`poweritems.xml` 346–407 和 `lights.xml` 283–336、488–508。原作手电筒拿在任一手或戴在头上即常亮，光锥射程 800 显示单位（约 8 米），每秒消耗 0.2 条件值，剩余 1 点切换到强闪动。普通和闪光素电池分别有 100、200 条件值。Wiki 的瞄准/使用说明描述操作键，XML 的常亮由 `Holdable` 和 `LightComponent` 驱动。[手电筒](https://barotraumagame.com/wiki/Flashlight) · [闪光素电池](https://barotraumagame.com/wiki/Fulgurium_Battery_Cell)
 - 原作客户端从物件绘制位置更新光源，方向决定光锥，使用单独照明图，有遮挡光源的重算预算为每帧五个。本机 `Content/Lights/lightcone.png` 中段测得外缘半角约 27°，半强度约 15°。模组用程序生成相近的软光锥，射程按 8 格适配 Minecraft。用可见场景深度重建表面并计算入射角和近距离遮挡，水下增加有限散射，放在现有水体合成前。手电筒照明由客户端逐帧计算，服务端只处理电池和点亮状态。旧光源注册用于载入旧存档，随已加载区块清除遗留方块。该 3D 方案的遮挡信息来自当前相机可见区域。[原作 LightManager](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Lights/LightManager.cs#L260-L373) · [原作 LightSource](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Lights/LightSource.cs#L1496-L1553)
 - 吊灯和荧光灯 XML 的功耗为 5，白色半强度、射程 800。应急灯无电力输入，红色强度 25/255、射程 250。保留现有固定灯供电和 RGBA 面板，减少同一颜色在区块加载时重复触发彩色光重算。[原作 LightComponent](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Signal/LightComponent.cs#L283-L411)
-- Java 17 对 17 个直接改动的源文件完成类型检查。隐藏 OpenGL 上下文用实际 GLSL 和深度纹理核对了光斑随视角移动、布纹对比保留、射程和衰减、画面内隔板遮挡、低电强度与水下散射。隔离的服务端逻辑验证通过 13 项，覆盖主手、副手、头戴及 500/1000 秒耗电。旧方块兼容、原作配方、双语和资源 JSON 已静态核对。玩家光源状态增加一字节实体数据，联机协议升为 32。按本轮源码交付约定，Gradle 构建、专用服 GameTest 和实船存档加载待运行。
+- Java 17 对 17 个直接改动的源文件完成类型检查。隐藏 OpenGL 上下文用实际 GLSL 和深度纹理核对了光斑随视角移动、布纹对比保留、射程和衰减、画面内隔板遮挡、低电强度与水下散射。隔离的服务端逻辑验证通过 13 项，覆盖主手、副手、头戴及 500/1000 秒耗电。旧方块兼容、原作配方、双语和资源 JSON 已静态核对。玩家光源状态增加一字节实体数据，联机协议升为 33（与 #82 的 30 合并后统一编号）。本轮已跑 `./gradlew compileJava` 与 `./gradlew test`（416 项通过）；实船存档加载与游戏内验收待运行。
 
 ## 2026-11-22 薄水折射、贴壁来水、涉水和粒子暂停
 
