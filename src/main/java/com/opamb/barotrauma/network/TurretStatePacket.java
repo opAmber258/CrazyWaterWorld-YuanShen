@@ -24,11 +24,12 @@ import java.util.function.Supplier;
  *
  * <p>{@code usesAmmo/ammoShots/powered} 供电磁炮 HUD 显示和空弹/无电时的本地开火拦截；
  * 原型炮塔 {@code usesAmmo=false}，HUD 仍显示无限弹药。</p>
+ * <p>{@code autoFire} 是炮塔当前射击模式：true = 全自动（5 发/秒）。</p>
  */
 public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldown,
                                 int operatorEntityId, boolean fromStation,
                                 BlockPos controllerPos, Vec3 cameraAnchor,
-                                boolean usesAmmo, int ammoShots, boolean powered) {
+                                  boolean usesAmmo, int ammoShots, boolean powered, boolean autoFire) {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
@@ -50,6 +51,7 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
         buf.writeBoolean(usesAmmo);
         buf.writeVarInt(ammoShots);
         buf.writeBoolean(powered);
+        buf.writeBoolean(autoFire);
     }
 
     public static TurretStatePacket decode(FriendlyByteBuf buf) {
@@ -66,7 +68,7 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
         int ammoShots = buf.readVarInt();
         boolean powered = buf.readBoolean();
         return new TurretStatePacket(pos, yaw, pitch, cooldown, operator, fromStation,
-                controller, camera, usesAmmo, ammoShots, powered);
+                  controller, camera, usesAmmo, ammoShots, powered, buf.readBoolean());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

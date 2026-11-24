@@ -1,14 +1,20 @@
 package com.opamb.barotrauma.client;
 
-import com.opamb.barotrauma.blockentity.TurretBlockEntity;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
 
 /**
  * 炮塔独立 HUD：黑色观察窗边框 + 专属准星 + 方位/俯仰/装填状态。
@@ -31,6 +37,9 @@ public final class TurretHud implements IGuiOverlay {
     private static final int FREE_CURSOR_SHADOW = 0xB0201206;
     private static final int TRACKING_RETICLE = 0xFFFF8A5C;
 
+    /** 命中指针的线段 builder：复用，避免每帧 new（native 内存回收慢）。 */
+    private static final BufferBuilder HIT_LINE_BUILDER = new BufferBuilder(1024);
+
     @Override
     public void render(ForgeGui gui, GuiGraphics graphics, float partialTick, int width, int height) {
         if (!TurretClient.isActive()) {
@@ -40,11 +49,6 @@ public final class TurretHud implements IGuiOverlay {
         int centerY = height / 2;
         boolean ready = TurretClient.cooldown() <= 0;
         int reticle = ready ? READY : COOLING;
-        // 命中生物的头几 tick，把准心染成暖红，和冷却色区分开。
-        if (TurretClient.hitMarkerKind() == TurretClient.HitKind.CREATURE
-                && TurretClient.hitMarkerTicks() > 4) {
-            reticle = 0xFFFF6B5E;
-        }
 
         drawFrame(graphics, width, height);
         if (TurretClient.isFreeAim()) {
@@ -56,8 +60,8 @@ public final class TurretHud implements IGuiOverlay {
         if (impact != null) {
             drawTrackingImpact(graphics, width, height, impact);
         }
-        if (TurretClient.hitMarkerTicks() > 0) {
-            drawHitMarker(graphics, centerX, centerY);
+        if (TurretClient.hitIndicatorTicks() > 0) {
+            drawHitIndicator(graphics, centerX, centerY);
         }
         drawPanel(graphics, width, height, ready, impact);
     }
@@ -92,15 +96,9 @@ public final class TurretHud implements IGuiOverlay {
         if (TurretClient.isTracking()) {
             color = fadeAlpha(color, 1.0F - 0.65F * TurretClient.aimBlend());
         }
-        // 命中生物时四臂向外弹 1–2px，作为“打中了”的准心反馈。
-        int pulse = 0;
-        if (TurretClient.hitMarkerKind() == TurretClient.HitKind.CREATURE
-                && TurretClient.hitMarkerTicks() > 0) {
-            pulse = TurretClient.hitMarkerTicks() > 5 ? 2 : 1;
-        }
         // 瞄准时准心收拢，提示“现在是高精度状态”。
         int aimTighten = Math.round(3.0F * TurretClient.aimBlend());
-        int gap = 7 - aimTighten + pulse;
+        int gap = 7 - aimTighten;
         int length = 13 - Math.round(2.0F * TurretClient.aimBlend());
         // 上
         graphics.fill(centerX, centerY - gap - length, centerX + 1, centerY - gap, color);
@@ -120,43 +118,65 @@ public final class TurretHud implements IGuiOverlay {
         if (ready) {
             graphics.fill(left, barY, left + barWidth, barY + 2, 0x668FF0D0);
         } else {
+            int totalTicks = TurretClient.fireCooldownTicks()
+                    + (TurretClient.isAutoFire() ? 0 : 2);
             float progress = 1.0F - Mth.clamp(TurretClient.cooldown()
-                    / (float) (TurretBlockEntity.FIRE_COOLDOWN_TICKS + 2), 0.0F, 1.0F);
+                    / (float) Math.max(1, totalTicks), 0.0F, 1.0F);
             graphics.fill(left, barY, left + (int) (barWidth * progress), barY + 2, COOLING);
         }
     }
 
     /**
-     * 命中确认：在准心右上方画一个短命标记，不挡中心视野。
-     * 生物 = 白色 X；船壳 = 灰色菱形；舷窗 = 青色菱形；海床/打空/穿洞不显示。
+     * 命中示意指针：比主准心略小、略短的四臂十字，整体旋转一个角度后闪现并淡出。
+     * 每次命中从多个预设角中随机换一个；新命中直接替换旧指针，不叠加。
+     * 用原生四边形绘制斜线，并按 GUI 像素给足线宽，避免 GL_LINES 太细。
      */
-    private static void drawHitMarker(GuiGraphics graphics, int centerX, int centerY) {
-        TurretClient.HitKind kind = TurretClient.hitMarkerKind();
-        if (kind != TurretClient.HitKind.CREATURE
-                && kind != TurretClient.HitKind.HULL_INTACT
-                && kind != TurretClient.HitKind.GLASS) {
+    private static void drawHitIndicator(GuiGraphics graphics, int centerX, int centerY) {
+        int ticks = TurretClient.hitIndicatorTicks();
+        if (ticks <= 0) {
             return;
         }
-        int ticks = TurretClient.hitMarkerTicks();
-        int alpha = (int) (0xFF * Mth.clamp(ticks / 8.0F, 0.0F, 1.0F));
-        int x = centerX + 20;
-        int y = centerY - 20;
-        if (kind == TurretClient.HitKind.CREATURE) {
-            // 命中生物：暖红 X，先弹大再收回，告诉玩家“这一发确实咬肉了”。
-            int age = 8 - ticks;
-            int arm = age <= 2 ? 5 : 4;
-            int color = (alpha << 24) | 0xFF6B5E;
-            for (int i = -arm; i <= arm; i++) {
-                graphics.fill(x + i, y + i, x + i + 1, y + i + 1, color);
-                graphics.fill(x + i, y - i, x + i + 1, y - i + 1, color);
-            }
-            return;
+        float fade = Mth.clamp(ticks / (float) TurretClient.HIT_INDICATOR_TICKS, 0.0F, 1.0F);
+        int alpha = (int) (0xFF * fade);
+        float angle = TurretClient.hitIndicatorAngle();
+        float inner = 5.0F;
+        float outer = 14.0F;
+        // 半个线宽：1.1 GUI px；主准心是 1 px，这里略粗一点保证看得见。
+        float halfWidth = 0.55F;
+
+        Matrix4f matrix = graphics.pose().last().pose();
+        if (HIT_LINE_BUILDER.building()) {
+            HIT_LINE_BUILDER.discard();
         }
-        int color = (alpha << 24) | (kind == TurretClient.HitKind.GLASS ? 0x8FE8FF : 0xBFC6CC);
-        for (int i = -4; i <= 4; i++) {
-            int halfWidth = 4 - Math.abs(i);
-            graphics.fill(x - halfWidth, y + i, x + halfWidth + 1, y + i + 1, color);
+        BufferBuilder builder = HIT_LINE_BUILDER;
+        builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        for (int arm = 0; arm < 4; arm++) {
+            double armAngle = angle + arm * (Math.PI / 2.0D);
+            float dx = (float) Math.cos(armAngle);
+            float dy = (float) Math.sin(armAngle);
+            float px = -dy * halfWidth;
+            float py = dx * halfWidth;
+            float innerX = centerX + dx * inner;
+            float innerY = centerY + dy * inner;
+            float outerX = centerX + dx * outer;
+            float outerY = centerY + dy * outer;
+            builder.vertex(matrix, innerX + px, innerY + py, 0.0F)
+                    .color(255, 255, 255, alpha).endVertex();
+            builder.vertex(matrix, outerX + px, outerY + py, 0.0F)
+                    .color(255, 255, 255, alpha).endVertex();
+            builder.vertex(matrix, outerX - px, outerY - py, 0.0F)
+                    .color(255, 255, 255, alpha).endVertex();
+            builder.vertex(matrix, innerX - px, innerY - py, 0.0F)
+                    .color(255, 255, 255, alpha).endVertex();
         }
+        BufferBuilder.RenderedBuffer rendered = builder.end();
+
+        // 前面的 GuiGraphics.fill 在 flush 后可能关掉 blend；显式开启才能让 alpha 淡出生效。
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        BufferUploader.drawWithShader(rendered);
+        RenderSystem.disableBlend();
     }
 
     /**
@@ -343,6 +363,12 @@ public final class TurretHud implements IGuiOverlay {
         boolean noPower = TurretClient.syncedUsesAmmo() && !TurretClient.syncedPowered();
         graphics.drawString(minecraft.font, ammoText, textX, panelY + 31,
                 noPower ? 0xFFFF6B5E : TEXT_DIM, false);
+        // 射击模式放在同一行右侧，避免再加一行把 48 高的面板撑破。
+        // 不用 ammo_mode 键：那个键自带「弹药 ∞」前缀，电磁炮已有独立弹药数会重复。
+        Component mode = Component.translatable(TurretClient.isAutoFire()
+                ? "gui.barotrauma.turret.mode.auto"
+                : "gui.barotrauma.turret.mode.single");
+        graphics.drawString(minecraft.font, mode, textX + 92, panelY + 31, TEXT_DIM, false);
         if (freeAim) {
             graphics.drawString(minecraft.font,
                     Component.translatable("gui.barotrauma.turret.free_aim.offset",

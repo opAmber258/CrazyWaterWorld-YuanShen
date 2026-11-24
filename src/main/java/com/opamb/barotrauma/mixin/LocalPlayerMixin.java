@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.mixin;
 
 import com.mojang.authlib.GameProfile;
+import com.opamb.barotrauma.client.TurretClient;
 import com.opamb.barotrauma.client.UnderwaterMovement;
 import com.opamb.barotrauma.item.TwoHanded;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -59,6 +60,11 @@ public abstract class LocalPlayerMixin extends AbstractClientPlayer {
 
     @Inject(method = "drop", at = @At("HEAD"), cancellable = true)
     private void barotrauma$serverAuthoritativeDrop(boolean all, CallbackInfoReturnable<Boolean> cir) {
+        // 炮塔里 Q 是射击模式切换键；顺手把原版丢弃整个挡掉，避免 Q 同时丢物品。
+        if (TurretClient.isActive()) {
+            cir.setReturnValue(false);
+            return;
+        }
         LocalPlayer self = (LocalPlayer) (Object) this;
         self.connection.send(new ServerboundPlayerActionPacket(
                 all ? ServerboundPlayerActionPacket.Action.DROP_ALL_ITEMS

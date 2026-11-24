@@ -56,8 +56,11 @@ import java.util.UUID;
  */
 public class TurretBlockEntity extends BlockEntity {
 
-    /** 开火间隔（tick）：0.5 秒，和原版炮塔的连射节奏接近。 */
+    /** 单发间隔（tick）：0.5 秒，和原版炮塔的连射节奏接近。 */
     public static final int FIRE_COOLDOWN_TICKS = 10;
+
+    /** 全自动间隔（tick）：4 tick = 5 发/秒。 */
+    public static final int AUTO_FIRE_COOLDOWN_TICKS = 4;
 
     /** 射程（格）。 */
     public static final double RANGE = 48.0D;
@@ -83,6 +86,8 @@ public class TurretBlockEntity extends BlockEntity {
     private float prevYaw;
     private float prevPitch;
     private int cooldown;
+    /** true = 全自动（按住左键每 4 tick 连发）；false = 单发。 */
+    private boolean autoFire;
     /** 客户端最近一次请求的目标角：服务端每 tick 朝它转，丢包不会丢掉剩余角度。 */
     private float aimTargetYaw;
     private float aimTargetPitch;
@@ -221,6 +226,10 @@ public class TurretBlockEntity extends BlockEntity {
 
     public boolean powered() {
         return powered;
+    }
+
+    public boolean autoFire() {
+        return autoFire;
     }
 
     public int operatorEntityId() {
@@ -500,17 +509,7 @@ public class TurretBlockEntity extends BlockEntity {
         if (!isOperator(player) || !withinReach(player) || cooldown > 0) {
             return;
         }
-        if (kind.powerKw() > 0.0D && !powered) {
-            player.displayClientMessage(
-                    Component.translatable("msg.barotrauma.turret.no_power"), true);
-            return;
-        }
-        if (kind.usesAmmo() && !consumeAmmo()) {
-            player.displayClientMessage(
-                    Component.translatable("msg.barotrauma.turret.no_ammo"), true);
-            return;
-        }
-        cooldown = kind.cooldownTicks();
+        cooldown = autoFire ? Math.min(AUTO_FIRE_COOLDOWN_TICKS, kind.cooldownTicks()) : kind.cooldownTicks();
 
         Vec3 origin = muzzlePosition();
         Vec3 direction = lookVector();
@@ -628,6 +627,28 @@ public class TurretBlockEntity extends BlockEntity {
         }
         setChanged();
         return true;
+    }
+
+    /**
+     * 切换单发/全自动。只有当前操作者能切；模式跟炮塔走，重新进入或重启后保留。
+     * 切到全自动时把剩余冷却压到全自动间隔；切回单发时至少补足单发间隔，
+     * 避免靠反复切模式绕过 10 tick 冷却。
+     */
+    public void toggleFireMode(ServerPlayer player) {
+        if (!isOperator(player) || !withinReach(player)) {
+            return;
+        }
+        autoFire = !autoFire;
+        if (autoFire) {
+            cooldown = Math.min(cooldown, AUTO_FIRE_COOLDOWN_TICKS);
+        } else {
+            cooldown = Math.max(cooldown, FIRE_COOLDOWN_TICKS);
+        }
+        setChanged();
+        broadcastState();
+        player.displayClientMessage(Component.translatable(autoFire
+                ? "msg.barotrauma.turret.mode.auto"
+                : "msg.barotrauma.turret.mode.single"), true);
     }
 
     @Nullable
@@ -764,8 +785,8 @@ public class TurretBlockEntity extends BlockEntity {
 
     public TurretStatePacket statePacket() {
         return new TurretStatePacket(getBlockPos(), yaw, pitch, cooldown, operatorEntityId,
-                operatorAnchor != null, controllerPos, cameraAnchor(),
-                weaponKind().usesAmmo(), ammoShots(), powered);
+                  operatorAnchor != null, controllerPos, cameraAnchor(),
+                  weaponKind().usesAmmo(), ammoShots(), powered, autoFire);
     }
 
     public void broadcastState() {
@@ -788,13 +809,15 @@ public class TurretBlockEntity extends BlockEntity {
     }
 
     /** 客户端收包后写入纯表现字段（不参与服务端占用逻辑）。 */
-    public void applyClientState(float newYaw, float newPitch, int newCooldown, int newOperatorId) {
+    public void applyClientState(float newYaw, float newPitch, int newCooldown, int newOperatorId,
+                                 boolean newAutoFire) {
         this.prevYaw = this.yaw;
         this.prevPitch = this.pitch;
         this.yaw = newYaw;
         this.pitch = newPitch;
         this.cooldown = newCooldown;
         this.operatorEntityId = newOperatorId;
+        this.autoFire = newAutoFire;
     }
 
     // ---- 保存 ----
@@ -807,6 +830,7 @@ public class TurretBlockEntity extends BlockEntity {
         if (!ammo.isEmpty()) {
             tag.put("Ammo", ammo.save(new CompoundTag()));
         }
+        tag.putBoolean("AutoFire", autoFire);
     }
 
     @Override
@@ -819,6 +843,7 @@ public class TurretBlockEntity extends BlockEntity {
             this.pitch = tag.getFloat("TurretPitch");
         }
         this.ammo = tag.contains("Ammo") ? ItemStack.of(tag.getCompound("Ammo")) : ItemStack.EMPTY;
+        this.autoFire = tag.getBoolean("AutoFire");
         this.prevYaw = this.yaw;
         this.prevPitch = this.pitch;
     }
