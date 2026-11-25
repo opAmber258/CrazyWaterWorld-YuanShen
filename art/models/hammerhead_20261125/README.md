@@ -28,7 +28,11 @@ Blockbench 5.2.2 重开工程、回导几何并复核两段巡航共 182 个采�
 
 ## 预览
 
-[前后对比](preview_comparison.png) · [整模正视](preview_front.png) · [整模斜视](preview_oblique.png) · [锤面正视](preview_head_front.png) · [锤面俯视](preview_head_top.png) · [锤面侧视](preview_head_profile.png) · [锤面下视](preview_head_below.png) · [锤面转向](preview_head_turn.png) · [慢速巡航](preview_swim_cruise_head.webp) · [高速巡航](preview_swim_fast_head.webp) · [验证记录](validation.json)
+[前后对比](preview_comparison.png) · [整模正视](preview_front.png) · [整模斜视](preview_oblique.png) · [锤面正视](preview_head_front.png) · [锤面俯视](preview_head_top.png) · [锤面侧视](preview_head_profile.png) · [锤面下视](preview_head_below.png) · [锤面转向](preview_head_turn.png) · [慢速巡航 GIF](preview_swim_cruise_head.gif) · [高速巡航 GIF](preview_swim_fast_head.gif) · [慢速巡航 WebP](preview_swim_cruise_head.webp) · [高速巡航 WebP](preview_swim_fast_head.webp) · [验证记录](validation.json)
+
+![慢速巡航](preview_swim_cruise_head.gif) ![高速巡航](preview_swim_fast_head.gif)
+
+两条巡航各出 GIF 与 WebP 两版：GIF 为 540×405、20 fps 无缝循环，供 GitHub 与文档内直接播放；WebP 为 720×540 原尺寸高质量版本。
 
 ## 复现
 
@@ -42,4 +46,9 @@ python reference/check_motion.py hammerhead.bbmodel scratch --port 9430
 
 `reference/assemble.py` 与 `reference/parts/head/patch.py` 记录本轮如何从上一版本地底稿生成成品；底稿未随包，对成品重跑会重复施加局部补丁，仅供追溯。`reference/compare_head.py` 生成前后对比图，默认字体取本机 `C:/Windows/Fonts/msyh.ttc`，可用 `--font` 指向其他字体。
 
-预览与两条巡航的 WebP 由上述 Blockbench 调试会话经 `reference/render_blockbench.py` 和 `reference/check_motion.py` 导出：没有可连接的 Blockbench 5.2.2 调试会话时，仓库内无法重现这批图。
+预览与两条巡航的 WebP 由上述 Blockbench 调试会话经 `reference/render_blockbench.py` 和 `reference/check_motion.py` 导出：没有可连接的 Blockbench 5.2.2 调试会话时，仓库内无法重现这批图。GIF 由 WebP 逐帧等比缩到 540×405 后用 Pillow 转出（20 fps、无限循环），不需要 Blockbench，用 `reference/make_gif.py` 即可重跑：
+
+```powershell
+python reference/make_gif.py preview_swim_cruise_head.webp preview_swim_cruise_head.gif
+python reference/make_gif.py preview_swim_fast_head.webp preview_swim_fast_head.gif
+```
