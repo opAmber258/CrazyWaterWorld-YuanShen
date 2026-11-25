@@ -1,0 +1,89 @@
+{
+  "asset": "periscope",
+  "identifier": "periscope",
+  "date": "2026-11-25",
+  "status": "complete",
+  "status_reason": "候选 B（1.3 吊装组合体）美术侧交付齐备；预览由交付自建离线渲染器生成（脚本入库）。Java 方块模型 JSON 因旋转超限/多轴未随附，见 limitations。",
+  "creation_source": "人工（Han-xing-official）",
+  "contributors": {
+    "human": ["Han-xing-official"],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线渲染校验、预览渲染（离线渲染器）、文档与登记起草；未参与几何/UV/贴图制作"
+      }
+    ],
+    "division": "几何、UV、贴图绘制全部人工完成；AI 仅做交付打包、离线校验与预览渲染。"
+  },
+  "display_name_zh": "潜望镜",
+  "display_name_en": "Periscope",
+  "candidate": "B（1.3 吊装组合体；候选 A = 1.2 单体，见 periscope_20261120/）",
+  "prototyping_note": "原版条目 entityname.periscope。本版为天花板吊装组合（镜体 + 吊架），几何 = 镜体 43 cubes + 底座 1.1 的 35 cubes。本机无游戏目录，未直接核验 XML。",
+  "production": {
+    "model_format": "java_block",
+    "bbmodel_format_version": "5.0",
+    "blockbench": "5.x（作者 2026-11-24 保存工程）",
+    "textures_embedded": true,
+    "texture_reembedding": "交付副本已用作者最终 潜望镜1.3.png 重新内嵌（原工程内嵌为旧版；原工程文件未改动）",
+    "registered_type": "方块"
+  },
+  "counts": {
+    "cubes": 78,
+    "declared_faces": 468,
+    "groups": 20,
+    "bones": 0,
+    "animations": 0,
+    "hidden_elements": 0,
+    "rotated_cubes": 56,
+    "multi_axis_rotated": 16,
+    "over_limit_angle_rotated": 26,
+    "zero_thickness_planes": 2,
+    "inflated_cubes": 27
+  },
+  "bounds_blockbench_units": {
+    "min": [-0.5, -8, -2],
+    "max": [16.5, 30, 18.5],
+    "size": [17.0, 38.0, 20.5]
+  },
+  "dimensions_blocks_at_16_units_per_block": [1.0625, 2.375, 1.28125],
+  "diff_vs_candidate_a": "候选 A（1.2）：43 cubes / 9.000×21.000×17.322 单位 / 128×64 贴图；本候选加入 35 cubes 吊架并整体放大，贴图升级 128×128，新增 inflate ×27。",
+  "checks": [
+    { "name": "naming_convention", "pass": true, "detail": "periscope = 潜望镜 Periscope；目录 periscope_20261125（候选 B）。" },
+    { "name": "deliverable_set", "pass": true, "detail": "java_block 口径：bbmodel + _tex.png + 四向预览 + README/validation/structure_audit + reference。" },
+    { "name": "preview_generated_from_model", "pass": true, "detail": "四张预览由 reference/render_bbmodel.js 从本 bbmodel 离线渲染（1200×900，正交正/背/侧 + 透视斜视），与几何/内嵌贴图严格同源；渲染器已入库可重跑。" },
+    { "name": "texture_power_of_two", "pass": true, "detail": "128×128。" },
+    { "name": "texture_true_transparency", "pass": true, "detail": "RGBA8，透明像素 alpha=0。" },
+    { "name": "texture_matches_embedded", "pass": true, "detail": "periscope_tex.png 与交付 bbmodel 内嵌贴图逐字节一致（= 作者最终 潜望镜1.3.png）。" },
+    { "name": "preview_dimensions", "pass": true, "detail": "4 张预览均 1200×900，纯黑底、无网格无 UI。" },
+    { "name": "no_hidden_geometry", "pass": true, "detail": "0 个隐藏元素、0 个隐藏分组。" },
+    { "name": "reference_image_check", "pass": true, "detail": "工程内嵌原作参考图（吊装式潜望镜）与渲染布局一致：吊架在上、镜体下垂。" }
+  ],
+  "errors": [],
+  "warnings": [
+    { "code": "ROTATION_OVER_LIMIT", "detail": "56/78 cube 带旋转，含 26 个超限角度与 16 个多轴自由旋转，超出 1.20.1 原版 Java 模型 JSON 限制；接入需沿用 GeckoLib geo 路线。" },
+    { "code": "TEXTURE_REEMBEDDED", "detail": "工作区工程内嵌贴图为旧版（与最终 PNG 差 52% 像素）；交付副本以最终 PNG 重新内嵌并校验一致，原工程未改动。" },
+    { "code": "PREVIEW_SELF_RENDERED", "detail": "预览为自建离线渲染器产出（平面着色），非 Blockbench 视口截图；与几何严格同源，但光照风格略异。" },
+    { "code": "INFLATE_PRESENT", "detail": "27 个 cube 带 inflate 膨胀；渲染器已支持并按 Blockbench 语义应用。" },
+    { "code": "ZERO_THICKNESS_PLANES", "detail": "2 个零厚度面片。" }
+  ],
+  "previews": {
+    "method": "交付自建离线渲染器（reference/render_bbmodel.js）从 bbmodel 直接渲染；非 Blockbench 截图、非脚本外部合成",
+    "files": [
+      { "file": "preview_front.png", "view": "正视（正交）", "size": [1200, 900] },
+      { "file": "preview_back.png", "view": "背视（正交）", "size": [1200, 900] },
+      { "file": "preview_side.png", "view": "侧视（正交）", "size": [1200, 900] },
+      { "file": "preview_oblique.png", "view": "斜视（透视，自动取景）", "size": [1200, 900] }
+    ]
+  },
+  "runtime": { "integrated": false, "in_game_verified": false },
+  "limitations": [
+    "Java 方块模型 JSON 未随附（旋转超限/多轴），待集成侧按 GeckoLib 路线导出。",
+    "预览为自建渲染器产出，光照风格与 Blockbench 视口不同。",
+    "吊架与镜体的连接/旋转逻辑由集成侧方块实体实现。"
+  ],
+  "manual_acceptance": {
+    "bbmodel_reopens": "pass — 作者在 Blockbench 5.x 中保存工程（2026-11-24）",
+    "notes": "建议作者复核四张自渲染预览的姿态与预估一致。"
+  }
+}
