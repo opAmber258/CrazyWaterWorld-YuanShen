@@ -1,0 +1,87 @@
+{
+  "asset": "periscope_stand",
+  "identifier": "periscope_stand",
+  "date": "2026-11-25",
+  "status": "complete",
+  "status_reason": "候选 B（1.1）美术侧交付齐备；预览由交付自建离线渲染器生成（脚本入库）。Java 方块模型 JSON 因旋转超限/多轴未随附，见 limitations。",
+  "creation_source": "人工（Han-xing-official）",
+  "contributors": {
+    "human": ["Han-xing-official"],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线渲染校验、预览渲染（离线渲染器）、文档与登记起草；未参与几何/UV/贴图制作"
+      }
+    ],
+    "division": "几何、UV、贴图绘制全部人工完成；AI 仅做交付打包、离线校验与预览渲染。"
+  },
+  "display_name_zh": "潜望镜底座",
+  "display_name_en": "PeriscopeStand",
+  "candidate": "B（1.1；候选 A = 1.0，见 periscope_stand_20261120/）",
+  "prototyping_note": "非原版实体，项目定名。本机无游戏目录，未直接核验 XML。",
+  "production": {
+    "model_format": "java_block",
+    "bbmodel_format_version": "5.0",
+    "blockbench": "5.x（作者 2026-11-25 保存工程）",
+    "textures_embedded": true,
+    "texture_reembedding": "交付副本已用作者最终 潜望镜基座1.1.png 重新内嵌（原工程内嵌为旧 1.0 贴图；原工程文件未改动）",
+    "registered_type": "方块"
+  },
+  "counts": {
+    "cubes": 35,
+    "declared_faces": 210,
+    "groups": 6,
+    "bones": 0,
+    "animations": 0,
+    "hidden_elements": 0,
+    "rotated_cubes": 28,
+    "multi_axis_rotated": 12,
+    "over_limit_angle_rotated": 14,
+    "inflated_cubes": 9,
+    "zero_thickness_planes": 0
+  },
+  "bounds_blockbench_units": {
+    "min": [-0.5, 4.051, -2],
+    "max": [16.5, 16, 18.5],
+    "size": [17.0, 11.949, 20.5]
+  },
+  "dimensions_blocks_at_16_units_per_block": [1.0625, 0.7468, 1.28125],
+  "diff_vs_candidate_a": "候选 A（1.0）：33 cubes / 12.000×7.966×14.000 单位 / 64² 贴图；本候选放大至 17.000×11.949×20.500，35 cubes，贴图升级 128×128，新增 inflate ×9。",
+  "checks": [
+    { "name": "naming_convention", "pass": true, "detail": "periscope_stand = 潜望镜底座 PeriscopeStand（项目定名）；目录 periscope_stand_20261125（候选 B）。" },
+    { "name": "deliverable_set", "pass": true, "detail": "java_block 口径：bbmodel + _tex.png + 四向预览 + README/validation/structure_audit + reference。" },
+    { "name": "preview_generated_from_model", "pass": true, "detail": "四张预览由 reference/render_bbmodel.js 从本 bbmodel 离线渲染（1200×900，正交正/背/侧 + 透视斜视），与几何/内嵌贴图严格同源；渲染器已入库可重跑。" },
+    { "name": "texture_power_of_two", "pass": true, "detail": "128×128。" },
+    { "name": "texture_true_transparency", "pass": true, "detail": "RGBA8，透明像素 alpha=0。" },
+    { "name": "texture_matches_embedded", "pass": true, "detail": "periscope_stand_tex.png 与交付 bbmodel 内嵌贴图逐字节一致（= 作者最终 潜望镜基座1.1.png），内嵌贴图名同步为 1.1。" },
+    { "name": "preview_dimensions", "pass": true, "detail": "4 张预览均 1200×900，纯黑底、无网格无 UI。" },
+    { "name": "no_hidden_geometry", "pass": true, "detail": "0 个隐藏元素、0 个隐藏分组。" }
+  ],
+  "errors": [],
+  "warnings": [
+    { "code": "ROTATION_OVER_LIMIT", "detail": "28/35 cube 带旋转，含 14 个超限角度与 12 个多轴自由旋转，超出 1.20.1 原版 Java 模型 JSON 限制；接入需沿用 GeckoLib geo 路线。" },
+    { "code": "TEXTURE_REEMBEDDED", "detail": "原工程内嵌旧 1.0 贴图（与最终 1.1 PNG 差约 20% 像素）；交付副本以最终 PNG 重新内嵌并校验一致，原工程未改动。" },
+    { "code": "PREVIEW_SELF_RENDERED", "detail": "预览为自建离线渲染器产出（平面着色），非 Blockbench 视口截图；与几何严格同源，光照风格略异。" },
+    { "code": "INFLATE_PRESENT", "detail": "9 个 cube 带 inflate；渲染器已按 Blockbench 语义应用。" }
+  ],
+  "previews": {
+    "method": "交付自建离线渲染器（reference/render_bbmodel.js）从 bbmodel 直接渲染",
+    "files": [
+      { "file": "preview_front.png", "view": "正视（正交）", "size": [1200, 900] },
+      { "file": "preview_back.png", "view": "背视（正交）", "size": [1200, 900] },
+      { "file": "preview_side.png", "view": "侧视（正交）", "size": [1200, 900] },
+      { "file": "preview_oblique.png", "view": "斜视（透视，自动取景）", "size": [1200, 900] }
+    ]
+  },
+  "runtime": { "integrated": false, "in_game_verified": false },
+  "limitations": [
+    "Java 方块模型 JSON 未随附（旋转超限/多轴），待集成侧按 GeckoLib 路线导出。",
+    "预览为自建渲染器产出，光照风格与 Blockbench 视口不同。",
+    "与潜望镜本体的连接逻辑由集成侧方块实体实现。"
+  ],
+  "manual_acceptance": {
+    "bbmodel_reopens": "pass — 作者在 Blockbench 5.x 中保存工程（2026-11-25）",
+    "notes": "建议作者复核四张自渲染预览的姿态与预估一致。"
+  }
+}

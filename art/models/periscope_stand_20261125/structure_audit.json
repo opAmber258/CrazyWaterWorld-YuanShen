@@ -1,0 +1,28 @@
+{
+  "asset": "periscope_stand",
+  "candidate": "B (1.1)",
+  "date": "2026-11-25",
+  "source": "periscope_stand.bbmodel (Blockbench 5.0, model_format java_block, java_block_version 26.3; texture re-embedded from final author PNG)",
+  "counts": {
+    "cubes": 35,
+    "faces": 210,
+    "groups": 6,
+    "bones": 0,
+    "loose_cubes": 0,
+    "hidden_elements": 0,
+    "hidden_groups": 0,
+    "animations": 0,
+    "rotated_cubes": 28,
+    "inflated_cubes": 9,
+    "zero_thickness_planes": 0
+  },
+  "groups": ["主体", "插件", "线头", "马桶圈", "天险", "潜望镜基座"],
+  "findings": [
+    { "level": "info", "code": "NO_BONES", "detail": "java_block 格式无骨骼，6 个分组仅作层级组织。" },
+    { "level": "info", "code": "NO_LOOSE_CUBES", "detail": "35 个 cube 全部在分组下，无游离元素。" },
+    { "level": "info", "code": "NO_ANIMATION", "detail": "0 条动画，静态交付。" },
+    { "level": "warn", "code": "ROTATION_OVER_LIMIT", "detail": "28/35 个 cube 带旋转，含 14 个超限角度与 12 个多轴自由旋转，超出 1.20.1 原版 Java 模型 JSON 限制。" },
+    { "level": "info", "code": "INFLATE_PRESENT", "detail": "9 个 cube 带 inflate；渲染器按 Blockbench 语义应用。" },
+    { "level": "info", "code": "INFORMAL_NAMES", "detail": "分组命名含随意中文名（马桶圈/天险/线头等），均为参与几何的正式对象。" }
+  ]
+}
