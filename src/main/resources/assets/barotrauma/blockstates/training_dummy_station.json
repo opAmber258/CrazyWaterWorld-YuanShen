@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": {"model": "barotrauma:block/training_dummy_station", "y": 0},
+    "facing=east": {"model": "barotrauma:block/training_dummy_station", "y": 90},
+    "facing=south": {"model": "barotrauma:block/training_dummy_station", "y": 180},
+    "facing=west": {"model": "barotrauma:block/training_dummy_station", "y": 270}
+  }
+}

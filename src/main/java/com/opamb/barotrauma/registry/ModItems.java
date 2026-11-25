@@ -152,6 +152,22 @@ public final class ModItems {
     /** 通风口方块物品（临时单格版本）。 */
     public static final RegistryObject<Item> VENT = blockItem("vent", ModBlocks.VENT);
 
+/** 训练人偶充气台方块物品。 */
+    public static final RegistryObject<Item> TRAINING_DUMMY_STATION =
+            blockItem("training_dummy_station", ModBlocks.TRAINING_DUMMY_STATION);
+
+    /** 高级训练人偶充气台方块物品（默认 50 血、无受击间隔）。 */
+    public static final RegistryObject<Item> ADVANCED_TRAINING_DUMMY_STATION =
+            blockItem("advanced_training_dummy_station", ModBlocks.ADVANCED_TRAINING_DUMMY_STATION);
+
+    /** 训练气球充气台方块物品（六向、1 血气球）。 */
+    public static final RegistryObject<Item> BALLOON_DUMMY_STATION =
+            blockItem("balloon_dummy_station", ModBlocks.BALLOON_DUMMY_STATION);
+
+    /** 高级训练气球充气台方块物品（六向、默认 50 血气球）。 */
+    public static final RegistryObject<Item> ADVANCED_BALLOON_DUMMY_STATION =
+            blockItem("advanced_balloon_dummy_station", ModBlocks.ADVANCED_BALLOON_DUMMY_STATION);
+
     // ---- 占位灯具 ----
     public static final RegistryObject<Item> LAMP = blockItem("lamp", ModBlocks.LAMP);
     public static final RegistryObject<Item> EMERGENCY_LIGHT =

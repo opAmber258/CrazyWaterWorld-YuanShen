@@ -129,8 +129,20 @@ public final class TurretClient {
     private static float lastSentPitch;
     private static final TurretShotFx[] SHOTS = new TurretShotFx[SHOT_SLOTS];
     private static int nextShotSlot;
-    /** 命中示意指针：显示 8 tick，约 0.4 秒淡出。 */
-    public static final int HIT_INDICATOR_TICKS = 8;
+    /** 命中示意指针：视觉持续 7 tick（350ms），和测试台原值一致。 */
+    public static final int HIT_INDICATOR_TICKS = 7;
+    /** 双击中判定窗口：与视觉时长解耦，覆盖原版 10 tick 受伤无敌帧。 */
+    public static final int HIT_COMBO_WINDOW_MILLIS = 1000;
+    /** 命中播放期间再次命中时，两条平行线的间距（GUI px）。 */
+    public static final float HIT_DOUBLE_LINE_GAP = 1.5F;
+    /** 击杀示意：黄色 X 从准星向外扩散后淡出；313ms ≈ 6.25 tick（比 5 tick 长 25%）。 */
+    public static final int KILL_INDICATOR_MILLIS = 313;
+    /** 击杀 X 的固定旋转角；普通命中避让时按它计算夹角。 */
+    public static final float KILL_INDICATOR_ANGLE_DEGREES = 45.0F;
+    /** 击杀存在时，普通命中与 X 臂线至少差这么多度。 */
+    public static final float HIT_AVOID_DEGREES = 15.0F;
+    /** 双重击杀时两条平行线的间距（GUI px）。 */
+    public static final float KILL_DOUBLE_LINE_GAP = 1.5F;
     /** 命中指针的预设旋转角（弧度）：每次命中随机挑一个，连续两次不重复。 */
     private static final float[] HIT_INDICATOR_ANGLES = {
             (float) Math.toRadians(10.0D),
@@ -143,6 +155,20 @@ public final class TurretClient {
 
     /** 命中示意指针剩余 tick；每次命中重置，旧指针不做叠加。 */
     private static int hitIndicatorTicks;
+    /** 本轮命中连段数：1=单线，2=双重线（封顶）。 */
+    private static int hitChainCount;
+    /** 上一次确认命中的 nanoTime；是否有值看 {@link #hasHitConfirm}。 */
+    private static long lastHitConfirmNanos;
+    /**
+     * 连段窗口是否有效。{@code System.nanoTime()} 允许返回负数，不能用
+     * {@code lastHitConfirmNanos > 0} 当“有没有命中过”的判据。
+     */
+    private static boolean hasHitConfirm;
+    /** 击杀示意开始时间（nanoTime）；是否在播看 {@link #killIndicatorRunning}。 */
+    private static long killIndicatorStartNanos;
+    private static boolean killIndicatorRunning;
+    /** 本轮击杀连段数：1=单线，2=双重线（封顶）。 */
+    private static int killChainCount;
     /** 当前使用的预设角下标；-1 表示还没命中过。 */
     private static int hitIndicatorAngleIndex = -1;
     private static int cooldown;
@@ -423,6 +449,11 @@ public final class TurretClient {
         cooldown = 0;
         autoFire = false;
         hitIndicatorTicks = 0;
+        hitChainCount = 0;
+        lastHitConfirmNanos = 0L;
+        hasHitConfirm = false;
+        killIndicatorRunning = false;
+        killChainCount = 0;
         hitIndicatorAngleIndex = -1;
         // 进入炮塔用的那次右键还按着：先要求松开，避免一进来就直接进瞄准。
         aimArmed = !minecraft.options.keyUse.isDown();
@@ -477,6 +508,11 @@ public final class TurretClient {
         renderedFov = Float.NaN;
         // 不要清掉在飞的炮弹：退出炮塔后它们还要继续飞完并结算命中特效。
         hitIndicatorTicks = 0;
+        hitChainCount = 0;
+        lastHitConfirmNanos = 0L;
+        hasHitConfirm = false;
+        killIndicatorRunning = false;
+        killChainCount = 0;
         hitIndicatorAngleIndex = -1;
         autoFire = false;
         freeAim = false;
@@ -781,7 +817,6 @@ public final class TurretClient {
             case SEABED -> spawnSeabedImpact(minecraft, point, direction, underwater);
             case MISS -> spawnMissImpact(minecraft, point, underwater);
         }
-        markHit(impact.kind());
     }
 
     /** 生物：血雾（原版伤害指示粒子）+ 水下小气泡环。 */
@@ -959,25 +994,106 @@ public final class TurretClient {
     }
 
     /**
-     * 命中示意指针：只在命中“能造成伤害的目标”（生物/玩家）时闪一下。
-     * 船壳、玻璃、结构、海床和打空都不触发；每次命中随机换一个预设旋转角。
+     * 服务端确认这一发确实造成了伤害后才调用（{@link com.opamb.barotrauma.network.TurretHitPacket}）。
+     * 普通命中闪白色随机角指针；击杀改闪黄色 X 扩散特效。
      */
-    private static void markHit(HitKind kind) {
-        if (kind != HitKind.CREATURE) {
+    public static void onHitConfirmed(BlockPos pos, boolean killed) {
+        if (!active || activePos == null || !activePos.equals(pos)) {
             return;
         }
-        int length = HIT_INDICATOR_ANGLES.length;
-        int next = ThreadLocalRandom.current().nextInt(length);
-        if (length > 1 && next == hitIndicatorAngleIndex) {
-            // 在剩下的 length-1 个角度里再取一个，避免 do-while 在数组只剩 1 项时卡死。
-            next = (next + 1 + ThreadLocalRandom.current().nextInt(length - 1)) % length;
+        if (killed) {
+            // 独立图层：击杀不再清掉普通命中；连段第二杀升级为双重线，封顶双重。
+            int chain = killIndicatorActive() ? killChainCount + 1 : 1;
+            killChainCount = Math.min(2, chain);
+            killIndicatorStartNanos = System.nanoTime();
+            killIndicatorRunning = true;
+            // 击杀 X 固定 45°：普通指针还在显示且离 X 臂线太近时重挑一个角，
+            // 保留它的剩余时间和连段计数（全自动下两次命中可能只隔几 tick）。
+            if (hitIndicatorTicks > 0 && hitIndicatorAngleIndex >= 0
+                    && angleSeparation(
+                    (float) Math.toDegrees(HIT_INDICATOR_ANGLES[hitIndicatorAngleIndex]),
+                    KILL_INDICATOR_ANGLE_DEGREES) < HIT_AVOID_DEGREES) {
+                hitIndicatorAngleIndex = pickHitAngle(true);
+            }
+            return;
         }
-        hitIndicatorAngleIndex = next;
+        long now = System.nanoTime();
+        boolean combo = hitIndicatorTicks > 0
+                || (hasHitConfirm
+                && now - lastHitConfirmNanos <= HIT_COMBO_WINDOW_MILLIS * 1_000_000L);
+        hitChainCount = Math.min(2, combo ? hitChainCount + 1 : 1);
+        lastHitConfirmNanos = now;
+        hasHitConfirm = true;
+        hitIndicatorAngleIndex = pickHitAngle(killIndicatorActive());
         hitIndicatorTicks = HIT_INDICATOR_TICKS;
+    }
+
+    /** 两个四臂十字的夹角（模 90°），返回 0…45。 */
+    private static float angleSeparation(float a, float b) {
+        float d = Math.abs(((a - b) % 90.0F + 90.0F) % 90.0F);
+        return Math.min(d, 90.0F - d);
+    }
+
+    /**
+     * 普通命中的预设角。击杀 X 存在时，优先挑与 45° 臂线夹角 ≥ {@link #HIT_AVOID_DEGREES}
+     * 的角度；如果全都不够远，就挑离臂线最远的那一档，保证命中始终可见。
+     */
+    private static int pickHitAngle(boolean avoidKill) {
+        int length = HIT_INDICATOR_ANGLES.length;
+        int[] candidates = new int[length];
+        int count = 0;
+        if (avoidKill) {
+            float best = 0.0F;
+            for (float angle : HIT_INDICATOR_ANGLES) {
+                best = Math.max(best, angleSeparation(
+                        (float) Math.toDegrees(angle), KILL_INDICATOR_ANGLE_DEGREES));
+            }
+            float threshold = best >= HIT_AVOID_DEGREES ? HIT_AVOID_DEGREES : best;
+            for (int i = 0; i < length; i++) {
+                if (angleSeparation((float) Math.toDegrees(HIT_INDICATOR_ANGLES[i]),
+                        KILL_INDICATOR_ANGLE_DEGREES) >= threshold) {
+                    candidates[count++] = i;
+                }
+            }
+        } else {
+            for (int i = 0; i < length; i++) {
+                candidates[count++] = i;
+            }
+        }
+        int start = ThreadLocalRandom.current().nextInt(count);
+        int chosen = candidates[start];
+        if (count > 1 && chosen == hitIndicatorAngleIndex) {
+            chosen = candidates[(start + 1) % count];
+        }
+        return chosen;
     }
 
     public static int hitIndicatorTicks() {
         return hitIndicatorTicks;
+    }
+
+    /** 当前击杀连段是否已经到双重线。 */
+    public static boolean killDoubleLines() {
+        return killChainCount >= 2;
+    }
+
+    /** 当前命中连段是否已经到双重线。 */
+    public static boolean hitDoubleLines() {
+        return hitChainCount >= 2;
+    }
+
+    /** 击杀特效 0…1 的进度；没有特效时返回 1。 */
+    public static float killIndicatorProgress() {
+        if (!killIndicatorRunning) {
+            return 1.0F;
+        }
+        // nanoTime 可能是负数，只用差值算进度，负值不代表“没有开始”。
+        float elapsedMs = (System.nanoTime() - killIndicatorStartNanos) / 1.0E6F;
+        return Mth.clamp(elapsedMs / KILL_INDICATOR_MILLIS, 0.0F, 1.0F);
+    }
+
+    public static boolean killIndicatorActive() {
+        return killIndicatorRunning && killIndicatorProgress() < 1.0F;
     }
 
     /** 当前示意指针的旋转角（弧度）。 */
@@ -1150,8 +1266,18 @@ public final class TurretClient {
         if (!active) {
             return;
         }
+        if (!killIndicatorActive()) {
+            killChainCount = 0;
+        }
         if (hitIndicatorTicks > 0) {
             hitIndicatorTicks--;
+        }
+        if (hitChainCount > 0 && hasHitConfirm
+                && System.nanoTime() - lastHitConfirmNanos
+                > HIT_COMBO_WINDOW_MILLIS * 1_000_000L) {
+            hitChainCount = 0;
+            hasHitConfirm = false;
+            lastHitConfirmNanos = 0L;
         }
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null || activePos == null) {
