@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.registry;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.item.BrightnessDebuggerItem;
 import com.opamb.barotrauma.item.CthulhuTriggerItem;
 import com.opamb.barotrauma.item.DivingKnifeItem;
 import com.opamb.barotrauma.item.DivingSuitItem;
@@ -61,6 +62,14 @@ public final class ModItems {
     public static final RegistryObject<Item> BATTERY_CELL = ITEMS.register("battery_cell",
             () -> new com.opamb.barotrauma.item.BatteryCellItem(
                     new Item.Properties().stacksTo(8).durability(100)));
+
+    public static final RegistryObject<Item> FULGURIUM_BATTERY_CELL = ITEMS.register("fulgurium_battery_cell",
+            () -> new com.opamb.barotrauma.item.BatteryCellItem(new Item.Properties().durability(200)));
+
+    /** 手电筒拿在手上或戴在头部时照明。 */
+    public static final RegistryObject<Item> FLASHLIGHT = ITEMS.register("flashlight",
+            () -> new com.opamb.barotrauma.item.FlashlightItem(
+                    new Item.Properties().stacksTo(1)));
 
     /**
      * 等离子切割机：切矿脉、切船壳/舱门；燃料同样来自子格里的焊接油箱
@@ -143,11 +152,11 @@ public final class ModItems {
     /** 通风口方块物品（临时单格版本）。 */
     public static final RegistryObject<Item> VENT = blockItem("vent", ModBlocks.VENT);
 
-    /** 训练人偶充气台方块物品。 */
+/** 训练人偶充气台方块物品。 */
     public static final RegistryObject<Item> TRAINING_DUMMY_STATION =
             blockItem("training_dummy_station", ModBlocks.TRAINING_DUMMY_STATION);
 
-    /** 高级训练人偶充气台方块物品（200 血、无受击间隔）。 */
+    /** 高级训练人偶充气台方块物品（默认 50 血、无受击间隔）。 */
     public static final RegistryObject<Item> ADVANCED_TRAINING_DUMMY_STATION =
             blockItem("advanced_training_dummy_station", ModBlocks.ADVANCED_TRAINING_DUMMY_STATION);
 
@@ -155,9 +164,16 @@ public final class ModItems {
     public static final RegistryObject<Item> BALLOON_DUMMY_STATION =
             blockItem("balloon_dummy_station", ModBlocks.BALLOON_DUMMY_STATION);
 
-    /** 高级训练气球充气台方块物品（六向、200 血气球）。 */
+    /** 高级训练气球充气台方块物品（六向、默认 50 血气球）。 */
     public static final RegistryObject<Item> ADVANCED_BALLOON_DUMMY_STATION =
             blockItem("advanced_balloon_dummy_station", ModBlocks.ADVANCED_BALLOON_DUMMY_STATION);
+
+    // ---- 占位灯具 ----
+    public static final RegistryObject<Item> LAMP = blockItem("lamp", ModBlocks.LAMP);
+    public static final RegistryObject<Item> EMERGENCY_LIGHT =
+            blockItem("emergency_light", ModBlocks.EMERGENCY_LIGHT);
+    public static final RegistryObject<Item> FLUORESCENT_LIGHT =
+            blockItem("fluorescent_light", ModBlocks.FLUORESCENT_LIGHT);
 
     // ---- 潜渊症容器 ----
     public static final RegistryObject<Item> MEDIUM_STEEL_CABINET =
@@ -201,6 +217,14 @@ public final class ModItems {
     /** 跟随炮塔（原型，开发者工具）：视角自由，炮塔准心限速追视角中心。 */
     public static final RegistryObject<Item> TRACKING_TURRET =
             blockItem("tracking_turret", ModBlocks.TRACKING_TURRET);
+
+    /** 电磁炮：炮塔瞄准 + 弹药箱装填 + 船电网。 */
+    public static final RegistryObject<Item> COILGUN = blockItem("coilgun", ModBlocks.COILGUN);
+
+    /** 电磁炮弹药箱：一箱 200 发。 */
+    public static final RegistryObject<Item> COILGUN_AMMO_BOX = ITEMS.register(
+            "coilgun_ammo_box",
+            () -> new com.opamb.barotrauma.item.CoilgunAmmoBoxItem(new Item.Properties()));
 
     /** 炮塔瞄准站（开发者工具）：右键接管已绑定炮塔的瞄准视角。 */
     public static final RegistryObject<Item> TURRET_STATION =
@@ -274,6 +298,9 @@ public final class ModItems {
     /** 医疗调试器（开发者工具）：右键打开面板，自由改六部位/全身病症与活力。 */
     public static final RegistryObject<Item> MEDICAL_DEBUGGER = ITEMS.register("medical_debugger",
             () -> new MedicalDebuggerItem(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<Item> BRIGHTNESS_DEBUGGER = ITEMS.register("brightness_debugger",
+            () -> new BrightnessDebuggerItem(new Item.Properties().stacksTo(1)));
 
     /** 克苏鲁的注视触发器（开发者工具）：右键打开面板，选预设 / 三档 / 时长。 */
     public static final RegistryObject<Item> CTHULHU_TRIGGER = ITEMS.register("cthulhu_trigger",

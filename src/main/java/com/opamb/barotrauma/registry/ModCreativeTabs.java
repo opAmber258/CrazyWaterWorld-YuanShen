@@ -52,6 +52,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.JUNCTION_BOX.get());
                         output.accept(ModItems.BATTERY.get());
                         output.accept(ModItems.BATTERY_CELL.get());
+                        output.accept(ModItems.FULGURIUM_BATTERY_CELL.get());
+                        output.accept(ModItems.FLASHLIGHT.get());
                         output.accept(ModItems.SUPERCAPACITOR.get());
                         output.accept(ModItems.PERISCOPE.get());
                         output.accept(ModItems.PERISCOPE_STAND.get());
@@ -59,6 +61,9 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.DECONSTRUCTOR.get());
                         output.accept(ModItems.OXYGEN_GENERATOR.get());
                         output.accept(ModItems.VENT.get());
+                        output.accept(ModItems.LAMP.get());
+                        output.accept(ModItems.EMERGENCY_LIGHT.get());
+                        output.accept(ModItems.FLUORESCENT_LIGHT.get());
                         output.accept(ModItems.MEDIUM_STEEL_CABINET.get());
                         output.accept(ModItems.MEDIUM_WINDOWED_STEEL_CABINET.get());
                         output.accept(ModItems.CRATE_SHELF.get());
@@ -109,6 +114,7 @@ public final class ModCreativeTabs {
                     .icon(() -> new ItemStack(ModItems.MEDICAL_DEBUGGER.get()))
                     .displayItems((params, output) -> {
                         output.accept(ModItems.MEDICAL_DEBUGGER.get());
+                        output.accept(ModItems.BRIGHTNESS_DEBUGGER.get());
                         // 彩蛋物品从主页签挪到开发者页签（用户指令 2026-11-08）
                         output.accept(ModItems.SIXTY_SEVEN.get());
                         output.accept(ModItems.CPU_6700X3D.get());
@@ -120,6 +126,9 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.FREE_AIM_TURRET.get());
                         // 跟随炮塔原型：视角自由，炮塔准心追视角
                         output.accept(ModItems.TRACKING_TURRET.get());
+                        // 电磁炮 + 弹箱：炮塔瞄准，装填后消耗船电
+                        output.accept(ModItems.COILGUN.get());
+                        output.accept(ModItems.COILGUN_AMMO_BOX.get());
                         // 瞄准站 + 绑定器：把站台绑到炮塔，右键站台远程接管瞄准
                         output.accept(ModItems.TURRET_STATION.get());
                         output.accept(ModItems.TURRET_BINDER.get());

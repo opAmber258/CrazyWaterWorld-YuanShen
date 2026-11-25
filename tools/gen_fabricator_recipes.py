@@ -9,7 +9,8 @@
 规则（对应原作 Fabricators/fabricators.xml + 各物品 prefab 里的 <Fabricate>/<Deconstruct>）：
   * 只收 `<Fabricate suitablefabricators="fabricator">`。
   * 输出物品和所有必需材料都必须在模组里存在（按标识符去掉下划线后匹配）。
-  * 用标签（items="..."）而不是具体 identifier 的需求跳过——本模组没有对应标签体系。
+  * 用标签（tag="..."）的需求默认跳过；只有 {@code TAG_ITEMS} 里显式映射到
+    现有物品的标签才收（例如手电筒的 lightcomponent 用石英代替）。
   * 解构要求输入和所有产出都能映射，否则玩家会平白丢材料，跳过。
 """
 
@@ -26,6 +27,17 @@ ROOT = Path(__file__).resolve().parent.parent
 MOD_ITEMS_JAVA = ROOT / "src/main/java/com/opamb/barotrauma/registry/ModItems.java"
 OUT_JSON = ROOT / "src/main/resources/data/barotrauma/fabricator/recipes.json"
 DEFAULT_CONTENT = Path("D:/Steam/steamapps/common/Barotrauma/Content")
+
+# 标签需求只在指定输出物品上放开，避免把别的占位物品（如 detonator）也带进配方表。
+# lightcomponent 是手电筒的灯头组件，这里用石英当透镜（配方表要求全部是 barotrauma 物品）。
+TAG_ITEMS = {
+    "flashlight": {"lightcomponent": "barotrauma:quartz"},
+}
+
+# 解构里的 lightcomponent（identifier 而不是 tag）也只给手电筒放行。
+DECONSTRUCT_ITEMS = {
+    "flashlight": {"lightcomponent": "barotrauma:quartz"},
+}
 
 
 def load_mod_items() -> dict[str, str]:
@@ -82,8 +94,18 @@ def parse_items(content: Path):
                 tag_based = False
                 for req in fabricate.findall("RequiredItem"):
                     if req.get("identifier") is None:
-                        tag_based = True
-                        break
+                        # 标签需求：只有显式映射到原版物品的标签才收（例如
+                        # 手电筒的 lightcomponent → 玻璃透镜）。
+                        tag = (req.get("tag") or "").replace("_", "")
+                        alias = TAG_ITEMS.get(identifier, {}).get(tag)
+                        if alias is None:
+                            tag_based = True
+                            break
+                        required.append({
+                            "id": alias,
+                            "amount": int(req.get("amount", "1")),
+                        })
+                        continue
                     required.append({
                         "id": req.get("identifier"),
                         "amount": int(req.get("amount", "1")),
@@ -138,7 +160,12 @@ def main() -> int:
         return 1
 
     def mod_id(identifier: str) -> str | None:
+        if ":" in identifier:
+            return identifier
         return mapping.get(identifier.replace("_", ""))
+
+    def item_id(value: str) -> str:
+        return value if ":" in value else f"barotrauma:{value}"
 
     recipes = []
     skipped = {"output": 0, "ingredient": 0}
@@ -173,7 +200,7 @@ def main() -> int:
             "money": entry["money"],
             "category": category,
             "ingredients": [
-                {"item": f"barotrauma:{ing}", "count": amount}
+                {"item": item_id(ing), "count": amount}
                 for ing, amount in merged.items()
             ],
         })
@@ -186,11 +213,13 @@ def main() -> int:
         outputs = []
         ok = True
         for out in entry["outputs"]:
-            mapped = mod_id(out["id"])
+            key = out["id"].replace("_", "")
+            alias = DECONSTRUCT_ITEMS.get(entry["input"], {}).get(key)
+            mapped = alias if alias is not None else mod_id(out["id"])
             if mapped is None:
                 ok = False
                 break
-            outputs.append({"item": f"barotrauma:{mapped}", "count": out["amount"]})
+            outputs.append({"item": item_id(mapped), "count": out["amount"]})
         if not ok or not outputs:
             continue
         decon.append({

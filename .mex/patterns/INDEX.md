@@ -28,10 +28,12 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [cthulhu-post-processing.md](cthulhu-post-processing.md) | Adding or tuning a Cthulhu-gaze visual preset, its shader mode, effect icon, or fade behavior |
 | [debug-hull-damage.md](debug-hull-damage.md) | Diagnosing missing hull durability, damage bars, welding, or “block won’t break” |
 | [debug-ship-water.md](debug-ship-water.md) | Diagnosing dry ships, missing flooding, or missing water visuals |
+| [debug-lighting.md](debug-lighting.md) | Diagnosing flashlight aim lag, light-related world loading stalls, or fixture tint |
 | [deliver-model-asset.md](deliver-model-asset.md) | Delivering a Bedrock-format model asset that ships a geo.json (prop / item / creature / GeckoLib block) — Java `java_block` models use blockbench-modeling.md |
 | [developer-tools.md](developer-tools.md) | Adding a creative-tab debug item, its screen, or a server-validated edit packet |
 | [publish.md](publish.md) | Publishing changes (走流程 / `/publish`): art-only checks → direct main push; code/shared tools/policies → MEX bookkeeping and PR |
 | [run-tests.md](run-tests.md) | Building and running the L1/L2/L3 verification layers |
 | [ship-fluid-field.md](ship-fluid-field.md) | Changing in-ship flooding, water boxes, pump auto thresholds, or diagnosing dry-room-as-ocean / water-inside-walls / pump flapping |
+| [training-dummy.md](training-dummy.md) | Building or fixing the training dummy / balloon inflation stations: spawn/respawn lifecycle, 6-direction balloon placement, advanced HP variants, or the right-click settings panel |
 | [turret-aim-modes.md](turret-aim-modes.md) | Changing turret aiming (three prototypes), camera/input mixins, muzzle-based ballistics, underwater shot FX, ADS aim mode, hit-kind feedback, the three-part (base/turntable/barrel) model, the aiming station / turret binder remote takeover, or the impact reticle HUD |
 | [vs2-physical-ship.md](vs2-physical-ship.md) | Launching, docking, controlling, or debugging a VS2 physical ship |

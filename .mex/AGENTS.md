@@ -1,7 +1,7 @@
 ---
 name: agents
 description: Always-loaded project anchor. Read this first. Contains project identity, non-negotiables, commands, and pointer to ROUTER.md for full context.
-last_updated: 2026-11-15
+last_updated: 2026-11-24
 ---
 
 # Barotrauma Minecraft Mod
@@ -14,7 +14,7 @@ A Minecraft 1.20.1 Forge mod that simulates Barotrauma-style deep-sea submarines
 - Never add real water blocks to the deep-sea dimension; it is an air ocean by design (see `context/decisions.md`).
 - Keep all Valkyrien Skies 2 types inside `ship/vs/`; never bundle VS2 in the mod jar.
 - After changing world generation, delete `run/world` before testing — existing chunks are never regenerated.
-- Never commit, push, or pull without explicit human authorization. A request to publish specified art-only assets authorizes delivery checks → ordinary direct push to upstream main → Discussion #39 registration, without a PR or another direct-push confirmation; see `docs/ASSET_DELIVERY_CONVENTION.md` §7 for scope. Modeling or preview requests do not authorize publication. Code, runtime resources, shared tools, and policy changes still default to branch → commit → push → PR → review → merge → delete branch unless explicitly directed otherwise. Never force-push; actual pulls need separate authorization. An isolated worktree based on fetched origin/main may be used for art publication without changing another worktree's local main. Stop on unresolved PR findings or merge conflicts. Honor narrower authorizations.
+- Never commit, push, or pull without explicit human authorization. A request to publish specified art-only assets authorizes delivery checks → ordinary direct push to upstream main → Discussion #39 registration, without a PR or another direct-push confirmation; see `docs/ASSET_DELIVERY_CONVENTION.md` §7 for scope. Modeling or preview requests do not authorize publication. Code, runtime resources, shared tools, and policy changes still default to branch → commit → push → PR → review → merge → delete branch unless explicitly directed otherwise. Never force-push; actual pulls need separate authorization. An isolated worktree based on fetched origin/main may be used for art publication without changing another worktree's local main. Follow the [CodeRabbit review policy](patterns/publish.md#coderabbit-审查). Resolve test-confirmed findings and merge conflicts before merging. Honor narrower authorizations.
 
 ## Commands
 - Build: `./gradlew build --offline` (set `JAVA_HOME` to JDK 17 first)

@@ -26,7 +26,8 @@ vec3 scenePosition(vec2 uv) {
 
 vec3 waterColor(vec3 background, float path) {
     vec3 attenuation = exp(-vec3(0.46, 0.23, 0.14) * path);
-    return background * attenuation + WaterLight.rgb * (1.0 - attenuation);
+    float illumination = clamp(max(background.r, max(background.g, background.b)) * 3.0, 0.0, 1.0);
+    return background * attenuation + WaterLight.rgb * illumination * (1.0 - attenuation);
 }
 
 vec3 seaColor(vec3 background, vec3 endPoint) {
@@ -35,7 +36,7 @@ vec3 seaColor(vec3 background, vec3 endPoint) {
     float fraction = clamp(boundary / max(abs(rise), 0.0001), 0.0, 1.0);
     float waterDistance = length(endPoint) * fraction;
     vec3 attenuated = waterColor(background, min(12.0, waterDistance * WaterLight.w));
-    return mix(attenuated, WaterLight.rgb, smoothstep(SeaRange.x, SeaRange.y, waterDistance));
+    return attenuated * (1.0 - smoothstep(SeaRange.x, SeaRange.y, waterDistance));
 }
 
 void main() {
@@ -107,11 +108,13 @@ void main() {
         background = seaColor(background, viewPosition);
     }
     vec3 color = waterColor(background, min(path * weight, 5.0));
-    float sheen = edge * (0.038 + 0.019 * sin(a * 0.6 + b * 0.4));
+    // 只有被照亮的场景能给水面提供散射、边缘反光和水花亮度。
+    float illumination = clamp(max(background.r, max(background.g, background.b)) * 4.0, 0.0, 1.0);
+    float sheen = edge * illumination * (0.038 + 0.019 * sin(a * 0.6 + b * 0.4));
     color = mix(color, max(color, vec3(0.15, 0.31, 0.35)), sheen);
     if (stream) {
         float crest = smoothstep(0.56, 0.94, sin(a * 1.4 - b * 0.7) * 0.65 + cos(b * 0.9) * 0.35);
-        color += vec3(0.075, 0.112, 0.13) * crest * surface.y * film;
+        color += vec3(0.075, 0.112, 0.13) * crest * surface.y * film * illumination;
     }
     fragColor = vec4(color, 1.0);
 }

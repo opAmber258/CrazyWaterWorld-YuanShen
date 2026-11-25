@@ -32,13 +32,15 @@ edges:
     condition: when hull durability, damage bars, welding, or breach-on-zero-HP behavior looks wrong
   - target: patterns/run-tests.md
     condition: when building or running the verification layers
+  - target: patterns/training-dummy.md
+    condition: when working on the training dummy / balloon inflation stations, their respawn lifecycle, advanced HP variants, or the right-click settings panel
   - target: patterns/turret-aim-modes.md
     condition: when changing turret aiming modes, turret camera/input mixins, muzzle-based ballistics, tracer particles, the aiming station / turret binder remote takeover, turret model/spec modularity, or the impact reticle HUD
   - target: patterns/publish.md
     condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-22
+last_updated: 2026-11-25
 ---
 
 # Session Bootstrap
@@ -69,6 +71,15 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## Current Project State
 
+- **训练人偶/气球充气台 + 炮塔命中反馈（2026-11-25，任务分支 `feat/training-dummy-advanced-20261125`）**：
+  新增 `training_dummy_station` / `advanced_training_dummy_station`（台座 1 格 + 人偶 1.5 格 = 2.5 格；
+  普通 1 血、高级默认 50 血且无 10 tick 受击间隔）与六向吊挂、沿朝向占 2 格的 `balloon_dummy_station` /
+  `advanced_balloon_dummy_station`。BE 用 UUID 认领 + NBT 重生计时，拆台才删实体；高级台右键设置面板
+  调血量 1..200 / 自发光 / 重生间隔 0..10 秒（保存即关闭 + 动作栏确认，设置落 NBT；只改间隔/自发光不回血，
+  死亡中的实体不套设置，倒计时中改间隔按死亡时刻重排）。炮塔命中反馈改由服务端 `TurretHitPacket` 确认
+  伤害后才播（普通命中白色随机角指针、击杀黄色 45° X，独立图层、连段升双线），不再由客户端弹道预测触发。
+  协议 33→35（34 = TurretHitPacket、35 = DummySettingsPacket）。`tools/gen_training_dummy_texture.py`
+  生成 4 张 64×64 实体贴图。细节见 `patterns/training-dummy.md`。全量单测通过；面板改版后的实机复核待用户。
 - **水流可视化 + 泳姿/门/流体审查修复（2026-11-22，任务分支 `feat/water-flow-visuals-20261122`，PR #81）**：
   水面改 `ShipWaterMesh`/`ShipWaterFlowMesh`/`ShipWaterMaterial` + `shaders/core/ship_water`，
   `ShipWaterStreams` 按实际流量画下落/侧门溢流（协议 26/27）；`AirOceanSwimmer` + `EntitySwimmingMixin`
@@ -203,6 +214,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 - **舱室进水、压载与泳姿（2026-11-22）**。门洞按两舱水头限速均压。水面包协议 28 同步沿实际舱壁和甲板的路径。强流沿开口铺展，弱流和落点以飞溅表现，淹没后冒泡。喷溅和气泡随世界刻发射。压载和自动泵按本舱容量或水量调整。服务端用躯干浸没、实际地板和净高决定游泳，浅水可直立涉水。疾游沿用原版疾跑绑定的按住或切换状态。见 [船内逐格流体场](patterns/ship-fluid-field.md)。
 - **舱内水面渲染（2026-11-22）**。同一格列的湿区间合并，邻列只扣实际覆盖的边段。同舱多格设备的模型空隙接上同一水线。相连水面的顶边共享采样，落水和侧流驱动衰减涟漪。可见水界面按法向厚度控制折射，水下直视地板按水程着色。实机验收方法见 [水面排查](patterns/debug-ship-water.md)。
 - **寒冷深穴和对接干区（2026-11-22）**。人物外海水雾从约 7.4 格过渡至 18.7 格，取原作寒冷深穴调色。对接封盖只认站侧 3×1 开口，整船外接包围盒里的船外格仍是海。见 [水面排查](patterns/debug-ship-water.md)。
+- **手电筒和固定舱灯（2026-11-24）**。手电筒按客户端帧照明，从场景深度重建可见表面和遮挡。服务端消耗电池，只同步亮灯位置和低电标志。固定灯按电网和 RGBA 设置发光，彩色传播只处理有变化的颜色。单人深海可用开发者页签的亮度调试器临时补光。见 [灯光排查](patterns/debug-lighting.md) 和 [开发者工具](patterns/developer-tools.md)。
+- **CodeRabbit 审查（2026-11-24）**。普通 PR 保留首轮审查，只处理测试证实的问题。后续优先复跑用例和 CI，审查规则见 [通用发布](patterns/publish.md#coderabbit-审查)。
 
 **Not yet built:**
 - Multi-ship support (one `VsPilot` singleton manages one physical ship).
@@ -241,6 +254,7 @@ Load the relevant file based on the current task. Always load `context/architect
 | Changing dev scripts, textures, or GameTest templates | `context/tools.md` |
 | Debugging hull damage, durability bars, or welding | `patterns/debug-hull-damage.md` |
 | Debugging swim poses, opening flow, water occlusion, or open-ocean visuals | `patterns/debug-ship-water.md`, `patterns/ship-fluid-field.md` |
+| Debugging flashlight lag, post-login stalls, or lamp color | `patterns/debug-lighting.md` |
 | Building or debugging a `java_block` Java block model in Blockbench | `patterns/blockbench-modeling.md` |
 | Delivering a Bedrock-format asset that ships a geo.json | `patterns/deliver-model-asset.md` |
 | Adding/tuning a Cthulhu-gaze preset | `patterns/cthulhu-post-processing.md` |

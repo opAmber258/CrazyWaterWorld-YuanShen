@@ -127,14 +127,14 @@ public final class ModBlockEntities {
                             ModBlocks.VENT.get())
                     .build(null));
 
-    /** 训练人偶充气台：生成/绑定/2 秒重生训练人偶。 */
+/** 训练人偶充气台：生成/绑定/2 秒重生训练人偶。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.TrainingDummyStationBlockEntity>> TRAINING_DUMMY_STATION =
             BLOCK_ENTITIES.register("training_dummy_station", () -> BlockEntityType.Builder
                     .of(com.opamb.barotrauma.blockentity.TrainingDummyStationBlockEntity::new,
                             ModBlocks.TRAINING_DUMMY_STATION.get())
                     .build(null));
 
-    /** 高级训练人偶充气台：同一套生命周期，生成 200 血高级人偶。 */
+    /** 高级训练人偶充气台：同一套生命周期，生成默认 50 血高级人偶。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.AdvancedTrainingDummyStationBlockEntity>> ADVANCED_TRAINING_DUMMY_STATION =
             BLOCK_ENTITIES.register("advanced_training_dummy_station", () -> BlockEntityType.Builder
                     .of(com.opamb.barotrauma.blockentity.AdvancedTrainingDummyStationBlockEntity::new,
@@ -148,11 +148,20 @@ public final class ModBlockEntities {
                             ModBlocks.BALLOON_DUMMY_STATION.get())
                     .build(null));
 
-    /** 高级气球充气台：同一套摆放逻辑，200 血气球。 */
+    /** 高级气球充气台：同一套摆放逻辑，默认 50 血气球。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.AdvancedBalloonStationBlockEntity>> ADVANCED_BALLOON_DUMMY_STATION =
             BLOCK_ENTITIES.register("advanced_balloon_dummy_station", () -> BlockEntityType.Builder
                     .of(com.opamb.barotrauma.blockentity.AdvancedBalloonStationBlockEntity::new,
                             ModBlocks.ADVANCED_BALLOON_DUMMY_STATION.get())
+                    .build(null));
+
+    /** 灯具：每盏灯的颜色/开关（三种灯共用一套方块实体）。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.LightBlockEntity>> LIGHT =
+            BLOCK_ENTITIES.register("light", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.LightBlockEntity::new,
+                            ModBlocks.LAMP.get(),
+                            ModBlocks.EMERGENCY_LIGHT.get(),
+                            ModBlocks.FLUORESCENT_LIGHT.get())
                     .build(null));
 
     /** 潜渊症容器：钢柜/带窗钢柜/货架/潜水服柜/氧气瓶架共用一套方块实体。 */
@@ -186,13 +195,21 @@ public final class ModBlockEntities {
                     .of(com.opamb.barotrauma.blockentity.TurretBlockEntity::new,
                             ModBlocks.TURRET.get(),
                             ModBlocks.FREE_AIM_TURRET.get(),
-                            ModBlocks.TRACKING_TURRET.get())
+                            ModBlocks.TRACKING_TURRET.get(),
+                            ModBlocks.COILGUN.get())
                     .build(null));
 
     /** 炮塔瞄准站：只存绑定的炮塔坐标，同步给客户端画绑定连线。 */
     public static final RegistryObject<BlockEntityType<TurretStationBlockEntity>> TURRET_STATION =
             BLOCK_ENTITIES.register("turret_station", () -> BlockEntityType.Builder
                     .of(TurretStationBlockEntity::new, ModBlocks.TURRET_STATION.get())
+                    .build(null));
+
+    /** 手电筒隐形光源：方块实体只负责在没有玩家追踪时自删。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.FlashlightLightBlockEntity>> FLASHLIGHT_LIGHT =
+            BLOCK_ENTITIES.register("flashlight_light", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.FlashlightLightBlockEntity::new,
+                            ModBlocks.FLASHLIGHT_LIGHT.get())
                     .build(null));
 
     // 船核心方块已经合并进声纳台（SonarBlockEntity extends ShipCoreBlockEntity），

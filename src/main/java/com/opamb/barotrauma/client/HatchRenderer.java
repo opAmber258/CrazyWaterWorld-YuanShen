@@ -53,8 +53,11 @@ public class HatchRenderer implements BlockEntityRenderer<HatchBlockEntity> {
     @Override
     public void render(HatchBlockEntity animatable, float partialTick, PoseStack poseStack,
                        MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        // 关着的舱口完全不透光（getLightBlock=15），方块自身光照是 0；
+        // 取周围空气格光照，否则手电筒照上去盖板整块全黑。
+        int light = BlockLightSampler.neighborLight(animatable, packedLight);
         poseStack.pushPose();
-        geo.render(animatable, partialTick, poseStack, bufferSource, packedLight, packedOverlay);
+        geo.render(animatable, partialTick, poseStack, bufferSource, light, packedOverlay);
         poseStack.popPose();
         BlockState state = animatable.getBlockState();
         if (!(state.getBlock() instanceof HatchLadderBlock)) {
@@ -65,7 +68,7 @@ public class HatchRenderer implements BlockEntityRenderer<HatchBlockEntity> {
                 .setValue(LadderBlock.WATERLOGGED, Boolean.FALSE);
         poseStack.pushPose();
         Minecraft.getInstance().getBlockRenderer().renderSingleBlock(ladder, poseStack,
-                bufferSource, packedLight, packedOverlay, ModelData.EMPTY, RenderType.cutout());
+                bufferSource, light, packedOverlay, ModelData.EMPTY, RenderType.cutout());
         poseStack.popPose();
     }
 }

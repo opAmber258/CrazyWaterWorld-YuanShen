@@ -1,5 +1,14 @@
 # 深海环境开发计划（M1）
 
+## 2026-11-24 手电筒与舱灯
+
+- **深海照明基调**：无光区域按纯黑处理，真灯仍照亮表面；水面、雾、悬浮颗粒不能在无光处自行显色。`LightTextureMixin` 在深海忽略亮度滑杆、固定最低伽马，光图只留一个码值供 16 位场景捕获材质色，合成时扣除该底色。
+- **手电筒**：客户端逐帧生成光锥，用可见场景深度重建表面并计算入射角与近距遮挡，水下加有限散射；射程 12 格、8 格后收尾（`flashlight.fsh`）。服务端只消耗电池并同步亮灯位置与低电标志（`PlayerMixin` 实体数据）。常电恒亮，最后一格 0.1 Hz 缓脉动；近身微光 2.6 格，只画本机角色。
+- **固定舱灯**：吊灯/荧光灯/应急灯由 `LightBlockEntity.serverTick` 按电网决定亮度，`LightClientColors` 向 Colorful Lighting 提供颜色（每客户端刻最多 32 处变化），灯面板走 `LightColorPacket`（RGBA，A=强度）。
+- **彩色光假红光修复**：`BlockLightSampler` 不再把带彩色标记的整数交给原版 `LightTexture.block/sky` 拆包取最大（邻格普通亮度 4 会变成 RGB 64/0/0），改为同一渲染入口取邻格采样、按编码分别合并，并用 16 位归一化场景色保留贴图通道比例。
+- **原作依据**：手电 `tools.xml` 748–798、`poweritems.xml` 346–407（任一手/头戴即常亮、射程 800 显示单位、0.2 条件值/秒、电池 100/200）；灯具 `lights.xml` 283–336/488–508（吊灯荧光灯 5W 射程 800；应急灯红 25/255 射程 250）。[LightManager](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Lights/LightManager.cs#L350-L554) · [GameScreen 合成](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Screens/GameScreen.cs#L467-L517)
+- **协议与验证**：玩家光源状态新增一字节实体数据，协议统一为 **33**（与 #82 的 30 合并）。已跑 `./gradlew compileJava` 与 `./gradlew test`（416 项通过）。未验收：第三人称区块深度不含纯 BE 模型阴影、旧存档 `flashlight_light` 只在区块加载时清理、11-23 日志登录后卡顿缺线程栈。
+
 ## 2026-11-22 薄水折射、贴壁来水、涉水和粒子暂停
 
 - 核对原作的 `Ragdoll` 运动、`GetFloorY` 和 `GetWaterSurfaceAndCeilingY`。舱内以碰撞体中心浸水为前提，实际水深超过站姿头高的 80% 或净高低于该值才游泳，头部浸没单独处理。用 Minecraft 的固定站姿碰撞箱换算躯干和水深，在出水时保留小幅滞回。VS2 2.4.11 的 `Level.clip` 会查询实体船碰撞，可用于探测实际地板、平台和净空。[泳姿判定](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Characters/Animation/Ragdoll.cs#L1230-L1324) · [原作地板探测](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Characters/Animation/Ragdoll.cs#L1645-L1860)

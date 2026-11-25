@@ -15,7 +15,7 @@ edges:
   - target: context/tools.md
     condition: when changing texture generation, GameTest templates, or the AsmDump helper
 grounds_to: []
-last_updated: 2026-11-22
+last_updated: 2026-11-24
 mex:
   id: mx_01M6FTBTA32ESJGHB433FWZZZ3
   type: architecture
@@ -79,3 +79,4 @@ mex:
 - **没有 T1/T2/T3 升级系统**：官方基础外壳都是 200；tier 只限制 `increasewallhealth` 升级等级（每级 +20%，T1 2 / T2 4 / T3 6）。`ShipState.hullHealthMultiplier` 已预留，但没有商店/升级 UI。
 - **没有船壳耐久持久化**：`HullDamage` 只在运行时；世界存档或物理船拆回再装会重置。
 - **没有服务端渲染**：所有画面都在 `client/`，服务端只发数据包。
+- **手电筒照明**：服务端消耗电池并用玩家实体数据同步亮灯位置和低电标志。客户端在水体和手部渲染前处理光锥，复用世界画面的颜色、深度和实际投影矩阵。固定舱灯仍由 Minecraft 方块亮度和可选的 Colorful Lighting 传播颜色。

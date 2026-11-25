@@ -327,12 +327,14 @@ public class HatchBlock extends BaseEntityBlock {
 
     @Override
     public int getLightBlock(BlockState state, BlockGetter level, BlockPos pos) {
-        return state.getValue(OPEN) ? 0 : super.getLightBlock(state, level, pos);
+        // 关着的舱口必须完全挡光：舱口是 1px 薄板，super 只会衰减 1 级，
+        // 下层灯光/上层灯光仍然能穿过去；开着才让光从洞口通过。
+        return state.getValue(OPEN) ? 0 : 15;
     }
 
     @Override
     public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
-        return state.getValue(OPEN) || super.propagatesSkylightDown(state, level, pos);
+        return state.getValue(OPEN);
     }
 
     @Override
