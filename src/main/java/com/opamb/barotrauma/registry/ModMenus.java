@@ -28,6 +28,11 @@ public final class ModMenus {
                             // 原版 openMenu 不写额外数据时 buf 为 null，直接 readBlockPos 会 NPE。
                             buf == null ? net.minecraft.core.BlockPos.ZERO : buf.readBlockPos())));
 
+    /** 高级训练设施设置：血量 / 自发光 / 重生间隔。 */
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.DummyStationMenu>> DUMMY_STATION =
+            MENUS.register("dummy_station", () -> IForgeMenuType.create(
+                    (id, inv, buf) -> new com.opamb.barotrauma.menu.DummyStationMenu(id, inv, buf)));
+
     public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.PumpMenu>> PUMP =
             MENUS.register("drain_pump", () -> IForgeMenuType.create(
                     (id, inv, buf) -> new com.opamb.barotrauma.menu.PumpMenu(id, inv,

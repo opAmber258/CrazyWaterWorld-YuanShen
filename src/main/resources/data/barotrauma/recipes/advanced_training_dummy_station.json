@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "GGG",
+    "GLG",
+    "GRG"
+  ],
+  "key": {
+    "G": {"item": "minecraft:gold_ingot"},
+    "L": {"item": "minecraft:leather"},
+    "R": {"item": "minecraft:redstone_block"}
+  },
+  "result": {
+    "item": "barotrauma:advanced_training_dummy_station"
+  }
+}

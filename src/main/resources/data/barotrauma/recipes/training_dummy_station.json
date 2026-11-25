@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "SSS",
+    "SLS",
+    "SRS"
+  ],
+  "key": {
+    "S": {"item": "barotrauma:steel"},
+    "L": {"item": "minecraft:leather"},
+    "R": {"item": "minecraft:redstone"}
+  },
+  "result": {
+    "item": "barotrauma:training_dummy_station"
+  }
+}

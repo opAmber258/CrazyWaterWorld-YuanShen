@@ -127,6 +127,34 @@ public final class ModBlockEntities {
                             ModBlocks.VENT.get())
                     .build(null));
 
+    /** 训练人偶充气台：生成/绑定/2 秒重生训练人偶。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.TrainingDummyStationBlockEntity>> TRAINING_DUMMY_STATION =
+            BLOCK_ENTITIES.register("training_dummy_station", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.TrainingDummyStationBlockEntity::new,
+                            ModBlocks.TRAINING_DUMMY_STATION.get())
+                    .build(null));
+
+    /** 高级训练人偶充气台：同一套生命周期，生成 200 血高级人偶。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.AdvancedTrainingDummyStationBlockEntity>> ADVANCED_TRAINING_DUMMY_STATION =
+            BLOCK_ENTITIES.register("advanced_training_dummy_station", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.AdvancedTrainingDummyStationBlockEntity::new,
+                            ModBlocks.ADVANCED_TRAINING_DUMMY_STATION.get())
+                    .build(null));
+
+    /** 训练气球充气台：六向，生成沿 FACING 吊挂的 1 血气球。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.BalloonStationBlockEntity>> BALLOON_DUMMY_STATION =
+            BLOCK_ENTITIES.register("balloon_dummy_station", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.BalloonStationBlockEntity::new,
+                            ModBlocks.BALLOON_DUMMY_STATION.get())
+                    .build(null));
+
+    /** 高级气球充气台：同一套摆放逻辑，200 血气球。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.AdvancedBalloonStationBlockEntity>> ADVANCED_BALLOON_DUMMY_STATION =
+            BLOCK_ENTITIES.register("advanced_balloon_dummy_station", () -> BlockEntityType.Builder
+                    .of(com.opamb.barotrauma.blockentity.AdvancedBalloonStationBlockEntity::new,
+                            ModBlocks.ADVANCED_BALLOON_DUMMY_STATION.get())
+                    .build(null));
+
     /** 潜渊症容器：钢柜/带窗钢柜/货架/潜水服柜/氧气瓶架共用一套方块实体。 */
     public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.CabinetBlockEntity>> CABINET =
             BLOCK_ENTITIES.register("cabinet", () -> BlockEntityType.Builder

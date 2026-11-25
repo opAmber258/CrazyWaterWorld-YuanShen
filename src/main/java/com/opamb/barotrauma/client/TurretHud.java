@@ -60,6 +60,10 @@ public final class TurretHud implements IGuiOverlay {
         if (impact != null) {
             drawTrackingImpact(graphics, width, height, impact);
         }
+        if (TurretClient.killIndicatorActive()) {
+            drawKillIndicator(graphics, centerX, centerY);
+        }
+        // 独立图层：击杀画完后，普通命中继续按自己的时间线叠加。
         if (TurretClient.hitIndicatorTicks() > 0) {
             drawHitIndicator(graphics, centerX, centerY);
         }
@@ -129,7 +133,6 @@ public final class TurretHud implements IGuiOverlay {
     /**
      * 命中示意指针：比主准心略小、略短的四臂十字，整体旋转一个角度后闪现并淡出。
      * 每次命中从多个预设角中随机换一个；新命中直接替换旧指针，不叠加。
-     * 用原生四边形绘制斜线，并按 GUI 像素给足线宽，避免 GL_LINES 太细。
      */
     private static void drawHitIndicator(GuiGraphics graphics, int centerX, int centerY) {
         int ticks = TurretClient.hitIndicatorTicks();
@@ -138,36 +141,72 @@ public final class TurretHud implements IGuiOverlay {
         }
         float fade = Mth.clamp(ticks / (float) TurretClient.HIT_INDICATOR_TICKS, 0.0F, 1.0F);
         int alpha = (int) (0xFF * fade);
-        float angle = TurretClient.hitIndicatorAngle();
-        float inner = 5.0F;
-        float outer = 14.0F;
-        // 半个线宽：1.1 GUI px；主准心是 1 px，这里略粗一点保证看得见。
-        float halfWidth = 0.55F;
+        // 半个线宽：0.4125 GUI px（整线 0.825，原 1.1 削减 1/4），比主准心略细。
+        drawCrossArms(graphics, centerX, centerY, TurretClient.hitIndicatorAngle(),
+                5.0F, 14.0F, 0.4125F, 255, 255, 255, alpha,
+                TurretClient.hitDoubleLines() ? TurretClient.HIT_DOUBLE_LINE_GAP : 0.0F);
+    }
 
+    /**
+     * 击杀示意：黄色 X（相对标准准心旋转 45°），比标准准心略细；
+     * 从中心附近向外扩散，25% 起开始淡出。与普通命中是独立图层，可同时绘制。
+     */
+    private static void drawKillIndicator(GuiGraphics graphics, int centerX, int centerY) {
+        if (!TurretClient.killIndicatorActive()) {
+            return;
+        }
+        float progress = TurretClient.killIndicatorProgress();
+        // 前 60% 完成扩散；25% 就开始淡出，尾巴更早变透明。
+        float expand = Mth.clamp(progress / 0.6F, 0.0F, 1.0F);
+        float fade = 1.0F - Mth.clamp((progress - 0.25F) / 0.75F, 0.0F, 1.0F);
+        int alpha = (int) (0xFF * fade);
+        float inner = 4.0F + 6.0F * expand;
+        float outer = 12.0F + 14.0F * expand;
+        drawCrossArms(graphics, centerX, centerY,
+                (float) Math.toRadians(TurretClient.KILL_INDICATOR_ANGLE_DEGREES),
+                inner, outer, 0.4F, 255, 210, 74, alpha,
+                TurretClient.killDoubleLines() ? TurretClient.KILL_DOUBLE_LINE_GAP : 0.0F);
+    }
+
+    /** 四臂十字的公共绘制：原生 QUADS 斜线，宽度按 GUI 像素给；doubleGap > 0 时画双重平行线。 */
+    private static void drawCrossArms(GuiGraphics graphics, int centerX, int centerY,
+                                      float angle, float inner, float outer, float halfWidth,
+                                      int red, int green, int blue, int alpha, float doubleGap) {
+        if (alpha <= 0) {
+            return;
+        }
         Matrix4f matrix = graphics.pose().last().pose();
         if (HIT_LINE_BUILDER.building()) {
             HIT_LINE_BUILDER.discard();
         }
         BufferBuilder builder = HIT_LINE_BUILDER;
         builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        int passes = doubleGap > 0.0F ? 2 : 1;
         for (int arm = 0; arm < 4; arm++) {
             double armAngle = angle + arm * (Math.PI / 2.0D);
             float dx = (float) Math.cos(armAngle);
             float dy = (float) Math.sin(armAngle);
-            float px = -dy * halfWidth;
-            float py = dx * halfWidth;
-            float innerX = centerX + dx * inner;
-            float innerY = centerY + dy * inner;
-            float outerX = centerX + dx * outer;
-            float outerY = centerY + dy * outer;
-            builder.vertex(matrix, innerX + px, innerY + py, 0.0F)
-                    .color(255, 255, 255, alpha).endVertex();
-            builder.vertex(matrix, outerX + px, outerY + py, 0.0F)
-                    .color(255, 255, 255, alpha).endVertex();
-            builder.vertex(matrix, outerX - px, outerY - py, 0.0F)
-                    .color(255, 255, 255, alpha).endVertex();
-            builder.vertex(matrix, innerX - px, innerY - py, 0.0F)
-                    .color(255, 255, 255, alpha).endVertex();
+            for (int pass = 0; pass < passes; pass++) {
+                float offset = passes == 2
+                        ? (pass == 0 ? -doubleGap * 0.5F : doubleGap * 0.5F)
+                        : 0.0F;
+                float ox = -dy * offset;
+                float oy = dx * offset;
+                float px = -dy * halfWidth;
+                float py = dx * halfWidth;
+                float innerX = centerX + dx * inner + ox;
+                float innerY = centerY + dy * inner + oy;
+                float outerX = centerX + dx * outer + ox;
+                float outerY = centerY + dy * outer + oy;
+                builder.vertex(matrix, innerX + px, innerY + py, 0.0F)
+                        .color(red, green, blue, alpha).endVertex();
+                builder.vertex(matrix, outerX + px, outerY + py, 0.0F)
+                        .color(red, green, blue, alpha).endVertex();
+                builder.vertex(matrix, outerX - px, outerY - py, 0.0F)
+                        .color(red, green, blue, alpha).endVertex();
+                builder.vertex(matrix, innerX - px, innerY - py, 0.0F)
+                        .color(red, green, blue, alpha).endVertex();
+            }
         }
         BufferBuilder.RenderedBuffer rendered = builder.end();
 

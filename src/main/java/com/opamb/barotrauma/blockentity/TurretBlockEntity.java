@@ -4,6 +4,7 @@ import com.opamb.barotrauma.block.TurretBlock;
 import com.opamb.barotrauma.block.TurretSpec;
 import com.opamb.barotrauma.medical.bridge.MedicalEvents;
 import com.opamb.barotrauma.network.ModNetwork;
+import com.opamb.barotrauma.network.TurretHitPacket;
 import com.opamb.barotrauma.network.TurretStatePacket;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import net.minecraft.core.BlockPos;
@@ -491,7 +492,13 @@ public class TurretBlockEntity extends BlockEntity {
                     && targetPlayer.isCreative()) {
                 // 原版 hurt 在创造模式会直接拒绝玩家伤害；炮塔是测试武器，这里绕过拦截，
                 // 直接按医疗系统的近战通用规则注入病症。
-                MedicalEvents.applyDirectDamage(targetPlayer, 12.0F);
+                damaged = MedicalEvents.applyDirectDamage(targetPlayer, 12.0F);
+            }
+            if (damaged) {
+                // 命中/击杀反馈只在服务端确认造成伤害后发给操作者，客户端不再按弹道预测。
+                boolean killed = target.isDeadOrDying() || !target.isAlive()
+                        || target.getHealth() <= 0.0F;
+                ModNetwork.sendToPlayer(player, new TurretHitPacket(getBlockPos(), killed));
             }
             level.playSound(null, target.getX(), target.getY(), target.getZ(),
                     SoundEvents.GENERIC_EXPLODE, SoundSource.PLAYERS, 0.35F, 1.6F);

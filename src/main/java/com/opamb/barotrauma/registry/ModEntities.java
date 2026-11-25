@@ -33,11 +33,55 @@ public final class ModEntities {
                     .clientTrackingRange(10)
                     .build(new ResourceLocation(BarotraumaMod.MOD_ID, "npc").toString()));
 
+    /** 训练人偶：充气台生成、1 血、固定不动。 */
+    public static final RegistryObject<EntityType<com.opamb.barotrauma.entity.TrainingDummyEntity>> TRAINING_DUMMY =
+            ENTITIES.register("training_dummy", () -> EntityType.Builder
+                    .<com.opamb.barotrauma.entity.TrainingDummyEntity>of(
+                            com.opamb.barotrauma.entity.TrainingDummyEntity::new, MobCategory.MISC)
+                    .sized(0.8F, 1.5F)
+                    .clientTrackingRange(10)
+                    .build(new ResourceLocation(BarotraumaMod.MOD_ID, "training_dummy").toString()));
+
+    /** 高级训练人偶：充气台生成、200 血、无受击无敌帧、固定不动。 */
+    public static final RegistryObject<EntityType<com.opamb.barotrauma.entity.AdvancedTrainingDummyEntity>> ADVANCED_TRAINING_DUMMY =
+            ENTITIES.register("advanced_training_dummy", () -> EntityType.Builder
+                    .<com.opamb.barotrauma.entity.AdvancedTrainingDummyEntity>of(
+                            com.opamb.barotrauma.entity.AdvancedTrainingDummyEntity::new, MobCategory.MISC)
+                    .sized(0.9F, 1.5F)
+                    .clientTrackingRange(10)
+                    .build(new ResourceLocation(BarotraumaMod.MOD_ID, "advanced_training_dummy").toString()));
+
+    /** 训练气球：六向气球台生成、1 血、沿台座 FACING 吊挂。 */
+    public static final RegistryObject<EntityType<com.opamb.barotrauma.entity.BalloonDummyEntity>> BALLOON_DUMMY =
+            ENTITIES.register("balloon_dummy", () -> EntityType.Builder
+                    .<com.opamb.barotrauma.entity.BalloonDummyEntity>of(
+                            com.opamb.barotrauma.entity.BalloonDummyEntity::new, MobCategory.MISC)
+                    .sized(0.625F, 0.625F)
+                    .clientTrackingRange(10)
+                    .build(new ResourceLocation(BarotraumaMod.MOD_ID, "balloon_dummy").toString()));
+
+    /** 高级训练气球：200 血、无受击无敌帧。 */
+    public static final RegistryObject<EntityType<com.opamb.barotrauma.entity.AdvancedBalloonDummyEntity>> ADVANCED_BALLOON_DUMMY =
+            ENTITIES.register("advanced_balloon_dummy", () -> EntityType.Builder
+                    .<com.opamb.barotrauma.entity.AdvancedBalloonDummyEntity>of(
+                            com.opamb.barotrauma.entity.AdvancedBalloonDummyEntity::new, MobCategory.MISC)
+                    .sized(0.625F, 0.625F)
+                    .clientTrackingRange(10)
+                    .build(new ResourceLocation(BarotraumaMod.MOD_ID, "advanced_balloon_dummy").toString()));
+
     /** Forge 要求所有 Mob 在这里注册基础属性，否则生成时会报 "does not have any attributes"。 */
     public static void onAttributes(
             net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {
         event.put(NPC.get(),
                 com.opamb.barotrauma.entity.NpcEntity.createAttributes().build());
+        event.put(TRAINING_DUMMY.get(),
+                com.opamb.barotrauma.entity.TrainingDummyEntity.createAttributes().build());
+        event.put(ADVANCED_TRAINING_DUMMY.get(),
+                com.opamb.barotrauma.entity.AdvancedTrainingDummyEntity.createAttributes().build());
+        event.put(BALLOON_DUMMY.get(),
+                com.opamb.barotrauma.entity.BalloonDummyEntity.createAttributes().build());
+        event.put(ADVANCED_BALLOON_DUMMY.get(),
+                com.opamb.barotrauma.entity.AdvancedBalloonDummyEntity.createAttributes().build());
     }
 
     private ModEntities() {

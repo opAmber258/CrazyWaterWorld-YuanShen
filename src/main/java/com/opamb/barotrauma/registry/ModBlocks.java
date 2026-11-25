@@ -1,7 +1,9 @@
 package com.opamb.barotrauma.registry;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.block.AdvancedTrainingDummyStationBlock;
 import com.opamb.barotrauma.block.BallastPumpBlock;
+import com.opamb.barotrauma.block.BalloonStationBlock;
 import com.opamb.barotrauma.block.Cpu6700X3DBlock;
 import com.opamb.barotrauma.block.DrainPumpBlock;
 import com.opamb.barotrauma.block.FreeAimTurretBlock;
@@ -9,6 +11,7 @@ import com.opamb.barotrauma.block.HullBlock;
 import com.opamb.barotrauma.block.IronLadderBlock;
 import com.opamb.barotrauma.block.MissionTerminalBlock;
 import com.opamb.barotrauma.block.TrackingTurretBlock;
+import com.opamb.barotrauma.block.TrainingDummyStationBlock;
 import com.opamb.barotrauma.block.TurretBlock;
 import com.opamb.barotrauma.block.TurretStationBlock;
 import net.minecraft.world.level.block.Block;
@@ -336,8 +339,52 @@ public final class ModBlocks {
                 .isSuffocating((state, level, pos) -> false);
     }
 
-    // ---- 采矿任务用的岩壁矿脉（副本航线附近生成，等离子切割机切碎） ----
+    /** 训练人偶充气台：放置后在上方生成 1 血、固定不动的训练人偶。 */
+    public static final RegistryObject<Block> TRAINING_DUMMY_STATION = BLOCKS.register(
+            "training_dummy_station", () -> new TrainingDummyStationBlock(
+                    BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.METAL)
+                            .strength(3.0F, 120.0F)
+                            .sound(SoundType.METAL)
+                            .noOcclusion()
+                            .isViewBlocking((state, level, pos) -> false)
+                            .isSuffocating((state, level, pos) -> false)));
 
+    /** 高级训练人偶充气台：放置后生成 200 血、无受击无敌帧的高级人偶。 */
+    public static final RegistryObject<Block> ADVANCED_TRAINING_DUMMY_STATION = BLOCKS.register(
+            "advanced_training_dummy_station", () -> new AdvancedTrainingDummyStationBlock(
+                    BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.GOLD)
+                            .strength(5.0F, 120.0F)
+                            .sound(SoundType.METAL)
+                            .noOcclusion()
+                            .isViewBlocking((state, level, pos) -> false)
+                            .isSuffocating((state, level, pos) -> false)));
+
+    /** 训练气球充气台：六向放置，气球沿 FACING 生成在相邻格。 */
+    public static final RegistryObject<Block> BALLOON_DUMMY_STATION = BLOCKS.register(
+            "balloon_dummy_station", () -> new BalloonStationBlock(
+                    BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.METAL)
+                            .strength(3.0F, 120.0F)
+                            .sound(SoundType.METAL)
+                            .noOcclusion()
+                            .isViewBlocking((state, level, pos) -> false)
+                            .isSuffocating((state, level, pos) -> false)));
+
+    /** 高级训练气球充气台：同上，气球 200 血、无受击间隔。 */
+    public static final RegistryObject<Block> ADVANCED_BALLOON_DUMMY_STATION = BLOCKS.register(
+            "advanced_balloon_dummy_station",
+            () -> new com.opamb.barotrauma.block.AdvancedBalloonStationBlock(
+                    BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.GOLD)
+                            .strength(5.0F, 120.0F)
+                            .sound(SoundType.METAL)
+                            .noOcclusion()
+                            .isViewBlocking((state, level, pos) -> false)
+                            .isSuffocating((state, level, pos) -> false)));
+
+    // ---- 采矿任务用的岩壁矿脉（副本航线附近生成，等离子切割机切碎） ----
     /** 石英矿脉。 */
     public static final RegistryObject<Block> QUARTZ_VEIN = BLOCKS.register("quartz_vein",
             () -> new com.opamb.barotrauma.block.MineralVeinBlock(veinProperties(),

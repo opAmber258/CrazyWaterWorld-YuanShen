@@ -28,7 +28,9 @@ public final class ModNetwork {
     // 28：SwimStatePacket 首字段语义改为“是否启用水中移动”（疾跑泳姿改由客户端预测）。
     // 29：ShipWaterStatePacket 增加源维度（方块船水包是广播的，客户端拒绝异维度同坐标）。
     // 30：TurretStatePacket 增加 autoFire；新增 TurretModePacket（客户端请求切换单发/全自动）。
-    private static final String PROTOCOL = "30";
+    // 31：新增 TurretHitPacket（服务端确认命中/击杀，客户端据此播放准星反馈）。
+    // 32：新增 DummySettingsPacket（高级训练台血量/自发光/重生间隔）。
+    private static final String PROTOCOL = "32";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -146,12 +148,18 @@ CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(TurretStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretStatePacket::encode).decoder(TurretStatePacket::decode)
                 .consumerNetworkThread(TurretStatePacket::handle).add();
+        CHANNEL.messageBuilder(TurretHitPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(TurretHitPacket::encode).decoder(TurretHitPacket::decode)
+                .consumerNetworkThread(TurretHitPacket::handle).add();
         CHANNEL.messageBuilder(PickupItemPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(PickupItemPacket::encode).decoder(PickupItemPacket::decode)
                 .consumerNetworkThread(PickupItemPacket::handle).add();
         CHANNEL.messageBuilder(ShipUseBlockPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(ShipUseBlockPacket::encode).decoder(ShipUseBlockPacket::decode)
                 .consumerNetworkThread(ShipUseBlockPacket::handle).add();
+        CHANNEL.messageBuilder(DummySettingsPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(DummySettingsPacket::encode).decoder(DummySettingsPacket::decode)
+                .consumerNetworkThread(DummySettingsPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

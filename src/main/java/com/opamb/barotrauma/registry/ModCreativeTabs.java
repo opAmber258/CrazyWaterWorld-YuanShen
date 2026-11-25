@@ -125,6 +125,13 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.TURRET_BINDER.get());
                         // 耐久调节器：直接推设备耐久，验收修理窗口/损坏状态用
                         output.accept(ModItems.CONDITION_TOOL.get());
+                        // 训练人偶充气台：炮塔/近战命中测试设施（临时模型与贴图）
+                        output.accept(ModItems.TRAINING_DUMMY_STATION.get());
+                        // 高级版：200 血、无受击无敌帧，测连发 DPS
+                        output.accept(ModItems.ADVANCED_TRAINING_DUMMY_STATION.get());
+                        // 气球版：六向吊挂、沿朝向共占 2 格；1 血 / 200 血
+                        output.accept(ModItems.BALLOON_DUMMY_STATION.get());
+                        output.accept(ModItems.ADVANCED_BALLOON_DUMMY_STATION.get());
                     })
                     .build());
 

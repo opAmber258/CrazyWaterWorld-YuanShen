@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=up": {"model": "barotrauma:block/advanced_training_dummy_station"},
+    "facing=down": {"model": "barotrauma:block/advanced_training_dummy_station", "x": 180},
+    "facing=north": {"model": "barotrauma:block/advanced_training_dummy_station", "x": 90, "y": 0},
+    "facing=east": {"model": "barotrauma:block/advanced_training_dummy_station", "x": 90, "y": 90},
+    "facing=south": {"model": "barotrauma:block/advanced_training_dummy_station", "x": 90, "y": 180},
+    "facing=west": {"model": "barotrauma:block/advanced_training_dummy_station", "x": 90, "y": 270}
+  }
+}
