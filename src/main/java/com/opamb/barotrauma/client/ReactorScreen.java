@@ -5,6 +5,7 @@ import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.ReactorActionPacket;
 import com.opamb.barotrauma.reactor.ReactorFuel;
 import com.opamb.barotrauma.reactor.ReactorState;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -33,18 +34,17 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
     private static final int W = 400;
     private static final int H = 300;
 
-    private static final int BG = 0xF0141B16;
-    private static final int EDGE = 0xFF3B463C;
+    private static final int EDGE = PanelStyle.EDGE;
     private static final int INNER = 0xFF243027;
-    private static final int PANEL = 0xFF1A241D;
-    private static final int TEXT = 0xFFD8D2BF;
-    private static final int DIM = 0xFF7C8478;
-    private static final int ACCENT = 0xFFE0762F;
+    private static final int PANEL = PanelStyle.RECESS;
+    private static final int TEXT = PanelStyle.TEXT;
+    private static final int DIM = PanelStyle.DIM;
+    private static final int ACCENT = PanelStyle.AMBER;
     private static final int GREEN = 0xFF6FD07A;
     private static final int RED = 0xFFC8483C;
     private static final int YELLOW = 0xFFD8B44A;
     private static final int BLUE = 0xFF6FA8D0;
-    private static final int TRACK = 0xFF0C120E;
+    private static final int TRACK = PanelStyle.RECESS;
     private static final int BUTTON_FACE = 0xFF3E3A2E;
     private static final int BUTTON_BORDER = 0xFF6E6450;
     private static final int BUTTON_TEXT = 0xFFC9BFA8;
@@ -109,11 +109,7 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
         int x = leftPos;
         int y = topPos;
 
-        graphics.fill(x, y, x + W, y + H, BG);
-        graphics.fill(x, y, x + W, y + 1, EDGE);
-        graphics.fill(x, y + H - 1, x + W, y + H, EDGE);
-        graphics.fill(x, y, x + 1, y + H, EDGE);
-        graphics.fill(x + W - 1, y, x + W, y + H, EDGE);
+        PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
         graphics.fill(x + 4, y + 4, x + W - 4, y + 4 + 1, INNER);
         graphics.fill(x + 4, y + H - 5, x + W - 4, y + H - 4, INNER);
 

@@ -55,6 +55,12 @@ public final class ReactorState {
     private boolean autoTemp = true;
     private double targetFission;
     private double targetTurbine;
+    private boolean dugongStock;
+
+    public void setDugongStock(boolean dugongStock) {
+        this.dugongStock = dugongStock;
+    }
+
     private double fission;
     private double turbine;
     private double temperature;
@@ -123,7 +129,7 @@ public final class ReactorState {
         turbine = lerp(turbine, targetTurbine, Math.min(1.0D, dt));
 
         // 理想涡轮：把当前负载吃满所需的百分比（原作 CorrectTurbineOutput）。
-        double idealTurbine = loadKw / MAX_POWER_KW * 100.0D;
+        double idealTurbine = loadKw / capacityKw() * 100.0D;
         correctTurbine = clamp(correctTurbine
                 + clamp(idealTurbine - correctTurbine, -20.0D, 20.0D) * dt, 0.0D, 100.0D);
 
@@ -136,8 +142,8 @@ public final class ReactorState {
         double band = optimalBand ? 3.0D : 1.0D;
         double minFraction = clamp(
                 Math.min((turbine - band) / 100.0D, temperatureFactor), 0.0D, 1.0D);
-        minOutputKw = MAX_POWER_KW * minFraction;
-        maxOutputKw = MAX_POWER_KW * Math.max(minFraction,
+        minOutputKw = capacityKw() * minFraction;
+        maxOutputKw = capacityKw() * Math.max(minFraction,
                 Math.min((turbine + band) / 100.0D, temperatureFactor));
 
         // 原作 GetConnectionPowerOut：反应堆只按需求出力，夹在本机出力带里。
@@ -157,8 +163,8 @@ public final class ReactorState {
         double damageScale = 2.0D - condition;
         if (temperature > ALLOWED_TEMP_MAX) {
             meltdownTimer += dt * damageScale;
-            if (meltdownTimer >= MELTDOWN_DELAY) {
-                meltdownTimer = MELTDOWN_DELAY;
+            if (meltdownTimer >= (dugongStock ? 30.0D : MELTDOWN_DELAY)) {
+                meltdownTimer = dugongStock ? 30.0D : MELTDOWN_DELAY;
                 meltedDown = true;
                 powerOn = false;
                 autoTemp = false;
@@ -172,7 +178,7 @@ public final class ReactorState {
 
         if (temperature > OPTIMAL_TEMP_MAX) {
             fireTimer += dt * damageScale;
-            if (fireTimer >= FIRE_DELAY) {
+            if (fireTimer >= (dugongStock ? 10.0D : FIRE_DELAY)) {
                 fireTimer = 0.0D;
                 events |= EVENT_FIRE;
             }
@@ -313,7 +319,7 @@ public final class ReactorState {
     }
 
     public double capacityKw() {
-        return MAX_POWER_KW;
+        return dugongStock ? 3000.0D : MAX_POWER_KW;
     }
 
     public boolean overheated() {

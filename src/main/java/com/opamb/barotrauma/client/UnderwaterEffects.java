@@ -63,7 +63,7 @@ public final class UnderwaterEffects {
         }
         Camera camera = event.getCamera();
         Vec3 eye = camera.getPosition();
-        if (!OceanEnvironment.isInOcean(mc.level, eye)) {
+        if (DeepBrightnessDebug.seaFogDisabled() || !OceanEnvironment.isInOcean(mc.level, eye)) {
             return;
         }
         SeaView view = !ShipWaterMaterial.refractionAvailable() && isOpenOcean(mc.level, eye)

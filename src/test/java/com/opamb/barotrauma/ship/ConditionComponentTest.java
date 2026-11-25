@@ -77,4 +77,19 @@ class ConditionComponentTest {
         condition.damage(30.0D); // 0%
         assertEquals(1.5D, condition.powerPenalty(), 1.0E-9D);
     }
+
+    @Test
+    void oldFullDeviceWithoutGraceGetsItsInitialDelay() {
+        var saved = new net.minecraft.nbt.CompoundTag();
+        saved.putDouble("Condition", 100);
+        saved.putLong("ConditionGrace", 0);
+        var device = new ConditionComponent(100, 1, 2, 2, 0, 0.8);
+        device.load(saved, "Condition");
+
+        device.tick(null, true, 2, 0.5);
+        device.tick(null, true, 2, 0.5);
+        assertEquals(100, device.condition(), 1.0E-9);
+        device.tick(null, true, 1, 0.5);
+        assertEquals(99, device.condition(), 1.0E-9);
+    }
 }

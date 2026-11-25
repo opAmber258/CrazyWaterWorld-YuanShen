@@ -9,7 +9,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
@@ -22,7 +21,7 @@ import net.minecraft.world.phys.Vec3;
  * <p>照原作 {@code OxygenGenerator} 的面板：五格 {@code ItemContainer}（氧气瓶/焊接油箱
  * 会在这里被充气），没有开关——通电就工作。数值来自方块实体每 tick 上报。</p>
  */
-public class OxygenGeneratorMenu extends AbstractContainerMenu {
+public class OxygenGeneratorMenu extends DeviceMenu {
 
     /** 数据位 0：当前产氧量（单位/秒 × 10）。 */
     public static final int DATA_FLOW = 0;
@@ -59,7 +58,7 @@ public class OxygenGeneratorMenu extends AbstractContainerMenu {
     }
 
     public OxygenGeneratorMenu(int id, Inventory inventory, BlockPos pos) {
-        super(ModMenus.OXYGEN_GENERATOR.get(), id);
+        super(ModMenus.OXYGEN_GENERATOR.get(), id, inventory, pos);
         this.pos = pos;
         OxygenGeneratorBlockEntity resolved = null;
         if (!inventory.player.level().isClientSide

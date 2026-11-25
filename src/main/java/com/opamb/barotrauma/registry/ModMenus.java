@@ -95,6 +95,10 @@ public final class ModMenus {
             MENUS.register("light", () -> IForgeMenuType.create(
                     com.opamb.barotrauma.menu.LightMenu::new));
 
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.JunctionBoxMenu>> JUNCTION_BOX =
+            MENUS.register("junction_box", () -> IForgeMenuType.create(
+                    com.opamb.barotrauma.menu.JunctionBoxMenu::new));
+
     private ModMenus() {
     }
 

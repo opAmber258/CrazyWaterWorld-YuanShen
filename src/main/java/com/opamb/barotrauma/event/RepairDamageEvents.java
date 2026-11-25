@@ -1,7 +1,7 @@
 package com.opamb.barotrauma.event;
 
 import com.opamb.barotrauma.BarotraumaMod;
-import com.opamb.barotrauma.menu.RepairMenu;
+import com.opamb.barotrauma.menu.DeviceMenu;
 import com.opamb.barotrauma.ship.RepairTarget;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -19,7 +19,7 @@ import net.minecraftforge.fml.common.Mod;
  * 之后用对应工具修。每格 20 点，避免一发爆炸直接把整船设备全打没。</p>
  *
  * <p>同时驱动修理窗口的服务端会话：原作 {@code Repairable.Update} 在服务端按
- * {@code CurrentFixer} 持续加耐久，这里对应 {@link RepairMenu#serverTick()}。</p>
+ * {@code CurrentFixer} 持续加耐久，这里对应 {@code RepairSession.tick}。</p>
  */
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID,
         bus = Mod.EventBusSubscriber.Bus.FORGE)
@@ -37,8 +37,8 @@ public final class RepairDamageEvents {
             return;
         }
         if (event.player instanceof ServerPlayer player
-                && player.containerMenu instanceof RepairMenu menu) {
-            menu.serverTick();
+                && player.containerMenu instanceof DeviceMenu menu) {
+            menu.repair().tick();
         }
     }
 

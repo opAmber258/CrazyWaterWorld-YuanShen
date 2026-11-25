@@ -11,7 +11,6 @@ import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
@@ -24,7 +23,7 @@ import net.minecraft.world.phys.Vec3;
  * <p>点“拆解”时服务端读第一个非空输入格，按原作的 {@code <Deconstruct>} 表拆成材料，
  * 成品进输出格，装不下就掉在机器前面。</p>
  */
-public class DeconstructorMenu extends AbstractContainerMenu {
+public class DeconstructorMenu extends DeviceMenu {
 
     public static final int INPUT_SLOTS = DeconstructorBlockEntity.INPUT_SLOTS;
     public static final int OUTPUT_SLOTS = DeconstructorBlockEntity.OUTPUT_SLOTS;
@@ -64,7 +63,7 @@ public class DeconstructorMenu extends AbstractContainerMenu {
     }
 
     public DeconstructorMenu(int id, Inventory inventory, BlockPos pos) {
-        super(ModMenus.DECONSTRUCTOR.get(), id);
+        super(ModMenus.DECONSTRUCTOR.get(), id, inventory, pos);
         this.pos = pos;
         DeconstructorBlockEntity machine = null;
         if (!inventory.player.level().isClientSide

@@ -164,6 +164,11 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
     }
 
     @Override
+    public int requiredSkill() {
+        return 40;
+    }
+
+    @Override
     public void applyRepair(double points) {
         condition.repair(points);
         setChanged();

@@ -39,6 +39,10 @@ public final class AfflictionType {
                     new Tier(40, 60, 4, 6, -0.1),
                     new Tier(60, 100, 6, 10, -0.1)));
 
+    public static final AfflictionType LACERATIONS = new AfflictionType(
+            "lacerations", true, 200.0, 0.0,
+            List.of(new Tier(0, 200, 0, 2, 0)));
+
     /** 烧伤。原作：部位，三段递增掉血，无自然变化。 */
     public static final AfflictionType BURN = new AfflictionType(
             "burn", true, 200.0, 0.0,
@@ -109,7 +113,7 @@ public final class AfflictionType {
 
     /** v1 全部病症，顺序即文档顺序。 */
     public static final List<AfflictionType> ALL =
-            List.of(BLUNT_TRAUMA, BLEEDING, BURN, BLOODLOSS, OXYGEN_LOW, STUN,
+            List.of(BLUNT_TRAUMA, BLEEDING, BURN, LACERATIONS, BLOODLOSS, OXYGEN_LOW, STUN,
                     OPIATE_OVERDOSE, OPIATE_ADDICTION, OPIATE_WITHDRAWAL, ORGAN_DAMAGE,
                     RADIATION);
 

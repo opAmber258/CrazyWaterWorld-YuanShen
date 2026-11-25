@@ -168,6 +168,11 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
     }
 
     @Override
+    public int requiredSkill() {
+        return 40;
+    }
+
+    @Override
     public void applyRepair(double points) {
         condition.repair(points);
         setChanged();

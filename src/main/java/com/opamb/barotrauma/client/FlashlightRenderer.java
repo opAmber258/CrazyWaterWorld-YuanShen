@@ -44,6 +44,7 @@ public final class FlashlightRenderer {
     private static final Matrix4f PROJECTION = new Matrix4f();
     private static final Matrix4f INVERSE_PROJECTION = new Matrix4f();
 
+
     private static ShaderInstance shader;
     private static TextureTarget scene;
     private static TextureTarget terrain;
@@ -122,7 +123,7 @@ public final class FlashlightRenderer {
         Beam own = localEmitter == null ? null : beam(mc.player, localEmitter.state(), camera, partialTick);
         boolean deep = mc.level.dimension().equals(ModDimensions.THE_DEEP);
         Vec3 halo = null;
-        if (deep && camera.getEntity() == mc.player
+        if (deep && own == null && camera.getEntity() == mc.player
                 && mc.player.isAlive() && !mc.player.isSpectator()) {
             halo = mc.player.getEyePosition(partialTick).add(0.0, -mc.player.getEyeHeight() * 0.25, 0.0)
                     .subtract(camera.getPosition());
@@ -158,13 +159,17 @@ public final class FlashlightRenderer {
             scene = prepareCapture(target, scene, true);
             copyBuffers(target, scene, GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             draw(own, halo, remoteBeam(nearest, camera, partialTick), remoteBeam(second, camera, partialTick),
-                    hasTerrainDepth, deep);
+                    hasTerrainDepth, deep, dimCabin(mc, camera));
         } catch (RuntimeException error) {
             failed = true;
             release();
             target.bindWrite(false);
             BarotraumaMod.LOGGER.warn("[light] 无法合成手电筒光照", error);
         }
+    }
+
+    public static boolean dimCabin(Minecraft mc, Camera camera) {
+        return mc.level != null && OceanEnvironment.isInsideShipCompartment(mc.level, camera.getPosition());
     }
 
     private static boolean isRemoteEmitter(Player player, Player local) {
@@ -218,11 +223,12 @@ public final class FlashlightRenderer {
         return new Beam(origin.subtract(camera.getPosition()), direction, brightness, scatter, !firstPerson);
     }
 
-    private static void draw(Beam first, Vec3 halo, Beam second, Beam third, boolean hasTerrainDepth, boolean deep) {
+    private static void draw(Beam first, Vec3 halo, Beam second, Beam third, boolean hasTerrainDepth, boolean deep, boolean cabin) {
         ShaderInstance previousShader = RenderSystem.getShader();
         INVERSE_PROJECTION.set(PROJECTION).invert();
         shader.safeGetUniform("InverseProjection").set(INVERSE_PROJECTION);
         shader.safeGetUniform("SceneProjection").set(PROJECTION);
+        shader.safeGetUniform("KeepDimScene").set(cabin ? 1.0F : 0.0F);
         shader.safeGetUniform("DeepScene").set(deep ? 1.0F : 0.0F);
         shader.setSampler("SceneColor", scene.getColorTextureId());
         shader.setSampler("SceneDepth", scene.getDepthTextureId());

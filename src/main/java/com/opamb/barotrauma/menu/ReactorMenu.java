@@ -13,7 +13,6 @@ import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
@@ -26,7 +25,7 @@ import net.minecraft.world.phys.Vec3;
  * <p>数据位每 tick 由服务端 {@link ContainerData} 同步；槽位用标准
  * {@link Slot}，服务端容器是反应堆方块实体，客户端是 {@link SimpleContainer}。</p>
  */
-public class ReactorMenu extends AbstractContainerMenu {
+public class ReactorMenu extends DeviceMenu {
 
     public static final int FUEL_SLOTS = ReactorBlockEntity.FUEL_SLOTS;
 
@@ -67,7 +66,7 @@ public class ReactorMenu extends AbstractContainerMenu {
     }
 
     public ReactorMenu(int id, Inventory inventory, BlockPos reactorPos) {
-        super(ModMenus.REACTOR.get(), id);
+        super(ModMenus.REACTOR.get(), id, inventory, reactorPos);
         this.reactorPos = reactorPos;
 
         ReactorBlockEntity reactor = null;
@@ -122,7 +121,7 @@ public class ReactorMenu extends AbstractContainerMenu {
                         case DATA_TEMPERATURE -> (int) Math.round(be.state().temperature() * 10.0D);
                         case DATA_FUEL -> (int) Math.round(be.availableFuel() * 10.0D);
                         case DATA_LOAD -> (int) Math.round(be.lastLoadKw());
-                        case DATA_OUTPUT -> (int) Math.round(be.state().outputKw());
+                        case DATA_OUTPUT -> (int) Math.round(be.generatedKw());
                         case DATA_MELTDOWN -> (int) Math.round(be.state().meltdownTimer() * 10.0D);
                         case DATA_MELTED -> be.state().meltedDown() ? 1 : 0;
                         case DATA_BOOST -> (int) Math.round(be.state().temperatureBoost() * 10.0D);

@@ -5,6 +5,7 @@ import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.registry.ModBlocks;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.ship.vs.VsState;
+import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.block.BulkheadDoorBlock;
 import com.opamb.barotrauma.block.NavigationTerminalBlock;
 import com.opamb.barotrauma.block.NavigationTerminalLayout;
@@ -15,6 +16,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -229,6 +231,35 @@ public final class StarterSub {
     public static net.minecraft.world.phys.Vec3 spawnPos(ServerLevel level) {
         Layout layout = layout(level);
         return layout.dugong() ? layout.spawn() : spawnPos();
+    }
+
+    /** Original equipment coordinates relative to the stock navigation console. */
+    public static boolean stockEquipment(ServerLevel level, BlockPos cell, boolean physical,
+                                         int offsetX, int offsetY, int offsetZ) {
+        if (!ModDimensions.THE_DEEP.equals(level.dimension()) || layout(level) != Layout.DUGONG_V2) {
+            return false;
+        }
+        BlockPos nominal = cell.offset(-offsetX, -offsetY, -offsetZ);
+        // Assembly coordinates keep the former dock origin after a campaign transfer.
+        if (physical) {
+            BlockPos core = VsPilot.corePos();
+            return core != null && isStarterCoreAt(nominal, core);
+        }
+        DockingBay.Site site = DockingBay.siteAt(nominal.getX(), nominal.getZ());
+        if (site == null || !nominal.equals(DockingBay.dockCore(site, Layout.DUGONG_V2))) {
+            return false;
+        }
+        return level.getBlockEntity(nominal) instanceof ShipCoreBlockEntity
+                || level.getBlockEntity(nominal.below()) instanceof ShipCoreBlockEntity;
+    }
+
+    public static boolean atFriendlyOutpost(Level level) {
+        if (!(level instanceof ServerLevel server) || !ModDimensions.THE_DEEP.equals(level.dimension())) {
+            return false;
+        }
+        var round = com.opamb.barotrauma.campaign.CampaignState.wallet(server).round();
+        return round.phase() == com.opamb.barotrauma.campaign.RoundPhase.AT_NODE
+                && (!round.hasInstance() || round.endHasOutpost());
     }
 
     private StarterSub() {
@@ -527,6 +558,12 @@ public final class StarterSub {
         // 老蓝图里驾驶舱可能还是声纳台；放完立刻换成导航终端并补齐 3 格高驾驶室顶层。
         convertStarterConsole(level, Layout.DUGONG_V2);
         ensureConsoleTopRow(level);
+        for (int x = 17; x <= 18; x++) {
+            if (level.getBlockEntity(origin.offset(x, 2, 10))
+                    instanceof com.opamb.barotrauma.blockentity.BatteryBlockEntity battery) {
+                battery.configureDugongBattery(true);
+            }
+        }
 
         BlockPos corePos = newCorePos();
         level.getChunk(corePos.getX() >> 4, corePos.getZ() >> 4);

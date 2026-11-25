@@ -11,7 +11,6 @@ import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
@@ -26,7 +25,7 @@ import net.minecraft.world.phys.Vec3;
  * 界面状态；点“制作”时把配方在配方表里的下标作为 {@code clickMenuButton} 的 id
  * 发给服务端，服务端按同一份静态配方表校验材料、输出格、耐久和供电。</p>
  */
-public class FabricatorMenu extends AbstractContainerMenu {
+public class FabricatorMenu extends DeviceMenu {
 
     public static final int INPUT_SLOTS = FabricatorBlockEntity.INPUT_SLOTS;
     public static final int OUTPUT_SLOT = FabricatorBlockEntity.OUTPUT_SLOT;
@@ -61,7 +60,7 @@ public class FabricatorMenu extends AbstractContainerMenu {
     }
 
     public FabricatorMenu(int id, Inventory inventory, BlockPos pos) {
-        super(ModMenus.FABRICATOR.get(), id);
+        super(ModMenus.FABRICATOR.get(), id, inventory, pos);
         this.pos = pos;
         FabricatorBlockEntity machine = null;
         if (!inventory.player.level().isClientSide

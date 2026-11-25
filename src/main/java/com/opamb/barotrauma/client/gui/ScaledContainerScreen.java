@@ -1,5 +1,7 @@
 package com.opamb.barotrauma.client.gui;
 
+import com.opamb.barotrauma.menu.DeviceMenu;
+import com.opamb.barotrauma.menu.RepairMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -24,9 +26,11 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
     /** 面板左上角的屏幕坐标。 */
     protected int panelX;
     protected int panelY;
+    private final DeviceRepairPanel repairPanel;
 
     protected ScaledContainerScreen(T menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
+        repairPanel = menu instanceof DeviceMenu device ? new DeviceRepairPanel(device) : null;
     }
 
     @Override
@@ -36,10 +40,12 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
         // 否则缩放到小窗口时负坐标会跑到屏幕外。
         int gutter = designLeftGutter();
         int designWidth = this.imageWidth + gutter;
-        this.uiScale = GuiScale.factor(this.width, this.height, designWidth, this.imageHeight);
+        int layoutHeight = repairPanel == null || menu instanceof RepairMenu
+                ? imageHeight : repairY() + DeviceRepairPanel.HEIGHT;
+        this.uiScale = GuiScale.factor(this.width, this.height, designWidth, layoutHeight);
         this.panelX = GuiScale.offsetX(this.width, designWidth, this.uiScale)
                 + Math.round(gutter * this.uiScale);
-        this.panelY = GuiScale.offsetY(this.height, this.imageHeight, this.uiScale);
+        this.panelY = GuiScale.offsetY(this.height, layoutHeight, this.uiScale);
         // 设计坐标从 (0,0) 起，整块面板由 render 统一平移+缩放。
         this.leftPos = 0;
         this.topPos = 0;
@@ -127,6 +133,9 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
         graphics.pose().translate(panelX, panelY, 0.0F);
         graphics.pose().scale(uiScale, uiScale, 1.0F);
         renderScaled(graphics, dx, dy, partialTick);
+        if (repairPanel != null) {
+            repairPanel.render(graphics, font, imageWidth, repairY(), dx, dy, menu instanceof RepairMenu);
+        }
         // 缩放空间里的叠层：双手格上箱子的内容弹窗（和背包界面同款）。
         // 原作 VisualSlot.SubInventoryDir：槽位在屏幕下半边 → 弹窗向上，上半边 → 向下。
         int dir = subInventoryDir();
@@ -168,6 +177,8 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
         double dx = designX(mouseX);
         double dy = designY(mouseY);
         dragOwner = null;
+        if (repairPanel != null && repairPanel.mouseClicked(imageWidth, repairY(), dx, dy, button,
+                menu instanceof RepairMenu)) return true;
         for (GuiEventListener child : children()) {
             if (child.isMouseOver(dx, dy)) {
                 dragOwner = child;
@@ -185,6 +196,10 @@ public abstract class ScaledContainerScreen<T extends AbstractContainerMenu>
             return true;
         }
         return super.mouseClicked(dx, dy, button);
+    }
+
+    private int repairY() {
+        return menu instanceof RepairMenu ? 0 : imageHeight + DeviceRepairPanel.GAP;
     }
 
     @Override

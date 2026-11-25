@@ -84,6 +84,40 @@ class ShipEngineTest {
     }
 
     @Test
+    void 反向制动力和残余正向力按各自方向相加() {
+        ShipSimulation sim = simulation(0);
+        sim.reportReactor(BlockPos.ZERO, 900.0D, 900.0D, 50.0D, false, false);
+        sim.reportEngine(new BlockPos(1, 0, 0), -45.0D, 600.0D, 300.0D);
+        sim.reportEngine(new BlockPos(-1, 0, 0), 15.0D, 300.0D, 300.0D);
+        sim.tick(1.0D);
+        assertEquals(-18_000.0D, sim.engineForceRaw(), 1.0E-6);
+        assertEquals(900.0D, sim.engineDemandKw(), 1.0E-6);
+    }
+
+    @Test
+    void estimatesBrakingFromIdleConnectedEnginesAndReservesOtherLoads() {
+        ShipSimulation sim = simulation(0);
+        BlockPos online = new BlockPos(1, 0, 0);
+        BlockPos offline = new BlockPos(-1, 0, 0);
+        BlockPos deadBox = new BlockPos(-1, 1, 0);
+        sim.reportEngine(online, 0.0D, 0.0D, 300.0D, 0.5D, 2250.0D);
+        sim.reportEngine(offline, 0.0D, 0.0D, 300.0D);
+        sim.reportConsumer(online, 0.0D, 0.5D, null);
+        sim.reportConsumer(offline, 0.0D, 0.5D, deadBox);
+        sim.reportConsumer(new BlockPos(0, 1, 0), 500.0D, 0.5D, null);
+        sim.reportReactor(BlockPos.ZERO, 700.0D, 700.0D, 50.0D, false, false);
+        sim.tick(0.1D);
+
+        var capacity = sim.engineCapacity(100);
+        double expectedFraction = Math.pow(375.0D / 2250.0D, 2.0D / 3.0D);
+        assertEquals(expectedFraction, capacity.throttle(), 1.0E-9D);
+        assertEquals(300.0D * 100.0D * 1.25D * expectedFraction * Math.pow(0.8D, 2.0D / 3.0D),
+                capacity.rawForce(), 1.0E-6D);
+        assertEquals(1.0D, sim.engineCapacity(20).throttle(), 1.0E-9D);
+        assertEquals(0.0D, sim.engineForceRaw(), 1.0E-9D);
+    }
+
+    @Test
     void 引擎上报过期后数量归零() {
         ShipSimulation sim = simulation(0);
         sim.reportEngine(new BlockPos(0, 0, 0), 100.0D, 2000.0D, 300.0D);

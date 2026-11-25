@@ -47,10 +47,8 @@ class RepairTargetTest {
     }
 
     @Test
-    void 默认持续时长与加成按原作低技能档() {
-        RepairTarget target = target(50.0D);
-        assertEquals(25.0D, target.repairDurationSeconds(), 1.0E-9D);
-        assertEquals(3.0D, target.qteBoostPoints(), 1.0E-9D);
+    void electricalAndMechanicalRepairsDefaultToSkill55() {
+        assertEquals(55, target(50.0D).requiredSkill());
     }
 
     @Test

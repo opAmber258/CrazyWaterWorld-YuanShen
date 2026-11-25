@@ -3,6 +3,9 @@
   "itemGroup.barotrauma.dev": "Barotrauma: Developer Tools",
   "item.barotrauma.brightness_debugger": "Deep Sea Brightness Debugger",
   "item.barotrauma.brightness_debugger.controls": "Use to cycle brightness. Sneak and use to restore darkness.",
+  "item.barotrauma.brightness_debugger.fog_controls": "Ctrl + use to toggle ocean fog.",
+  "item.barotrauma.brightness_debugger.fog_off": "Ocean fog disabled",
+  "item.barotrauma.brightness_debugger.fog_on": "Ocean fog restored",
   "item.barotrauma.brightness_debugger.scope": "Local single-player Deep Sea only, in Creative or with operator permissions.",
   "item.barotrauma.brightness_debugger.current": "Deep Sea debug brightness %s%%",
   "itemGroup.barotrauma.materials": "Barotrauma - Items & Materials",
@@ -644,5 +647,14 @@
   "gui.barotrauma.repair.hint.tool": "Hold the required tool to repair",
   "gui.barotrauma.repair.hint.full": "Condition is full",
   "gui.barotrauma.repair.hint.threshold": "Condition is above the repair threshold",
-  "gui.barotrauma.repair.hint.qte": "Click Repair to keep repairing; click again while the pointer is in the green area for +3"
+  "gui.barotrauma.repair.hint.qte": "Click Repair to keep repairing; click again while the pointer is in the green area for +3",
+  "gui.barotrauma.repair.skill": "Skill %s / You %s",
+  "affliction.barotrauma.lacerations": "Lacerations",
+  "power.indicator.powered": "Powered",
+  "power.indicator.high": "High voltage",
+  "power.indicator.low": "Low voltage",
+  "gui.barotrauma.repair.failed": "Repair failed",
+  "gui.barotrauma.engine.helm_input": "Helm linked",
+  "gui.barotrauma.engine.reverse": "Reverse",
+  "gui.barotrauma.engine.ahead": "Ahead"
 }

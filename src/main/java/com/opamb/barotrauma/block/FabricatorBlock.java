@@ -239,12 +239,6 @@ public class FabricatorBlock extends Block implements EntityBlock {
             if (!(masterState.getBlock() instanceof FabricatorBlock)) {
                 return InteractionResult.PASS;
             }
-            // 原作加工台是机械维修：手持扳手且耐久低于 80% 先开修理窗口。
-            if (level.getBlockEntity(master) instanceof FabricatorBlockEntity fabricator
-                    && com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
-                            serverPlayer, master, fabricator, false)) {
-                return InteractionResult.CONSUME;
-            }
             NetworkHooks.openScreen(serverPlayer, new MenuProvider() {
                 @Override
                 public Component getDisplayName() {

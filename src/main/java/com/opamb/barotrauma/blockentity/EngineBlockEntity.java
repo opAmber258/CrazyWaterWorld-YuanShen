@@ -5,9 +5,11 @@ import com.opamb.barotrauma.ship.ConditionComponent;
 import com.opamb.barotrauma.ship.PowerConsumer;
 import com.opamb.barotrauma.ship.PowerGrid;
 import com.opamb.barotrauma.ship.RepairTarget;
+import com.opamb.barotrauma.ship.ShipSimulation;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
+import com.opamb.barotrauma.world.StarterSub;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -24,11 +26,10 @@ import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 /**
- * 引擎方块实体：只做"船上有一台引擎"的上报和面板数据，不直接给刚体施加力。
+ * 引擎方块实体：跟踪带方向的目标和实际出力，向船模拟上报推力与负载。
  *
- * <p>声纳油门决定目标力（0–100%）：油门停车时引擎空转不耗电；有油门时按原作公式
- * {@code 目标力/100 的 1.5 次方 × 2000 kW} 上报耗电。多台引擎相加，
- * {@code VsThruster} 按引擎数量放大推力，并受全船供电比例限制。</p>
+ * <p>声纳油门决定目标力（−100…100%）。耗电为目标幅度的 1.5 次方乘额定功率，
+ * 实际力随目标平滑变化。船模拟按每台引擎的电压与耐久汇总可用推力。</p>
  */
 public class EngineBlockEntity extends BlockEntity
         implements GeoBlockEntity, PowerConsumer, RepairTarget {
@@ -38,7 +39,11 @@ public class EngineBlockEntity extends BlockEntity
     /** 单台标准引擎的最大推力（原作 maxforce=300；用于面板显示）。 */
     public static final double MAX_FORCE = 300.0D;
 
-    private double lastForce;
+    public static final double DUGONG_POWER_KW = 600.0D;
+    public static final double DUGONG_MAX_FORCE = 270.0D;
+    private boolean dugongStock;
+
+    private double lastTargetForce;
     /** 原作 {@code Engine.Force}：实际推力向目标插值，速度 10/s。 */
     private double currentForce;
     private double lastSupply;
@@ -64,26 +69,22 @@ public class EngineBlockEntity extends BlockEntity
         if (!(level instanceof ServerLevel server) || be.isRemoved()) {
             return;
         }
-        ShipState ship;
-        if (VsState.active()) {
-            ship = VsState.activeState();
-        } else {
-            // 引擎常在船尾，离船核心可能超过水泵用的 32 格；引擎放宽到 64。
-            // 船状态不存档：世界重开后第一次 tick 靠自己补扫，不能等玩家去开电力面板。
-            ship = com.opamb.barotrauma.ship.ShipCores.stateNear(server, pos, 64.0D);
-        }
+        boolean physical = VsState.active() && VsPilot.activeLevel() == server && VsPilot.isYardBlock(pos);
+        // 引擎常在船尾。按几何归属找核心，附近另一艘物理船不会抢走这个引擎。
+        ShipState ship = physical ? VsState.activeState()
+                : com.opamb.barotrauma.ship.ShipCores.stateOwning(server, pos, 64.0D);
         if (ship == null) {
             be.currentForce = 0.0D;
-            be.lastForce = 0.0D;
+            be.lastTargetForce = 0.0D;
             be.lastSupply = 0.0D;
             be.lastDemandKw = 0.0D;
             be.lastEngineCount = 0;
             return;
         }
-        BlockPos cell = VsState.active() ? VsPilot.toAssembly(pos) : pos;
+        BlockPos cell = physical ? VsPilot.toAssembly(pos) : pos;
         if (!ship.tracksHullBlock(cell)) {
             be.currentForce = 0.0D;
-            be.lastForce = 0.0D;
+            be.lastTargetForce = 0.0D;
             be.lastSupply = 0.0D;
             be.lastDemandKw = 0.0D;
             be.lastEngineCount = 0;
@@ -94,37 +95,45 @@ public class EngineBlockEntity extends BlockEntity
         // 电压低于 MinVoltage 时实际 Force 以 10/s 向 0 插值，但**耗电请求仍按目标力算**
         // （原作 GetCurrentPowerConsumption 用 targetForce）。不能把目标力也归零：
         // 那样负载消失→电压回到 1→目标力恢复，会每 tick 抖动。
-        boolean physical = VsState.active() && VsState.activeState() == ship;
-        double targetForce = ship.engineThrustWanted(physical) ? ship.power() : 0.0D;
+        double targetForce = ship.engineThrottle(physical) * ship.power();
+        if (physical) {
+            targetForce *= ship.helmForward();
+        }
         double driveTarget = PowerGrid.canRun(be.lastSupply, be.minVoltage()) ? targetForce : 0.0D;
         double dt = 1.0D / 20.0D;
         be.currentForce += (driveTarget - be.currentForce) * (1.0D - Math.exp(-10.0D * dt));
-        if (be.currentForce < 0.01D) {
+        if (Math.abs(be.currentForce) < 0.01D) {
             be.currentForce = 0.0D;
         }
         // 耗电按目标力算（原作 GetCurrentPowerConsumption 用 targetForce）。
-        double demand = MAX_POWER_KW * Math.pow(Math.max(0.0D, targetForce) / 100.0D, 1.5D)
-                * be.condition.powerPenalty();
+        if (!be.dugongStock && StarterSub.stockEquipment(server, cell, physical, -13, -4, 4)) {
+            be.dugongStock = true;
+            be.setChanged();
+        }
+        double ratedDemand = (be.dugongStock ? DUGONG_POWER_KW : MAX_POWER_KW) * be.condition.powerPenalty();
+        double maxForce = be.lastMaxForce();
+        double demand = ratedDemand * Math.pow(Math.abs(targetForce) / 100.0D,
+                ShipSimulation.ENGINE_POWER_EXPONENT);
         // 耐久：只有在“有油门且上一 tick 确实拿到电”时才劣化；
         // 光看目标推力的话，全船停电时没转的引擎也会掉耐久。
-        boolean running = targetForce > 0.1D
-                && PowerGrid.canRun(be.lastSupply, be.minVoltage());
-        if (be.condition.tick(server, running)) {
+        boolean running = Math.abs(be.currentForce) > 1.0D
+                && !StarterSub.atFriendlyOutpost(server);
+        if (be.condition.tick(server, running, dt, Math.abs(be.currentForce) / 100.0D)) {
             be.setChanged();
         }
         if (be.condition.broken()) {
             be.currentForce = 0.0D;
-            be.lastForce = 0.0D;
+            be.lastTargetForce = targetForce;
             be.lastDemandKw = 0.0D;
             be.lastSupply = 0.0D;
-            ship.simulation().reportEngine(cell, 0.0D, 0.0D, MAX_FORCE, 0.0D);
+            ship.simulation().reportEngine(cell, 0.0D, 0.0D, maxForce, 0.0D);
             ship.simulation().reportConsumer(cell, 0.0D, be.minVoltage(), be.boundBox);
             return;
         }
-        be.lastForce = be.currentForce;
+        be.lastTargetForce = targetForce;
         be.lastDemandKw = demand;
-        ship.simulation().reportEngine(cell, be.currentForce, demand, MAX_FORCE,
-                be.condition.condition() / be.condition.maxCondition());
+        ship.simulation().reportEngine(cell, be.currentForce, demand, maxForce,
+                be.condition.fraction(), ratedDemand);
         ship.simulation().reportConsumer(cell, demand, be.minVoltage(), be.boundBox);
         be.lastSupply = ship.simulation().consumerVoltage(cell);
         be.lastEngineCount = ship.simulation().engineCount();
@@ -179,7 +188,11 @@ public class EngineBlockEntity extends BlockEntity
     }
 
     public double lastForce() {
-        return lastForce;
+        return currentForce;
+    }
+
+    public double lastTargetForce() {
+        return lastTargetForce;
     }
 
     public double lastSupply() {
@@ -195,7 +208,7 @@ public class EngineBlockEntity extends BlockEntity
     }
 
     public double lastMaxForce() {
-        return MAX_FORCE;
+        return dugongStock ? DUGONG_MAX_FORCE : MAX_FORCE;
     }
 
     public Component displayName() {
@@ -209,6 +222,7 @@ public class EngineBlockEntity extends BlockEntity
             tag.putLong("PowerBox", boundBox.asLong());
         }
         condition.save(tag, "Condition");
+        if (dugongStock) tag.putBoolean("DugongStock", true);
     }
 
     @Override
@@ -216,6 +230,7 @@ public class EngineBlockEntity extends BlockEntity
         super.load(tag);
         boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
         condition.load(tag, "Condition");
+        dugongStock = tag.getBoolean("DugongStock");
     }
 
     @Override

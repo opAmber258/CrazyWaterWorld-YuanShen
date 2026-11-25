@@ -8,7 +8,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
@@ -22,7 +21,7 @@ import net.minecraft.world.phys.Vec3;
  * 0..{@link BatteryBlockEntity#MAX_RECHARGE_KW}。台面三个槽对应原作的
  * {@code batterycellrecharger}，只收电池 cell。</p>
  */
-public class BatteryMenu extends AbstractContainerMenu {
+public class BatteryMenu extends DeviceMenu {
 
     /** 数据位 0：电量（kW·min × 10，避免 int 精度不够）。 */
     public static final int DATA_CHARGE = 0;
@@ -35,7 +34,8 @@ public class BatteryMenu extends AbstractContainerMenu {
     /** 数据位 4：是否绑定接线盒（0/1）。 */
     public static final int DATA_BOUND = 4;
 
-    public static final int DATA_COUNT = 5;
+    public static final int DATA_MAX_RECHARGE = 5;
+    public static final int DATA_COUNT = 6;
 
     /** 玩家主物品栏 27 格的菜单位置（这 27 格会被换成装备背包 + 禁用占位）。 */
     public static final int INV_START = BatteryBlockEntity.CELL_SLOTS;
@@ -57,7 +57,7 @@ public class BatteryMenu extends AbstractContainerMenu {
     }
 
     public BatteryMenu(int id, Inventory inventory, BlockPos batteryPos) {
-        super(ModMenus.BATTERY.get(), id);
+        super(ModMenus.BATTERY.get(), id, inventory, batteryPos);
         this.batteryPos = batteryPos;
         BatteryBlockEntity resolved = null;
         if (!inventory.player.level().isClientSide
@@ -74,6 +74,7 @@ public class BatteryMenu extends AbstractContainerMenu {
                         case DATA_CAPACITY -> (int) Math.round(battery.capacityKwm() * 10.0D);
                         case DATA_RECHARGE -> (int) Math.round(battery.rechargeKw());
                         case DATA_CONDITION -> (int) Math.round(battery.condition() * 10.0D);
+                        case DATA_MAX_RECHARGE -> (int) Math.round(battery.maxRechargeKw());
                         case DATA_BOUND -> battery.storageBox() == null ? 0 : 1;
                         default -> 0;
                     };
@@ -92,6 +93,7 @@ public class BatteryMenu extends AbstractContainerMenu {
         } else {
             // 客户端在服务端数据到位前先给一组默认值，避免滑条/电量条闪 0。
             SimpleContainerData fallback = new SimpleContainerData(DATA_COUNT);
+            fallback.set(DATA_MAX_RECHARGE, (int) BatteryBlockEntity.MAX_RECHARGE_KW);
             fallback.set(DATA_CAPACITY, (int) Math.round(BatteryBlockEntity.CAPACITY_KWM * 10.0D));
             fallback.set(DATA_RECHARGE, (int) Math.round(BatteryBlockEntity.MAX_RECHARGE_KW));
             fallback.set(DATA_CONDITION, 1000);
@@ -147,7 +149,7 @@ public class BatteryMenu extends AbstractContainerMenu {
             BatteryBlockEntity target = battery != null ? battery
                     : RepairActionPacket.battery(serverLevel, batteryPos);
             if (target != null) {
-                target.setRechargeKw(BatteryBlockEntity.MAX_RECHARGE_KW * id / 100.0D);
+                target.setRechargeKw(target.maxRechargeKw() * id / 100.0D);
                 return true;
             }
         }

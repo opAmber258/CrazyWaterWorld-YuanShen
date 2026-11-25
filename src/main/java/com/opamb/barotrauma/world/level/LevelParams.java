@@ -32,6 +32,8 @@ public record LevelParams(
      */
     public static final double HEIGHT_SCALE = 2.0D;
     public static final double ROUTE_SCALE = 2.5D;
+    /** 新地形的原作尺度倍率，旧关卡保留原来的距离和高度。 */
+    public static final double TERRAIN_SCALE = 1.3D;
     /** 开阔带顶（= 哨站屋顶）；所有关卡共用。 */
     public static final int BAND_CEILING_Y = -44;
     /** 海底最低不能低于这个值，否则掉出 OceanEnvironment 的水柱。 */
@@ -101,6 +103,30 @@ public record LevelParams(
         int base = (int) Math.round((route.endX() - route.startX()) * averageWidth());
         int length = (int) Math.round(base * ROUTE_SCALE);
         return Math.max(1, Math.min(MAX_ROUTE, length));
+    }
+
+    public int terrainWidth() {
+        return (int) Math.round(averageWidth() * TERRAIN_SCALE / SCALE);
+    }
+
+    /** 原作二维截面之外的 3D 展宽，给侧洞和绕礁留航行空间。 */
+    public int terrainCrossWidth() {
+        return (int) Math.round(terrainWidth() * 0.8D);
+    }
+
+    public int terrainHeight() {
+        return Math.min(BAND_CEILING_Y - MIN_FLOOR_Y, (int) Math.round(dims.height() * TERRAIN_SCALE));
+    }
+
+    public int terrainTunnelRadius() {
+        return (int) Math.round(dims.tunnelRadius() * TERRAIN_SCALE / SCALE);
+    }
+
+    /** 同原作在内缩后的区间插值两个端点。 */
+    public int terrainRouteLength() {
+        int width = terrainWidth();
+        int inset = Math.min(terrainTunnelRadius(), width / 5);
+        return Math.max(1, (int) Math.round((width - 2 * inset) * (route.endX() - route.startX())));
     }
 
     /**

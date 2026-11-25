@@ -1,5 +1,14 @@
 package com.opamb.barotrauma.sonar;
 
+import com.opamb.barotrauma.ship.NavigationMode;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
+import org.joml.Quaternionfc;
+
+import java.util.ArrayDeque;
+import java.util.Collection;
+
 /**
  * 客户端缓存的最近一次声纳扫描帧。
  *
@@ -8,89 +17,116 @@ package com.opamb.barotrauma.sonar;
 public final class ClientSonarCache {
 
     private static SonarScan.Frame frame;
+    private static final ArrayDeque<SonarPulse> pulses = new ArrayDeque<>();
+    private static int menuId = -1;
+    private static BlockPos center = BlockPos.ZERO;
+    private static Vec3 direction = Vec3.ZERO;
+    private static int settingsRevision;
+    private static boolean online;
     private static String status = "";
     private static int power = 100;
     private static int headingX;
-    private static int headingY;
     private static int headingZ;
     private static int mode = SonarScan.Mode.ACTIVE.id();
     private static int depth;
     private static int speedTenths;
     private static int diveTenths;
-    private static boolean autopilot;
+    private static NavigationMode navigationMode = NavigationMode.MANUAL;
     private static boolean hasTarget;
     private static int targetX;
     private static int targetY;
     private static int targetZ;
-    /** 核心页正文（服务端拼好的多行文本：船体扫描 + 机器 + 实时状态）。 */
-    private static String core = "";
     /** 对接：0 不可用 / 1 物理船在码头范围内 / 2 方块船停在码头。 */
     private static int dockState;
     private static int dockDistance;
     private static String dockLabel = "";
     /** 这艘船现在是 VS2 刚体（true）还是方块船（false）。 */
     private static boolean physical;
-    /** 船壳完好度（0..100）。 */
-    private static int hullPercent = 100;
-    /** 全船进水比例（0..100）。 */
-    private static int waterPercent;
-    /** 船核心相对玩家的偏移（把声纳船体点换算回船体局部坐标）。 */
-    private static int coreDX;
-    private static int coreDY;
-    private static int coreDZ;
-    /** 舱室侧视矩形，5 个 int 一组（minX,maxX,minY,maxY,进水%）。 */
-    private static int[] rooms = new int[0];
+    private static long physicalShipId = -1L;
+    private static Vec3 shipAnchor = Vec3.ZERO;
+    private static int waypointDistance;
+    private static float distortion;
+    private static Vec3 hullOffset = Vec3.ZERO;
+    private static Quaternionf hullRotation = new Quaternionf();
     /** 下一个目标点（相对玩家）：本轮任务的目的地前哨站；没有任务时不显示。 */
     private static boolean hasWaypoint;
     private static int waypointX;
     private static int waypointY;
     private static int waypointZ;
     private static String waypointLabel = "";
-    private static long stamp;
 
     private ClientSonarCache() {
     }
 
-    public static void accept(int range, int[] points, int powerPercent, int hx, int hy, int hz,
+    public static void accept(int id, BlockPos scanCenter, long serverTick, boolean operating,
+                              Vec3 beam, int revision, SonarPulse pulse, int range, int[] points,
+                              int powerPercent, int hx, int hz,
                               int modeId, int depthMeters, int speed, int dive, int autopilotFlag,
                               boolean targetSet, int tx, int ty, int tz, String statusText,
-                              String coreText,
                               int dockStateValue, int dockDistanceValue, String dockLabelValue,
-                              boolean physicalValue, int hullPercentValue, int waterPercentValue,
-                              int cdx, int cdy, int cdz, int[] roomRects,
-                              boolean waypointSet, int wx, int wy, int wz, String waypointName) {
+                              boolean physicalValue, Vec3 hullOffsetValue, Quaternionf hullRotationValue,
+                              boolean waypointSet, int wx, int wy, int wz, String waypointName,
+                              long shipId, Vec3 anchor, int routeDistance, float damage) {
+        if (id != menuId) {
+            return;
+        }
+        center = scanCenter;
+        online = operating;
+        direction = beam;
+        settingsRevision = Math.max(settingsRevision, revision);
+        while (!pulses.isEmpty() && serverTick - pulses.getFirst().tick() >= SonarPulse.HISTORY_TICKS) {
+            pulses.removeFirst();
+        }
+        if (!online) {
+            pulses.clear();
+        } else if (pulse != null && pulse.tick() > latestTick()) {
+            pulses.addLast(pulse);
+        }
         frame = new SonarScan.Frame(range, points);
         power = powerPercent;
         headingX = hx;
-        headingY = hy;
         headingZ = hz;
         mode = modeId;
         depth = depthMeters;
         speedTenths = speed;
         diveTenths = dive;
-        autopilot = autopilotFlag != 0;
+        navigationMode = NavigationMode.byId(autopilotFlag);
         hasTarget = targetSet;
         targetX = tx;
         targetY = ty;
         targetZ = tz;
         status = statusText;
-        core = coreText;
         dockState = dockStateValue;
         dockDistance = dockDistanceValue;
         dockLabel = dockLabelValue;
         physical = physicalValue;
-        hullPercent = hullPercentValue;
-        waterPercent = waterPercentValue;
-        coreDX = cdx;
-        coreDY = cdy;
-        coreDZ = cdz;
-        rooms = roomRects;
+        physicalShipId = shipId;
+        shipAnchor = anchor;
+        waypointDistance = routeDistance;
+        distortion = damage;
+        hullOffset = hullOffsetValue;
+        hullRotation = hullRotationValue;
         hasWaypoint = waypointSet;
         waypointX = wx;
         waypointY = wy;
         waypointZ = wz;
         waypointLabel = waypointName;
-        stamp = System.currentTimeMillis();
+    }
+
+    public static long physicalShipId() {
+        return physicalShipId;
+    }
+
+    public static Vec3 shipAnchor() {
+        return shipAnchor;
+    }
+
+    public static int waypointDistance() {
+        return waypointDistance;
+    }
+
+    public static float distortion() {
+        return distortion;
     }
 
     /** 本轮任务目的地是否要标在声纳上。 */
@@ -131,34 +167,12 @@ public final class ClientSonarCache {
         return physical;
     }
 
-    public static int hullPercent() {
-        return hullPercent;
+    public static Vec3 hullOffset() {
+        return hullOffset;
     }
 
-    public static int waterPercent() {
-        return waterPercent;
-    }
-
-    public static int coreDX() {
-        return coreDX;
-    }
-
-    public static int coreDY() {
-        return coreDY;
-    }
-
-    public static int coreDZ() {
-        return coreDZ;
-    }
-
-    /** 舱室侧视矩形，5 个 int 一组（minX,maxX,minY,maxY,进水%）。 */
-    public static int[] rooms() {
-        return rooms;
-    }
-
-    /** 核心页正文（多行）。 */
-    public static String core() {
-        return core;
+    public static Quaternionfc hullRotation() {
+        return hullRotation;
     }
 
     public static SonarScan.Frame frame() {
@@ -175,10 +189,6 @@ public final class ClientSonarCache {
 
     public static int headingX() {
         return headingX;
-    }
-
-    public static int headingY() {
-        return headingY;
     }
 
     public static int headingZ() {
@@ -202,7 +212,11 @@ public final class ClientSonarCache {
     }
 
     public static boolean autopilot() {
-        return autopilot;
+        return navigationMode.automatic();
+    }
+
+    public static NavigationMode navigationMode() {
+        return navigationMode;
     }
 
     public static boolean hasTarget() {
@@ -227,38 +241,62 @@ public final class ClientSonarCache {
                 + (double) targetZ * targetZ) : 0.0D;
     }
 
-    public static long stamp() {
-        return stamp;
+    public static Vec3 direction() {
+        return direction;
     }
 
-    /** 新数据到达后 1 秒内的亮度加成（0..1）。 */
-    public static float flash() {
-        if (stamp == 0L) {
-            return 0.0F;
-        }
-        float age = (System.currentTimeMillis() - stamp) / 1000.0F;
-        return Math.max(0.0F, 1.0F - age);
+    public static int settingsRevision() {
+        return settingsRevision;
     }
 
-    public static void clear() {
+    public static void open(int id) {
+        menuId = id;
         frame = null;
+        online = false;
+        pulses.clear();
+        center = BlockPos.ZERO;
+        headingX = headingZ = 0;
+        depth = speedTenths = diveTenths = 0;
+        hasTarget = false;
+        navigationMode = NavigationMode.MANUAL;
         status = "";
-        stamp = 0L;
-        // 对接/舰况数据也清掉：重新打开界面时不要先闪一帧上一艘船的信息
+        settingsRevision = 0;
+        // 防止重新打开时显示上一艘船的靠泊或轮廓数据。
         dockState = 0;
         dockDistance = -1;
         dockLabel = "";
         physical = false;
-        hullPercent = 100;
-        waterPercent = 0;
-        coreDX = 0;
-        coreDY = 0;
-        coreDZ = 0;
-        rooms = new int[0];
+        physicalShipId = -1L;
+        shipAnchor = Vec3.ZERO;
+        waypointDistance = 0;
+        distortion = 0.0F;
+        hullOffset = Vec3.ZERO;
+        hullRotation = new Quaternionf();
         hasWaypoint = false;
         waypointX = 0;
         waypointY = 0;
         waypointZ = 0;
         waypointLabel = "";
+    }
+
+    public static Collection<SonarPulse> pulses() {
+        return pulses;
+    }
+
+    public static SonarPulse latestPulse() {
+        return pulses.peekLast();
+    }
+
+    public static long latestTick() {
+        SonarPulse pulse = latestPulse();
+        return pulse == null ? -1L : pulse.tick();
+    }
+
+    public static boolean online() {
+        return online;
+    }
+
+    public static BlockPos center() {
+        return center;
     }
 }

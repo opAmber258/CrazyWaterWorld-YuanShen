@@ -53,7 +53,20 @@ public class BatteryBlockEntity extends BlockEntity
     private static final double DECAY_SUBMERGED = 0.5D;
     private static final int SAVE_INTERVAL = 20;
 
+    private boolean dugongStock;
     private double chargeKwm;
+
+    public void configureDugongBattery(boolean newBoat) {
+        if (dugongStock) return;
+        dugongStock = true;
+        chargeKwm = newBoat ? 500.0D : Math.min(chargeKwm, 500.0D);
+        rechargeKw = newBoat || rechargeKw == MAX_RECHARGE_KW ? 160.0D : rechargeKw;
+        setChanged();
+    }
+
+    public double maxRechargeKw() {
+        return dugongStock ? 800.0D : MAX_RECHARGE_KW;
+    }
     private double condition = 100.0D;
     /** 当前设置的充电速率（kW），0..MAX_RECHARGE_KW；原版滑条。 */
     private double rechargeKw = MAX_RECHARGE_KW;
@@ -85,6 +98,12 @@ public class BatteryBlockEntity extends BlockEntity
         BlockPos cell = assemblyPos(pos);
         if (!ship.tracksHullBlock(cell)) {
             return;
+        }
+        if (!be.dugongStock && (com.opamb.barotrauma.world.StarterSub.stockEquipment(
+                server, cell, VsState.isPhysical(server, pos), 1, -4, 8)
+                || com.opamb.barotrauma.world.StarterSub.stockEquipment(
+                server, cell, VsState.isPhysical(server, pos), 2, -4, 8))) {
+            be.configureDugongBattery(false);
         }
         ShipSimulation simulation = ship.simulation();
         // 模拟是电量的权威来源：先读回上一 tick 结算后的值，再上报，避免旧值覆盖。
@@ -119,10 +138,10 @@ public class BatteryBlockEntity extends BlockEntity
             }
         }
         be.condition = Mth.clamp(be.condition, 0.0D, 100.0D);
-        be.chargeKwm = Mth.clamp(be.chargeKwm, 0.0D, CAPACITY_KWM);
+        be.chargeKwm = Mth.clamp(be.chargeKwm, 0.0D, be.capacityKwm());
 
-        simulation.reportStorage(cell, be.chargeKwm, CAPACITY_KWM,
-                MAX_OUTPUT_KW, be.rechargeKw, be.boundBox, be.condition);
+        simulation.reportStorage(cell, be.chargeKwm, be.capacityKwm(),
+                be.dugongStock ? 650.0D : MAX_OUTPUT_KW, be.rechargeKw, be.boundBox, be.condition);
         be.syncChargeLevel(server, pos, state);
         // 原作 PowerContainer 的 OnActive：电池自身电量 >1% 时给槽里的电池 cell
         // 每秒 +2 耐久（Condition="2.0"）。
@@ -195,7 +214,7 @@ public class BatteryBlockEntity extends BlockEntity
 
     /** 设置充电速率，0..500 kW；0 = 不充电。 */
     public void setRechargeKw(double value) {
-        rechargeKw = Mth.clamp(value, 0.0D, MAX_RECHARGE_KW);
+        rechargeKw = Mth.clamp(value, 0.0D, maxRechargeKw());
         setChanged();
     }
 
@@ -223,7 +242,7 @@ public class BatteryBlockEntity extends BlockEntity
 
     @Override
     public double capacityKwm() {
-        return CAPACITY_KWM;
+        return dugongStock ? 500.0D : CAPACITY_KWM;
     }
 
     @Override
@@ -378,6 +397,7 @@ public class BatteryBlockEntity extends BlockEntity
     @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
+        if (dugongStock) tag.putBoolean("DugongStock", true);
         // 充放电由船 tick 里的模拟结算，实体字段要到下一次 serverTick 才读回；
         // 存档正好落在两者之间会把结算前的电量写盘，重开世界再写回模拟，
         // 白退一次结算的量。这里直接读模拟里的权威值。
@@ -409,6 +429,7 @@ public class BatteryBlockEntity extends BlockEntity
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
+        dugongStock = tag.getBoolean("DugongStock");
         chargeKwm = tag.contains("Charge") ? tag.getDouble("Charge") : 0.0D;
         condition = tag.contains("Condition") ? tag.getDouble("Condition") : 100.0D;
         rechargeKw = tag.contains("Recharge") ? tag.getDouble("Recharge") : MAX_RECHARGE_KW;

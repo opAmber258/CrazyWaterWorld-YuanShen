@@ -2,14 +2,17 @@ package com.opamb.barotrauma.network;
 
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
-import com.opamb.barotrauma.ship.ShipCores;
+import com.opamb.barotrauma.menu.SonarMenu;
 import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.sonar.SonarScan;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -17,7 +20,7 @@ import java.util.function.Supplier;
 /**
  * 客户端 → 服务端的船控指令。
  *
- * <p>{@code a/b/c} 用 VarInt 传输：既当 −1/0/1 的方向与开关，也当自动驾驶目标点的相对坐标。</p>
+ * <p>{@code a/b/c} 用 VarInt 传输，按指令解释为舵令、开关或自动驾驶坐标。</p>
  */
 public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c) {
 
@@ -33,7 +36,7 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
     public static final int SET_POWER = 10;
     /** 自动驾驶开关：a = 1 开启 / 0 关闭。 */
     public static final int SET_AUTOPILOT = 11;
-    /** 在声纳上标记目标点：a/b/c = 相对位置坐标偏移。 */
+    /** 在声纳上标记目标点：a/b/c = 回波或空白目标的世界坐标。 */
     public static final int SET_AUTOPILOT_TARGET = 12;
     /** 清除目标点。 */
     public static final int CLEAR_AUTOPILOT_TARGET = 13;
@@ -43,11 +46,10 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
     public static final int DOCK = 15;
     /**
      * 微调自动驾驶目标：a/b/c = 相对**当前目标世界坐标**的增量（−1/0/1）。
-     *
-     * <p>不能用 SET_AUTOPILOT_TARGET 的“相对扫描中心偏移”来微调：船一移动，
-     * 同一个偏移在服务端会解释成另一个世界点，目标会跟着船漂。</p>
      */
     public static final int NUDGE_AUTOPILOT_TARGET = 16;
+    /** Three signed percentages. On a physical ship, x/y/z are forward/vertical/yaw. */
+    public static final int SET_ANALOG_HELM = 17;
 
     public ShipActionPacket(BlockPos corePos, int action) {
         this(corePos, action, 0, 0, 0);
@@ -74,67 +76,35 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
-            if (player == null) {
+            if (player == null || !(player.containerMenu instanceof SonarMenu menu)
+                    || !menu.sonarPos().equals(corePos) || !menu.stillValid(player)) {
                 return;
             }
             ServerLevel level = player.serverLevel();
-            if (action == LAUNCH) {
-                handleLaunch(player, level);
-                context.setPacketHandled(true);
-                return;
-            }
-            if (action == DOCK) {
-                handleDock(player, level);
-                context.setPacketHandled(true);
-                return;
-            }
-            // 船在开动时核心坐标一直在变，提示坐标失效就退回"离玩家最近的核心"
-            ShipCoreBlockEntity core = ShipCores.resolve(level, corePos, player.blockPosition());
-            ShipState ship;
-            if (core != null) {
-                ship = core.state() != null ? core.state() : core.rescan(level);
-            } else if (com.opamb.barotrauma.ship.vs.VsSupport.available()
-                    && com.opamb.barotrauma.ship.vs.VsPilot.hasShip()) {
-                // 装了 VS2：方块已经收进刚体，世界里找不到核心，操舵走物理船那份状态
-                ship = com.opamb.barotrauma.ship.vs.VsPilot.state();
-            } else {
-                return;
-            }
+            ShipCoreBlockEntity terminal = menu.terminal();
+            ShipState ship = menu.ship(level);
+            boolean physical = menu.physical();
             if (ship == null) {
                 return;
             }
-            // 导航/声纳核心耐久归零：终端离线，舵令不再生效。
-            ShipCoreBlockEntity terminal = core;
-            if (terminal == null && com.opamb.barotrauma.ship.vs.VsState.active()) {
-                terminal = com.opamb.barotrauma.ship.vs.VsPilot.sonarCoreBlockEntity(level);
+            if (!ship.canTakeHelm(player.getUUID(), level.getGameTime())) {
+                return;
             }
-            // 物理船必须有声纳核心：核心被拆后不能再操舵/控泵。
-            if (terminal == null && com.opamb.barotrauma.ship.vs.VsState.active()) {
-                if (action == SET_HEADING) {
-                    BarotraumaMod.LOGGER.info("[helm] 拒绝 SET_HEADING：物理船没有声纳核心");
+            if (action == LAUNCH || action == DOCK) {
+                if (action == LAUNCH && !physical) {
+                    handleLaunch(player, level, terminal, ship);
+                } else if (action == DOCK && physical) {
+                    handleDock(player, level);
                 }
                 return;
             }
-            if (terminal != null && terminal.condition() <= 0.0D) {
-                if (action == SET_HEADING) {
-                    BarotraumaMod.LOGGER.info("[helm] 拒绝 SET_HEADING：终端耐久为 0");
-                }
+            if (terminal.condition() <= 0.0D) {
                 return;
             }
-            // 原作 Powered.HasPower：电压低于 MinVoltage 0.5 时导航台完全不能用。
-            // 必须用终端自己的电压：绑定的接线盒坏了以后 consumerVoltage(终端)=0，
-            // 但全船可能还有电，不能继续操舵。
-            BlockPos terminalCell = null;
-            if (terminal != null) {
-                boolean yard = com.opamb.barotrauma.ship.vs.VsState.active()
-                        && com.opamb.barotrauma.ship.vs.VsPilot.isYardBlock(terminal.getBlockPos());
-                terminalCell = yard
-                        ? com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(terminal.getBlockPos())
-                        : terminal.getBlockPos();
-            }
-            double terminalVoltage = terminalCell != null
-                    ? ship.simulation().consumerVoltage(terminalCell)
-                    : ship.simulation().voltage();
+            BlockPos terminalCell = physical
+                    ? com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(terminal.getBlockPos())
+                    : terminal.getBlockPos();
+            double terminalVoltage = ship.simulation().consumerVoltage(terminalCell);
             if (terminalVoltage < ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE) {
                 if (action == SET_HEADING) {
                     BarotraumaMod.LOGGER.info("[helm] 拒绝 SET_HEADING：终端电压 {} < {}",
@@ -142,9 +112,6 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                 }
                 return;
             }
-            // 物理船：x = 前进/后退，z = 偏航，y = 垂直；方块船仍是世界八向。
-            boolean physical = com.opamb.barotrauma.ship.vs.VsState.active()
-                    && com.opamb.barotrauma.ship.vs.VsState.activeState() == ship;
             if (action == SET_HEADING) {
                 BarotraumaMod.LOGGER.info("[helm] SET_HEADING a={} b={} c={} physical={} volt={}",
                         a, b, c, physical, terminalVoltage);
@@ -175,32 +142,28 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                         ship.setThrottle(clampAxis(a), clampAxis(b), clampAxis(c));
                     }
                 }
+                case SET_ANALOG_HELM -> ship.acceptManualInput(player.getUUID(), level.getGameTime(),
+                        Mth.clamp(a, -100, 100) / 100.0D, Mth.clamp(b, -100, 100) / 100.0D,
+                        Mth.clamp(c, -100, 100) / 100.0D, physical);
                 case SET_POWER -> ship.setPower(a);
-                case SET_AUTOPILOT -> ship.setAutopilotHold(a != 0);
-                case SET_AUTOPILOT_TARGET -> {
-                    // 偏移以声纳扫描中心为基准（物理船 = 核心世界坐标，方块船 = 核心方块），
-                    // 和 SonarPingPacket 的 center 完全一致，目标才不会随玩家站位整体偏。
-                    BlockPos base = player.blockPosition();
-                    if (com.opamb.barotrauma.ship.vs.VsState.active()) {
-                        BlockPos assembled = com.opamb.barotrauma.ship.vs.VsState.corePos();
-                        if (assembled != null) {
-                            base = assembled.offset(
-                                    com.opamb.barotrauma.ship.vs.VsState.offsetX(),
-                                    com.opamb.barotrauma.ship.vs.VsState.offsetY(),
-                                    com.opamb.barotrauma.ship.vs.VsState.offsetZ());
-                        }
+                case SET_AUTOPILOT -> {
+                    if (a != 0) {
+                        holdPosition(ship, terminal, physical);
                     } else {
-                        // 方块船的声纳扫描中心是"声纳/导航终端方块本身"（见 SonarPingPacket），
-                        // 不是船核心。客户端发来的 a/b/c 是相对扫描中心的偏移，这里必须
-                        // 用同一个基准，否则目标会整体偏出好几格。
-                        var sonarState = level.getBlockState(corePos);
-                        if (sonarState.is(com.opamb.barotrauma.registry.ModShipBlocks.SONAR.get())
-                                || sonarState.is(com.opamb.barotrauma.registry.ModShipBlocks
-                                .NAVIGATION_TERMINAL.get())) {
-                            base = corePos;
-                        }
+                        ship.setAutopilotHold(false);
                     }
-                    ship.setAutopilotTarget(base.offset(a, b, c));
+                }
+                case SET_AUTOPILOT_TARGET -> {
+                    if (!ship.autopilotHold()) {
+                        return;
+                    }
+                    BlockPos target = new BlockPos(a, b, c);
+                    // A faded return can still be outside the current sphere after the boat moves.
+                    if (level.isOutsideBuildHeight(target)
+                            || target.distToCenterSqr(player.position()) > 4.0D * SonarScan.MAX_RANGE * SonarScan.MAX_RANGE) {
+                        return;
+                    }
+                    ship.setAutopilotTarget(target);
                 }
                 case NUDGE_AUTOPILOT_TARGET -> {
                     // 增量直接加在目标的世界坐标上：船怎么移动，目标都不会漂。
@@ -210,7 +173,11 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                                 clampAxis(a), clampAxis(b), clampAxis(c)));
                     }
                 }
-                case CLEAR_AUTOPILOT_TARGET -> ship.clearAutopilotTarget();
+                case CLEAR_AUTOPILOT_TARGET -> {
+                    if (ship.autopilotHold()) {
+                        holdPosition(ship, terminal, physical);
+                    }
+                }
                 default -> BarotraumaMod.LOGGER.warn("[Barotrauma] 未知船控指令 {}", action);
             }
             // 船已经被收成物理刚体时，把油门/功率/压载立刻同步给 VS2 推进器。
@@ -218,7 +185,7 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
             // 真正推动船的是哪个系统由 VsState 决定。
             com.opamb.barotrauma.ship.vs.VsState.syncControl(ship);
             // 掌舵指令每一下都刷屏，交给面板显示
-            if (action != SET_HEADING && action != SET_POWER
+            if (action != SET_HEADING && action != SET_ANALOG_HELM && action != SET_POWER
                     && action != SET_AUTOPILOT_TARGET
                     && action != NUDGE_AUTOPILOT_TARGET) {
                 player.sendSystemMessage(ship.liveReport());
@@ -231,11 +198,22 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
         return Math.max(-1, Math.min(1, value));
     }
 
+    private static void holdPosition(ShipState ship, ShipCoreBlockEntity terminal, boolean physical) {
+        Vec3 position = physical
+                ? com.opamb.barotrauma.ship.vs.VsPilot.assemblyToWorld(com.opamb.barotrauma.ship.vs.VsState.corePos())
+                : terminal == null ? null : ship.physics().positionAt(terminal.getBlockPos());
+        if (position == null) {
+            ship.setAutopilotHold(true);
+        } else {
+            ship.holdAt(position);
+        }
+    }
+
     /**
-     * 声纳屏"下潜"：玩家 16 格内必须有船核心（和命令入口同一套校验与提示）。
-     * 服务端权威：距离、是否已有物理船都在这里判定，客户端按钮只发请求。
+     * 声纳屏“下潜”只装配当前菜单绑定的船。
      */
-    private static void handleLaunch(ServerPlayer player, ServerLevel level) {
+    private static void handleLaunch(ServerPlayer player, ServerLevel level,
+                                     ShipCoreBlockEntity core, ShipState state) {
         if (!com.opamb.barotrauma.ship.vs.VsSupport.available()) {
             player.sendSystemMessage(Component.literal(
                     "没装瓦尔基里天空 2（valkyrienskies），物理船不可用")
@@ -247,13 +225,6 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
                     .withStyle(ChatFormatting.RED));
             return;
         }
-        ShipCoreBlockEntity core = ShipCores.nearestCore(level, player.blockPosition(), 16.0D);
-        if (core == null) {
-            player.sendSystemMessage(Component.literal("附近 16 格内没有船核心，到船的声纳台旁边再试")
-                    .withStyle(ChatFormatting.RED));
-            return;
-        }
-        ShipState state = core.state() != null ? core.state() : core.rescan(level);
         java.util.Set<BlockPos> blocks = state.collectBlocks(level);
         player.sendSystemMessage(Component.literal(
                         com.opamb.barotrauma.ship.vs.VsPilot.launch(level, blocks, state, core.getBlockPos()))

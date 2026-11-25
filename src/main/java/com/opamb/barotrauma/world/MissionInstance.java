@@ -2,6 +2,7 @@ package com.opamb.barotrauma.world;
 
 import com.opamb.barotrauma.world.level.LevelParams;
 import com.opamb.barotrauma.world.level.LevelType;
+import com.opamb.barotrauma.world.level.TerrainTemplate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
@@ -40,6 +41,8 @@ public final class MissionInstance {
      * 核心大约在 -79，离码头标准位（-72）只有 7 格，抬头就能回到前哨站对接。</p>
      */
     public static final int ANCHOR_Y = -80;
+    /** 新版航次的目的地标高，相对出发站向下 72 格。 */
+    public static final int DESTINATION_OFFSET_Y = -72;
 
     /** 一次出勤对应的实例锚点。 */
     public record Anchor(int slot, int x, int y, int z) {
@@ -68,7 +71,10 @@ public final class MissionInstance {
      * <p>{@code null} = 没有活动关卡，地形完全走原来的全局 {@link SeaTerrain}。</p>
      */
     public record RouteLevel(int slot, LevelType type, long seed, int difficulty,
-                             int startDistance, int anchorX) {
+                             int startDistance, int anchorX, TerrainTemplate terrain) {
+        public RouteLevel(int slot, LevelType type, long seed, int difficulty, int startDistance, int anchorX) {
+            this(slot, type, seed, difficulty, startDistance, anchorX, TerrainTemplate.LEGACY);
+        }
     }
 
     private static volatile RouteLevel routeLevel;
@@ -102,7 +108,7 @@ public final class MissionInstance {
     }
 
     /** 主航道缓存：关卡配置不变就复用同一条折线，生成器每列都会查它。 */
-    private record PathCache(RouteLevel level, RoutePath path) {
+    private record PathCache(RouteLevel level, RoutePath path, RouteTerrain terrain) {
     }
 
     private static volatile PathCache pathCache;
@@ -156,6 +162,16 @@ public final class MissionInstance {
         return routeLevel;
     }
 
+    public static int destinationY(TerrainTemplate terrain) {
+        return ANCHOR_Y + (terrain == TerrainTemplate.LEGACY ? 0 : DESTINATION_OFFSET_Y);
+    }
+
+    static int stationOffsetY(int x, int z) {
+        RouteLevel level = routeLevel;
+        return level != null && routeEndOutpost && level.anchorX() == x && z == 0
+                ? destinationY(level.terrain()) - ANCHOR_Y : 0;
+    }
+
     /** 当前活动关卡参数；没有返回 null。 */
     public static LevelParams activeParams() {
         RouteLevel level = routeLevel;
@@ -202,21 +218,34 @@ public final class MissionInstance {
      * 折线。缓存用不可变 record 整体发布，避免读到"新关卡 + 旧航道"的半成品。</p>
      */
     public static RoutePath activePath() {
+        PathCache cache = routeLayout();
+        return cache == null ? null : cache.path();
+    }
+
+    static RouteTerrain activeTerrain() {
+        PathCache cache = routeLayout();
+        return cache == null ? null : cache.terrain();
+    }
+
+    private static PathCache routeLayout() {
         RouteLevel level = routeLevel;
         if (level == null) {
             return null;
         }
         PathCache cache = pathCache;
         if (cache != null && cache.level().equals(level)) {
-            return cache.path();
+            return cache;
         }
         // 用当前快照里的 slot/anchorX 构造锚点，不要再读静态 routeLevel（可能已被换掉）。
-        Anchor anchor = new Anchor(Math.max(0, level.slot()), level.anchorX(), ANCHOR_Y, 0);
+        Anchor anchor = new Anchor(Math.max(0, level.slot()), level.anchorX(), destinationY(level.terrain()), 0);
         DockingBay.Site start = startSite(anchor, level.startDistance());
         RoutePath built = RoutePath.build(level.type().params(), level.seed(),
-                start.x(), start.z(), anchor.x(), anchor.z());
-        pathCache = new PathCache(level, built);
-        return built;
+                start.x(), start.z(), anchor.x(), anchor.z(), level.terrain());
+        RouteTerrain terrain = level.terrain() == TerrainTemplate.LEGACY ? null
+                : new RouteTerrain(level, start, anchor, built);
+        PathCache created = new PathCache(level, built, terrain);
+        pathCache = created;
+        return created;
     }
 
     /** 本轮出发站到目的站的距离：活动槽位用关卡类型的路线长度，其它槽位用默认 192。 */
@@ -450,7 +479,8 @@ public final class MissionInstance {
         RouteLevel level = routeLevel;
         // 读档恢复的关卡用保存下来的锚点：旧存档的槽位间距可能是 1024。
         int x = level != null && level.slot() == slot ? level.anchorX() : BASE_X + slot * SPACING;
-        return new Anchor(slot, x, ANCHOR_Y, 0);
+        int y = level != null && level.slot() == slot ? destinationY(level.terrain()) : ANCHOR_Y;
+        return new Anchor(slot, x, y, 0);
     }
 
     /** 从实例坐标反推槽位；{@code spacing <= 0} 时用当前布局。 */

@@ -2,6 +2,8 @@ package com.opamb.barotrauma.world;
 
 import com.opamb.barotrauma.world.level.LevelParams;
 import com.opamb.barotrauma.world.level.LevelSelector;
+import com.opamb.barotrauma.world.level.TerrainTemplate;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -67,6 +69,11 @@ public final class RoutePath {
     public static RoutePath build(LevelParams params, long seed,
                                   double startX, double startZ,
                                   double endX, double endZ) {
+        return build(params, seed, startX, startZ, endX, endZ, TerrainTemplate.LEGACY);
+    }
+
+    static RoutePath build(LevelParams params, long seed, double startX, double startZ,
+                           double endX, double endZ, TerrainTemplate template) {
         double dx = endX - startX;
         double dz = endZ - startZ;
         double length = Math.hypot(dx, dz);
@@ -92,6 +99,13 @@ public final class RoutePath {
 
         int intervalMin = Math.max(24, params.shape().mainPathIntervalMin());
         int intervalMax = Math.max(intervalMin, params.shape().mainPathIntervalMax());
+        if (template != TerrainTemplate.LEGACY) {
+            maxLat = params.terrainCrossWidth() * 0.15D;
+            stepLat = Math.min(70.0D, maxLat * 0.65D);
+            // 保证短关卡也有中段航点，途经谷底，而非两端直连。
+            intervalMin = Math.min(intervalMin, Math.max(24, (int) (length / 7.0D)));
+            intervalMax = Math.min(intervalMax, Math.max(intervalMin, (int) (length / 5.0D)));
+        }
 
         List<Point> mainNodes = new ArrayList<>();
         mainNodes.add(new Point(startX, -80.0D, startZ, hw, hh));
@@ -110,6 +124,13 @@ public final class RoutePath {
             double candidateY = minY + rand01(seed, node * 17 + 3) * (maxY - minY);
             y = clamp(candidateY, y - stepY, y + stepY);
             y = clamp(y, minY, maxY);
+            if (template != TerrainTemplate.LEGACY) {
+                double depth = Math.min(285.0D, params.terrainHeight() * 0.38D);
+                double swell = Math.sin(Math.PI * u);
+                double variation = DeepSeaNoise.fbm2(seed ^ SALT_VERTICAL, u * 4.0D, 0.0D, 2);
+                double endOffset = MissionInstance.destinationY(template) - MissionInstance.ANCHOR_Y;
+                y = MissionInstance.ANCHOR_Y + endOffset * u - swell * (depth + variation * 52.0D);
+            }
             double candidateLat = -maxLat + rand01(seed, node * 29 + 5) * 2.0D * maxLat;
             lat = clamp(candidateLat, lat - stepLat, lat + stepLat);
             lat = clamp(lat, -maxLat, maxLat);
@@ -120,7 +141,7 @@ public final class RoutePath {
             mainNodes.add(new Point(px, y, pz, Math.max(40.0D, hwNode), Math.max(40.0D, hhNode)));
             node++;
         }
-        mainNodes.add(new Point(endX, -80.0D, endZ, hw, hh));
+        mainNodes.add(new Point(endX, MissionInstance.destinationY(template), endZ, hw, hh));
         Tunnel main = new Tunnel(true, mainNodes.toArray(new Point[0]));
 
         List<Tunnel> tunnels = new ArrayList<>();
@@ -261,6 +282,25 @@ public final class RoutePath {
                 a.z() + (b.z() - a.z()) * f,
                 a.halfWidth() + (b.halfWidth() - a.halfWidth()) * f,
                 a.halfHeight() + (b.halfHeight() - a.halfHeight()) * f);
+    }
+
+    /** Estimated remaining travel along the canyon centerline. Zero when off the mapped passage. */
+    public double distanceRemaining(Vec3 from, Vec3 destination) {
+        Nearest closest = nearest(from.x, from.z);
+        Point start = pointAt(closest.along());
+        if (closest.distance() > start.halfWidth() || Math.abs(from.y - start.y()) > start.halfHeight()) {
+            return 0.0D;
+        }
+        Point[] points = main.points();
+        double distance = from.distanceTo(new Vec3(start.x(), start.y(), start.z()));
+        int next = (int) (closest.along() * (points.length - 1)) + 1;
+        for (int i = next; i < points.length; i++) {
+            Point point = points[i];
+            double dx = point.x() - start.x(), dy = point.y() - start.y(), dz = point.z() - start.z();
+            distance += Math.sqrt(dx * dx + dy * dy + dz * dz);
+            start = point;
+        }
+        return distance + destination.distanceTo(new Vec3(start.x(), start.y(), start.z()));
     }
 
     /** 到主航道中心线的水平距离（任务进度/矿脉用）。 */

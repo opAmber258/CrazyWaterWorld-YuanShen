@@ -8,6 +8,7 @@ import com.opamb.barotrauma.medical.affliction.Limb;
 import com.opamb.barotrauma.network.MedicalTreatPacket;
 import com.opamb.barotrauma.network.ModNetwork;
 import net.minecraft.ChatFormatting;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
@@ -90,9 +91,8 @@ public final class MedicalInventoryScreen extends InventoryScreen {
         int my = topPos;
         int mw = SIDEBAR_W;
         int mh = imageHeight;
-        g.fill(mx - 1, my - 1, mx + mw + 1, my + mh + 1, 0xFF4A4A5A);
-        g.fill(mx, my, mx + mw, my + mh, 0xE012121A);
-        g.drawString(this.font, Component.literal("状态"), mx + mw / 2 - this.font.width("状态") / 2, my + 4, 0xFFFFC74A);
+        PanelStyle.frame(g, mx, my, mw, mh, PanelStyle.MEDICAL);
+        g.drawString(this.font, Component.literal("状态"), mx + mw / 2 - this.font.width("状态") / 2, my + 6, PanelStyle.TEXT);
 
         var snapshot = ClientMedicalCache.snapshot(target);
         var minecraft = net.minecraft.client.Minecraft.getInstance();

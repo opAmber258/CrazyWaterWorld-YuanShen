@@ -31,7 +31,7 @@ public final class ModNetwork {
     // 31：灯具 RGBA（A=强度）面板改走独立 LightColorPacket。
     // 32：TurretStatePacket 增加弹药/供电，客户端据此拦截空射并显示弹药。
     // 33：追踪玩家手电筒状态的实体数据字段。
-    private static final String PROTOCOL = "33";
+    private static final String PROTOCOL = "39";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);

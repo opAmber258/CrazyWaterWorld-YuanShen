@@ -3,6 +3,7 @@ package com.opamb.barotrauma.client;
 import com.opamb.barotrauma.menu.MissionMenu;
 import com.opamb.barotrauma.network.MissionActionPacket;
 import com.opamb.barotrauma.network.ModNetwork;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -19,12 +20,11 @@ public class MissionScreen extends ScaledContainerScreen<MissionMenu> {
     private static final int PANEL_W = 420;
     private static final int PANEL_H = 96;
 
-    private static final int BG = 0xF01B2320;
-    private static final int EDGE = 0xFF3B463C;
+    private static final int EDGE = PanelStyle.EDGE;
     private static final int BOX = 0xFF232B25;
-    private static final int TEXT = 0xFFD8D2BF;
-    private static final int DIM = 0xFF8B9184;
-    private static final int ACCENT = 0xFFE0762F;
+    private static final int TEXT = PanelStyle.TEXT;
+    private static final int DIM = PanelStyle.DIM;
+    private static final int ACCENT = PanelStyle.SERVICE;
     private static final int GREEN = 0xFF7BE38B;
     private static final int HOVER = 0xFF39483A;
 
@@ -49,11 +49,7 @@ public class MissionScreen extends ScaledContainerScreen<MissionMenu> {
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         int x = leftPos;
         int y = topPos;
-        graphics.fill(x, y, x + PANEL_W, y + PANEL_H, BG);
-        graphics.fill(x, y, x + PANEL_W, y + 1, EDGE);
-        graphics.fill(x, y + PANEL_H - 1, x + PANEL_W, y + PANEL_H, EDGE);
-        graphics.fill(x, y, x + 1, y + PANEL_H, EDGE);
-        graphics.fill(x + PANEL_W - 1, y, x + PANEL_W, y + PANEL_H, EDGE);
+        PanelStyle.frame(graphics, x, y, PANEL_W, PANEL_H, PanelStyle.SERVICE);
 
         Component wallet = Component.translatable("campaign.barotrauma.wallet",
                 ClientMissionCache.credits());
