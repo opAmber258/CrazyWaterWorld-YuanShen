@@ -1,0 +1,779 @@
+{
+  "baseline_sha256": "7fd6568a3340296c8b5f1397d8ceb0614ba037eed342f05308f1bc38a44ea306",
+  "geometry": {
+    "identifier": "geometry.hammerhead",
+    "cubes": 149,
+    "bones": 19,
+    "edited_or_new": [
+      "ram_flare_wall_right_1",
+      "ram_flare_wall_right_2",
+      "ram_flare_wall_upper_right_1",
+      "ram_flare_wall_upper_right_2",
+      "ram_flare_wall_upper_right_3",
+      "ram_flare_wall_upper_1",
+      "ram_flare_wall_upper_2",
+      "ram_flare_wall_upper_left_1",
+      "ram_flare_wall_upper_left_2",
+      "ram_flare_wall_upper_left_3",
+      "ram_flare_wall_left_1",
+      "ram_flare_wall_left_2",
+      "ram_flare_wall_lower_left_1",
+      "ram_flare_wall_lower_left_2",
+      "ram_flare_wall_lower_left_3",
+      "ram_flare_wall_lower_1",
+      "ram_flare_wall_lower_2",
+      "ram_flare_wall_lower_right_1",
+      "ram_flare_wall_lower_right_2",
+      "ram_flare_wall_lower_right_3",
+      "ram_flare_wall_seam_2",
+      "ram_flare_wall_seam_3",
+      "ram_flare_wall_seam_6",
+      "ram_flare_wall_seam_7",
+      "ram_flare_face_cross",
+      "ram_flare_face_upright",
+      "ram_flare_face_upper_right",
+      "ram_flare_face_upper_left",
+      "ram_flare_face_lower_left",
+      "ram_flare_face_lower_right"
+    ],
+    "replaced": [
+      "ram_tip_center",
+      "ram_tip_lateral",
+      "ram_tip_dorsal_facet",
+      "ram_tip_ventral_facet",
+      "ram_tip_side_facet_left",
+      "ram_tip_side_shoulder_left",
+      "ram_tip_side_dorsal_left",
+      "ram_tip_side_ventral_left",
+      "ram_tip_side_facet_right",
+      "ram_tip_side_shoulder_right",
+      "ram_tip_side_dorsal_right",
+      "ram_tip_side_ventral_right"
+    ],
+    "world_bounds": {
+      "min": [
+        -50.22914484325631,
+        -18.66113012946694,
+        -192.84301076692256
+      ],
+      "max": [
+        50.67390965257469,
+        77.13123009859112,
+        82.1755564507242
+      ],
+      "size": [
+        100.903054495831,
+        95.79236022805806,
+        275.01856721764676
+      ]
+    },
+    "size_blocks": [
+      6.3064409059894375,
+      5.987022514253629,
+      17.188660451102923
+    ],
+    "solid_neighbors": {
+      "ram_flare_wall_right_1": [
+        "ram_impact",
+        "ram_bevel_dorsal_r",
+        "ram_bevel_ventral_r",
+        "ram_flare_wall_right_2",
+        "ram_flare_wall_upper_right_1",
+        "ram_flare_wall_upper_right_2",
+        "ram_flare_wall_lower_right_1",
+        "ram_flare_wall_lower_right_2"
+      ],
+      "ram_flare_wall_right_2": [
+        "ram_flare_wall_right_1",
+        "ram_flare_wall_upper_right_2",
+        "ram_flare_wall_upper_right_3",
+        "ram_flare_wall_lower_right_2",
+        "ram_flare_wall_lower_right_3",
+        "ram_flare_face_cross",
+        "ram_flare_face_upper_right",
+        "ram_flare_face_lower_right"
+      ],
+      "ram_flare_wall_upper_right_1": [
+        "ram_impact",
+        "ram_core",
+        "ram_bevel_dorsal_r",
+        "ram_flare_wall_right_1",
+        "ram_flare_wall_upper_right_2",
+        "ram_flare_wall_upper_1",
+        "ram_flare_wall_seam_2"
+      ],
+      "ram_flare_wall_upper_right_2": [
+        "ram_flare_wall_right_1",
+        "ram_flare_wall_right_2",
+        "ram_flare_wall_upper_right_1",
+        "ram_flare_wall_upper_right_3",
+        "ram_flare_wall_upper_2",
+        "ram_flare_wall_seam_2"
+      ],
+      "ram_flare_wall_upper_right_3": [
+        "ram_flare_wall_right_2",
+        "ram_flare_wall_upper_right_2",
+        "ram_flare_wall_upper_2",
+        "ram_flare_wall_seam_2",
+        "ram_flare_face_cross",
+        "ram_flare_face_upright",
+        "ram_flare_face_upper_right"
+      ],
+      "ram_flare_wall_upper_1": [
+        "ram_core",
+        "ram_bevel_dorsal_l",
+        "ram_bevel_dorsal_r",
+        "ram_flare_wall_upper_right_1",
+        "ram_flare_wall_upper_left_1",
+        "ram_flare_wall_seam_2",
+        "ram_flare_wall_seam_3"
+      ],
+      "ram_flare_wall_upper_2": [
+        "ram_flare_wall_upper_right_2",
+        "ram_flare_wall_upper_right_3",
+        "ram_flare_wall_upper_left_2",
+        "ram_flare_wall_upper_left_3",
+        "ram_flare_wall_seam_2",
+        "ram_flare_wall_seam_3",
+        "ram_flare_face_upright",
+        "ram_flare_face_upper_right",
+        "ram_flare_face_upper_left"
+      ],
+      "ram_flare_wall_upper_left_1": [
+        "ram_impact",
+        "ram_core",
+        "ram_bevel_dorsal_l",
+        "ram_flare_wall_upper_1",
+        "ram_flare_wall_left_1",
+        "ram_flare_wall_seam_3"
+      ],
+      "ram_flare_wall_upper_left_2": [
+        "ram_flare_wall_upper_2",
+        "ram_flare_wall_left_1",
+        "ram_flare_wall_left_2",
+        "ram_flare_wall_seam_3"
+      ],
+      "ram_flare_wall_upper_left_3": [
+        "ram_flare_wall_upper_2",
+        "ram_flare_wall_left_2",
+        "ram_flare_wall_seam_3",
+        "ram_flare_face_cross",
+        "ram_flare_face_upright",
+        "ram_flare_face_upper_left"
+      ],
+      "ram_flare_wall_left_1": [
+        "ram_impact",
+        "ram_bevel_dorsal_l",
+        "ram_bevel_ventral_l",
+        "ram_flare_wall_upper_left_1",
+        "ram_flare_wall_upper_left_2",
+        "ram_flare_wall_lower_left_1",
+        "ram_flare_wall_lower_left_2"
+      ],
+      "ram_flare_wall_left_2": [
+        "ram_flare_wall_upper_left_2",
+        "ram_flare_wall_upper_left_3",
+        "ram_flare_wall_lower_left_2",
+        "ram_flare_wall_lower_left_3",
+        "ram_flare_face_cross",
+        "ram_flare_face_upper_left",
+        "ram_flare_face_lower_left"
+      ],
+      "ram_flare_wall_lower_left_1": [
+        "ram_impact",
+        "ram_core",
+        "ram_bevel_ventral_l",
+        "ram_flare_wall_left_1",
+        "ram_flare_wall_lower_left_2",
+        "ram_flare_wall_lower_1",
+        "ram_flare_wall_seam_6"
+      ],
+      "ram_flare_wall_lower_left_2": [
+        "ram_flare_wall_left_1",
+        "ram_flare_wall_left_2",
+        "ram_flare_wall_lower_left_1",
+        "ram_flare_wall_lower_left_3",
+        "ram_flare_wall_lower_2",
+        "ram_flare_wall_seam_6"
+      ],
+      "ram_flare_wall_lower_left_3": [
+        "ram_flare_wall_left_2",
+        "ram_flare_wall_lower_left_2",
+        "ram_flare_wall_lower_2",
+        "ram_flare_wall_seam_6",
+        "ram_flare_face_cross",
+        "ram_flare_face_upright",
+        "ram_flare_face_lower_left"
+      ],
+      "ram_flare_wall_lower_1": [
+        "ram_core",
+        "ram_bevel_ventral_l",
+        "ram_bevel_ventral_r",
+        "ram_flare_wall_lower_left_1",
+        "ram_flare_wall_lower_right_1",
+        "ram_flare_wall_seam_6",
+        "ram_flare_wall_seam_7"
+      ],
+      "ram_flare_wall_lower_2": [
+        "ram_flare_wall_lower_left_2",
+        "ram_flare_wall_lower_left_3",
+        "ram_flare_wall_lower_right_2",
+        "ram_flare_wall_lower_right_3",
+        "ram_flare_wall_seam_6",
+        "ram_flare_wall_seam_7",
+        "ram_flare_face_upright",
+        "ram_flare_face_lower_left",
+        "ram_flare_face_lower_right"
+      ],
+      "ram_flare_wall_lower_right_1": [
+        "ram_impact",
+        "ram_core",
+        "ram_bevel_ventral_r",
+        "ram_flare_wall_right_1",
+        "ram_flare_wall_lower_1",
+        "ram_flare_wall_seam_7"
+      ],
+      "ram_flare_wall_lower_right_2": [
+        "ram_flare_wall_right_1",
+        "ram_flare_wall_right_2",
+        "ram_flare_wall_lower_2",
+        "ram_flare_wall_seam_7"
+      ],
+      "ram_flare_wall_lower_right_3": [
+        "ram_flare_wall_right_2",
+        "ram_flare_wall_lower_2",
+        "ram_flare_wall_seam_7",
+        "ram_flare_face_cross",
+        "ram_flare_face_upright",
+        "ram_flare_face_lower_right"
+      ],
+      "ram_flare_wall_seam_2": [
+        "ram_core",
+        "ram_bevel_dorsal_r",
+        "ram_flare_wall_upper_right_1",
+        "ram_flare_wall_upper_right_2",
+        "ram_flare_wall_upper_right_3",
+        "ram_flare_wall_upper_1",
+        "ram_flare_wall_upper_2",
+        "ram_flare_face_upright",
+        "ram_flare_face_upper_right"
+      ],
+      "ram_flare_wall_seam_3": [
+        "ram_core",
+        "ram_bevel_dorsal_l",
+        "ram_flare_wall_upper_1",
+        "ram_flare_wall_upper_2",
+        "ram_flare_wall_upper_left_1",
+        "ram_flare_wall_upper_left_2",
+        "ram_flare_wall_upper_left_3",
+        "ram_flare_face_upright",
+        "ram_flare_face_upper_left"
+      ],
+      "ram_flare_wall_seam_6": [
+        "ram_core",
+        "ram_bevel_ventral_l",
+        "ram_flare_wall_lower_left_1",
+        "ram_flare_wall_lower_left_2",
+        "ram_flare_wall_lower_left_3",
+        "ram_flare_wall_lower_1",
+        "ram_flare_wall_lower_2",
+        "ram_flare_face_upright",
+        "ram_flare_face_lower_left"
+      ],
+      "ram_flare_wall_seam_7": [
+        "ram_core",
+        "ram_bevel_ventral_r",
+        "ram_flare_wall_lower_1",
+        "ram_flare_wall_lower_2",
+        "ram_flare_wall_lower_right_1",
+        "ram_flare_wall_lower_right_2",
+        "ram_flare_wall_lower_right_3",
+        "ram_flare_face_upright",
+        "ram_flare_face_lower_right"
+      ],
+      "ram_flare_face_cross": [
+        "ram_flare_wall_right_2",
+        "ram_flare_wall_upper_right_3",
+        "ram_flare_wall_upper_left_3",
+        "ram_flare_wall_left_2",
+        "ram_flare_wall_lower_left_3",
+        "ram_flare_wall_lower_right_3",
+        "ram_flare_face_upright",
+        "ram_flare_face_upper_right",
+        "ram_flare_face_upper_left",
+        "ram_flare_face_lower_left",
+        "ram_flare_face_lower_right"
+      ],
+      "ram_flare_face_upright": [
+        "ram_flare_wall_upper_right_3",
+        "ram_flare_wall_upper_2",
+        "ram_flare_wall_upper_left_3",
+        "ram_flare_wall_lower_left_3",
+        "ram_flare_wall_lower_2",
+        "ram_flare_wall_lower_right_3",
+        "ram_flare_wall_seam_2",
+        "ram_flare_wall_seam_3",
+        "ram_flare_wall_seam_6",
+        "ram_flare_wall_seam_7",
+        "ram_flare_face_cross",
+        "ram_flare_face_upper_right",
+        "ram_flare_face_upper_left",
+        "ram_flare_face_lower_left",
+        "ram_flare_face_lower_right"
+      ],
+      "ram_flare_face_upper_right": [
+        "ram_flare_wall_right_2",
+        "ram_flare_wall_upper_right_3",
+        "ram_flare_wall_upper_2",
+        "ram_flare_wall_seam_2",
+        "ram_flare_face_cross",
+        "ram_flare_face_upright"
+      ],
+      "ram_flare_face_upper_left": [
+        "ram_flare_wall_upper_2",
+        "ram_flare_wall_upper_left_3",
+        "ram_flare_wall_left_2",
+        "ram_flare_wall_seam_3",
+        "ram_flare_face_cross",
+        "ram_flare_face_upright"
+      ],
+      "ram_flare_face_lower_left": [
+        "ram_flare_wall_left_2",
+        "ram_flare_wall_lower_left_3",
+        "ram_flare_wall_lower_2",
+        "ram_flare_wall_seam_6",
+        "ram_flare_face_cross",
+        "ram_flare_face_upright"
+      ],
+      "ram_flare_face_lower_right": [
+        "ram_flare_wall_right_2",
+        "ram_flare_wall_lower_2",
+        "ram_flare_wall_lower_right_3",
+        "ram_flare_wall_seam_7",
+        "ram_flare_face_cross",
+        "ram_flare_face_upright"
+      ]
+    },
+    "cap_cross_sections": {
+      "section_depth_stations": [
+        64.096,
+        66.87,
+        69.644,
+        72.418,
+        75.192
+      ],
+      "front_sample_count": 1080,
+      "maximum_front_relief": 0.037,
+      "center_depth_before": 76.096,
+      "center_depth_after": 76.292,
+      "directions": {
+        "right": {
+          "old_radii": [
+            22.363,
+            22.363,
+            23.638,
+            24.545,
+            19.218
+          ],
+          "new_radii": [
+            22.363,
+            22.525,
+            23.586,
+            24.647,
+            25.708
+          ],
+          "end_growth_percent": 14.96,
+          "face_depths": [
+            76.292,
+            76.292,
+            76.292,
+            76.292
+          ]
+        },
+        "upper_right": {
+          "old_radii": [
+            20.275,
+            20.275,
+            20.275,
+            18.528,
+            18.528
+          ],
+          "new_radii": [
+            20.275,
+            20.514,
+            21.479,
+            22.445,
+            23.41
+          ],
+          "end_growth_percent": 15.46,
+          "face_depths": [
+            76.292,
+            76.292,
+            76.276,
+            76.276
+          ]
+        },
+        "upper": {
+          "old_radii": [
+            15.49,
+            15.49,
+            15.49,
+            14.238,
+            13.118
+          ],
+          "new_radii": [
+            15.49,
+            15.671,
+            16.407,
+            17.144,
+            17.88
+          ],
+          "end_growth_percent": 15.43,
+          "face_depths": [
+            76.292,
+            76.276,
+            76.276,
+            76.276
+          ]
+        },
+        "upper_left": {
+          "old_radii": [
+            20.277,
+            20.277,
+            20.277,
+            18.532,
+            18.532
+          ],
+          "new_radii": [
+            20.277,
+            20.516,
+            21.481,
+            22.446,
+            23.412
+          ],
+          "end_growth_percent": 15.46,
+          "face_depths": [
+            76.292,
+            76.292,
+            76.276,
+            76.276
+          ]
+        },
+        "left": {
+          "old_radii": [
+            22.365,
+            22.365,
+            23.641,
+            24.548,
+            19.221
+          ],
+          "new_radii": [
+            22.365,
+            22.527,
+            23.589,
+            24.65,
+            25.711
+          ],
+          "end_growth_percent": 14.96,
+          "face_depths": [
+            76.292,
+            76.292,
+            76.292,
+            76.292
+          ]
+        },
+        "lower_left": {
+          "old_radii": [
+            20.274,
+            20.274,
+            20.274,
+            18.527,
+            18.527
+          ],
+          "new_radii": [
+            20.274,
+            20.512,
+            21.478,
+            22.444,
+            23.409
+          ],
+          "end_growth_percent": 15.46,
+          "face_depths": [
+            76.292,
+            76.292,
+            76.276,
+            76.276
+          ]
+        },
+        "lower": {
+          "old_radii": [
+            15.485,
+            15.485,
+            15.485,
+            14.333,
+            13.378
+          ],
+          "new_radii": [
+            15.485,
+            15.667,
+            16.403,
+            17.139,
+            17.876
+          ],
+          "end_growth_percent": 15.44,
+          "face_depths": [
+            76.292,
+            76.276,
+            76.276,
+            76.276
+          ]
+        },
+        "lower_right": {
+          "old_radii": [
+            20.272,
+            20.272,
+            20.272,
+            18.527,
+            18.527
+          ],
+          "new_radii": [
+            20.272,
+            20.511,
+            21.476,
+            22.442,
+            23.407
+          ],
+          "end_growth_percent": 15.46,
+          "face_depths": [
+            76.292,
+            76.292,
+            76.276,
+            76.276
+          ]
+        }
+      }
+    }
+  },
+  "texture": {
+    "resolution": [
+      256,
+      256
+    ],
+    "overlaps": 0,
+    "preserved_other_face_texels": true,
+    "changed_texels": 5236
+  },
+  "native": {
+    "version": "5.2.2",
+    "outward_triangles": 1788,
+    "preview_reimport": {
+      "cubes": 149,
+      "bones": 19,
+      "preview_difference": {
+        "front": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "back": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "side": {
+          "different_pixels": 37,
+          "per_channel_extrema": [
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              13
+            ]
+          ]
+        },
+        "oblique": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "head_top": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "head_profile": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "head_front": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "head_turn": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "head_turn_right": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        },
+        "head_below": {
+          "different_pixels": 0,
+          "per_channel_extrema": [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        }
+      }
+    },
+    "motion": {
+      "blockbench": "5.2.2",
+      "animation_export_exact": true,
+      "unchanged_clip_poses": {
+        "swim_cruise": {
+          "samples": 121,
+          "max_matrix_delta": 0
+        },
+        "swim_fast": {
+          "samples": 61,
+          "max_matrix_delta": 0
+        }
+      },
+      "geometry_and_animation_reimport": {
+        "swim_cruise": {
+          "samples": 121,
+          "max_matrix_delta": 0
+        },
+        "swim_fast": {
+          "samples": 61,
+          "max_matrix_delta": 0
+        }
+      }
+    },
+    "geometry_and_uv_audit": {
+      "errors": 0,
+      "warnings": 0
+    }
+  },
+  "minecraft_geckolib": "not tested",
+  "visual_reviews": {
+    "head": "PASS",
+    "whole_model": "PASS"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "blockbench": "5.2.2",
+  "animation_export_exact": true,
+  "unchanged_clip_poses": {
+    "swim_cruise": {
+      "samples": 121,
+      "max_matrix_delta": 0
+    },
+    "swim_fast": {
+      "samples": 61,
+      "max_matrix_delta": 0
+    }
+  },
+  "geometry_and_animation_reimport": {
+    "swim_cruise": {
+      "samples": 121,
+      "max_matrix_delta": 0
+    },
+    "swim_fast": {
+      "samples": 61,
+      "max_matrix_delta": 0
+    }
+  }
+}
