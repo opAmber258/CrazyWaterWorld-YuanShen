@@ -158,6 +158,7 @@ public final class ShipMover {
         BlockPos newCore = corePos.offset(dx, dy, dz);
         if (level.getBlockEntity(newCore) instanceof ShipCoreBlockEntity moved) {
             moved.setState(state.shifted(dx, dy, dz));
+            moved.transferSonarFrom(core);
         } else {
             // 理论上不会发生；真发生了就退回重扫
             for (BlockPos pos : moving) {

@@ -52,22 +52,19 @@ public final class MissionNpc {
     @Nullable
     private static BlockPos spotFor(ServerLevel level, DockingBay.Site site, boolean requireFree) {
         for (int[] candidate : SPOT_CANDIDATES) {
-            BlockPos pos = site.at(candidate[0], SPOT_Y, candidate[1]);
-            if (!level.isLoaded(pos)) {
-                continue;
+            BlockPos pos = site.at(level, candidate[0], SPOT_Y, candidate[1]);
+            if (isStationSpot(level, pos, requireFree)) {
+                return pos;
             }
-            if (!level.getBlockState(pos.below()).isSolid()
-                    || !level.getBlockState(pos).isAir()
-                    || !level.getBlockState(pos.above()).isAir()) {
-                continue;
-            }
-            if (requireFree && !level.getEntitiesOfClass(NpcEntity.class,
-                    new AABB(pos).inflate(1.6D)).isEmpty()) {
-                continue;
-            }
-            return pos;
         }
         return null;
+    }
+
+    private static boolean isStationSpot(ServerLevel level, BlockPos pos, boolean requireFree) {
+        return level.isLoaded(pos)
+                && level.getBlockState(pos.below()).isSolid()
+                && level.getBlockState(pos).isAir() && level.getBlockState(pos.above()).isAir()
+                && (!requireFree || level.getEntitiesOfClass(NpcEntity.class, new AABB(pos).inflate(1.6D)).isEmpty());
     }
 
     /**
@@ -90,7 +87,8 @@ public final class MissionNpc {
     }
 
     private static void ensureRole(ServerLevel level, DockingBay.Site site, String role) {
-        AABB area = new AABB(site.at(0, SPOT_Y, 0)).inflate(32.0D);
+        BlockPos station = site.at(level, 0, SPOT_Y, 0);
+        AABB area = new AABB(station).inflate(32.0D);
         java.util.List<NpcEntity> existing = level.getEntitiesOfClass(NpcEntity.class, area,
                 npc -> role.equals(npc.role()));
         if (!existing.isEmpty()) {
@@ -100,7 +98,20 @@ public final class MissionNpc {
             }
             return;
         }
-        BlockPos spot = spotFor(level, site, true);
+        BlockPos spot = null;
+        if (station.getY() != SPOT_Y) {
+            BlockPos preferred = switch (role) {
+                case NpcEntity.ROLE_MERCHANT -> station.offset(-17, 0, 2);
+                case NpcEntity.ROLE_DOCTOR -> station.offset(17, 0, 2);
+                default -> station.offset(4, 0, 3);
+            };
+            if (isStationSpot(level, preferred, true)) {
+                spot = preferred;
+            }
+        }
+        if (spot == null) {
+            spot = spotFor(level, site, true);
+        }
         if (spot == null) {
             return;
         }

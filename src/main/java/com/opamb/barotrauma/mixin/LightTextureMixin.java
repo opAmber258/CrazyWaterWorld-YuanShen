@@ -32,7 +32,9 @@ public class LightTextureMixin {
             return original;
         }
         // 0.75 × 0.006 × 255 向下取整为 1。合成时会把这个底色从暗处去掉。
-        float materialFloor = FlashlightRenderer.retainsDarkMaterial() ? 0.006F : 0.0F;
+        Minecraft mc = Minecraft.getInstance();
+        float materialFloor = FlashlightRenderer.dimCabin(mc, mc.gameRenderer.getMainCamera())
+                ? 0.016F : FlashlightRenderer.retainsDarkMaterial() ? 0.006F : 0.0F;
         return Math.max(materialFloor, DeepBrightnessDebug.ambientMix());
     }
 

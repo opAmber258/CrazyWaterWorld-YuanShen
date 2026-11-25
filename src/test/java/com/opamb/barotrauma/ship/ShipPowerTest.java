@@ -218,4 +218,19 @@ class ShipPowerTest {
         // 20 kW·min 全部放完（12000 kW × 0.1 秒 = 20 kW·min）
         assertEquals(0.0D, sim.storedKwm(), 1.0E-6);
     }
+
+    @Test
+    void stockBatteryBridgesFullThrottleWhileTheReactorCatchesUp() {
+        ShipSimulation sim = simulation(0);
+        BlockPos engine = new BlockPos(-1, 0, 0);
+        BlockPos bus = new BlockPos(0, 0, 0);
+        sim.reportJunctionBox(bus, 100);
+        sim.reportConsumer(engine, com.opamb.barotrauma.blockentity.EngineBlockEntity.DUGONG_POWER_KW, 0.5, bus);
+        sim.reportConsumer(new BlockPos(0, 0, 1), 1000.0, 0.5, bus);
+        sim.reportReactor(new BlockPos(0, 0, -1), 1000.0, 3000.0, 50.0, false, false);
+        sim.reportStorage(new BlockPos(1, 0, 0), 500, 500, 650, 160, bus, 100);
+        sim.tick(0.1);
+        assertEquals(1.0, sim.consumerVoltage(engine), 1.0E-6);
+        assertEquals(600.0, sim.batteryOutputKw(), 1.0E-6);
+    }
 }

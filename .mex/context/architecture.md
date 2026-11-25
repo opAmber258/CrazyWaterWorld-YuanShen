@@ -15,7 +15,7 @@ edges:
   - target: context/tools.md
     condition: when changing texture generation, GameTest templates, or the AsmDump helper
 grounds_to: []
-last_updated: 2026-11-24
+last_updated: 2026-11-25
 mex:
   id: mx_01M6FTBTA32ESJGHB433FWZZZ3
   type: architecture
@@ -45,6 +45,7 @@ mex:
 3. `ShipSimulation` 用 `ShipFluidField` 为实际舱内格维护水量；同一水体归平，舱与舱按开口两侧的水头交换。船壳本身是逐方块耐久（`HullDamage`）：左键/爆炸/撞击先扣剩余比例；伤害 ≥10% 开始小漏、≥70% 大漏，0% 时方块切成 `HullBlock.BREACHED`（保留数据、无碰撞、不可见），几何扫描把它当洞，走连海空腔进水；焊接回 >0 恢复实体。
 4. 如果装了 Valkyrien Skies 2，`VsPilot` 把整船方块收进 VS2 物理船，逐 tick 把推进、压载、进水比例同步给 `VsThruster`，并用 `ShipWaterStatePacket` 同步水盒、破口和实际来水路径。方块船用同一个包。
 5. 深海维度是空气海域。`DeepSeaChunkGenerator` 生成岩层和空腔，`OceanEnvironment` 用实际船舱、哨站和对接通道判浸没。`UnderwaterEffects` 按寒冷深穴配色控制外海散射和海雪，人物的外海视线按 7.4 到 18.7 格衰减。外海与舱内水共享 `ShipWaterMaterial` 的场景深度与散射色。
+   新航次把 `TerrainTemplate` 写入 `RoundState`，由 `RouteTerrain` 共用噪声生成峡谷或开阔海盆。纵向尺寸取原作宽度区间中值的 1.3 倍，深侧目的地较出发端低 72 格。有哨站的深侧使用 `HabitationOutpost`，对接与舱室干区按站点标高定位。缺少模板的旧航次仍按其原布局继续生成。
 6. `ShipWaterRenderer` 逐帧插值 10 Hz 水面包。`ShipWaterMesh` 按格列合并湿区，分别更新各甲板的涟漪。`ShipWaterFlowMesh` 沿舱壁或空旷落差画连续水面，水珠和气泡跟随客户端世界刻。`ShipWaterMaterial` 只在有光学厚度的水界面折射。水中直视地板和设备按水程着色。`UnderwaterMovement` 读取服务端的可游水深和原版疾跑绑定。`HullDamageRenderer` 显示受损方块的耐久条、裂痕和渗漏粒子。
 
 ## Key Components
@@ -58,6 +59,10 @@ mex:
 - **`mixin/ShipBreakMixin`** — 把玩家左键破坏映射到船坞坐标，让物理船也能破口。
 - **`world/OceanEnvironment`** — 干湿判定入口：维度高度、真实碰撞体、船舱水位与哨站干区。服务端查询模拟水位，客户端通过 `DryZone` 查询同步的水盒。
 - **`network/`** — 6 个包：`ShipActionPacket`（客户端→服务端）、`VesselPalettePacket`（船体渲染）、`SonarPingPacket` / `SonarDataPacket`（声纳）、`ShipWaterStatePacket`（水面包）、`ShipHullDamagePacket`（受损方块 + 剩余比例）。
+- **声纳主屏** — `SonarCycle` 属于服务端终端，同台玩家共享同一发脉冲。状态回复按菜单 ID 路由，已收到的脉冲不重复发送。`SonarPulse` 携带发射时的世界原点、tick、模式和朝向；`SonarScope` 按原作的计时、色阶及叠加规则批量画体素反射与径向余辉，并保留可点选的世界坐标。主屏缩放来自 `ScaledContainerScreen`，台面全息从客户端单独取点。
+- **驾驶台界面与本船轮廓（协议 38）** — 物理船点云以装配核心为原点，轮廓、回波视点和船头每帧读取 VS2 渲染变换，定位未就绪时用最近一次声纳回复。船壳方块投影合并到像素遮罩，只描覆盖边界，保留台阶和空隙。驾驶目标仍按 3D 投影拖动，目的站沿水平罗盘绘制站名和米数，峡谷远站可用主航道估计里程。
+- **驾驶与定点** — `NavigationMotion` 用实际核心速度、联网引擎可用反推和电网余量决定何时制动。3D 按需调整艏向抵消横漂，升沉仍由压载泵执行。锁位后先显示稳船，持续半秒位置、速度和出力都达标再显示保持。`VsThruster` 的轴力换算以儒艮额定横速 21.6 km/h 标定，舵令回中后轴力继续衰减。引擎菜单同时报告目标与当前值。手动舵令最多保留驾驶员最近 20 tick 的授权，超时回中，其他看声纳的玩家不会替驾驶员续期。
+- **驾驶台归属** — `SonarMenu` 在服务端绑定打开时解析出的终端方块实体，声纳轮询、舵令、下潜和靠泊都使用同一个绑定。物理船从代理打开时绑定船坞终端，代理移动不影响归属。方块船终端拆除、原址替换或越界会关闭旧菜单。
 - **`event/`** — `DeepSeaEvents`（登录、命令、自检）、`UnderwaterSurvival`（空气海域的氧气/溺水）。
 - **`mission/` + `campaign/`** — 站务员 NPC（`NpcEntity`/`MissionNpc`）右键对话：`NpcTalkPacket` 请求活儿，服务端按站点发最多 3 条报价（任务模板 → 相邻目的地），`NpcDialoguePacket` 回任务列表；`MissionSavedData` 按站点保存报价与进行中任务，未接的留站、离站后重新靠泊刷新、完成复位可再发；`CampaignMapScreen` 只列当前站去所选目的地的报价并勾选；`MissionCargo` 把真箱子装进 `crate_shelf`（装配后的货架按船坞偏移读取），无货架时在玩家进艇后于脚边生成散箱，靠泊目的站按 98% 结算并清货；`MissionStatePacket` 下发当前站报价 + 进行中任务目的地，协议 8。
 
@@ -79,4 +84,4 @@ mex:
 - **没有 T1/T2/T3 升级系统**：官方基础外壳都是 200；tier 只限制 `increasewallhealth` 升级等级（每级 +20%，T1 2 / T2 4 / T3 6）。`ShipState.hullHealthMultiplier` 已预留，但没有商店/升级 UI。
 - **没有船壳耐久持久化**：`HullDamage` 只在运行时；世界存档或物理船拆回再装会重置。
 - **没有服务端渲染**：所有画面都在 `client/`，服务端只发数据包。
-- **手电筒照明**：服务端消耗电池并用玩家实体数据同步亮灯位置和低电标志。客户端在水体和手部渲染前处理光锥，复用世界画面的颜色、深度和实际投影矩阵。固定舱灯仍由 Minecraft 方块亮度和可选的 Colorful Lighting 传播颜色。
+- **手电筒照明**：服务端消耗电池并用玩家实体数据同步亮灯位置和低电标志。客户端在水体和手部渲染前处理光锥，复用世界画面的颜色、深度和实际投影矩阵。自己的手电发光时关闭贴身微光。固定舱灯仍由 Minecraft 方块亮度和可选的 Colorful Lighting 传播颜色。

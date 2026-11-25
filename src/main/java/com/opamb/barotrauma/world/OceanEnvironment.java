@@ -57,11 +57,7 @@ public final class OceanEnvironment {
             return false;
         }
         DockingBay.Site site = DockingBay.siteAt((int) Math.floor(pos.x), (int) Math.floor(pos.z));
-        if (site != null
-                && Math.abs(pos.x - site.x()) <= OutpostBuilder.HALF_X
-                && Math.abs(pos.z - site.z()) <= OutpostBuilder.HALF_Z
-                && pos.y >= OutpostBuilder.MIN_Y
-                && pos.y <= OutpostBuilder.MAX_Y) {
+        if (site != null && OutpostBuilder.isDryAt(level, site, pos)) {
             return true;
         }
         // 对接通道（站内地板到潜艇顶舱口之间）也算站内干燥区

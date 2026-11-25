@@ -97,18 +97,20 @@ public final class CampaignManager {
         com.opamb.barotrauma.world.level.LevelType levelType =
                 com.opamb.barotrauma.world.level.LevelSelector.connectionType(
                         state.roundsCompleted() == 0, levelDifficulty, levelSeed);
-        com.opamb.barotrauma.world.level.LevelParams levelParams = levelType.params();
+        com.opamb.barotrauma.world.level.TerrainTemplate terrain =
+                com.opamb.barotrauma.world.level.TerrainTemplate.forRoute(levelType, levelSeed);
+        int routeDistance = levelType.params().terrainRouteLength();
         MissionInstance.RouteLevel routeLevel = new MissionInstance.RouteLevel(
                 anchor.slot(), levelType, levelSeed, levelDifficulty,
-                levelParams.routeLength(), anchor.x());
+                routeDistance, anchor.x(), terrain);
         com.opamb.barotrauma.world.DockingBay.Site startSite =
-                MissionInstance.startSite(anchor, levelParams.routeLength());
+                MissionInstance.startSite(anchor, routeDistance);
         boolean startHasOutpost = originNode != null && originNode.type() == NodeType.OUTPOST;
         boolean endHasOutpost = destNode != null && destNode.type() == NodeType.OUTPOST;
         // 关卡配置和哨站标记必须原子发布：新区块可能在下一 tick 就开始生成。
         MissionInstance.publishRoute(routeLevel, anchor.slot(), startHasOutpost, endHasOutpost);
-        BarotraumaMod.LOGGER.info("[level] slot={} type={} difficulty={} route={} start=({},{})",
-                anchor.slot(), levelType.id(), levelDifficulty, levelParams.routeLength(),
+        BarotraumaMod.LOGGER.info("[level] slot={} type={} terrain={} difficulty={} route={} start=({},{})",
+                anchor.slot(), levelType.id(), terrain.id(), levelDifficulty, routeDistance,
                 startSite.x(), startSite.z());
         com.opamb.barotrauma.world.RoutePath path = MissionInstance.activePath();
         if (path != null) {
@@ -127,15 +129,16 @@ public final class CampaignManager {
         }
         // 出发站有哨站但未生成时（旧存档），退回目的站正下方，避免把船放进岩石。
         // 目的站无哨站时仍放在出发站正下方。
+        int destinationY = MissionInstance.destinationY(terrain);
         Vec3 start;
         if (hasStartStation || !endHasOutpost) {
             start = new Vec3(startSite.x() + 0.5D, anchor.y(), startSite.z() + 0.5D);
         } else {
-            start = anchor.spawn();
+            start = new Vec3(anchor.x() + 0.5D, destinationY, anchor.z() + 0.5D);
         }
         int preloaded = MissionInstance.preloadNear(deep,
                 new BlockPos(startSite.x(), anchor.y(), startSite.z()), 2);
-        MissionInstance.preload(deep, anchor, 1);
+        MissionInstance.preload(deep, anchor, endHasOutpost ? 2 : 1);
         VsPilot.preloadShipChunks(deep);
         Vec3 shipBefore = VsPilot.shipPosition();
         String moved = VsPilot.teleportShipTo(deep, start);
@@ -173,9 +176,9 @@ public final class CampaignManager {
         // 离开站点：本轮访问结束，下次靠泊站务员可以补发新任务。
         com.opamb.barotrauma.data.MissionSavedData.get(deep).endVisit(origin);
         state.beginTravel(destination, deep.getGameTime(), startHasOutpost, endHasOutpost);
-        state.setInstance(anchor.x(), anchor.y(), anchor.z());
+        state.setInstance(anchor.x(), destinationY, anchor.z());
         state.round().setLevel(levelType.id(), levelSeed, levelDifficulty,
-                levelParams.routeLength(), MissionInstance.SPACING);
+                routeDistance, MissionInstance.SPACING, terrain);
         for (int i = 0; i < players.size(); i++) {
             ServerPlayer online = players.get(i);
             Vec3 pos = positions.get(i);
@@ -223,7 +226,7 @@ public final class CampaignManager {
     /** 出发站是否已经由世界生成铺出来（旧存档的区块不会补生成）。 */
     private static boolean stationExists(ServerLevel level,
                                          com.opamb.barotrauma.world.DockingBay.Site site) {
-        BlockPos probe = new BlockPos(site.x() + 10, -64, site.z());
+        BlockPos probe = site.at(10, -64, 0);
         level.getChunkAt(probe);
         return level.getBlockState(probe)
                 .is(com.opamb.barotrauma.registry.ModShipBlocks.STATION_PLATING.get());
@@ -308,11 +311,11 @@ public final class CampaignManager {
                 ShipCoreBlockEntity core = StarterSub.starterCore(deep);
                 return core == null ? null : core.getBlockPos();
             }
-            BlockPos pos = layout.coreAt(site.x(), site.z());
+            BlockPos pos = com.opamb.barotrauma.world.DockingBay.dockCore(site, layout);
             deep.getChunkAt(pos);
             return deep.getBlockEntity(pos) instanceof ShipCoreBlockEntity ? pos : null;
         }
-        BlockPos pos = new BlockPos(site.x() + 1, StarterSub.ORIGIN_Y + 1, site.z() - 3);
+        BlockPos pos = site.at(1, StarterSub.ORIGIN_Y + 1, -3);
         deep.getChunkAt(pos);
         if (deep.getBlockEntity(pos) instanceof ShipCoreBlockEntity) {
             return pos;
@@ -340,16 +343,15 @@ public final class CampaignManager {
             return;
         }
         int slot = MissionInstance.slotForX(round.instanceX(), round.levelSpacing());
-        MissionInstance.RouteLevel level = MissionInstance.routeLevel();
-        if (level == null || level.slot() != slot || level.anchorX() != round.instanceX()) {
-            com.opamb.barotrauma.world.level.LevelType type =
-                    com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
-            com.opamb.barotrauma.world.level.LevelParams params = type.params();
-            int distance = round.levelDistance() > 0 ? round.levelDistance() : params.routeLength();
-            level = new MissionInstance.RouteLevel(
-                    slot, type, round.levelSeed(), round.levelDifficulty(), distance,
-                    round.instanceX());
-        }
+        com.opamb.barotrauma.world.level.LevelType type =
+                com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
+        com.opamb.barotrauma.world.level.LevelParams params = type.params();
+        int fallbackDistance = round.terrain() == com.opamb.barotrauma.world.level.TerrainTemplate.LEGACY
+                ? params.routeLength() : params.terrainRouteLength();
+        int distance = round.levelDistance() > 0 ? round.levelDistance() : fallbackDistance;
+        MissionInstance.RouteLevel level = new MissionInstance.RouteLevel(
+                slot, type, round.levelSeed(), round.levelDifficulty(), distance,
+                round.instanceX(), round.terrain());
         // AT_NODE 也恢复哨站标记：routeSlot 不随存档保存，重启后默认 true 会在无人航路点建站。
         // 关卡配置与标记一次写锁发布，生成线程不会读到"新关卡 + 旧 routeSlot"。
         MissionInstance.publishRoute(level, slot, round.startHasOutpost(), round.endHasOutpost());
@@ -383,7 +385,7 @@ public final class CampaignManager {
             return;
         }
         double dx = ship.x - round.instanceX();
-        double dy = ship.y - MissionInstance.ANCHOR_Y;
+        double dy = ship.y - MissionInstance.destinationY(round.terrain());
         double dz = ship.z - round.instanceZ();
         if (dx * dx + dy * dy + dz * dz > 32.0D * 32.0D) {
             return;

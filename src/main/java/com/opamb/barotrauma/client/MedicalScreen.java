@@ -9,6 +9,7 @@ import com.opamb.barotrauma.medical.affliction.Limb;
 import com.opamb.barotrauma.network.MedicalRequestPacket;
 import com.opamb.barotrauma.network.MedicalTreatPacket;
 import com.opamb.barotrauma.network.ModNetwork;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.network.chat.Component;
@@ -98,8 +99,7 @@ public final class MedicalScreen extends ScaledScreen {
     protected void renderDesign(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         int x = 0;
         int y = 0;
-        g.fill(x - 1, y - 1, x + PANEL_W + 1, y + PANEL_H + 1, 0xFF4A4A5A);
-        g.fill(x, y, x + PANEL_W, y + PANEL_H, 0xE012121A);
+        PanelStyle.frame(g, x, y, PANEL_W, PANEL_H, PanelStyle.MEDICAL);
 
         ClientMedicalCache.Snapshot snapshot = ClientMedicalCache.snapshot(target);
         g.drawString(this.font, Component.literal("医疗 · " + targetName), x + 6, y + 5, 0xFFFFC74A);

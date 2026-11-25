@@ -228,12 +228,6 @@ public class EngineBlock extends Block implements EntityBlock {
             if (!(masterState.getBlock() instanceof EngineBlock)) {
                 return InteractionResult.PASS;
             }
-            // 手持扳手且耐久低于阈值：先开独立修理窗口。
-            if (level.getBlockEntity(master) instanceof com.opamb.barotrauma.blockentity.EngineBlockEntity engine
-                    && com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
-                            serverPlayer, master, engine, false)) {
-                return InteractionResult.CONSUME;
-            }
             NetworkHooks.openScreen(serverPlayer, new MenuProvider() {
                 @Override
                 public Component getDisplayName() {

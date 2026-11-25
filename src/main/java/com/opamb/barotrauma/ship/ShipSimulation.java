@@ -106,15 +106,20 @@ public final class ShipSimulation {
             new java.util.HashMap<>();
     /** 推进最多吃几台引擎的推力：超出部分不叠加（和 {@code VsThruster} 的上限一致）。 */
     public static final int MAX_ENGINES = 8;
+    public static final double ENGINE_POWER_EXPONENT = 1.5D;
     private long engineTick;
     private static final int ENGINE_STALE_TICKS = 40;
     private int lastEngineCount;
     private double lastEngineDemand;
     private double lastEngineMaxForce;
+    private double availableDrivePowerKw;
+    private double nonEngineDemandKw;
 
     private record EngineReport(double force, double demandKw, double maxForce,
-                                double condition, long lastSeen) {
+                                double condition, double ratedDemandKw, long lastSeen) {
     }
+
+    public record EngineCapacity(double throttle, double rawForce) {}
 
     private record ReactorReport(double minOutput, double maxOutput, double capacity,
                                  double temperature, boolean overheated,
@@ -557,6 +562,7 @@ public final class ShipSimulation {
         // 反应堆：方块实体每 tick 上报；超过 40 tick 没上报视为已经拆掉。
         reactorTick++;
         double reactorCapacity = 0.0D;
+        double availablePowerKw = 0.0D;
         double temperature = 0.0D;
         boolean overheated = false;
         boolean meltingDown = false;
@@ -572,6 +578,7 @@ public final class ShipSimulation {
             }
             activeReactors.add(entry);
             reactorCapacity += report.capacity();
+            availablePowerKw += report.maxOutput();
             temperature = Math.max(temperature, report.temperature());
             overheated |= report.overheated();
             meltingDown |= report.meltingDown();
@@ -622,6 +629,7 @@ public final class ShipSimulation {
         // 设备上报的电网负载（原作 Powered）：每台设备有自己的功率和最低电压。
         consumerTick++;
         double consumerDemand = 0.0D;
+        double connectedEngineDemand = 0.0D;
         var consumerIterator = consumers.entrySet().iterator();
         while (consumerIterator.hasNext()) {
             var entry = consumerIterator.next();
@@ -639,6 +647,9 @@ public final class ShipSimulation {
                 }
             }
             consumerDemand += report.demandKw();
+            if (engines.containsKey(entry.getKey())) {
+                connectedEngineDemand += report.demandKw();
+            }
         }
 
         // 电池上报：超过 40 tick 没上报视为拆掉。电量在下面的充放电结算里更新。
@@ -779,7 +790,13 @@ public final class ShipSimulation {
         for (StorageReport report : storages.values()) {
             storedKwm += report.chargeKwm();
             storageCapacityKwm += report.capacityKwm();
+            if (storageUsable(report)) {
+                availablePowerKw += PowerGrid.batteryOutputAvailable(
+                        report.chargeKwm(), report.capacityKwm(), report.maxOutputKw(), dt);
+            }
         }
+        availableDrivePowerKw = availablePowerKw;
+        nonEngineDemandKw = Math.max(0.0D, deviceDemand - (consumers.isEmpty() ? engineDemand : connectedEngineDemand));
 
         double supply = reactorOutput + batteryOutput;
         double demand = deviceDemand + rechargeInput;
@@ -1478,7 +1495,7 @@ public final class ShipSimulation {
                 Math.max(0.0D, temperature), overheated, meltingDown, reactorTick));
     }
 
-    /** 引擎方块实体每 tick 上报一次：目标力（0..100%）、耗电、最大推力、耐久比例。 */
+    /** 引擎方块实体每 tick 上报一次：实际插值力（−100..100%）、耗电、最大推力、耐久比例。 */
     public void reportEngine(net.minecraft.core.BlockPos cell, double force,
                              double demandKw, double maxForce) {
         reportEngine(cell, force, demandKw, maxForce, 1.0D);
@@ -1486,15 +1503,50 @@ public final class ShipSimulation {
 
     public void reportEngine(net.minecraft.core.BlockPos cell, double force,
                              double demandKw, double maxForce, double condition) {
+        reportEngine(cell, force, demandKw, maxForce, condition,
+                com.opamb.barotrauma.blockentity.EngineBlockEntity.MAX_POWER_KW);
+    }
+
+    public void reportEngine(net.minecraft.core.BlockPos cell, double force,
+                             double demandKw, double maxForce, double condition, double ratedDemandKw) {
         if (cell == null) {
             return;
         }
         engines.put(cell.immutable(), new EngineReport(
-                Mth.clamp(force, 0.0D, 100.0D),
+                Mth.clamp(force, -100.0D, 100.0D),
                 Math.max(0.0D, demandKw),
                 Math.max(0.0D, maxForce),
                 Mth.clamp(condition, 0.0D, 1.0D),
+                Math.max(0.0D, ratedDemandKw),
                 engineTick));
+    }
+
+    /** Estimate the voltage and force at the largest sustainable automatic command. */
+    public EngineCapacity engineCapacity(int powerLimit) {
+        double ratedDemand = 0.0D;
+        java.util.List<Double> forces = new java.util.ArrayList<>(engines.size());
+        for (var entry : engines.entrySet()) {
+            EngineReport engine = entry.getValue();
+            if (engineTick - engine.lastSeen() > ENGINE_STALE_TICKS || engine.condition() <= 0.0D
+                    || !consumerConnected(entry.getKey())) {
+                continue;
+            }
+            ratedDemand += engine.ratedDemandKw();
+            forces.add(engineRawForce(engine, 100.0D, 1.0D));
+        }
+        double requested = Mth.clamp(powerLimit / 100.0D, 0.0D, 1.0D);
+        // Leave headroom above the engine and terminal cutoff. Allow some load above the reactor's
+        // current output band so its automatic controller can ramp up to meet increased demand.
+        double budget = availableDrivePowerKw / 0.80D - nonEngineDemandKw;
+        if (requested == 0.0D || ratedDemand <= 0.0D || budget <= 0.0D) {
+            return new EngineCapacity(0.0D, 0.0D);
+        }
+        double powered = Math.pow(budget / ratedDemand, 1.0D / ENGINE_POWER_EXPONENT);
+        double fraction = Math.min(requested, powered);
+        double demand = nonEngineDemandKw + ratedDemand * Math.pow(fraction, ENGINE_POWER_EXPONENT);
+        double voltage = Math.min(1.0D, availableDrivePowerKw / demand);
+        double effectiveFraction = fraction * Math.pow(voltage, 1.0D / ENGINE_POWER_EXPONENT);
+        return new EngineCapacity(fraction / requested, strongestEngineForces(forces) * effectiveFraction);
     }
 
     /** 上一 tick 登记的引擎数量（诊断/推进倍率用）。 */
@@ -1516,7 +1568,7 @@ public final class ShipSimulation {
         java.util.List<Double> powered = new java.util.ArrayList<>(engines.size());
         for (var entry : engines.entrySet()) {
             EngineReport report = entry.getValue();
-            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS || report.force() <= 0.1D) {
+            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS || Math.abs(report.force()) <= 0.1D) {
                 continue;
             }
             double voltage = consumerVoltage(entry.getKey());
@@ -1548,7 +1600,7 @@ public final class ShipSimulation {
         java.util.List<Double> forces = new java.util.ArrayList<>(engines.size());
         for (var entry : engines.entrySet()) {
             EngineReport report = entry.getValue();
-            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS || report.force() <= 0.1D) {
+            if (engineTick - report.lastSeen() > ENGINE_STALE_TICKS || Math.abs(report.force()) <= 0.1D) {
                 continue;
             }
             double voltage = consumerVoltage(entry.getKey());
@@ -1558,12 +1610,19 @@ public final class ShipSimulation {
             // 原作不因为电压低于 MinVoltage 就把这一帧的出力直接清零：
             // Engine.Update 让 Force 以 10/s 衰减，同时仍然乘 min(Voltage,2)^(2/3)。
             // 所以这里保留 0.5 以下的电压系数，衰减交给 EngineBlockEntity.currentForce。
-            double voltageFactor = Math.pow(Math.min(voltage, 2.0D), 2.0D / 3.0D);
-            // 原作：num *= MathHelper.Lerp(0.5f, 2f, condition / maxCondition)
-            double conditionFactor = 0.5D + 1.5D * report.condition();
-            forces.add(report.maxForce() * report.force() * voltageFactor * conditionFactor);
+            forces.add(engineRawForce(report, report.force(), voltage));
         }
-        forces.sort(java.util.Comparator.reverseOrder());
+        return strongestEngineForces(forces);
+    }
+
+    private static double engineRawForce(EngineReport engine, double commandPercent, double voltage) {
+        double voltageFactor = Math.pow(Math.min(voltage, 2.0D), 1.0D / ENGINE_POWER_EXPONENT);
+        double conditionFactor = 0.5D + 1.5D * engine.condition();
+        return engine.maxForce() * commandPercent * voltageFactor * conditionFactor;
+    }
+
+    private static double strongestEngineForces(java.util.List<Double> forces) {
+        forces.sort(java.util.Comparator.comparingDouble((Double force) -> Math.abs(force)).reversed());
         double sum = 0.0D;
         for (int i = 0; i < forces.size() && i < MAX_ENGINES; i++) {
             sum += forces.get(i);
@@ -1803,14 +1862,16 @@ public final class ShipSimulation {
      * 也走全船默认总线，保证现有存档能继续开。</p>
      */
     public double consumerVoltage(net.minecraft.core.BlockPos cell) {
+        return consumerConnected(cell) ? lastVoltage : 0.0D;
+    }
+
+    private boolean consumerConnected(net.minecraft.core.BlockPos cell) {
         ConsumerReport report = cell == null ? null : consumers.get(cell);
         if (report != null && report.box() != null) {
             BoxReport box = boxes.get(report.box());
-            if (box == null || box.condition() <= 0.0D) {
-                return 0.0D;
-            }
+            return box != null && box.condition() > 0.0D;
         }
-        return lastVoltage;
+        return true;
     }
 
     /** 某个接线盒上绑定的设备总负载（kW）。 */

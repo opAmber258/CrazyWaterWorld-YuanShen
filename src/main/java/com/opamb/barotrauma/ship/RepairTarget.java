@@ -1,16 +1,6 @@
 package com.opamb.barotrauma.ship;
 
-/**
- * 可修理设备（对应原作 {@code Repairable}）。
- *
- * <p>耐久低于 {@link #REPAIR_THRESHOLD}（原作 80%）才能修。修理分两部分：
- * 持续恢复（满耐久约 {@link #repairDurationSeconds()} 秒）和 QTE 加成
- * （指针扫进已恢复区域时点击，额外 {@link #qteBoostPoints()} 点）。</p>
- *
- * <p>电池、接线盒、泵、反应堆、引擎、导航/声纳核心、门/舱口都已实现。
- * 手持对应工具右键设备会打开独立修理窗口（{@code RepairScreen}），
- * 窗口里点“修理”开始持续恢复，指针扫进已恢复区域时再点给 QTE 加成。</p>
- */
+/** An installation with condition and a maintenance requirement. */
 public interface RepairTarget {
 
     /** 修理工具：电气类用螺丝刀，机械类用扳手（原作 RequiredItem）。 */
@@ -57,13 +47,7 @@ public interface RepairTarget {
     default void damage(double points) {
     }
 
-    /** 从 0 修到满的持续时长（秒）；无技能系统时取原作低技能档 25 秒。 */
-    default double repairDurationSeconds() {
-        return 25.0D;
-    }
-
-    /** 一次成功 QTE 的额外耐久（原作 RepairDegreeOfSuccess × 3，无技能 = 3）。 */
-    default double qteBoostPoints() {
-        return 3.0D;
+    default int requiredSkill() {
+        return 55;
     }
 }

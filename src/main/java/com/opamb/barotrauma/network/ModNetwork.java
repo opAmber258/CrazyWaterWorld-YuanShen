@@ -34,7 +34,10 @@ public final class ModNetwork {
     // 34：新增 TurretHitPacket（服务端确认命中/击杀，客户端据此播放准星反馈）。
     // 35：新增 DummySettingsPacket（高级训练台血量/自发光/重生间隔）。
     // 36：DummySettingsPacket 带设置版本（拒绝过期草稿）。
-    private static final String PROTOCOL = "36";
+    // 37：SonarDataPacket/SonarPingPacket 改为按脉冲与回波同步（世界坐标 + 到达 tick）。
+    // 38：ShipActionPacket 增加驾驶状态/定点目标与舵令确认，功率拒绝回显。
+    // 39：RepairActionPacket 与设备修理/接线盒菜单改版。
+    private static final String PROTOCOL = "39";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);

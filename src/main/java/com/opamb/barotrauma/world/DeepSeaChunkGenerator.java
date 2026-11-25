@@ -119,6 +119,7 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
         int minY = chunk.getMinBuildHeight();
         // 本轮航行关卡的参数；没有活动关卡就是 null（走原来的全局地形）。
         LevelParams params = MissionInstance.activeParams();
+        RouteTerrain terrain = MissionInstance.activeTerrain();
 
         // 海域用空气而不是真实水：水下效果由客户端雾/滤镜表现，进水走数值模拟。
         BlockState ocean = Blocks.AIR.defaultBlockState();
@@ -154,13 +155,23 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             }
         }
 
-        // 3) 海域：全局是上岩壳/下岩床之间的开阔水；活动关卡是 330–600 格宽、
-        //    330–560 格高的随机游走大洞窟。洞窟中央保持通畅，外圈按大尺度噪声长
-        //    岩柱/钟乳石/浮岩岛——这是原作洞穴里的岩体特征，但不再是难看的细胞墙。
+        // 3) 海域：新航次按地形模板雕刻。旧航次和全局区块继续走原来的生成规则。
         for (int lx = 0; lx < 16; lx++) {
             for (int lz = 0; lz < 16; lz++) {
                 int x = originX + lx;
                 int z = originZ + lz;
+                RouteTerrain.Column column = terrain == null ? null : terrain.column(seed, x, z);
+                if (column != null) {
+                    for (int y = column.floor() + 1; y < column.ceiling(); y++) {
+                        if (!column.hasRockAt(y)) {
+                            setBlock(chunk, x, y, z, ocean);
+                        }
+                    }
+                    if (((x * 31 + z * 17 + column.floor() * 13) & 7) == 0) {
+                        setBlock(chunk, x, column.floor(), z, tuff);
+                    }
+                    continue;
+                }
                 int ceiling = SeaTerrain.ceilingY(seed, x, z);
                 int floor = SeaTerrain.floorY(seed, x, z);
                 int open = ceiling - floor;
@@ -168,7 +179,7 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                     continue; // 整列都是岩（噪声把洞顶压到洞底以下），保持原样
                 }
 
-                double routeDistance = params == null ? Double.MAX_VALUE
+                double routeDistance = params == null || terrain != null ? Double.MAX_VALUE
                         : MissionInstance.distanceToActiveRoute(x, z);
                 boolean inLevel = params != null
                         && routeDistance <= SeaTerrain.levelInfluence(params);
@@ -266,9 +277,6 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
 
         // 6b) 任务 POI：沉船/侦察点/B 中继站（确定性，幂等）
         PoiNetwork.buildInto(chunk);
-
-        // 6c) 任务海域实例不单独挖洞穴：主航道隧道和两端站点空腔都由
-        //     SeaTerrain / RoutePath 生成，站体直接挂在空腔顶板上。
 
         // 6d) 哨站：主站 + 本轮关卡两端的站（无人航路点两端不建站，和原作一致）。
         for (DockingBay.Site site : DockingBay.sitesNear(chunkPos)) {

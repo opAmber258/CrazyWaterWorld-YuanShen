@@ -4,6 +4,7 @@ import com.opamb.barotrauma.block.CabinetBlock;
 import com.opamb.barotrauma.client.equipment.BagOverlay;
 import com.opamb.barotrauma.equipment.BagSlots;
 import com.opamb.barotrauma.menu.CabinetMenu;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -20,16 +21,15 @@ import net.minecraft.world.inventory.Slot;
 public class CabinetScreen extends ScaledContainerScreen<CabinetMenu> {
 
     private static final int W = 176;
-    private static final int BG = 0xFF1A1D20;
     private static final int HEADER = 0xFF23282D;
-    private static final int EDGE = 0xFF4A5157;
+    private static final int EDGE = PanelStyle.EDGE;
     private static final int EDGE_DARK = 0xFF0B0D0F;
     private static final int SLOT = 0xFF0E1012;
     private static final int SLOT_HI = 0xFF3B434A;
     private static final int SLOT_LO = 0xFF050607;
     private static final int TITLE = 0xFFC8CDD2;
-    private static final int DIM = 0xFF8A9198;
-    private static final int ACCENT = 0xFF5FA8C8;
+    private static final int DIM = PanelStyle.DIM;
+    private static final int ACCENT = PanelStyle.SERVICE;
 
     private final int panelHeight;
 
@@ -55,11 +55,7 @@ public class CabinetScreen extends ScaledContainerScreen<CabinetMenu> {
         int y = topPos;
         int h = panelHeight;
 
-        graphics.fill(x, y, x + W, y + h, BG);
-        graphics.fill(x, y, x + W, y + 1, EDGE);
-        graphics.fill(x, y + h - 1, x + W, y + h, EDGE_DARK);
-        graphics.fill(x, y, x + 1, y + h, EDGE);
-        graphics.fill(x + W - 1, y, x + W, y + h, EDGE_DARK);
+        PanelStyle.frame(graphics, x, y, W, h, PanelStyle.SERVICE);
         graphics.fill(x + 1, y + 1, x + W - 1, y + 17, HEADER);
         graphics.fill(x + 1, y + 17, x + W - 1, y + 18, EDGE_DARK);
 

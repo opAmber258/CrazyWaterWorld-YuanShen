@@ -2,7 +2,6 @@ package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.OxygenGeneratorBlockEntity;
 import com.opamb.barotrauma.menu.OxygenGeneratorMenu;
-import com.opamb.barotrauma.ship.RepairInteractions;
 import com.opamb.barotrauma.ship.ShipCores;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -81,10 +80,6 @@ public class OxygenGeneratorBlock extends Block implements EntityBlock {
         if (!(player instanceof ServerPlayer serverPlayer)
                 || !(level.getBlockEntity(pos) instanceof OxygenGeneratorBlockEntity generator)) {
             return InteractionResult.PASS;
-        }
-        // 手持扳手且耐久低于阈值：先走独立的修理窗口（和电池/加工台同一套）。
-        if (RepairInteractions.tryOpen(serverPlayer, pos, generator, false)) {
-            return InteractionResult.CONSUME;
         }
         NetworkHooks.openScreen(serverPlayer,
                 new SimpleMenuProvider(

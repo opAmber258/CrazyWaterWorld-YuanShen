@@ -6,6 +6,7 @@ import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.NpcDialoguePacket;
 import com.opamb.barotrauma.network.NpcTalkPacket;
 import net.minecraft.client.Minecraft;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
@@ -24,12 +25,11 @@ public final class NpcDialogueScreen extends ScaledScreen {
     private static final int PANEL_W = 360;
     private static final int PANEL_H = 150;
 
-    private static final int BG = 0xF01B2320;
-    private static final int EDGE = 0xFF3B463C;
+    private static final int EDGE = PanelStyle.EDGE;
     private static final int TITLE = 0xFFE0762F;
-    private static final int TEXT = 0xFFD8D2BF;
-    private static final int DIM = 0xFF8B9184;
-    private static final int ACCENT = 0xFF80CEAF;
+    private static final int TEXT = PanelStyle.TEXT;
+    private static final int DIM = PanelStyle.DIM;
+    private static final int ACCENT = PanelStyle.SERVICE;
     private static final int BOX = 0xFF232B25;
 
     private NpcDialoguePacket packet;
@@ -68,22 +68,22 @@ public final class NpcDialogueScreen extends ScaledScreen {
         int buttonY = top + PANEL_H - 28;
         boolean asked = packet.phase() != NpcDialoguePacket.GREETING;
         if (asked) {
-            primary = addRenderableWidget(Button.builder(tr("open_map"), button -> {
+            primary = addRenderableWidget(PanelStyle.button(tr("open_map"), button -> {
                 if (minecraft != null) {
                     minecraft.setScreen(new CampaignMapScreen());
                 }
-            }).bounds(left + PANEL_W - 184, buttonY, 84, 20).build());
-            secondary = addRenderableWidget(Button.builder(tr("leave"), button -> onClose())
-                    .bounds(left + PANEL_W - 94, buttonY, 84, 20).build());
+            }).bounds(left + PANEL_W - 184, buttonY, 84, 20));
+            secondary = addRenderableWidget(PanelStyle.button(tr("leave"), button -> onClose())
+                    .bounds(left + PANEL_W - 94, buttonY, 84, 20));
         } else {
-            primary = addRenderableWidget(Button.builder(tr("ask"), button -> {
+            primary = addRenderableWidget(PanelStyle.button(tr("ask"), button -> {
                 waiting = true;
                 waitingSince = System.currentTimeMillis();
                 button.active = false;
                 ModNetwork.CHANNEL.sendToServer(new NpcTalkPacket(NpcTalkPacket.ASK_FOR_WORK));
-            }).bounds(left + PANEL_W - 184, buttonY, 104, 20).build());
-            secondary = addRenderableWidget(Button.builder(tr("leave"), button -> onClose())
-                    .bounds(left + PANEL_W - 74, buttonY, 64, 20).build());
+            }).bounds(left + PANEL_W - 184, buttonY, 104, 20));
+            secondary = addRenderableWidget(PanelStyle.button(tr("leave"), button -> onClose())
+                    .bounds(left + PANEL_W - 74, buttonY, 64, 20));
         }
         if (waiting) {
             primary.active = false;
@@ -94,11 +94,7 @@ public final class NpcDialogueScreen extends ScaledScreen {
     protected void renderDesign(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         int left = 0;
         int top = 0;
-        graphics.fill(left, top, left + PANEL_W, top + PANEL_H, BG);
-        graphics.fill(left, top, left + PANEL_W, top + 1, EDGE);
-        graphics.fill(left, top + PANEL_H - 1, left + PANEL_W, top + PANEL_H, EDGE);
-        graphics.fill(left, top, left + 1, top + PANEL_H, EDGE);
-        graphics.fill(left + PANEL_W - 1, top, left + PANEL_W, top + PANEL_H, EDGE);
+        PanelStyle.frame(graphics, left, top, PANEL_W, PANEL_H, PanelStyle.SERVICE);
         graphics.fill(left + 1, top + 1, left + PANEL_W - 1, top + 18, 0xFF23282D);
         graphics.drawString(font, title, left + 8, top + 5, TITLE, false);
 

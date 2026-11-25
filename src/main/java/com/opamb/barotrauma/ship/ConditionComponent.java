@@ -30,7 +30,7 @@ public final class ConditionComponent {
     private final double repairThreshold;
 
     private double condition;
-    private long graceTicks = -1L;
+    private double graceTicks = -1L;
 
     public ConditionComponent(double maxCondition, double decayPerSecond,
                               int minDelaySeconds, int maxDelaySeconds,
@@ -52,6 +52,10 @@ public final class ConditionComponent {
 
     /** 活动时按给定的模拟秒数劣化（船核心每 2 tick 才推进一次时用 0.1s）。 */
     public boolean tick(Level level, boolean active, double seconds) {
+        return tick(level, active, seconds, 1.0D);
+    }
+
+    public boolean tick(Level level, boolean active, double seconds, double delayRate) {
         if (!active || decayPerSecond <= 0.0D || condition <= minDeteriorationCondition
                 || seconds <= 0.0D) {
             return false;
@@ -65,8 +69,8 @@ public final class ConditionComponent {
             }
         }
         if (graceTicks > 0L) {
-            long step = Math.max(1L, Math.round(seconds * 20.0D));
-            graceTicks = Math.max(0L, graceTicks - step);
+            if (delayRate <= 0.0D) return false;
+            graceTicks = Math.max(0.0D, graceTicks - seconds * 20.0D * delayRate);
             return true;
         }
         double before = condition;
@@ -142,12 +146,16 @@ public final class ConditionComponent {
 
     public void save(CompoundTag tag, String key) {
         tag.putDouble(key, condition);
-        tag.putLong(key + "Grace", graceTicks);
+        tag.putDouble(key + "Grace", graceTicks);
+        tag.putBoolean(key + "GraceInitialized", true);
     }
 
     public void load(CompoundTag tag, String key) {
         condition = tag.contains(key) ? Mth.clamp(tag.getDouble(key), 0.0D, maxCondition)
                 : maxCondition;
-        graceTicks = tag.contains(key + "Grace") ? tag.getLong(key + "Grace") : -1L;
+        graceTicks = tag.contains(key + "Grace") ? tag.getDouble(key + "Grace") : -1L;
+        if (graceTicks == 0.0D && isFull() && !tag.getBoolean(key + "GraceInitialized")) {
+            graceTicks = -1.0D;
+        }
     }
 }

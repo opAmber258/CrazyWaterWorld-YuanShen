@@ -37,15 +37,10 @@ import java.util.Locale;
  */
 public final class VsThruster implements ShipPhysicsListener {
 
-    /**
-     * 原作 Dugong 刚体质量（16 个 Hull + 269 个 Structure，约 47 t）。
-     *
-     * <p>原作引擎力 300、燃料/电压/耐久系数都按这套质量调过；VS2 的方块质量是
-     * 另一套单位（一块船壳 7850 kg，整船两千多万吨），直接把 300 N 压上去
-     * 只会得到 0.0003 m/s²。这里用"原作力 / 原作质量"得到原作加速度，再乘
-     * VS2 质量变回力，手感与原作一致。</p>
-     */
-    private static final double REFERENCE_SHIP_MASS = 47_000.0D;
+    /** The mod's standard engine at +100%, rated voltage and full condition. */
+    private static final double REFERENCE_RAW_THRUST = com.opamb.barotrauma.blockentity.EngineBlockEntity.DUGONG_MAX_FORCE * 100.0D * 2.0D;
+    /** Original Dugong's measured 21.6 km/h (6 m/s) at full ahead. */
+    private static final double REFERENCE_TOP_SPEED = 6.0D;
     /**
      * 原版 {@code SubmarineBody} 的二次水阻：纵向 0.01、垂直 0.05，封顶 0.1；
      * 原作还会加“挂在船上的角色质量 / 5000”（本模组暂不计）。
@@ -78,6 +73,21 @@ public final class VsThruster implements ShipPhysicsListener {
 
     private static double clamp01(double value) {
         return value < 0.0D ? 0.0D : Math.min(value, 1.0D);
+    }
+
+    /** Shared by the steering prediction and the force actually sent to the rigid body. */
+    static double forwardAcceleration(double rawForce, double skill, double multiplier) {
+        double skillFactor = 0.1D * (0.5D + 1.5D * Math.sqrt(clamp01(skill / 100.0D)));
+        double referenceSkillFactor = 0.1D * (0.5D + 1.5D * Math.sqrt(0.5D));
+        double referenceAcceleration = DRAG_LONGITUDINAL * REFERENCE_TOP_SPEED * REFERENCE_TOP_SPEED;
+        return rawForce / REFERENCE_RAW_THRUST * (skillFactor / referenceSkillFactor)
+                * multiplier * referenceAcceleration;
+    }
+
+    static double verticalAcceleration(double waterRatio, double speed) {
+        double lift = ShipSimulation.NEUTRAL_WATER_RATIO - clamp01(waterRatio);
+        lift = lift > 0.0D ? lift * 2.0D : Math.max(lift, -0.5D);
+        return GRAVITY * lift - speed * Math.abs(speed) * Math.min(DRAG_MAX, DRAG_VERTICAL);
     }
 
     private volatile int helmForward;
@@ -249,7 +259,7 @@ public final class VsThruster implements ShipPhysicsListener {
 
     /** 逐引擎原始推力之和（原作力单位）；由 ShipSimulation 每 tick 汇总。 */
     public void setEngineForceRaw(double force) {
-        engineForceRaw = Math.max(0.0D, force);
+        engineForceRaw = force;
     }
 
     public double engineForceRaw() {
@@ -262,7 +272,7 @@ public final class VsThruster implements ShipPhysicsListener {
     }
 
     private boolean powered() {
-        return engineForceRaw > 0.0D && engineCount > 0;
+        return engineForceRaw != 0.0D && engineCount > 0;
     }
 
     /** 全船水量占比（含压载水），原版浮力公式的唯一输入。 */
@@ -356,18 +366,11 @@ public final class VsThruster implements ShipPhysicsListener {
 
         double ax = 0.0D;
         double az = 0.0D;
-        // 原作 Engine.Update 的出力：只有前进/后退舵令，沿船头 X 轴推，没有横移。
-        if (helmForward != 0 && powered()) {
-            // num2 = 0.1；有掌舵者时再乘 lerp(0.5, 2, √(helmSkill/100))。
-            double skillFactor = 0.1D * (0.5D + 1.5D * Math.sqrt(clamp01(helmSkill / 100.0D)));
-            double originalForce = engineForceRaw * skillFactor * engineMultiplier;
-            // 原作力值配原作刚体质量；VS2 的方块质量是另一套单位，直接压 300 N
-            // 只会得到 0.0003 m/s²。这里换算成"原作儒艮级船应有的加速度"，
-            // 再乘 VS2 质量变回力，手感与原作一致。
-            double accel = originalForce / REFERENCE_SHIP_MASS;
-            double sign = helmForward > 0 ? 1.0D : -1.0D;
-            ax = forwardX * accel * sign;
-            az = forwardZ * accel * sign;
+        // 舵令回中后，引擎报告仍会短暂有推力。按实际轴力衰减，和反转共用同一路径。
+        if (helmPowered && powered()) {
+            double accel = forwardAcceleration(engineForceRaw, helmSkill, engineMultiplier);
+            ax = forwardX * accel;
+            az = forwardZ * accel;
         }
         // 原版二次水阻，按船体轴分解：纵向 0.01、横向/垂直 0.05，封顶 0.1。
         // 原作 2D 的 FixedRotation 让世界轴等于船体轴；3D 有偏航后必须用船体轴，
@@ -383,13 +386,7 @@ public final class VsThruster implements ShipPhysicsListener {
         // 原版 SubmarineBody.CalculateBuoyancy()：刚体忽略重力（IgnoreGravity = true），
         // 垂直力只有浮力：lift = 0.07 - 全船水量占比，正浮力 ×2，负浮力封顶 -0.5。
         // +1 这一项补偿 VS2 的世界重力 -10，等价于原作的 IgnoreGravity。
-        double ratio = clamp01(waterRatio);
-        double lift = ShipSimulation.NEUTRAL_WATER_RATIO - ratio;
-        lift = lift > 0.0D ? lift * 2.0D : Math.max(lift, -0.5D);
-        double ay = GRAVITY * (1.0D + lift);
-        // 原版二次水阻：垂直 0.05，封顶 0.1（原作还会加船员质量/5000，本模组暂不计）。
-        double dragVertical = Math.min(DRAG_MAX, DRAG_VERTICAL);
-        ay -= Math.signum(vel.y()) * vel.y() * vel.y() * dragVertical;
+        double ay = GRAVITY + verticalAcceleration(waterRatio, vel.y());
 
         double fx = ax * mass;
         double fy = ay * mass;

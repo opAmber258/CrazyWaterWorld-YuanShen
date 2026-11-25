@@ -3,10 +3,11 @@ package com.opamb.barotrauma.client;
 import com.opamb.barotrauma.menu.LightMenu;
 import com.opamb.barotrauma.network.LightColorPacket;
 import com.opamb.barotrauma.network.ModNetwork;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import org.lwjgl.glfw.GLFW;
@@ -19,7 +20,7 @@ import org.lwjgl.glfw.GLFW;
  * 所以 A 和 RGB 并列成四个输入框，预览按强度变暗。原版没有预设色，这里也没有。
  * 输入在回车、失焦或关闭面板时提交；拖动/输入过程中不逐字发包。</p>
  */
-public class LightScreen extends AbstractContainerScreen<LightMenu> {
+public class LightScreen extends ScaledContainerScreen<LightMenu> {
 
     private static final int PANEL_WIDTH = 210;
     private static final int PANEL_HEIGHT = 172;
@@ -59,13 +60,13 @@ public class LightScreen extends AbstractContainerScreen<LightMenu> {
         syncedAlpha = alpha;
         syncedLit = lit;
 
-        toggleButton = addRenderableWidget(Button.builder(toggleLabel(), button -> {
+        toggleButton = addRenderableWidget(PanelStyle.button(toggleLabel(), button -> {
             // 点按钮会让输入框失焦，先把正在输入的通道提交掉再切换。
             commitFields();
             lit = !lit;
             button.setMessage(toggleLabel());
             send();
-        }).bounds(x + 8, y + 30, 62, 18).build());
+        }).bounds(x + 8, y + 30, 62, 18));
 
         redField = addRenderableWidget(new NumberField(x + 22, y + 54, 52, 18, red));
         greenField = addRenderableWidget(new NumberField(x + 22, y + 76, 52, 18, green));
@@ -98,11 +99,7 @@ public class LightScreen extends AbstractContainerScreen<LightMenu> {
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         int x = leftPos;
         int y = topPos;
-        graphics.fill(x, y, x + imageWidth, y + imageHeight, 0xF0171B20);
-        graphics.fill(x, y, x + imageWidth, y + 1, 0xFF4A5560);
-        graphics.fill(x, y + imageHeight - 1, x + imageWidth, y + imageHeight, 0xFF4A5560);
-        graphics.fill(x, y, x + 1, y + imageHeight, 0xFF4A5560);
-        graphics.fill(x + imageWidth - 1, y, x + imageWidth, y + imageHeight, 0xFF4A5560);
+        PanelStyle.frame(graphics, x, y, imageWidth, imageHeight, PanelStyle.AMBER);
 
         // 右上角预览：照原作 A=强度，按强度压暗。
         int previewX = x + 178;

@@ -39,10 +39,6 @@ public class EngineProxyBlock extends Block {
             }
             Component title = Component.translatable(
                     engine.getBlockState().getBlock().getDescriptionId());
-            if (com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
-                    serverPlayer, pos, engine, false)) {
-                return InteractionResult.CONSUME;
-            }
             NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inventory, p) -> new EngineMenu(id, inventory, pos),

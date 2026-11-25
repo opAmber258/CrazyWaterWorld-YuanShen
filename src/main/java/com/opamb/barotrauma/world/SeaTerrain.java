@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.world;
 
 import com.opamb.barotrauma.world.level.LevelParams;
+import com.opamb.barotrauma.world.level.TerrainTemplate;
 
 import java.util.List;
 
@@ -63,6 +64,11 @@ public final class SeaTerrain {
 
     /** 顶部岩壳底面：哨站核心压平在 -44，其它地方往噪声深处最多加厚 120 格。 */
     public static int ceilingY(long seed, int x, int z) {
+        RouteTerrain terrain = MissionInstance.activeTerrain();
+        RouteTerrain.Column column = terrain == null ? null : terrain.column(seed, x, z);
+        if (column != null) {
+            return column.ceiling();
+        }
         int ceiling = baseCeilingY(seed, x, z);
         ceiling = applyLevel(ceiling, seed, x, z, true);
         for (ClearZone zone : POI_CLEAR) {
@@ -78,6 +84,11 @@ public final class SeaTerrain {
 
     /** 底部岩床顶面：基准 -544，噪声抬升最多 44 格（寒冷深穴 500 格高）。 */
     public static int floorY(long seed, int x, int z) {
+        RouteTerrain terrain = MissionInstance.activeTerrain();
+        RouteTerrain.Column column = terrain == null ? null : terrain.column(seed, x, z);
+        if (column != null) {
+            return column.floor();
+        }
         int floor = baseFloorY(seed, x, z);
         floor = applyLevel(floor, seed, x, z, false);
         for (ClearZone zone : POI_CLEAR) {
@@ -130,7 +141,7 @@ public final class SeaTerrain {
     // 全局地形（没有航行关卡的部分）
     // ------------------------------------------------------------------
 
-    private static int baseCeilingY(long seed, int x, int z) {
+    static int baseCeilingY(long seed, int x, int z) {
         if (isOutpostCore(x, z)) {
             return ROOF_FLAT_Y;
         }
@@ -143,7 +154,7 @@ public final class SeaTerrain {
                 : blendOutpost(ROOF_FLAT_Y, world, x, z);
     }
 
-    private static int baseFloorY(long seed, int x, int z) {
+    static int baseFloorY(long seed, int x, int z) {
         double n = DeepSeaNoise.fbm2(seed ^ SALT_FLOOR, x / 130.0D, z / 130.0D, 3);
         // 用户要求去掉哨站岩台：海底在哨站下方也按世界噪声走，潜艇直接悬在开阔水域。
         return FLOOR_BASE_Y + (int) Math.round((n * 0.5D + 0.5D) * FLOOR_RISE);
@@ -171,7 +182,7 @@ public final class SeaTerrain {
         // 关卡配置和航道必须来自同一次快照；生成器外层也持同一把读锁（可重入）。
         try (MissionInstance.RouteLock ignored = MissionInstance.holdRouteReadLock()) {
             MissionInstance.RouteLevel level = MissionInstance.routeLevel();
-            if (level == null) {
+            if (level == null || level.terrain() != TerrainTemplate.LEGACY) {
                 return null;
             }
             RoutePath path = MissionInstance.activePath();
@@ -259,7 +270,7 @@ public final class SeaTerrain {
         return blendAt(postValue, worldValue, Math.max(Math.abs(x), Math.abs(z)));
     }
 
-    private static double smooth(double t) {
+    static double smooth(double t) {
         if (t <= 0.0D) {
             return 0.0D;
         }

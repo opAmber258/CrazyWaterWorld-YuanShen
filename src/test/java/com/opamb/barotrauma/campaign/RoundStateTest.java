@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.campaign;
 
+import com.opamb.barotrauma.world.level.TerrainTemplate;
 import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -171,7 +172,7 @@ class RoundStateTest {
         RoundState source = new RoundState();
         source.beginTravel(0, 1, 100L);
         source.setInstance(25120, -84, 0);
-        source.setLevel("coldcavernsadvanced", 42L, 6, 600, 2048);
+        source.setLevel("coldcavernsadvanced", 42L, 6, 600, 2048, TerrainTemplate.OPEN_SEA);
 
         RoundState restored = new RoundState();
         restored.load(source.save());
@@ -182,6 +183,7 @@ class RoundStateTest {
         assertEquals(0, restored.instanceZ());
         assertEquals(600, restored.levelDistance());
         assertEquals(2048, restored.levelSpacing());
+        assertEquals(TerrainTemplate.OPEN_SEA, restored.terrain());
     }
 
     @Test
@@ -193,6 +195,7 @@ class RoundStateTest {
         assertEquals(0L, round.levelSeed());
         assertEquals(0, round.levelDifficulty());
         assertEquals(0, round.levelDistance());
+        assertEquals(TerrainTemplate.LEGACY, round.terrain());
     }
 
     @Test

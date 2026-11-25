@@ -60,6 +60,7 @@ import java.util.Map;
  * 船自装配以来的整数位移铺回世界。</p>
  */
 public final class VsPilot {
+    private static final double DEFAULT_HELM_SKILL = 50.0D;
 
     private static ServerShip ship;
     private static VsThruster thruster;
@@ -824,25 +825,12 @@ public final class VsPilot {
         target.setPower(control.power());
         // 舵效供电：必须看导航终端自己的电压。全船电压可能还有 1.0，但终端绑定的
         // 接线盒坏了以后 consumerVoltage(终端)=0，这时不能再执行残留舵令。
-        boolean helmPowered = false;
-        if (lastLevel != null) {
-            com.opamb.barotrauma.blockentity.ShipCoreBlockEntity terminal =
-                    sonarCoreBlockEntity(lastLevel);
-            if (terminal != null) {
-                BlockPos terminalCell = toAssembly(terminal.getBlockPos());
-                if (terminalCell != null) {
-                    helmPowered = control.simulation().consumerVoltage(terminalCell)
-                            >= com.opamb.barotrauma.blockentity.ShipCoreBlockEntity
-                            .TERMINAL_MIN_VOLTAGE;
-                }
-            }
-        }
-        target.setHelmPowered(helmPowered);
+        target.setHelmPowered(helmPowered(control));
         target.setEngineCount(control.simulation().engineCount());
         // 原作 Engine.Update 的逐引擎力：maxforce × 推力% × 电压^(2/3) × 耐久插值。
         target.setEngineForceRaw(control.simulation().engineForceRaw());
         // 技能系统还没落地：先用船长起始驾驶技能的中值 50。落地后改读玩家技能。
-        target.setHelmSkill(50.0D);
+        target.setHelmSkill(DEFAULT_HELM_SKILL);
         target.setEngineMultiplier(control.engineMultiplier());
         // 船头方向：装配时锁定一次（见 currentBow），之后不随引擎增减而翻转。
         double[] forward = currentBow(control);
@@ -869,24 +857,19 @@ public final class VsPilot {
      * 客户端崩溃都不会走到那里；服务端会保留最后一条舵令，船自己一直开下去。</p>
      */
     private static void tickHelmWatchdog(ServerLevel level, ShipState control) {
+        if (level != null && control != null && control.expireManualInput(level.getGameTime())) {
+            helmWatchdogTicks = 0;
+            applyControl(control);
+            return;
+        }
         if (level == null || control == null || control.autopilotHold()
                 || !control.throttled()) {
             helmWatchdogTicks = 0;
             return;
         }
         for (ServerPlayer player : level.players()) {
-            // 只认“本船导航终端的声纳菜单”。只看 SonarMenu.stillValid（距离）
-            // 的话，另一艘方块船的玩家在 48 格内开着声纳也能把看门狗喂住，
-            // 驾驶员掉线后舵令永远不会清零。
-            com.opamb.barotrauma.blockentity.ShipCoreBlockEntity terminal =
-                    sonarCoreBlockEntity(level);
-            if (terminal != null
-                    && player.containerMenu instanceof com.opamb.barotrauma.menu.SonarMenu menu
-                    // 物理船的声纳界面是用“代理方块”坐标打开的（SonarProxyBlock），
-                    // 和船坞里的终端坐标不是同一个位置；两种都算有效驾驶。
-                    && (menu.sonarPos().equals(terminal.getBlockPos())
-                    || menu.sonarPos().equals(proxyPos))
-                    && menu.stillValid(player)) {
+            if (player.containerMenu instanceof com.opamb.barotrauma.menu.SonarMenu menu
+                    && menu.physical() && menu.stillValid(player)) {
                 helmWatchdogTicks = 0;
                 return;
             }
@@ -1137,17 +1120,31 @@ public final class VsPilot {
             // 当前坐标必须用**船核心**的世界坐标，和声纳扫描中心/目标偏移同一个基准；
             // 用刚体位置（质心）会让船停在离标记几格远的地方。
             if (state != null && state.autopilotHold()) {
-                Vec3 ap = now;
-                BlockPos assembledCore = VsState.corePos();
-                if (assembledCore != null) {
-                    ap = new Vec3(assembledCore.getX() + VsState.offsetX(),
-                            assembledCore.getY() + VsState.offsetY(),
-                            assembledCore.getZ() + VsState.offsetZ());
+                Vec3 ap = assemblyToWorld(VsState.corePos());
+                if (ap != null && vel != null && helmPowered(state)) {
+                    Vec3 forward = forwardWorld();
+                    ServerShip live = view(level);
+                    Vec3 coreVelocity = vel;
+                    double yawRate = 0.0D;
+                    if (live != null) {
+                        var angular = live.getAngularVelocity();
+                        Vec3 omega = new Vec3(angular.x(), angular.y(), angular.z());
+                        yawRate = omega.y;
+                        coreVelocity = vel.add(omega.cross(ap.subtract(now)));
+                    }
+                    ShipSimulation simulation = state.simulation();
+                    ShipSimulation.EngineCapacity available = simulation.engineCapacity(state.power());
+                    double braking = VsThruster.forwardAcceleration(available.rawForce(),
+                            DEFAULT_HELM_SKILL, state.engineMultiplier());
+                    double pushing = VsThruster.forwardAcceleration(
+                            thruster == null ? simulation.engineForceRaw() : thruster.engineForceRaw(),
+                            DEFAULT_HELM_SKILL, state.engineMultiplier());
+                    double lift = VsThruster.verticalAcceleration(state.buoyancyWaterRatio(), vel.y);
+                    state.autopilotStep(ap, coreVelocity, forward == null ? new Vec3(1.0D, 0.0D, 0.0D) : forward,
+                            braking, available.throttle(), pushing, lift, yawRate);
+                } else {
+                    state.pauseNavigation();
                 }
-                Vec3 forward = forwardWorld();
-                state.autopilotStep(ap.x, ap.y, ap.z, vel.x, vel.y, vel.z,
-                        forward == null ? 1.0D : forward.x,
-                        forward == null ? 0.0D : forward.z);
                 applyControl(state);
             }
             if (state != null) {
@@ -2270,6 +2267,13 @@ public final class VsPilot {
         return toWorld(point.add(-yardOffsetX, -yardOffsetY, -yardOffsetZ));
     }
 
+    /** 船体装配坐标轴到世界坐标轴的旋转，和船头在装配中的朝向无关。 */
+    public static org.joml.Quaternionf assemblyRotation() {
+        ServerShip live = lastLevel == null ? ship : view(lastLevel);
+        return live == null ? new org.joml.Quaternionf()
+                : new org.joml.Quaternionf(live.getTransform().getShipToWorldRotation());
+    }
+
     /** 给反应堆熔毁/起火用：装配坐标 → 当前世界坐标；没有物理船返回 null。 */
     @Nullable
     public static Vec3 assemblyToWorld(BlockPos assemblyPos) {
@@ -2281,6 +2285,19 @@ public final class VsPilot {
         } catch (Throwable ignored) {
             return null;
         }
+    }
+
+    private static boolean helmPowered(ShipState control) {
+        if (lastLevel == null) {
+            return false;
+        }
+        var terminal = sonarCoreBlockEntity(lastLevel);
+        if (terminal == null || terminal.condition() <= 0.0D) {
+            return false;
+        }
+        BlockPos cell = toAssembly(terminal.getBlockPos());
+        return cell != null && control.simulation().consumerVoltage(cell)
+                >= com.opamb.barotrauma.blockentity.ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE;
     }
 
     /**

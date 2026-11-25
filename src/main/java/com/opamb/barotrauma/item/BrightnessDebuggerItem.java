@@ -32,6 +32,7 @@ public final class BrightnessDebuggerItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("item.barotrauma.brightness_debugger.controls").withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("item.barotrauma.brightness_debugger.fog_controls").withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("item.barotrauma.brightness_debugger.scope").withStyle(ChatFormatting.DARK_GRAY));
     }
 }

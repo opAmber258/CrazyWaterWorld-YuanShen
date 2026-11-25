@@ -8,6 +8,7 @@ import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.StoreActionPacket;
 import com.opamb.barotrauma.network.StoreStatePacket;
 import net.minecraft.client.Minecraft;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import com.opamb.barotrauma.client.gui.ScaledScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -48,11 +49,11 @@ public final class StoreScreen extends ScaledScreen {
     private static final int PROMPT_BTN_W = 132;
 
     private static final int BG = 0xF01B2320;
-    private static final int EDGE = 0xFF3B463C;
+    private static final int EDGE = PanelStyle.EDGE;
     private static final int BOX = 0xFF232B25;
-    private static final int TEXT = 0xFFD8D2BF;
-    private static final int DIM = 0xFF8B9184;
-    private static final int ACCENT = 0xFFE0762F;
+    private static final int TEXT = PanelStyle.TEXT;
+    private static final int DIM = PanelStyle.DIM;
+    private static final int ACCENT = PanelStyle.SERVICE;
     private static final int GREEN = 0xFF7BE38B;
     private static final int RED = 0xFFFF7A6A;
     private static final int HOVER = 0xFF39483A;
@@ -302,11 +303,7 @@ public final class StoreScreen extends ScaledScreen {
         }
         int x = leftPos();
         int y = topPos();
-        g.fill(x, y, x + panelW(), y + panelH(), BG);
-        g.fill(x, y, x + panelW(), y + 1, EDGE);
-        g.fill(x, y + panelH() - 1, x + panelW(), y + panelH(), EDGE);
-        g.fill(x, y, x + 1, y + panelH(), EDGE);
-        g.fill(x + panelW() - 1, y, x + panelW(), y + panelH(), EDGE);
+        PanelStyle.frame(g, x, y, panelW(), panelH(), PanelStyle.SERVICE);
 
         g.drawString(font, Component.translatable("store.title"), x + 10, y + 6, ACCENT, false);
         String wallet = Component.translatable("store.wallet", state.wallet()).getString();

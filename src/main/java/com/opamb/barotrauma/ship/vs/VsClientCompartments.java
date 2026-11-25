@@ -19,6 +19,25 @@ public final class VsClientCompartments {
     private VsClientCompartments() {
     }
 
+    public record SonarPose(Vec3 center, org.joml.Quaternionf rotation) {}
+
+    @Nullable
+    public static SonarPose sonarPose(ClientLevel level, long shipId, Vec3 coreFromAnchor) {
+        if (level == null || shipId < 0L) {
+            return null;
+        }
+        ClientShip ship = org.valkyrienskies.mod.common.VSGameUtilsKt.getShipObjectWorld(level)
+                .getLoadedShips().getById(shipId);
+        if (ship == null) {
+            return null;
+        }
+        ShipTransform transform = ship.getRenderTransform();
+        Vector3d center = new Vector3d(transform.getPositionInShip()).add(coreFromAnchor.x, coreFromAnchor.y, coreFromAnchor.z);
+        transform.getShipToWorld().transformPosition(center);
+        return new SonarPose(new Vec3(center.x, center.y, center.z),
+                new org.joml.Quaternionf(transform.getShipToWorldRotation()));
+    }
+
     public static boolean isInsideCompartment(Level level, Vec3 pos, ShipWaterStatePacket data) {
         return sample(level, pos, data, false) != null;
     }

@@ -35,7 +35,10 @@ public final class MedicalBodyRenderer {
     /** 原作式严重度显示：强度占上限的百分比，整数无小数（用户指令 #5）。 */
     public static String label(AfflictionType type, double strength) {
         int percent = (int) Math.round(strength / type.maxStrength() * 100.0);
-        return DISPLAY_NAMES.getOrDefault(type.id(), type.id()) + " " + percent + "%";
+        String name = DISPLAY_NAMES.get(type.id());
+        if (name == null) name = net.minecraft.network.chat.Component
+                .translatable("affliction.barotrauma." + type.id()).getString();
+        return name + " " + percent + "%";
     }
 
     private static final int HEALTHY = 0xFF5A6472;

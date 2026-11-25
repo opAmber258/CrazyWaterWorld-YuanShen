@@ -2,6 +2,7 @@ package com.opamb.barotrauma.client;
 
 import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import com.opamb.barotrauma.menu.OxygenGeneratorMenu;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -24,11 +25,10 @@ public class OxygenGeneratorScreen extends ScaledContainerScreen<OxygenGenerator
     private static final int W = 224;
     private static final int H = 292;
 
-    private static final int BG = 0xF0141B16;
-    private static final int EDGE = 0xFF3B463C;
-    private static final int TEXT = 0xFFD8D2BF;
-    private static final int DIM = 0xFF7C8478;
-    private static final int ACCENT = 0xFFE0762F;
+    private static final int EDGE = PanelStyle.EDGE;
+    private static final int TEXT = PanelStyle.TEXT;
+    private static final int DIM = PanelStyle.DIM;
+    private static final int ACCENT = PanelStyle.AMBER;
     private static final int GREEN = 0xFF6FD07A;
     private static final int RED = 0xFFC8483C;
     private static final int YELLOW = 0xFFD8B44A;
@@ -48,11 +48,7 @@ public class OxygenGeneratorScreen extends ScaledContainerScreen<OxygenGenerator
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         int x = leftPos;
         int y = topPos;
-        graphics.fill(x, y, x + W, y + H, BG);
-        graphics.fill(x, y, x + W, y + 1, EDGE);
-        graphics.fill(x, y + H - 1, x + W, y + H, EDGE);
-        graphics.fill(x, y, x + 1, y + H, EDGE);
-        graphics.fill(x + W - 1, y, x + W, y + H, EDGE);
+        PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
 
         int flowRaw = Math.max(0, menu.data().get(OxygenGeneratorMenu.DATA_FLOW));
         int voltageRaw = menu.data().get(OxygenGeneratorMenu.DATA_VOLTAGE);

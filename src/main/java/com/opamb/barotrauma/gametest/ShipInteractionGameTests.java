@@ -6,6 +6,7 @@ import com.opamb.barotrauma.block.BulkheadDoorBlock;
 import com.opamb.barotrauma.blockentity.BulkheadDoorBlockEntity;
 import com.opamb.barotrauma.blockentity.ShipCoreBlockEntity;
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
+import com.opamb.barotrauma.menu.SonarMenu;
 import com.opamb.barotrauma.registry.ModBlocks;
 import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.registry.ModShipBlocks;
@@ -36,6 +37,27 @@ import java.util.UUID;
 public final class ShipInteractionGameTests {
 
     private ShipInteractionGameTests() {
+    }
+
+    @GameTest(template = "empty_16x8x16", templateNamespace = BarotraumaMod.MOD_ID)
+    public static void sonarMenuStaysBoundToItsOpeningTerminal(GameTestHelper helper) {
+        BlockPos first = new BlockPos(4, 2, 4);
+        BlockPos second = first.east(3);
+        helper.setBlock(first, ModShipBlocks.SONAR.get());
+        helper.setBlock(second, ModShipBlocks.SONAR.get());
+        FakePlayer player = new FakePlayer(helper.getLevel(), new GameProfile(UUID.randomUUID(), "sonar-test"));
+        Vec3 closerToSecond = Vec3.atCenterOf(helper.absolutePos(second.south()));
+        player.setPos(closerToSecond.x, closerToSecond.y, closerToSecond.z);
+
+        BlockPos terminalPos = helper.absolutePos(first);
+        var openedTerminal = helper.getLevel().getBlockEntity(terminalPos);
+        SonarMenu menu = new SonarMenu(1, player.getInventory(), terminalPos, 96);
+        helper.assertTrue(openedTerminal != null && menu.terminal() == openedTerminal && menu.stillValid(player),
+                "另一个声纳台更近时，菜单仍应绑定最初打开的终端");
+        helper.setBlock(first, Blocks.AIR);
+        helper.setBlock(first, ModShipBlocks.SONAR.get());
+        helper.assertTrue(!menu.stillValid(player), "同一格重新放置终端后，旧的菜单应失效");
+        helper.succeed();
     }
 
     @GameTest(template = "empty_16x8x16", templateNamespace = BarotraumaMod.MOD_ID)
