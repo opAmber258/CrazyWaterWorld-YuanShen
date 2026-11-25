@@ -150,8 +150,12 @@ mex:
     `isDeadOrDying() || !isAlive() || health <= 0`。客户端 `onHitConfirmed()` 校验
     `activePos` 后播放：普通命中白色随机角指针，击杀黄色 45° X 扩散淡出。
     协议 34（主线 #83 已到 33，之上新增 TurretHitPacket；随后训练台设置包升到 35，
-    见 training-dummy 模式）。
+    再因加设置版本升到 36，见 training-dummy 模式）。
     不要退回“客户端预判落点就闪”的写法，否则打空/无敌帧/服务端拒绝也会误闪。
+    `System.nanoTime()` 可以为负，时间戳是否有效必须用独立布尔（`hasHitConfirm` /
+    `killIndicatorRunning`），不能拿 `> 0` / `< 0` 当判据；增量只用差值。
+    击杀开始时如果普通指针还在显示、且离 45° 臂线 <15°，要重挑一次命中角
+    （保留剩余 tick 与连段计数），否则全自动下两次事件只隔几 tick 会出现两线夹角不足。
 
 ## 模块边界（换模型 / 2×2·3×3 时只动这些）
 

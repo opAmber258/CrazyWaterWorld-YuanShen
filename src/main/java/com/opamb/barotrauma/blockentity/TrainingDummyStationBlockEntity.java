@@ -39,6 +39,11 @@ public class TrainingDummyStationBlockEntity extends BlockEntity {
     protected int respawnTicks = RESPAWN_TICKS;
     /** 面板里的“自发光”：实体满亮度渲染。 */
     protected boolean selfIlluminated;
+    /**
+     * 设置版本：每次 {@link #setSettings} 自增。面板打开时带上版本号，保存时对不上
+     * 说明期间有别人改过，服务端拒绝这份过期草稿（否则会把别人的改动覆盖回去）。
+     */
+    private int settingsRevision;
     /** 实体重载后第一次 tick 需要把设置重新套上去。 */
     private boolean settingsApplied;
 
@@ -60,7 +65,10 @@ public class TrainingDummyStationBlockEntity extends BlockEntity {
 
         if (station.dummyId != null) {
             Entity entity = server.getEntity(station.dummyId);
-            if (entity instanceof TrainingDummyEntity dummy && dummy.isAlive()) {
+            // /clone 会把 UUID 一起抄到新台座：只有归属本台的人偶才算数，
+            // 否则新台座会认领别人的实体、不生成自己的，还会把自己的设置套上去。
+            if (entity instanceof TrainingDummyEntity dummy && dummy.isAlive()
+                    && station.worldPosition.equals(dummy.stationPos())) {
                 // 区块重载/换版本后把面板设置重新套到现有实体上：只同步上限和自发光，
                 // 当前血量按存档保留（旧的实现会顺手回满，等于开界面就送一次治疗）。
                 if (!station.settingsApplied) {
@@ -160,6 +168,10 @@ public class TrainingDummyStationBlockEntity extends BlockEntity {
         return selfIlluminated;
     }
 
+    public int settingsRevision() {
+        return settingsRevision;
+    }
+
     /** 面板“应用”：血量 1..200、重生间隔 0..200 tick、自发光。 */
     public void setSettings(int health, int respawn, boolean illuminated) {
         int previousHealth = configuredHealth;
@@ -171,6 +183,7 @@ public class TrainingDummyStationBlockEntity extends BlockEntity {
             respawnAt = deathAt + respawnTicks;
         }
         selfIlluminated = illuminated;
+        settingsRevision++;
         setChanged();
         if (level instanceof ServerLevel server && dummyId != null
                 && server.getEntity(dummyId) instanceof TrainingDummyEntity dummy
@@ -204,7 +217,9 @@ public class TrainingDummyStationBlockEntity extends BlockEntity {
     public void discardDummy() {
         if (dummyId != null && level instanceof ServerLevel server) {
             Entity entity = server.getEntity(dummyId);
-            if (entity != null) {
+            // 只删绑在本台的人偶：/clone 出来的台座可能抄到别的台座的 UUID。
+            if (entity instanceof TrainingDummyEntity dummy
+                    && worldPosition.equals(dummy.stationPos())) {
                 entity.discard();
             }
             dummyId = null;
@@ -222,6 +237,7 @@ public class TrainingDummyStationBlockEntity extends BlockEntity {
         tag.putInt("MaxHealth", configuredHealth);
         tag.putInt("RespawnTicks", respawnTicks);
         tag.putBoolean("SelfIlluminated", selfIlluminated);
+        tag.putInt("SettingsRevision", settingsRevision);
     }
 
     @Override
@@ -237,6 +253,7 @@ public class TrainingDummyStationBlockEntity extends BlockEntity {
             respawnTicks = Mth.clamp(tag.getInt("RespawnTicks"), 0, 200);
         }
         selfIlluminated = tag.getBoolean("SelfIlluminated");
+        settingsRevision = tag.getInt("SettingsRevision");
         settingsApplied = false;
     }
 }

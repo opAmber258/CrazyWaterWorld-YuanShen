@@ -35,6 +35,8 @@ public class DummyStationMenu extends AbstractContainerMenu {
 
     private final BlockPos pos;
     private final ContainerData data;
+    /** 打开面板时的设置版本；保存时带回去，对不上说明期间被别人改过。 */
+    private final int revision;
 
     /** 客户端构造：从 openScreen 的额外数据里读初值。 */
     public DummyStationMenu(int id, Inventory inventory, FriendlyByteBuf buf) {
@@ -42,14 +44,17 @@ public class DummyStationMenu extends AbstractContainerMenu {
         int health = 50;
         int respawn = 40;
         boolean illuminated = false;
+        int openedRevision = 0;
         if (buf != null) {
             pos = buf.readBlockPos();
             health = buf.readVarInt();
             respawn = buf.readVarInt();
             illuminated = buf.readBoolean();
+            openedRevision = buf.readVarInt();
         } else {
             pos = BlockPos.ZERO;
         }
+        this.revision = openedRevision;
         SimpleContainerData synced = new SimpleContainerData(DATA_COUNT);
         synced.set(DATA_HEALTH, health);
         synced.set(DATA_RESPAWN, respawn);
@@ -65,6 +70,7 @@ public class DummyStationMenu extends AbstractContainerMenu {
         if (!inventory.player.level().isClientSide
                 && inventory.player.level().getBlockEntity(pos)
                 instanceof TrainingDummyStationBlockEntity station) {
+            this.revision = station.settingsRevision();
             this.data = new ContainerData() {
                 @Override
                 public int get(int index) {
@@ -87,6 +93,7 @@ public class DummyStationMenu extends AbstractContainerMenu {
                 }
             };
         } else {
+            this.revision = 0;
             SimpleContainerData fallback = new SimpleContainerData(DATA_COUNT);
             fallback.set(DATA_HEALTH, 50);
             fallback.set(DATA_RESPAWN, 40);
@@ -97,6 +104,10 @@ public class DummyStationMenu extends AbstractContainerMenu {
 
     public BlockPos pos() {
         return pos;
+    }
+
+    public int revision() {
+        return revision;
     }
 
     public int health() {
@@ -148,6 +159,7 @@ public class DummyStationMenu extends AbstractContainerMenu {
                 buf.writeVarInt(station.configuredHealth());
                 buf.writeVarInt(station.respawnTicks());
                 buf.writeBoolean(station.selfIlluminated());
+                buf.writeVarInt(station.settingsRevision());
             });
         }
         return InteractionResult.sidedSuccess(level.isClientSide());

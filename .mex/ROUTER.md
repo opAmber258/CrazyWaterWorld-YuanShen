@@ -78,7 +78,7 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
   调血量 1..200 / 自发光 / 重生间隔 0..10 秒（保存即关闭 + 动作栏确认，设置落 NBT；只改间隔/自发光不回血，
   死亡中的实体不套设置，倒计时中改间隔按死亡时刻重排）。炮塔命中反馈改由服务端 `TurretHitPacket` 确认
   伤害后才播（普通命中白色随机角指针、击杀黄色 45° X，独立图层、连段升双线），不再由客户端弹道预测触发。
-  协议 33→35（34 = TurretHitPacket、35 = DummySettingsPacket）。`tools/gen_training_dummy_texture.py`
+  协议 33→36（34 = TurretHitPacket、35 = DummySettingsPacket、36 = 设置版本）。`tools/gen_training_dummy_texture.py`
   生成 4 张 64×64 实体贴图。细节见 `patterns/training-dummy.md`。全量单测通过；面板改版后的实机复核待用户。
 - **水流可视化 + 泳姿/门/流体审查修复（2026-11-22，任务分支 `feat/water-flow-visuals-20261122`，PR #81）**：
   水面改 `ShipWaterMesh`/`ShipWaterFlowMesh`/`ShipWaterMaterial` + `shaders/core/ship_water`，

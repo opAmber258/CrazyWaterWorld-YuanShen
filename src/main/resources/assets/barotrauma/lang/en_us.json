@@ -201,6 +201,7 @@
   "dummy.settings.reason_far": "too far away",
   "dummy.settings.reason_gone": "block is gone",
   "dummy.settings.reason_no_menu": "the panel is closed",
+  "dummy.settings.reason_stale": "settings changed by someone else — reopen the panel",
   "msg.barotrauma.periscope.no_turret": "No turret in range to control",
   "msg.barotrauma.periscope.need_stand": "The periscope must be mounted on a periscope stand",
   "block.barotrauma.fabricator": "Fabricator",

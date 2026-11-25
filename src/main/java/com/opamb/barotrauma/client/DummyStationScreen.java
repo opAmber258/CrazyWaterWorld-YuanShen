@@ -390,7 +390,7 @@ public class DummyStationScreen extends ScaledContainerScreen<DummyStationMenu> 
     /** 保存：发包 + 点击音 + 立刻关界面；结果由服务端动作栏确认。 */
     private void save() {
         ModNetwork.CHANNEL.sendToServer(new DummySettingsPacket(
-                menu.pos(), health, respawnTicks, selfIlluminated));
+                menu.pos(), health, respawnTicks, selfIlluminated, menu.revision()));
         click();
         onClose();
     }

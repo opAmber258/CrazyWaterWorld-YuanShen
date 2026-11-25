@@ -157,10 +157,16 @@ public final class TurretClient {
     private static int hitIndicatorTicks;
     /** 本轮命中连段数：1=单线，2=双重线（封顶）。 */
     private static int hitChainCount;
-    /** 上一次确认命中的 nanoTime；0 表示本轮连段还没开始。 */
+    /** 上一次确认命中的 nanoTime；是否有值看 {@link #hasHitConfirm}。 */
     private static long lastHitConfirmNanos;
-    /** 击杀示意开始时间（nanoTime）；-1 表示当前没有击杀特效。 */
-    private static long killIndicatorStartNanos = -1L;
+    /**
+     * 连段窗口是否有效。{@code System.nanoTime()} 允许返回负数，不能用
+     * {@code lastHitConfirmNanos > 0} 当“有没有命中过”的判据。
+     */
+    private static boolean hasHitConfirm;
+    /** 击杀示意开始时间（nanoTime）；是否在播看 {@link #killIndicatorRunning}。 */
+    private static long killIndicatorStartNanos;
+    private static boolean killIndicatorRunning;
     /** 本轮击杀连段数：1=单线，2=双重线（封顶）。 */
     private static int killChainCount;
     /** 当前使用的预设角下标；-1 表示还没命中过。 */
@@ -445,7 +451,8 @@ public final class TurretClient {
         hitIndicatorTicks = 0;
         hitChainCount = 0;
         lastHitConfirmNanos = 0L;
-        killIndicatorStartNanos = -1L;
+        hasHitConfirm = false;
+        killIndicatorRunning = false;
         killChainCount = 0;
         hitIndicatorAngleIndex = -1;
         // 进入炮塔用的那次右键还按着：先要求松开，避免一进来就直接进瞄准。
@@ -503,7 +510,8 @@ public final class TurretClient {
         hitIndicatorTicks = 0;
         hitChainCount = 0;
         lastHitConfirmNanos = 0L;
-        killIndicatorStartNanos = -1L;
+        hasHitConfirm = false;
+        killIndicatorRunning = false;
         killChainCount = 0;
         hitIndicatorAngleIndex = -1;
         autoFire = false;
@@ -998,14 +1006,24 @@ public final class TurretClient {
             int chain = killIndicatorActive() ? killChainCount + 1 : 1;
             killChainCount = Math.min(2, chain);
             killIndicatorStartNanos = System.nanoTime();
+            killIndicatorRunning = true;
+            // 击杀 X 固定 45°：普通指针还在显示且离 X 臂线太近时重挑一个角，
+            // 保留它的剩余时间和连段计数（全自动下两次命中可能只隔几 tick）。
+            if (hitIndicatorTicks > 0 && hitIndicatorAngleIndex >= 0
+                    && angleSeparation(
+                    (float) Math.toDegrees(HIT_INDICATOR_ANGLES[hitIndicatorAngleIndex]),
+                    KILL_INDICATOR_ANGLE_DEGREES) < HIT_AVOID_DEGREES) {
+                hitIndicatorAngleIndex = pickHitAngle(true);
+            }
             return;
         }
         long now = System.nanoTime();
         boolean combo = hitIndicatorTicks > 0
-                || (lastHitConfirmNanos > 0L
+                || (hasHitConfirm
                 && now - lastHitConfirmNanos <= HIT_COMBO_WINDOW_MILLIS * 1_000_000L);
         hitChainCount = Math.min(2, combo ? hitChainCount + 1 : 1);
         lastHitConfirmNanos = now;
+        hasHitConfirm = true;
         hitIndicatorAngleIndex = pickHitAngle(killIndicatorActive());
         hitIndicatorTicks = HIT_INDICATOR_TICKS;
     }
@@ -1066,15 +1084,16 @@ public final class TurretClient {
 
     /** 击杀特效 0…1 的进度；没有特效时返回 1。 */
     public static float killIndicatorProgress() {
-        if (killIndicatorStartNanos < 0L) {
+        if (!killIndicatorRunning) {
             return 1.0F;
         }
+        // nanoTime 可能是负数，只用差值算进度，负值不代表“没有开始”。
         float elapsedMs = (System.nanoTime() - killIndicatorStartNanos) / 1.0E6F;
         return Mth.clamp(elapsedMs / KILL_INDICATOR_MILLIS, 0.0F, 1.0F);
     }
 
     public static boolean killIndicatorActive() {
-        return killIndicatorProgress() < 1.0F;
+        return killIndicatorRunning && killIndicatorProgress() < 1.0F;
     }
 
     /** 当前示意指针的旋转角（弧度）。 */
@@ -1253,10 +1272,11 @@ public final class TurretClient {
         if (hitIndicatorTicks > 0) {
             hitIndicatorTicks--;
         }
-        if (hitChainCount > 0 && lastHitConfirmNanos > 0L
+        if (hitChainCount > 0 && hasHitConfirm
                 && System.nanoTime() - lastHitConfirmNanos
                 > HIT_COMBO_WINDOW_MILLIS * 1_000_000L) {
             hitChainCount = 0;
+            hasHitConfirm = false;
             lastHitConfirmNanos = 0L;
         }
         Minecraft minecraft = Minecraft.getInstance();

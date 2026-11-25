@@ -118,8 +118,8 @@ mex:
    `block/item/entity` 中英 lang。
 8. 设置面板：高级方块 `use()` → `DummyStationMenu.open()`（`NetworkHooks.openScreen`
    写初值）；菜单只有只读 `ContainerData`；屏幕点“保存”发 `DummySettingsPacket`
-   （协议 35），服务端校验“面板还开着且 pos 一致”+ 距离 ≤8 格 + 方块是高级台后调
-   `BE.setSettings()`；`stillValid` 同样要求方块仍是高级台。
+   （协议 36），服务端校验“面板还开着且 pos 一致”+ 距离 ≤8 格 + 方块是高级台 +
+   设置版本未变后调 `BE.setSettings()`；`stillValid` 同样要求方块仍是高级台。
 
 ## Gotchas
 
@@ -132,8 +132,13 @@ mex:
 - 高级版的无敌帧是在 `hurt()` 开头把 `invulnerableTime = 0`，不要改成
   `BYPASSES_COOLDOWN` 伤害类型——那会连护甲/药水结算一起绕过。
 - 高级版渲染只缩放 X/Z；`poseStack.scale` 以脚底为原点，缩放 Y 会把底座按进台面。
-- 设置面板只对高级台开放；普通台 1 血固定。协议升到 **35**（合并 #83 后：34 = TurretHitPacket、
-  35 = DummySettingsPacket），客户端/服务端必须同版本。
+- 设置面板只对高级台开放；普通台 1 血固定。协议升到 **36**（合并 #83 后：34 = TurretHitPacket、
+  35 = DummySettingsPacket、36 = 设置版本），客户端/服务端必须同版本。
+- 保存包带“设置版本”（BE 的 `SettingsRevision`，每次 `setSettings` 自增并落 NBT）：面板打开后
+  别人改过就拒收，否则 A 只勾自发光也会把自己那份旧血量写回去、把上限改回旧值并回血。
+- 台座认领实体前必须比对 `dummy.stationPos()`：`/clone` 会把 BE NBT 里的 UUID 一起抄到新台座，
+  不校验归属时新台座会认领别人的实体、不生成自己的，还会把本台设置套上去；
+  `discardDummy()` 同理，只能删绑在本台的人偶。
 - `setSettings()` 只能套给 `dummy.isAlive()` 的实体：死亡中 `dummyId` 还没被 tick 清掉时，
   给尸体 `setHealth()` 会把血量从 0 拉回正数，`tickDeath()` 停止但 `dead` 标记还在——
   既不播死亡动画也不安排重生（假复活，2026-11-25 审查抓到的中优先级问题）。

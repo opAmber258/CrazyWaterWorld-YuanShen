@@ -16,23 +16,25 @@ import java.util.Locale;
 import java.util.function.Supplier;
 
 /**
- * 客户端 → 服务端：高级训练设施面板的“应用”。
+ * 客户端 → 服务端：高级训练设施面板的“保存”。
  *
- * <p>只允许改高级台（普通台 1 血固定，没有面板）；距离超过 8 格或方块已拆时忽略。</p>
+ * <p>只允许改高级台（普通台 1 血固定）；面板已关、距离超过 8 格、方块已拆，
+ * 或面板打开后设置已被别人改过（{@code revision} 对不上）时拒绝。</p>
  */
 public record DummySettingsPacket(BlockPos pos, int health, int respawnTicks,
-                                  boolean selfIlluminated) {
+                                  boolean selfIlluminated, int revision) {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
         buf.writeVarInt(health);
         buf.writeVarInt(respawnTicks);
         buf.writeBoolean(selfIlluminated);
+        buf.writeVarInt(revision);
     }
 
     public static DummySettingsPacket decode(FriendlyByteBuf buf) {
         return new DummySettingsPacket(buf.readBlockPos(), buf.readVarInt(),
-                buf.readVarInt(), buf.readBoolean());
+                buf.readVarInt(), buf.readBoolean(), buf.readVarInt());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {
@@ -60,6 +62,12 @@ public record DummySettingsPacket(BlockPos pos, int health, int respawnTicks,
                 return;
             }
             if (level.getBlockEntity(pos) instanceof TrainingDummyStationBlockEntity station) {
+                // 草稿过期：开面板之后别人改过设置。直接拒绝，别把别人的改动覆盖回去
+                // （例如 A 只勾自发光，却带着旧血量把上限改回 100 并回满）。
+                if (station.settingsRevision() != revision) {
+                    reject(player, "dummy.settings.reason_stale");
+                    return;
+                }
                 station.setSettings(health, respawnTicks, selfIlluminated);
                 // 面板点“保存”后会立刻关界面，这里回一条动作栏，确认真的落到服务端。
                 player.displayClientMessage(Component.translatable("dummy.settings.saved",

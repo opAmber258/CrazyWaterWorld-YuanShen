@@ -201,6 +201,7 @@
   "dummy.settings.reason_far": "距离过远",
   "dummy.settings.reason_gone": "方块已失效",
   "dummy.settings.reason_no_menu": "面板已关闭",
+  "dummy.settings.reason_stale": "设置已被其他玩家修改，请重新打开面板",
   "msg.barotrauma.periscope.no_turret": "附近没有可接管的炮塔",
   "msg.barotrauma.periscope.need_stand": "潜望镜必须装在潜望镜底座上",
   "block.barotrauma.fabricator": "加工台",
