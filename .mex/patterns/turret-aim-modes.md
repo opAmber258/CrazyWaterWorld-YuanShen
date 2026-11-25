@@ -25,7 +25,7 @@ mex:
   id: mx_01M7M7HRZYXWEE1W4VEB95FRVX
   type: pattern
   status: promoted
-  revision: 6
+  revision: 12
   title: turret-aim-modes
   relations:
     - type: related_to
@@ -46,8 +46,8 @@ mex:
 - `TurretBlockEntity`：服务端权威 `yaw/pitch`，`aim()` 按 `MAX_TURN_PER_TICK = 6°`（120°/s）截断；
   `fire()` 射程 48、单发冷却 10 tick、全自动冷却 4 tick（5 发/秒）、hitscan 命中方块或最近实体
   （`inflate(0.25)`）、12 点伤害。
-- 五个网络包：`TurretAimPacket` / `TurretFirePacket` / `TurretModePacket` / `TurretExitPacket` /
-  `TurretStatePacket`（协议号见 `ModNetwork.PROTOCOL`）。
+- 六个网络包：`TurretAimPacket` / `TurretFirePacket` / `TurretModePacket` / `TurretExitPacket` /
+  `TurretStatePacket` / `TurretHitPacket`（协议号见 `ModNetwork.PROTOCOL`）。
 - 客户端 `TurretClient`（状态机）、`TurretRenderer`（炮管旋转 + 后坐）、`TurretHud`（观察窗 + 准心）。
 
 模式差异只在客户端输入层，由方块类判断：`block instanceof FreeAimTurretBlock` 等。
@@ -78,10 +78,17 @@ mex:
 7. **命中先分类再出特效**：`ImpactPrediction` 带 `HitKind`（CREATURE / HULL_INTACT /
    HULL_BREACHED / GLASS / STRUCTURE / SEABED / MISS）。破口方块碰撞为空，COLLIDER 射线会穿过去，
    必须再用 `ClipContext.Block.OUTLINE` 扫一次（`HullBlock#getShape` 在 breached 时仍返回整格）。
-   各分支的粒子和声音见 `TurretClient#spawnImpactEffects`；**命中示意指针只在 `CREATURE` 时播放**
-   （船壳/玻璃/结构/海床/打空都不触发），颜色白色、比主准心短、从 10°/24°/38°/52°/66°/80°
-   六个预设角中随机取一个（连续不重复），用 `QUADS` 原生四边形画 1.1 GUI px 斜线，
-   8 tick 线性淡出；新命中直接替换旧指针。
+   各分支的粒子和声音见 `TurretClient#spawnImpactEffects`；**命中反馈不再由客户端弹道预测触发**：
+   服务端 `fire()` 在 `hurt()`/创造模式兜底真正造成伤害后发 `TurretHitPacket` 给操作者。
+   普通命中闪白色随机预设角四臂指针（比主准心短，线宽 0.825 GUI px，原生 QUADS 斜线，7 tick/350ms 淡出）；
+   双击中判定与视觉时长解耦：上次确认命中后 20 tick/1s 内再次命中即升级双重线（封顶），
+   覆盖原版 10 tick 受伤无敌帧，但白色指针本身仍只显示 7 tick。
+   播放期间再次命中升级为双重平行线（封顶双重，间距 1.5 GUI px）。
+   击杀改闪黄色 X（相对标准准心旋转 45°、线宽更细），从中心附近向外扩散后淡出，313ms（≈6.25 tick，
+   比原 5 tick 长 25%），扩散前 60% 完成，25% 起就开始淡出。
+   普通命中与击杀是**独立图层**，可同时绘制；击杀不再清掉普通命中。
+   击杀连段第二杀升级为双重平行线（封顶双重，间距 1.5 GUI px）。
+   击杀 X 存在时，普通命中从预设角里挑与 45° 臂线夹角 ≥15° 的角度；全都不够远时选最远一档。
 8. **三段式模型（v2）**：`art/models/turret_20261119/` 提供固定底座 / 水平旋转基座 /
    俯仰炮管三组。固定底座导出为 Java 方块模型（只含 `base` 组），旋转基座与炮管由
    `TurretRenderer` 用 BER 绘制：yaw 只转基座，炮管再叠 pitch，后坐沿局部 -Z。
@@ -138,6 +145,17 @@ mex:
     `requestFire()` 用 `lastFireTick` 挡同 tick 的 `startAttack` + 轮询双触发。
     模式随炮塔 NBT `AutoFire` 持久化；`TurretStatePacket` 末尾带 `autoFire`（协议 30）。
     Q 与原版丢弃同键，`LocalPlayerMixin` 在 `TurretClient.isActive()` 时取消 `LocalPlayer#drop`。
+14. **命中/击杀反馈（服务端确认）**：`TurretHitPacket(pos, killed)` 只在 `hurt()` 返回 true
+    或创造模式 `MedicalEvents.applyDirectDamage()` 返回 true 后发送；`killed` 取
+    `isDeadOrDying() || !isAlive() || health <= 0`。客户端 `onHitConfirmed()` 校验
+    `activePos` 后播放：普通命中白色随机角指针，击杀黄色 45° X 扩散淡出。
+    协议 34（主线 #83 已到 33，之上新增 TurretHitPacket；随后训练台设置包升到 35，
+    再因加设置版本升到 36，见 training-dummy 模式）。
+    不要退回“客户端预判落点就闪”的写法，否则打空/无敌帧/服务端拒绝也会误闪。
+    `System.nanoTime()` 可以为负，时间戳是否有效必须用独立布尔（`hasHitConfirm` /
+    `killIndicatorRunning`），不能拿 `> 0` / `< 0` 当判据；增量只用差值。
+    击杀开始时如果普通指针还在显示、且离 45° 臂线 <15°，要重挑一次命中角
+    （保留剩余 tick 与连段计数），否则全自动下两次事件只隔几 tick 会出现两线夹角不足。
 
 ## 模块边界（换模型 / 2×2·3×3 时只动这些）
 
@@ -222,7 +240,11 @@ mex:
 - [ ] 深海无光环境下粒子束仍可见，且不从镜头中心射出
 - [ ] 单发 0.6 秒冷却 / 全自动 5 发每秒都能正常连发，弹道槽位不互相覆盖
 - [ ] 炮塔内 Q 切换单发/全自动；HUD 模式显示正确，模式退出重进后保留
-- [ ] 命中指针只在生物/玩家命中时出现；随机预设角、8 tick 淡出、新命中替换旧指针
+- [ ] 命中指针只在服务端确认造成伤害时出现；打空/船壳/无敌帧不出现
+- [ ] 普通命中白色随机预设角、7 tick（350ms）淡出；击杀黄色 45° X 从内向外扩散后淡出
+- [ ] 击杀与命中独立图层：击杀不吞命中；击杀期间命中角避开 X 臂线 ≥15°
+- [ ] 击杀连段第二杀变双重线，第三杀保持双重（封顶）
+- [ ] 命中连段第二中变双重线，第三中保持双重（封顶）
 - [ ] 打船壳/玻璃/结构/海床/打空不出现命中指针
 - [ ] 水下能看到白蓝能量核心 + 气泡尾；空气/水下命中、破口、舷窗、海床分支可肉眼区分
 - [ ] 右键瞄准：FOV 缩到 55%，准心收拢；跟随炮塔的鼠标十字 alpha 降到 35%，松开恢复

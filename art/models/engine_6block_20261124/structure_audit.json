@@ -1,0 +1,41 @@
+{
+  "input": "engine_6block.geo.json",
+  "kind": "bedrock_geometry",
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance.",
+    "Bounds are unrotated source-coordinate extents; bone/element transforms and inflate are not applied."
+  ],
+  "identifier": "geometry.engine_6block",
+  "uv_space": {
+    "width": 512,
+    "height": 512,
+    "source": "Bedrock description"
+  },
+  "texture_size": {
+    "width": 512,
+    "height": 512
+  },
+  "metrics": {
+    "geometries": 1,
+    "bones": 39,
+    "cubes": 185,
+    "declared_faces": 1098
+  },
+  "bounds": [
+    [
+      -49.9,
+      0,
+      -17.25
+    ],
+    [
+      48.0,
+      47.914,
+      17.775
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 0
+}

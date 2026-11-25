@@ -34,5 +34,6 @@ Lookup table for all pattern files in this directory. Check here before starting
 | [publish.md](publish.md) | Publishing changes (走流程 / `/publish`): art-only checks → direct main push; code/shared tools/policies → MEX bookkeeping and PR |
 | [run-tests.md](run-tests.md) | Building and running the L1/L2/L3 verification layers |
 | [ship-fluid-field.md](ship-fluid-field.md) | Changing in-ship flooding, water boxes, pump auto thresholds, or diagnosing dry-room-as-ocean / water-inside-walls / pump flapping |
+| [training-dummy.md](training-dummy.md) | Building or fixing the training dummy / balloon inflation stations: spawn/respawn lifecycle, 6-direction balloon placement, advanced HP variants, or the right-click settings panel |
 | [turret-aim-modes.md](turret-aim-modes.md) | Changing turret aiming (three prototypes), camera/input mixins, muzzle-based ballistics, underwater shot FX, ADS aim mode, hit-kind feedback, the three-part (base/turntable/barrel) model, the aiming station / turret binder remote takeover, or the impact reticle HUD |
 | [vs2-physical-ship.md](vs2-physical-ship.md) | Launching, docking, controlling, or debugging a VS2 physical ship |

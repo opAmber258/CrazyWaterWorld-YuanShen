@@ -2,6 +2,7 @@ package com.opamb.barotrauma.client;
 
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.registry.ModEntities;
 import com.opamb.barotrauma.registry.ModParticles;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import com.opamb.barotrauma.world.OceanEnvironment;
@@ -45,6 +46,8 @@ public final class ClientSetup {
                     com.opamb.barotrauma.registry.ModMenus.SONAR.get(), SonarScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.MISSION_TERMINAL.get(), MissionScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.DUMMY_STATION.get(), DummyStationScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.PUMP.get(), PumpScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
@@ -107,6 +110,12 @@ public final class ClientSetup {
 
 
     @SubscribeEvent
+    public static void onRegisterLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(TrainingDummyModel.LAYER, TrainingDummyModel::createBodyLayer);
+        event.registerLayerDefinition(BalloonDummyModel.LAYER, BalloonDummyModel::createBodyLayer);
+    }
+
+    @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModBlockEntities.SONAR.get(), SonarRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.NAVIGATION_TERMINAL.get(),
@@ -140,6 +149,15 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.TURRET.get(), TurretRenderer::new);
         event.registerEntityRenderer(com.opamb.barotrauma.registry.ModEntities.VESSEL.get(), VesselRenderer::new);
         event.registerEntityRenderer(com.opamb.barotrauma.registry.ModEntities.NPC.get(), NpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.TRAINING_DUMMY.get(), TrainingDummyRenderer::new);
+        event.registerEntityRenderer(ModEntities.ADVANCED_TRAINING_DUMMY.get(),
+                AdvancedTrainingDummyRenderer::new);
+        event.registerEntityRenderer(ModEntities.BALLOON_DUMMY.get(),
+                context -> new BalloonDummyRenderer<>(context, new net.minecraft.resources.ResourceLocation(
+                        BarotraumaMod.MOD_ID, "textures/entity/balloon_dummy.png")));
+        event.registerEntityRenderer(ModEntities.ADVANCED_BALLOON_DUMMY.get(),
+                context -> new BalloonDummyRenderer<>(context, new net.minecraft.resources.ResourceLocation(
+                        BarotraumaMod.MOD_ID, "textures/entity/advanced_balloon_dummy.png")));
     }
 
     /** 炮塔 HUD：只在进入炮塔视角时绘制，叠在热键栏之上。 */

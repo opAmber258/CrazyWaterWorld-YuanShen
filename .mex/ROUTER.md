@@ -32,6 +32,8 @@ edges:
     condition: when hull durability, damage bars, welding, or breach-on-zero-HP behavior looks wrong
   - target: patterns/run-tests.md
     condition: when building or running the verification layers
+  - target: patterns/training-dummy.md
+    condition: when working on the training dummy / balloon inflation stations, their respawn lifecycle, advanced HP variants, or the right-click settings panel
   - target: patterns/turret-aim-modes.md
     condition: when changing turret aiming modes, turret camera/input mixins, muzzle-based ballistics, tracer particles, the aiming station / turret binder remote takeover, turret model/spec modularity, or the impact reticle HUD
   - target: patterns/publish.md
@@ -69,6 +71,15 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## Current Project State
 
+- **训练人偶/气球充气台 + 炮塔命中反馈（2026-11-25，任务分支 `feat/training-dummy-advanced-20261125`）**：
+  新增 `training_dummy_station` / `advanced_training_dummy_station`（台座 1 格 + 人偶 1.5 格 = 2.5 格；
+  普通 1 血、高级默认 50 血且无 10 tick 受击间隔）与六向吊挂、沿朝向占 2 格的 `balloon_dummy_station` /
+  `advanced_balloon_dummy_station`。BE 用 UUID 认领 + NBT 重生计时，拆台才删实体；高级台右键设置面板
+  调血量 1..200 / 自发光 / 重生间隔 0..10 秒（保存即关闭 + 动作栏确认，设置落 NBT；只改间隔/自发光不回血，
+  死亡中的实体不套设置，倒计时中改间隔按死亡时刻重排）。炮塔命中反馈改由服务端 `TurretHitPacket` 确认
+  伤害后才播（普通命中白色随机角指针、击杀黄色 45° X，独立图层、连段升双线），不再由客户端弹道预测触发。
+  协议 33→36（34 = TurretHitPacket、35 = DummySettingsPacket、36 = 设置版本）。`tools/gen_training_dummy_texture.py`
+  生成 4 张 64×64 实体贴图。细节见 `patterns/training-dummy.md`。全量单测通过；面板改版后的实机复核待用户。
 - **水流可视化 + 泳姿/门/流体审查修复（2026-11-22，任务分支 `feat/water-flow-visuals-20261122`，PR #81）**：
   水面改 `ShipWaterMesh`/`ShipWaterFlowMesh`/`ShipWaterMaterial` + `shaders/core/ship_water`，
   `ShipWaterStreams` 按实际流量画下落/侧门溢流（协议 26/27）；`AirOceanSwimmer` + `EntitySwimmingMixin`

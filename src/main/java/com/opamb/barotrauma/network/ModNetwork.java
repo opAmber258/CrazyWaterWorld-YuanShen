@@ -31,6 +31,12 @@ public final class ModNetwork {
     // 31：灯具 RGBA（A=强度）面板改走独立 LightColorPacket。
     // 32：TurretStatePacket 增加弹药/供电，客户端据此拦截空射并显示弹药。
     // 33：追踪玩家手电筒状态的实体数据字段。
+    // 34：新增 TurretHitPacket（服务端确认命中/击杀，客户端据此播放准星反馈）。
+    // 35：新增 DummySettingsPacket（高级训练台血量/自发光/重生间隔）。
+    // 36：DummySettingsPacket 带设置版本（拒绝过期草稿）。
+    // 37：SonarDataPacket/SonarPingPacket 改为按脉冲与回波同步（世界坐标 + 到达 tick）。
+    // 38：ShipActionPacket 增加驾驶状态/定点目标与舵令确认，功率拒绝回显。
+    // 39：RepairActionPacket 与设备修理/接线盒菜单改版。
     private static final String PROTOCOL = "39";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
@@ -149,15 +155,21 @@ CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(TurretStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretStatePacket::encode).decoder(TurretStatePacket::decode)
                 .consumerNetworkThread(TurretStatePacket::handle).add();
+        CHANNEL.messageBuilder(TurretHitPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(TurretHitPacket::encode).decoder(TurretHitPacket::decode)
+                .consumerNetworkThread(TurretHitPacket::handle).add();
         CHANNEL.messageBuilder(PickupItemPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(PickupItemPacket::encode).decoder(PickupItemPacket::decode)
                 .consumerNetworkThread(PickupItemPacket::handle).add();
         CHANNEL.messageBuilder(ShipUseBlockPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(ShipUseBlockPacket::encode).decoder(ShipUseBlockPacket::decode)
                 .consumerNetworkThread(ShipUseBlockPacket::handle).add();
-        CHANNEL.messageBuilder(LightColorPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+CHANNEL.messageBuilder(LightColorPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(LightColorPacket::encode).decoder(LightColorPacket::decode)
                 .consumerNetworkThread(LightColorPacket::handle).add();
+        CHANNEL.messageBuilder(DummySettingsPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(DummySettingsPacket::encode).decoder(DummySettingsPacket::decode)
+                .consumerNetworkThread(DummySettingsPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

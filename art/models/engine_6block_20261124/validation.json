@@ -1,0 +1,107 @@
+{
+  "revision": "R15",
+  "identifier": "geometry.engine_6block",
+  "geometry_format_version": "1.12.0",
+  "animation_format_version": "1.8.0",
+  "baseline_sha256": "83b2d9383fabc4dfa4fa65f5849306ca6054e69f8cef8e540134c4e460d6af3c",
+  "sources": {
+    "zh": "Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml 的 entityname.engine = 引擎",
+    "en": "Content/Texts/English/EnglishVanilla.xml 的 entityname.engine = Engine",
+    "definition": "Content/Items/Engine/engine.xml",
+    "atlas_crop": "Engines.png 0,0,659,317",
+    "scale": 0.5
+  },
+  "texture": {
+    "size": [512, 512],
+    "mode": "RGBA",
+    "alpha_values": [0, 255],
+    "power_of_two": true
+  },
+  "preview": {
+    "static_size": "1200x900",
+    "static_count": 7,
+    "geometry_changed_vs_r14": false,
+    "gif_frames": 48,
+    "gif_size": "1282x540",
+    "renderer": "Blockbench 5.2.2 WebGL viewport"
+  },
+  "blockbench": "5.2.2",
+  "bounds_bb": [
+    [
+      -47.99999995231629,
+      0,
+      -17.812113100275226
+    ],
+    [
+      49.89999923706055,
+      48.2007303548803,
+      17.81213018094578
+    ]
+  ],
+  "cubes": 185,
+  "bones": 39,
+  "animated_clip": "animation.engine_6block.running",
+  "pump_beat_seconds": 1.2,
+  "shared_loop_seconds": 2.4,
+  "shell_and_cable_deviation_ratio_vs_r14": 0.75,
+  "sampled_shell_peak_lift_bb": [
+    1.349,
+    1.349
+  ],
+  "sampled_cable_peaks_seconds": [
+    {
+      "pulse_1_09": 0.31875,
+      "pulse_1_05_part_2": 0.58125,
+      "pulse_1_02": 0.73125,
+      "pulse_2_09": 0.375,
+      "pulse_2_05_part_2": 0.6375,
+      "pulse_2_02": 0.7875
+    },
+    {
+      "pulse_1_09": 1.51875,
+      "pulse_1_05_part_2": 1.78125,
+      "pulse_1_02": 1.93125,
+      "pulse_2_09": 1.575,
+      "pulse_2_05_part_2": 1.8375,
+      "pulse_2_02": 1.9875
+    }
+  ],
+  "sampled_times": 129,
+  "stationary_louvers_and_fixed_parts": true,
+  "rotor_revolution_seconds": 0.8,
+  "native_animation_roundtrip": true,
+  "minecraft_runtime": "not tested",
+  "dimensions_bb": [
+    97.9,
+    48.20073,
+    35.62424
+  ],
+  "geometry_uv_and_texture_identical_to_r14": true,
+  "independent_rotor_clip_unchanged": true,
+  "native_geometry_roundtrip": true,
+  "rest_coplanar": {
+    "faces_checked": 1098,
+    "plane_tolerance_bb": 2e-05,
+    "minimum_overlap_bb2": 0.0001,
+    "positive_area_overlaps": []
+  },
+  "cable_joint_sample": {
+    "joints": 28,
+    "sampled_times": 129,
+    "max_sampled_separation_bb": 0.0
+  },
+  "sha256": {
+    "engine_6block.bbmodel": "44e2e65a1ee598df6411f086f8cdb57d2def1f45b960389b0afabf354399bb64",
+    "engine_6block.animation.json": "a35f8157f46d7ff68274d476a75a7db74dad76439c30ce41bfdfcecb54769209",
+    "engine_6block.geo.json": "618ad7699dd9f80ebb5606c756dd4afb946c5654e73e3d223f74988109f48677",
+    "engine_6block_tex.png": "d99833d1c9c2291548eb1132b5c046a7f78287be67aea43cc46dcaa90f39345f",
+    "preview_back.png": "600d341edf64f30bde4a54ab84a91cb3e22f8ca940b492abe78bb9b3cdc1a8f4",
+    "preview_front.png": "9b0ff7f371c59742c99a3a9355c86a373b78ead6144053544fe63983ec1fc25f",
+    "preview_guard_joint.png": "01ab852b1c7f45318ce647079421b61d3cf216322fe4b3c7ade35f520621b2d9",
+    "preview_oblique.png": "256efcc42000b10cd942e3b35701a40244f4e406700cc51f940e4da22e3fc889",
+    "preview_running.gif": "828b542d6d1cc63ccbb28bc396c4b4a1c2a96df92e803387da79cfef7beeaca0",
+    "preview_side.png": "ce9c57af736f9584fb106754d765ea0bc545002b8ecc8b1658d4431d955dd42a",
+    "preview_tail_joint.png": "2d4ae069230db3d94c23a7c912b2d3dd8ecccbe1e709bc560944ef33037f7d4f",
+    "preview_tail_oblique.png": "2b8f0aa5e38a4e4b99d58bb82f4c9e326e298a6fd605fa83683996f2b3d88b69"
+  }
+}

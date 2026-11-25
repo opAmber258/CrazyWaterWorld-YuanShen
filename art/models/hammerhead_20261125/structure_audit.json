@@ -1,0 +1,41 @@
+{
+  "input": "candidate\\hammerhead.geo.json",
+  "kind": "bedrock_geometry",
+  "errors": [],
+  "warnings": [],
+  "limitations": [
+    "Limited static-model preflight only; not a complete runtime schema or client compatibility test.",
+    "Does not solve visibility, z-fighting, texture sampling, resource registration, collision or performance.",
+    "Bounds are unrotated source-coordinate extents; bone/element transforms and inflate are not applied."
+  ],
+  "identifier": "geometry.hammerhead",
+  "uv_space": {
+    "width": 256,
+    "height": 256,
+    "source": "Bedrock description"
+  },
+  "texture_size": {
+    "width": 256,
+    "height": 256
+  },
+  "metrics": {
+    "geometries": 1,
+    "bones": 19,
+    "cubes": 149,
+    "declared_faces": 894
+  },
+  "bounds": [
+    [
+      -48.40649,
+      -23.4548,
+      -189.3965
+    ],
+    [
+      48.553309999999996,
+      82.70309999999999,
+      81.4734
+    ]
+  ],
+  "error_count": 0,
+  "warning_count": 0
+}
