@@ -1,0 +1,29 @@
+{
+  "asset": "periscope",
+  "candidate": "B (1.3 UV fix)",
+  "date": "2026-11-26",
+  "source": "periscope.bbmodel (Blockbench 5.0, model_format java_block, java_block_version 26.3; texture embedded by author, matches final PNG)",
+  "counts": {
+    "cubes": 84,
+    "faces": 504,
+    "groups": 22,
+    "bones": 0,
+    "loose_cubes": 0,
+    "hidden_elements": 0,
+    "hidden_groups": 0,
+    "animations": 0,
+    "rotated_cubes": 62,
+    "inflated_cubes": 26,
+    "zero_thickness_planes": 2
+  },
+  "groups": ["主体", "插件", "线头", "马桶圈", "天险", "潜望镜基座", "潜望镜本体", "插件", "贴皮", "贴皮", "镜头", "主体", "掌舵", "挂件", "上箱子", "电线组", "电线", "电线", "电线", "把手", "电线", "把手"],
+  "findings": [
+    { "level": "info", "code": "ASSEMBLY_MODEL", "detail": "84 cubes = 镜体 + 吊架（含底座 1.1 全部几何），组内含底座与镜体两组分组。" },
+    { "level": "info", "code": "NO_BONES", "detail": "java_block 格式无骨骼，22 个分组仅作层级组织。" },
+    { "level": "info", "code": "NO_LOOSE_CUBES", "detail": "84 个 cube 全部在分组下，无游离元素。" },
+    { "level": "info", "code": "NO_ANIMATION", "detail": "0 条动画，静态交付。" },
+    { "level": "warn", "code": "ROTATION_OVER_LIMIT", "detail": "62/84 个 cube 带旋转，含 28 个超限角度与 16 个多轴自由旋转，超出 1.20.1 原版 Java 模型 JSON 限制。" },
+    { "level": "warn", "code": "ZERO_THICKNESS_PLANES", "detail": "2 个零厚度面片。" },
+    { "level": "info", "code": "INFLATE_PRESENT", "detail": "26 个 cube 带 inflate；渲染器按 Blockbench 语义应用。" }
+  ]
+}
