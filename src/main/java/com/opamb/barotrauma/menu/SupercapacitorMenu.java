@@ -44,8 +44,8 @@ public class SupercapacitorMenu extends DeviceMenu {
     public static final int INV_START = 0;
     public static final int HOTBAR_START = INV_START + 27;
     public static final int HOTBAR_END = HOTBAR_START + 9;
-    public static final int INV_AREA_X = 12;
-    public static final int INV_AREA_Y = 206;
+    public static final int INV_AREA_X = 42;
+    public static final int INV_AREA_Y = 138;
     public static final int INV_AREA_W = 160;
     public static final int INV_AREA_H = 54;
 

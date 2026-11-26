@@ -100,6 +100,7 @@ public final class VsThruster implements ShipPhysicsListener {
      * 和推进分开：引擎空转时也能转舵，断电时偏航归零并刹住。
      */
     private volatile boolean helmPowered;
+    private volatile boolean localEngineControl;
     private volatile int power = 100;
     /** 船上已安装的引擎数量；0 时完全不能推进。 */
     private volatile int engineCount;
@@ -207,6 +208,10 @@ public final class VsThruster implements ShipPhysicsListener {
     /** 导航台/电网是否有电；由 {@code VsPilot.applyControl} 每 tick 同步。 */
     public void setHelmPowered(boolean powered) {
         helmPowered = powered;
+    }
+
+    public void setLocalEngineControl(boolean active) {
+        localEngineControl = active;
     }
 
     public boolean helmPowered() {
@@ -323,7 +328,7 @@ public final class VsThruster implements ShipPhysicsListener {
         // 只要舵令不是零就保证这艘船是动态的——垂直舵令也算：压载改变水量后
         // 浮力要在物理步里生效，不能因为船在睡觉就不动。
         if ((target.isStatic() || target.isSleeping())
-                && (helmForward != 0 || helmYaw != 0 || helmVertical != 0)) {
+                && (helmForward != 0 || helmYaw != 0 || helmVertical != 0 || localEngineControl && powered())) {
             target.setStatic(false);
             WAKES.incrementAndGet();
         }
@@ -367,7 +372,7 @@ public final class VsThruster implements ShipPhysicsListener {
         double ax = 0.0D;
         double az = 0.0D;
         // 舵令回中后，引擎报告仍会短暂有推力。按实际轴力衰减，和反转共用同一路径。
-        if (helmPowered && powered()) {
+        if ((helmPowered || localEngineControl) && powered()) {
             double accel = forwardAcceleration(engineForceRaw, helmSkill, engineMultiplier);
             ax = forwardX * accel;
             az = forwardZ * accel;

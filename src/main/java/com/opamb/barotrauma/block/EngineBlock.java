@@ -44,8 +44,7 @@ import org.jetbrains.annotations.Nullable;
  * <p>主方块是前层 · 下排 · 中列。机身占前两格深，最后一格是螺旋桨护罩
  * （当前静态占位，不做动画）。正面朝玩家，背面螺旋桨朝船尾。</p>
  *
- * <p>推进由声纳油门统一控制：引擎方块只负责"上报自己在船上、目标力和耗电"，
- * 真正给刚体施加力的是 {@code VsThruster}。船上没有引擎时推进为 0。</p>
+ * <p>舵台接管时优先使用舵令。无人掌舵时可直接设置单台引擎的正反推力。</p>
  */
 public class EngineBlock extends Block implements EntityBlock {
 

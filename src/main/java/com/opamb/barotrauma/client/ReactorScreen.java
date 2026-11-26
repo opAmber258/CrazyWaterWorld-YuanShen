@@ -14,29 +14,13 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
-/**
- * 核反应堆面板，布局按原作 Reactor GUI 重排：
- *
- * <pre>
- *   燃料棒×4 | ● 临界热量   ● 临界输出   ● 临界低温      拉杆 ◉ 自动控制   ◉ 能源 (红按钮)
- *            | [裂变速率半圆表]  [涡轮输出半圆表]        +  负载: 30 千瓦
- *            | [滑条]            [滑条]                   [温度条] [曲线]
- *            | 温度过低 输出过低 燃料供应不足 熔毁        -  输出: 0 千瓦
- *            | 炉芯过热 输出过高 燃料耗尽   紧急停堆
- *   物品栏
- * </pre>
- *
- * <p>红按钮只负责开关，旁边的指示灯才显示能源状态；自动控制是拉杆，
- * 右侧黄灯显示自动控制是否生效，拉杆本身不变黄。</p>
- */
+/** Analog controls, status lamps, and a live generator trace. */
 public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
 
-    private static final int W = 400;
-    private static final int H = 300;
+    private static final int W = 462;
+    private static final int H = 292;
 
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int INNER = 0xFF243027;
-    private static final int PANEL = PanelStyle.RECESS;
     private static final int TEXT = PanelStyle.TEXT;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.AMBER;
@@ -45,26 +29,30 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
     private static final int YELLOW = 0xFFD8B44A;
     private static final int BLUE = 0xFF6FA8D0;
     private static final int TRACK = PanelStyle.RECESS;
-    private static final int BUTTON_FACE = 0xFF3E3A2E;
-    private static final int BUTTON_BORDER = 0xFF6E6450;
-    private static final int BUTTON_TEXT = 0xFFC9BFA8;
 
-    private static final int FUEL_X = 12;
-    private static final int FUEL_Y = 32;
-    private static final int FUEL_STEP = 24;
+    private static final int FUEL_X = ReactorMenu.FUEL_X;
+    private static final int FUEL_Y = ReactorMenu.FUEL_Y;
+    private static final int FUEL_STEP = ReactorMenu.FUEL_STEP;
 
-    private static final int GAUGE1_X = 140;
-    private static final int GAUGE2_X = 235;
-    private static final int GAUGE_PIVOT_Y = 112;
-    private static final int GAUGE_R = 45;
+    private static final int GAUGE1_X = 120;
+    private static final int GAUGE2_X = 237;
+    private static final int GAUGE_PIVOT_Y = 125;
+    private static final int GAUGE_R = 49;
 
-    private static final int SLIDER1_X = 95;
-    private static final int SLIDER2_X = 190;
-    private static final int SLIDER_W = 90;
-    private static final int SLIDER_Y = 120;
+    private static final int SLIDER1_X = 70;
+    private static final int SLIDER2_X = 187;
+    private static final int SLIDER_W = 100;
+    private static final int SLIDER_Y = 132;
+
+    private static final int AUTO_X = 330;
+    private static final int POWER_X = 409;
+    private static final int TOP_CONTROLS_Y = 28;
+    private static final int BOOST_X = 311;
+    private static final int BOOST_UP_Y = 67;
+    private static final int BOOST_DOWN_Y = 171;
 
     private static final String[] WARNINGS = {
-            "温度过低", "输出过低", "燃料供应不足", "熔毁",
+            "温度过低", "输出过低", "燃料不足", "熔毁",
             "炉芯过热", "输出过高", "燃料耗尽", "紧急停堆"
     };
 
@@ -101,7 +89,7 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, 8, 6, ACCENT, false);
+        graphics.drawString(font, title, 12, 9, TEXT, false);
     }
 
     @Override
@@ -110,8 +98,12 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
         int y = topPos;
 
         PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
-        graphics.fill(x + 4, y + 4, x + W - 4, y + 4 + 1, INNER);
-        graphics.fill(x + 4, y + H - 5, x + W - 4, y + H - 4, INNER);
+        PanelStyle.divider(graphics, 12, 23, W - 24);
+        PanelStyle.divider(graphics, 12, 57, W - 24);
+        PanelStyle.well(graphics, 11, 65, 44, 129);
+        PanelStyle.well(graphics, 62, 65, 233, 128);
+        PanelStyle.well(graphics, 304, 63, 147, 131);
+        PanelStyle.divider(graphics, 12, 205, W - 24);
 
         boolean powerOn = data(ReactorMenu.DATA_POWER_ON) != 0;
         boolean auto = data(ReactorMenu.DATA_AUTO) != 0;
@@ -127,22 +119,17 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
         boolean melted = data(ReactorMenu.DATA_MELTED) != 0;
         double correct = data(ReactorMenu.DATA_CORRECT_TURBINE);
 
-        // 顶部三颗临界灯
-        drawLamp(graphics, x + 64, y + 18, temperature > ReactorState.ALLOWED_TEMP_MAX ? RED : 0xFF39423A);
-        graphics.drawString(font, "临界热量", x + 72, y + 14, TEXT, false);
-        drawLamp(graphics, x + 152, y + 18, output > Math.max(1, load) * 1.5D ? RED : 0xFF39423A);
-        graphics.drawString(font, "临界输出", x + 160, y + 14, TEXT, false);
-        drawLamp(graphics, x + 240, y + 18, temperature < ReactorState.ALLOWED_TEMP_MIN ? RED : 0xFF39423A);
-        graphics.drawString(font, "临界低温", x + 248, y + 14, TEXT, false);
+        drawStatus(graphics, 19, 42, "临界热量", temperature > ReactorState.ALLOWED_TEMP_MAX);
+        drawStatus(graphics, 109, 42, "临界输出", output > Math.max(1, load) * 1.5D);
+        drawStatus(graphics, 199, 42, "临界低温", temperature < ReactorState.ALLOWED_TEMP_MIN);
 
-        // 燃料槽
-        graphics.drawString(font, "燃料棒", x + FUEL_X, y + 18, TEXT, false);
+        graphics.drawString(font, "燃料棒", 16, 70, TEXT, false);
         for (int i = 0; i < ReactorMenu.FUEL_SLOTS; i++) {
             int sy = y + FUEL_Y + i * FUEL_STEP;
             slotBg(graphics, x + FUEL_X, sy);
             ItemStack stack = menu.getSlot(i).getItem();
             double percent = ReactorFuel.conditionPercent(stack);
-            int barX = x + FUEL_X + 22;
+            int barX = x + FUEL_X + 21;
             int barH = 18;
             graphics.fill(barX, sy, barX + 4, sy + barH, TRACK);
             int filled = (int) Math.round(barH * percent / 100.0D);
@@ -166,89 +153,64 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
                 Math.min(100.0D, correct + 20.0D), "涡轮输出功率");
 
         boolean slidersEnabled = powerOn && !auto && !melted;
-        drawSlider(graphics, x + SLIDER1_X, y + SLIDER_Y, SLIDER_W, targetFission, slidersEnabled);
-        drawSlider(graphics, x + SLIDER2_X, y + SLIDER_Y, SLIDER_W, targetTurbine, slidersEnabled);
-        graphics.drawString(font, targetFission + "%", x + SLIDER1_X, y + SLIDER_Y + 12,
-                slidersEnabled ? TEXT : DIM, false);
-        graphics.drawString(font, targetTurbine + "%", x + SLIDER2_X, y + SLIDER_Y + 12,
-                slidersEnabled ? TEXT : DIM, false);
+        PanelStyle.slider(graphics, SLIDER1_X, SLIDER_Y, SLIDER_W, targetFission / 100.0D,
+                slidersEnabled, draggingFission);
+        PanelStyle.slider(graphics, SLIDER2_X, SLIDER_Y, SLIDER_W, targetTurbine / 100.0D,
+                slidersEnabled, draggingTurbine);
+        graphics.drawCenteredString(font, targetFission + "%", GAUGE1_X, 144, slidersEnabled ? TEXT : DIM);
+        graphics.drawCenteredString(font, targetTurbine + "%", GAUGE2_X, 144, slidersEnabled ? TEXT : DIM);
 
-        // 8 个告警按钮
         boolean lowTemp = temperature < ReactorState.OPTIMAL_TEMP_MIN;
         boolean lowOutput = output < load * 0.9D;
         boolean lowFuel = fuel < fission;
-        boolean meltdownWarn = meltdownTimer > ReactorState.MELTDOWN_DELAY * 0.5D || melted;
+        double faultDelay = data(ReactorMenu.DATA_CAPACITY) == 3000 ? 30.0D : ReactorState.MELTDOWN_DELAY;
+        boolean meltdownWarn = meltdownTimer > faultDelay * 0.5D || melted;
         boolean overheat = temperature > ReactorState.OPTIMAL_TEMP_MAX;
         boolean highOutput = output > load * 1.1D;
         boolean fuelOut = fuel < 1.0D;
         boolean scram = temperature > 0.1D && !powerOn;
-        boolean[] states = {lowTemp, lowOutput, lowFuel, meltdownWarn,
-                overheat, highOutput, fuelOut, scram};
+        boolean[] states = {lowTemp, lowOutput, lowFuel, meltdownWarn, overheat, highOutput, fuelOut, scram};
         for (int i = 0; i < WARNINGS.length; i++) {
-            int wx = x + 10 + (i % 4) * 67;
-            int wy = y + 146 + (i / 4) * 18;
-            int fill = states[i] ? 0xFF5A1E18 : BUTTON_FACE;
-            int border = states[i] ? RED : BUTTON_BORDER;
-            graphics.fill(wx, wy, wx + 64, wy + 15, fill);
-            graphics.fill(wx, wy, wx + 64, wy + 1, border);
-            graphics.fill(wx, wy + 14, wx + 64, wy + 15, border);
-            graphics.fill(wx, wy, wx + 1, wy + 15, border);
-            graphics.fill(wx + 63, wy, wx + 64, wy + 15, border);
-            int color = states[i] ? 0xFFFFC8C0 : BUTTON_TEXT;
-            graphics.drawString(font, WARNINGS[i], wx + (64 - font.width(WARNINGS[i])) / 2,
-                    wy + 4, color, false);
+            int wx = 69 + (i % 4) * 56;
+            int wy = 157 + (i / 4) * 17;
+            PanelStyle.well(graphics, wx, wy, 52, 13);
+            if (states[i]) graphics.fill(wx + 1, wy + 1, wx + 51, wy + 12, 0xFF472B27);
+            graphics.drawCenteredString(font, WARNINGS[i], wx + 26, wy + 2,
+                    states[i] ? 0xFFFFB1A0 : DIM);
         }
 
-        // 右侧：自动控制拉杆 + 指示灯
-        graphics.drawString(font, "自动控制", x + 310, y + 32, TEXT, false);
-        int autoTrackX = x + 292;
-        int autoTrackY = y + 28;
-        graphics.fill(autoTrackX, autoTrackY, autoTrackX + 8, autoTrackY + 28, TRACK);
-        graphics.fill(autoTrackX, autoTrackY, autoTrackX + 8, autoTrackY + 1, EDGE);
-        int knobY = auto ? autoTrackY + 1 : autoTrackY + 16;
-        graphics.fill(autoTrackX - 1, knobY, autoTrackX + 9, knobY + 11,
-                auto ? 0xFFB8C0B4 : 0xFF7C8478);
-        graphics.fill(autoTrackX + 1, knobY + 1, autoTrackX + 7, knobY + 3, 0xFFE8E2D0);
-        drawLamp(graphics, x + 304, y + 38, auto && powerOn ? YELLOW : 0xFF39423A);
+        PanelStyle.control(graphics, AUTO_X, TOP_CONTROLS_Y, 71, 25, powerOn,
+                powerOn && inRect(mouseX, mouseY, AUTO_X, TOP_CONTROLS_Y, 71, 25));
+        PanelStyle.lamp(graphics, AUTO_X + 11, 40, auto && powerOn, YELLOW);
+        graphics.drawString(font, "自动控制", AUTO_X + 21, 36, TEXT, false);
+        PanelStyle.control(graphics, POWER_X, TOP_CONTROLS_Y, 42, 25, true,
+                inRect(mouseX, mouseY, POWER_X, TOP_CONTROLS_Y, 42, 25));
+        PanelStyle.lamp(graphics, POWER_X + 10, 40, powerOn, GREEN);
+        drawCircle(graphics, POWER_X + 29, 40, 8, 0xFF753D35);
+        drawCircle(graphics, POWER_X + 29, 39, 6, RED);
+        graphics.fill(POWER_X + 26, 36, POWER_X + 31, 37, 0x60FFFFFF);
 
-        // 右侧：能源按钮 + 独立状态灯
-        graphics.drawString(font, "能源", x + 352, y + 16, TEXT, false);
-        boolean powerHover = inRect(mouseX, mouseY, 346, 24, 42, 36);
-        graphics.fill(x + 354, y + 26, x + 386, y + 58, PANEL);
-        graphics.fill(x + 354, y + 26, x + 386, y + 27, EDGE);
-        graphics.fill(x + 354, y + 57, x + 386, y + 58, EDGE);
-        drawLamp(graphics, x + 348, y + 40, powerOn ? GREEN : 0xFF39423A);
-        int red = powerHover ? 0xFFFF6B5E : 0xFFB5372F;
-        drawCircle(graphics, x + 370, y + 42, 8, red);
-        drawCircle(graphics, x + 370, y + 40, 3, powerHover ? 0xFFFFD0C8 : 0xFFFF8070);
-
-        // 右侧：温度 / 负载 / 输出 / 曲线
-        graphics.drawString(font, "温度", x + 292, y + 78, TEXT, false);
-        drawButton(graphics, x + 292, y + 62, 14, "+");
-        drawButton(graphics, x + 292, y + 140, 14, "-");
-        int tempBarX = x + 294;
-        int tempBarY = y + 90;
+        drawButton(graphics, BOOST_X, BOOST_UP_Y, 14, "+");
+        drawButton(graphics, BOOST_X, BOOST_DOWN_Y, 14, "−");
+        int tempBarX = 313;
+        int tempBarY = 85;
         int tempBarW = 10;
-        int tempBarH = 46;
-        graphics.fill(tempBarX, tempBarY, tempBarX + tempBarW, tempBarY + tempBarH, TRACK);
-        int fillH = (int) Math.round(tempBarH * Mth.clamp(temperature / 100.0D, 0.0D, 1.0D));
+        int tempBarH = 81;
+        PanelStyle.well(graphics, tempBarX, tempBarY, tempBarW, tempBarH);
+        int fillH = (int) Math.round((tempBarH - 2) * Mth.clamp(temperature / 100.0D, 0.0D, 1.0D));
         if (fillH > 0) {
-            graphics.fill(tempBarX, tempBarY + tempBarH - fillH,
-                    tempBarX + tempBarW, tempBarY + tempBarH, temperatureColor(temperature));
+            graphics.fill(tempBarX + 1, tempBarY + tempBarH - 1 - fillH,
+                    tempBarX + tempBarW - 1, tempBarY + tempBarH - 1, temperatureColor(temperature));
         }
         drawTempMarker(graphics, tempBarX, tempBarY, tempBarW, tempBarH, ReactorState.OPTIMAL_TEMP_MIN);
         drawTempMarker(graphics, tempBarX, tempBarY, tempBarW, tempBarH, ReactorState.OPTIMAL_TEMP_MAX);
 
-        graphics.drawString(font, "负载: " + load + " 千瓦", x + 312, y + 64, BLUE, false);
-        graphics.drawString(font, "输出: " + output + " 千瓦", x + 312, y + 142, YELLOW, false);
-        drawGraph(graphics, x + 312, y + 84, 76, 50);
-        if (melted) {
-            graphics.drawString(font, "已熔毁", x + 292, y + 158, RED, false);
-        }
+        graphics.drawString(font, "负载  " + load + " kW", 333, 72, BLUE, false);
+        graphics.drawString(font, "输出  " + output + " kW", 333, 174, YELLOW, false);
+        drawGraph(graphics, 332, 85, 111, 81);
 
-        // 耐久条只在独立修理窗口里；这里仅提示损坏状态。
         if (data(ReactorMenu.DATA_CONDITION) <= 0) {
-            graphics.drawString(font, "已损坏，需要螺丝刀", x + 10, y + 200, RED, false);
+            graphics.drawString(font, melted ? "已熔毁" : "已损坏，需要螺丝刀", 12, 195, RED, false);
         }
 
         // 快捷栏格子底；上面那 27 格是装备背包区，由 BagOverlay 整块画。
@@ -281,25 +243,25 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
         if (button == 0) {
             boolean powerOn = data(ReactorMenu.DATA_POWER_ON) != 0;
             boolean auto = data(ReactorMenu.DATA_AUTO) != 0;
-            if (inRect(mouseX, mouseY, 288, 26, 56, 34)) {
+            if (inRect(mouseX, mouseY, AUTO_X, TOP_CONTROLS_Y, 71, 25)) {
                 if (powerOn) {
                     send(ReactorActionPacket.TOGGLE_AUTO, 0);
                 }
                 return true;
             }
-            if (inRect(mouseX, mouseY, 346, 24, 42, 36)) {
+            if (inRect(mouseX, mouseY, POWER_X, TOP_CONTROLS_Y, 42, 25)) {
                 send(ReactorActionPacket.TOGGLE_POWER, 0);
                 return true;
             }
-            if (inRect(mouseX, mouseY, 292, 62, 16, 16)) {
+            if (inRect(mouseX, mouseY, BOOST_X, BOOST_UP_Y, 14, 14)) {
                 send(ReactorActionPacket.TEMP_BOOST_UP, 0);
                 return true;
             }
-            if (inRect(mouseX, mouseY, 292, 140, 16, 16)) {
+            if (inRect(mouseX, mouseY, BOOST_X, BOOST_DOWN_Y, 14, 14)) {
                 send(ReactorActionPacket.TEMP_BOOST_DOWN, 0);
                 return true;
             }
-            if (powerOn && !auto) {
+            if (powerOn && !auto && data(ReactorMenu.DATA_MELTED) == 0) {
                 if (inRect(mouseX, mouseY, SLIDER1_X - 3, SLIDER_Y - 4, SLIDER_W + 6, 18)) {
                     draggingFission = true;
                     send(ReactorActionPacket.SET_FISSION, sliderValue(mouseX, SLIDER1_X));
@@ -340,7 +302,7 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
     }
 
     private int sliderValue(double mouseX, int sliderX) {
-        double t = Mth.clamp((mouseX - (leftPos + sliderX)) / SLIDER_W, 0.0D, 1.0D);
+        double t = Mth.clamp((mouseX - leftPos - sliderX - 4) / (SLIDER_W - 8), 0.0D, 1.0D);
         return (int) Math.round(t * 100.0D);
     }
 
@@ -351,15 +313,13 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
 
     // ------------------------------------------------------------------ 绘图工具
 
-    private void slotBg(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x - 1, y - 1, x + 19, y + 19, 0xFF0A0F0C);
-        graphics.fill(x, y, x + 18, y + 18, 0xFF111812);
+    private void slotBg(GuiGraphics g, int x, int y) {
+        PanelStyle.slot(g, x - 1, y - 1);
     }
 
-    private static void drawLamp(GuiGraphics graphics, int cx, int cy, int color) {
-        graphics.fill(cx - 3, cy - 3, cx + 3, cy + 3, color);
-        graphics.fill(cx - 4, cy - 2, cx + 4, cy + 2, color);
-        graphics.fill(cx - 2, cy - 4, cx + 2, cy + 4, color);
+    private void drawStatus(GuiGraphics g, int x, int y, String label, boolean active) {
+        PanelStyle.lamp(g, x, y, active, RED);
+        g.drawString(font, label, x + 10, y - 4, active ? TEXT : DIM, false);
     }
 
     private static void drawCircle(GuiGraphics graphics, int cx, int cy, int radius, int color) {
@@ -390,7 +350,7 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
         // 表盘（上半圆）
         for (int dy = -radius; dy <= 0; dy++) {
             int dx = (int) Math.sqrt(radius * radius - dy * dy);
-            graphics.fill(cx - dx, pivotY + dy, cx + dx + 1, pivotY + dy + 1, 0xFF0A0F0C);
+            graphics.fill(cx - dx, pivotY + dy, cx + dx + 1, pivotY + dy + 1, 0xFF18252B);
         }
         graphics.fill(cx - radius, pivotY, cx + radius + 1, pivotY + 1, EDGE);
         // 彩色量程环
@@ -418,15 +378,11 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
             int x1 = (int) Math.round(cx + Math.cos(angle) * radius);
             int y1 = (int) Math.round(pivotY + Math.sin(angle) * radius);
             drawLine(graphics, x0, y0, x1, y1, EDGE, 1);
-            if (v > 0) {
+            if (v == 20 || v == 50 || v == 80) {
                 String text = Integer.toString(v);
                 int tx = (int) Math.round(cx + Math.cos(angle) * (radius - 16));
                 int ty = (int) Math.round(pivotY + Math.sin(angle) * (radius - 16));
-                graphics.pose().pushPose();
-                graphics.pose().translate(tx, ty, 0);
-                graphics.pose().scale(0.75F, 0.75F, 1.0F);
-                graphics.drawString(font, text, -font.width(text) / 2, -4, TEXT, false);
-                graphics.pose().popPose();
+                graphics.drawCenteredString(font, text, tx, ty - 3, TEXT);
             }
         }
         // 指针
@@ -440,21 +396,6 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
         // 标签
         graphics.drawString(font, label, cx - font.width(label) / 2,
                 pivotY - radius - 12, TEXT, false);
-    }
-
-    private void drawSlider(GuiGraphics graphics, int x, int y, int width, int value,
-                            boolean enabled) {
-        graphics.fill(x, y, x + width, y + 6, TRACK);
-        graphics.fill(x, y, x + width, y + 1, EDGE);
-        for (int tick = 25; tick < 100; tick += 25) {
-            int tx = x + width * tick / 100;
-            graphics.fill(tx, y, tx + 1, y + 6, EDGE);
-        }
-        int knob = x + Math.round(width * value / 100.0F);
-        graphics.fill(knob - 3, y - 4, knob + 4, y + 10,
-                enabled ? 0xFFB8C0B4 : 0xFF4A544B);
-        graphics.fill(knob - 2, y - 3, knob + 3, y - 1,
-                enabled ? 0xFFE8E2D0 : 0xFF5C665D);
     }
 
     private static int temperatureColor(double temperature) {
@@ -477,22 +418,20 @@ public class ReactorScreen extends ScaledContainerScreen<ReactorMenu> {
     }
 
     private void drawButton(GuiGraphics graphics, int x, int y, int size, String label) {
-        graphics.fill(x, y, x + size, y + size, BUTTON_FACE);
-        graphics.fill(x, y, x + size, y + 1, BUTTON_BORDER);
-        graphics.fill(x, y + size - 1, x + size, y + size, BUTTON_BORDER);
-        graphics.fill(x, y, x + 1, y + size, BUTTON_BORDER);
-        graphics.fill(x + size - 1, y, x + size, y + size, BUTTON_BORDER);
-        graphics.drawString(font, label, x + (size - font.width(label)) / 2,
-                y + (size - 8) / 2, BUTTON_TEXT, false);
+        PanelStyle.control(graphics, x, y, size, size, true, false);
+        graphics.drawCenteredString(font, label, x + size / 2, y + 3, TEXT);
     }
 
     private void drawGraph(GuiGraphics graphics, int x, int y, int width, int height) {
-        graphics.fill(x, y, x + width, y + height, TRACK);
-        graphics.fill(x, y, x + width, y + 1, EDGE);
-        graphics.fill(x, y + height - 1, x + width, y + height, EDGE);
-        graphics.fill(x, y, x + 1, y + height, EDGE);
-        graphics.fill(x + width - 1, y, x + width, y + height, EDGE);
-        double max = 10000.0D;
+        PanelStyle.well(graphics, x, y, width, height);
+        for (int i = 1; i < 4; i++) {
+            int gridY = y + i * height / 4;
+            graphics.fill(x + 1, gridY, x + width - 1, gridY + 1, 0xFF202F36);
+        }
+        double max = Math.max(1000.0D, data(ReactorMenu.DATA_CAPACITY));
+        for (int i = 0; i < GRAPH_SAMPLES; i++) {
+            max = Math.max(max, Math.max(loadHistory[i], outputHistory[i]));
+        }
         for (int i = 0; i < GRAPH_SAMPLES - 1; i++) {
             double ov = Math.min(outputHistory[i], max);
             double ov2 = Math.min(outputHistory[i + 1], max);

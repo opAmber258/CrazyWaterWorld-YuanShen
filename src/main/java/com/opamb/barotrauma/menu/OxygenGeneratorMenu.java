@@ -38,14 +38,14 @@ public class OxygenGeneratorMenu extends DeviceMenu {
     public static final int HOTBAR_START = INV_START + 27;
     public static final int HOTBAR_END = HOTBAR_START + 9;
 
-    public static final int INV_AREA_X = 12;
-    public static final int INV_AREA_Y = 206;
+    public static final int INV_AREA_X = 32;
+    public static final int INV_AREA_Y = 138;
     public static final int INV_AREA_W = 160;
     public static final int INV_AREA_H = 54;
 
     /** 五个瓶槽：横向一排，整块居中。 */
-    public static final int TANK_ROW_X = 59;
-    public static final int TANK_ROW_Y = 44;
+    public static final int TANK_ROW_X = 55;
+    public static final int TANK_ROW_Y = 48;
     public static final int TANK_PITCH = 22;
 
     private final BlockPos pos;

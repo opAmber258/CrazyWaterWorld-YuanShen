@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.ship;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 
 /**
  * 一个能向船上电网放电/从电网充电的储能设备（目前是电池）。
@@ -13,6 +14,18 @@ public interface PowerStorage {
 
     /** 存电量（kW·min）；原作 Capacity/Charge 的单位。 */
     double storedKwm();
+
+    /** Available charge read from the server's authoritative grid, or from the device off-grid. */
+    double weaponCharge(ServerLevel level);
+
+    /** Broken or disabled storage does not participate in the gun's input. */
+    boolean weaponOutputEnabled();
+
+    /** Rated output on a dedicated connection. */
+    double weaponMaxOutputKw();
+
+    /** Applies one share of a pulse validated on the server thread. */
+    void consumeWeaponCharge(ServerLevel level, double amount);
 
     /** 额定容量（kW·min）。 */
     double capacityKwm();

@@ -38,7 +38,7 @@ public final class TreatmentRenderer {
         return DISPLAY_NAMES.getOrDefault(type.id(), type.id()) + " " + percent + "%";
     }
 
-    private static final int HEALTHY = 0xFF5A6472;
+    private static final int HEALTHY = 0xFF6E593F;
     private static final int HOVER_BORDER = 0xFFFFFFFF;
 
     /** 身体图总高度（头部 14 + 躯干 30 + 间隙 + 腿 26 ≈ 74）。 */
@@ -62,6 +62,11 @@ public final class TreatmentRenderer {
      *  头部着色包含头部指示型全身病症（阿片中毒会让头部变色——用户指令）。 */
     public static void draw(GuiGraphics g, List<Zone> zones, List<String> rows,
                             double mouseX, double mouseY) {
+        draw(g, zones, rows, mouseX, mouseY, null);
+    }
+
+    public static void draw(GuiGraphics g, List<Zone> zones, List<String> rows,
+                            double mouseX, double mouseY, Limb selected) {
         for (Zone zone : zones) {
             double worst = worstRatio(rows, zone.limb());
             if (zone.limb() == Limb.HEAD) {
@@ -76,14 +81,21 @@ public final class TreatmentRenderer {
                 }
             }
             int fill = worst > 0 ? severityColor(worst) : HEALTHY;
-            g.fill(zone.x(), zone.y(), zone.x() + zone.w(), zone.y() + zone.h(), fill);
             boolean hover = mouseX >= zone.x() && mouseX < zone.x() + zone.w()
                     && mouseY >= zone.y() && mouseY < zone.y() + zone.h();
-            if (hover) {
-                g.fill(zone.x() - 1, zone.y() - 1, zone.x() + zone.w() + 1, zone.y(), HOVER_BORDER);
-                g.fill(zone.x() - 1, zone.y() + zone.h(), zone.x() + zone.w() + 1, zone.y() + zone.h() + 1, HOVER_BORDER);
-                g.fill(zone.x() - 1, zone.y(), zone.x(), zone.y() + zone.h(), HOVER_BORDER);
-                g.fill(zone.x() + zone.w(), zone.y(), zone.x() + zone.w() + 1, zone.y() + zone.h(), HOVER_BORDER);
+            int trace = hover || selected == zone.limb() ? HOVER_BORDER
+                    : worst > 0 ? fill : 0xFFD3AA6A;
+            double radius = zone.w() * 0.5D;
+            int center = zone.x() + zone.w() / 2;
+            for (int row = 0; row < zone.h(); row++) {
+                double v = 2.0D * (row + 0.5D) / zone.h() - 1.0D;
+                int half = Math.max(1, (int) Math.round(radius * Math.sqrt(1.0D - v * v)));
+                int y = zone.y() + row;
+                g.fill(center - half, y, center + half, y + 1, trace);
+                if (half > 1) {
+                    int core = row % 3 == 0 ? fill : (fill & 0x00FFFFFF) | 0xBD000000;
+                    g.fill(center - half + 1, y, center + half - 1, y + 1, core);
+                }
             }
         }
     }

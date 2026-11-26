@@ -122,6 +122,9 @@ public class BatteryBlock extends BaseEntityBlock {
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, net.minecraft.world.phys.BlockHitResult hit) {
+        if (player.getItemInHand(hand).getItem() instanceof com.opamb.barotrauma.item.TurretBinderItem) {
+            return InteractionResult.PASS;
+        }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             boolean physical = com.opamb.barotrauma.ship.vs.VsState.active()
                     && com.opamb.barotrauma.ship.vs.VsPilot.isYardBlock(pos);

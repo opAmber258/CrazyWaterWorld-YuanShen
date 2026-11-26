@@ -26,11 +26,12 @@ import org.lwjgl.opengl.GL11;
 public final class UnderwaterEffects {
 
     // Barotrauma's 1920px reference view, at centered and farthest forward human camera positions.
-    private static final SeaView HUMAN_SEA_VIEW = new SeaView(7.4F, 18.7F);
+    static final SeaView HUMAN_SEA_VIEW = new SeaView(7.4F, 18.7F);
+    static final SeaView LIT_SEA_VIEW = new SeaView(20.0F, CoilgunLightShadow.REACH);
     private static final float SCENE_FOG_NEAR = 20.0F;
     private static final float SCENE_FOG_FAR = 72.0F;
 
-    record WaterLight(float red, float green, float blue, float seaDensity) {
+    record WaterLight(float red, float green, float blue) {
     }
 
     record SeaView(float near, float far) {
@@ -38,6 +39,8 @@ public final class UnderwaterEffects {
 
     /** 上一次的浸没判定，只在切换时打日志，方便核对舱内滤镜。 */
     private static boolean lastSubmerged;
+    private static ClientLevel particleLevel;
+    private static long lastEntryBubbles;
 
     private UnderwaterEffects() {
     }
@@ -66,8 +69,12 @@ public final class UnderwaterEffects {
         if (DeepBrightnessDebug.seaFogDisabled() || !OceanEnvironment.isInOcean(mc.level, eye)) {
             return;
         }
-        SeaView view = !ShipWaterMaterial.refractionAvailable() && isOpenOcean(mc.level, eye)
-                ? seaView(eye.y) : sceneView(eye.y);
+        SeaView view = sceneView(eye.y);
+        if (isOpenOcean(mc.level, eye)) {
+            // Only the screen pass extends visibility for illuminated surfaces.
+            view = ShipWaterMaterial.refractionAvailable()
+                    ? new SeaView(LIT_SEA_VIEW.far(), LIT_SEA_VIEW.far() + 16.0F) : HUMAN_SEA_VIEW;
+        }
         event.setNearPlaneDistance(view.near());
         event.setFarPlaneDistance(view.far());
         event.setFogShape(FogShape.SPHERE);
@@ -86,27 +93,55 @@ public final class UnderwaterEffects {
             return;
         }
         Vec3 pos = camera.getPosition();
+        long tick = level.getGameTime();
+        if (particleLevel != level) {
+            lastSubmerged = false;
+            lastEntryBubbles = tick - 20;
+            particleLevel = level;
+        }
         boolean submerged = OceanEnvironment.isSubmerged(level, pos);
+        boolean enteredWater = submerged && !lastSubmerged;
         if (submerged != lastSubmerged) {
             lastSubmerged = submerged;
             BarotraumaMod.LOGGER.info("[water] 客户端浸没切换：submerged={} pos=({},{},{})",
                     submerged, pos.x, pos.y, pos.z);
         }
         ParticleStatus particles = mc.options.particles().get();
-        if (!OceanEnvironment.isInOcean(level, pos) || particles == ParticleStatus.MINIMAL
-                || (particles == ParticleStatus.DECREASED && level.getGameTime() % 2 != 0)) {
+        if (!OceanEnvironment.isInOcean(level, pos) || particles == ParticleStatus.MINIMAL) {
             return;
         }
         var random = level.random;
-        Vec3 offset = new Vec3((random.nextDouble() - 0.5D) * 27.0D,
-                (random.nextDouble() - 0.5D) * 15.0D, (random.nextDouble() - 0.5D) * 27.0D);
-        Vec3 mote = pos.add(offset);
-        // 采样出生点，船窗外也能看到悬浮物。每刻最多生成一粒。
-        if (offset.lengthSqr() >= 5.0D && isOpenOcean(level, mote)) {
-            level.addParticle(ModParticles.MARINE_SNOW.get(), mote.x, mote.y, mote.z,
-                    0.006D + random.nextDouble() * 0.006D,
-                    -0.002D - random.nextDouble() * 0.004D,
-                    (random.nextDouble() - 0.4D) * 0.009D);
+        if (particles == ParticleStatus.ALL || tick % 2 == 0) {
+            Vec3 ahead = Vec3.directionFromRotation(camera.getXRot(), camera.getYRot());
+            Vec3 right = Vec3.directionFromRotation(0.0F, camera.getYRot() + 90.0F);
+            Vec3 up = right.cross(ahead);
+            spawnMote(level, pos, ahead, right, up, 7.0 + random.nextDouble() * 9.0);
+            if (submerged && particles == ParticleStatus.ALL) {
+                spawnMote(level, pos, ahead, right, up, 2.2 + random.nextDouble() * 4.8);
+            }
+        }
+        if (enteredWater && !TurretClient.isActive() && tick - lastEntryBubbles >= 16) {
+            Vec3 mouth = mc.player.getEyePosition().add(mc.player.getLookAngle().scale(0.38)).add(0, -0.14, 0);
+            if (isOpenOcean(level, mouth)) {
+                lastEntryBubbles = tick;
+                for (int i = 0; i < 3; i++) {
+                    level.addParticle(ModParticles.TURRET_BUBBLE.get(), mouth.x, mouth.y, mouth.z,
+                            (random.nextDouble() - 0.5) * 0.08, 0.03 + random.nextDouble() * 0.03,
+                            (random.nextDouble() - 0.5) * 0.08);
+                }
+            }
+        }
+    }
+
+    private static void spawnMote(ClientLevel level, Vec3 eye, Vec3 ahead, Vec3 right, Vec3 up, double distance) {
+        var random = level.random;
+        Vec3 point = eye.add(ahead.scale(distance))
+                .add(right.scale((random.nextDouble() - 0.5) * distance * 1.8))
+                .add(up.scale((random.nextDouble() - 0.5) * distance * 1.15));
+        if (isOpenOcean(level, point)) {
+            level.addParticle(ModParticles.MARINE_SNOW.get(), point.x, point.y, point.z,
+                    (random.nextDouble() - 0.5) * 0.006, 0.004 + random.nextDouble() * 0.002,
+                    (random.nextDouble() - 0.5) * 0.006);
         }
     }
 
@@ -136,12 +171,7 @@ public final class UnderwaterEffects {
         float depth = depthAt(y);
         float light = 1.0F - depth;
         // ColdCaverns.xml uses (0,25,40) over a (0,0,5) background.
-        return new WaterLight(0.0F, 25.0F * light / 255.0F, (5.0F + 35.0F * light) / 255.0F,
-                0.15F + depth * 0.20F);
-    }
-
-    static SeaView seaView(double y) {
-        return TurretClient.isActive() ? sceneView(y) : HUMAN_SEA_VIEW;
+        return new WaterLight(0.0F, 25.0F * light / 255.0F, (5.0F + 35.0F * light) / 255.0F);
     }
 
     private static SeaView sceneView(double y) {

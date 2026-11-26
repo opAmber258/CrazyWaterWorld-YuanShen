@@ -13,9 +13,11 @@
         {"name": "WaveTime", "type": "float", "count": 1, "values": [0]},
         {"name": "EyeWet", "type": "float", "count": 1, "values": [0]},
         {"name": "VolumeFill", "type": "float", "count": 1, "values": [0]},
-        {"name": "WaterLight", "type": "float", "count": 4, "values": [0.0, 0.09804, 0.15686, 0.15]},
+        {"name": "WaterLight", "type": "float", "count": 3, "values": [0.0, 0.09804, 0.15686]},
         {"name": "SeaEye", "type": "float", "count": 1, "values": [0]},
         {"name": "SeaBounds", "type": "float", "count": 2, "values": [0, 0]},
+        {"name": "SeaWavePhase", "type": "float", "count": 2, "values": [0, 0]},
+        {"name": "LitSeaRange", "type": "float", "count": 2, "values": [20, 50]},
         {"name": "SeaRange", "type": "float", "count": 2, "values": [7.4, 18.7]},
         {"name": "ViewUp", "type": "float", "count": 3, "values": [0, 1, 0]}
     ]

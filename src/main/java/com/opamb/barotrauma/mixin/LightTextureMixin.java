@@ -18,6 +18,9 @@ import org.spongepowered.asm.mixin.injection.Slice;
 @Mixin(LightTexture.class)
 public class LightTextureMixin {
 
+    // Keep a neutral material sample of roughly 14/255 in a dark compartment.
+    @Unique private static final float CABIN_AMBIENT_MIX = 0.074F;
+
     @ModifyConstant(method = "updateLightTexture",
             constant = @Constant(floatValue = 0.04F, ordinal = 0))
     private float barotrauma$removeAmbientFloor(float original) {
@@ -34,7 +37,7 @@ public class LightTextureMixin {
         // 0.75 × 0.006 × 255 向下取整为 1。合成时会把这个底色从暗处去掉。
         Minecraft mc = Minecraft.getInstance();
         float materialFloor = FlashlightRenderer.dimCabin(mc, mc.gameRenderer.getMainCamera())
-                ? 0.016F : FlashlightRenderer.retainsDarkMaterial() ? 0.006F : 0.0F;
+                ? CABIN_AMBIENT_MIX : FlashlightRenderer.retainsDarkMaterial() ? 0.006F : 0.0F;
         return Math.max(materialFloor, DeepBrightnessDebug.ambientMix());
     }
 

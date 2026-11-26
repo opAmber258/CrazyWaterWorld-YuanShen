@@ -10,6 +10,7 @@ import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.world.StarterSub;
+import com.opamb.barotrauma.menu.SonarMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -64,15 +65,42 @@ public class EngineBlockEntity extends BlockEntity
         super(type, pos, state);
     }
 
+    private ShipState ship(ServerLevel level) {
+        return VsState.isPhysical(level, worldPosition) ? VsState.activeState()
+                : com.opamb.barotrauma.ship.ShipCores.stateOwning(level, worldPosition, 64.0D);
+    }
+
+    private static boolean helmHasControl(ServerLevel level, ShipState ship) {
+        if (ship.helmHasControl(level.getGameTime())) return true;
+        for (var player : level.players()) {
+            if (player.containerMenu instanceof SonarMenu menu && menu.controls(ship, player)) return true;
+        }
+        return false;
+    }
+
+    public enum Control { UNAVAILABLE, LOCAL, HELM }
+
+    public Control controlMode() {
+        if (!(level instanceof ServerLevel server) || isRemoved() || condition.broken()
+                || !VsState.isPhysical(server, worldPosition)) return Control.UNAVAILABLE;
+        ShipState ship = VsState.activeState();
+        if (ship == null || !ship.tracksHullBlock(VsPilot.toAssembly(worldPosition))) return Control.UNAVAILABLE;
+        return helmHasControl(server, ship) ? Control.HELM : Control.LOCAL;
+    }
+
+    public boolean setLocalForce(int force) {
+        if (controlMode() != Control.LOCAL) return false;
+        VsState.activeState().setLocalEngineForce(VsPilot.toAssembly(worldPosition), force);
+        return true;
+    }
+
     public static void serverTick(Level level, BlockPos pos, BlockState state,
                                   EngineBlockEntity be) {
         if (!(level instanceof ServerLevel server) || be.isRemoved()) {
             return;
         }
-        boolean physical = VsState.active() && VsPilot.activeLevel() == server && VsPilot.isYardBlock(pos);
-        // 引擎常在船尾。按几何归属找核心，附近另一艘物理船不会抢走这个引擎。
-        ShipState ship = physical ? VsState.activeState()
-                : com.opamb.barotrauma.ship.ShipCores.stateOwning(server, pos, 64.0D);
+        boolean physical = VsState.isPhysical(server, pos);
+        ShipState ship = be.ship(server);
         if (ship == null) {
             be.currentForce = 0.0D;
             be.lastTargetForce = 0.0D;
@@ -99,6 +127,13 @@ public class EngineBlockEntity extends BlockEntity
         if (physical) {
             targetForce *= ship.helmForward();
         }
+        if (physical && ship.hasLocalEngineControl()) {
+            if (helmHasControl(server, ship)) {
+                ship.clearLocalEngineControl();
+            } else {
+                targetForce = ship.localEngineForce(cell);
+            }
+        }
         double driveTarget = PowerGrid.canRun(be.lastSupply, be.minVoltage()) ? targetForce : 0.0D;
         double dt = 1.0D / 20.0D;
         be.currentForce += (driveTarget - be.currentForce) * (1.0D - Math.exp(-10.0D * dt));
@@ -122,6 +157,7 @@ public class EngineBlockEntity extends BlockEntity
             be.setChanged();
         }
         if (be.condition.broken()) {
+            ship.setLocalEngineForce(cell, 0);
             be.currentForce = 0.0D;
             be.lastTargetForce = targetForce;
             be.lastDemandKw = 0.0D;

@@ -35,15 +35,17 @@ public class BatteryMenu extends DeviceMenu {
     public static final int DATA_BOUND = 4;
 
     public static final int DATA_MAX_RECHARGE = 5;
-    public static final int DATA_COUNT = 6;
+    public static final int DATA_GRID_CONNECTED = 6;
+    public static final int DATA_GRID_FLOW = 7;
+    public static final int DATA_COUNT = 8;
 
     /** 玩家主物品栏 27 格的菜单位置（这 27 格会被换成装备背包 + 禁用占位）。 */
     public static final int INV_START = BatteryBlockEntity.CELL_SLOTS;
     public static final int HOTBAR_START = INV_START + 27;
     public static final int HOTBAR_END = HOTBAR_START + 9;
     /** 物品栏区域（GUI 局部坐标）。 */
-    public static final int INV_AREA_X = 12;
-    public static final int INV_AREA_Y = 206;
+    public static final int INV_AREA_X = 42;
+    public static final int INV_AREA_Y = 164;
     public static final int INV_AREA_W = 160;
     public static final int INV_AREA_H = 54;
 
@@ -76,6 +78,8 @@ public class BatteryMenu extends DeviceMenu {
                         case DATA_CONDITION -> (int) Math.round(battery.condition() * 10.0D);
                         case DATA_MAX_RECHARGE -> (int) Math.round(battery.maxRechargeKw());
                         case DATA_BOUND -> battery.storageBox() == null ? 0 : 1;
+                        case DATA_GRID_CONNECTED -> battery.gridConnected() ? 1 : 0;
+                        case DATA_GRID_FLOW -> (int) Math.round(battery.gridFlowKw());
                         default -> 0;
                     };
                 }

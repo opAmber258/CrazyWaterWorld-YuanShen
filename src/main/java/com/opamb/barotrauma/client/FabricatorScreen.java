@@ -44,8 +44,6 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
     private static final int H = 336;
 
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int PANEL = PanelStyle.RECESS;
-    private static final int INNER = 0xFF121A15;
     private static final int TEXT = PanelStyle.TEXT;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.AMBER;
@@ -257,7 +255,10 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
         int y = topPos;
         PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
         // 中缝：左列表 / 右详情（原作的 VerticalLine）
-        graphics.fill(x + 200, y + 20, x + 201, y + 196, EDGE);
+        PanelStyle.divider(graphics, 12, 19, W - 24);
+        PanelStyle.well(graphics, 198, 21, 238, 173);
+        PanelStyle.divider(graphics, 12, 202, W - 24);
+        PanelStyle.divider(graphics, 12, 242, W - 24);
 
         // 左侧分类按钮（原作左侧竖排那一列）
         List<String> categories = categories();
@@ -269,7 +270,7 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
         }
 
         // 配方列表
-        graphics.fill(x + LIST_X - 2, y + LIST_Y - 2, x + LIST_X + LIST_W + 2, y + 190, INNER);
+        PanelStyle.well(graphics, x + LIST_X - 2, y + LIST_Y - 2, LIST_W + 4, 192 - LIST_Y);
         List<FabricatorCatalog.Recipe> recipes = visibleRecipes();
         scroll = Mth.clamp(scroll, 0, Math.max(0, recipes.size() - MAX_ROWS));
         int rows = Math.min(MAX_ROWS, Math.max(0, recipes.size() - scroll));
@@ -281,7 +282,7 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
                     && mouseY >= rowY && mouseY < rowY + ROW;
             if (chosen || hovered) {
                 graphics.fill(x + LIST_X, rowY, x + LIST_X + LIST_W, rowY + ROW,
-                        chosen ? PANEL : 0xFF1A241D);
+                        chosen ? PanelStyle.SELECTED : 0xFF15272C);
             }
             ItemStack result = FabricatorData.result(recipe);
             graphics.renderItem(result, x + LIST_X, rowY - 2);
@@ -309,7 +310,7 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
                 Component.translatable(working
                         ? "gui.barotrauma.fabricator.cancel"
                         : "gui.barotrauma.fabricator.start").getString(),
-                canCraft, mouseX, mouseY);
+                working || canCraft, mouseX, mouseY);
 
         int progress = menu.data().get(FabricatorMenu.DATA_PROGRESS);
         graphics.fill(x + 206, y + 178, x + 432, y + 188, TRACK);
@@ -347,8 +348,7 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
         int bx = x + 6;
         int by = y + 26 + index * 24;
         boolean hovered = mouseX >= bx && mouseX < bx + 34 && mouseY >= by && mouseY < by + 20;
-        graphics.fill(bx, by, bx + 34, by + 20, active ? PANEL : (hovered ? 0xFF1A241D : 0xFF171F1A));
-        graphics.fill(bx, by, bx + 34, by + 1, EDGE);
+        PanelStyle.control(graphics, bx, by, 34, 20, true, active || hovered);
         graphics.drawString(font, label, bx + (34 - font.width(label)) / 2, by + 6,
                 active ? ACCENT : DIM, false);
     }
@@ -356,16 +356,13 @@ public class FabricatorScreen extends ScaledContainerScreen<FabricatorMenu> {
     private void drawButton(GuiGraphics graphics, int x, int y, int w, int h, String label,
                             boolean active, int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
-        graphics.fill(x, y, x + w, y + h, active ? (hovered ? 0xFF2C4034 : PANEL) : 0xFF171F1A);
-        graphics.fill(x, y, x + w, y + 1, EDGE);
-        graphics.fill(x, y + h - 1, x + w, y + h, EDGE);
+        PanelStyle.control(graphics, x, y, w, h, active, hovered && active);
         graphics.drawString(font, label, x + (w - font.width(label)) / 2,
                 y + (h - 8) / 2 + 1, active ? TEXT : DIM, false);
     }
 
     private void slotBg(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 18, y + 18, 0xFF8B8B8B);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF373737);
+        PanelStyle.slot(graphics, x, y);
     }
 
     /* ---------------------------------------------------------------- 交互 */

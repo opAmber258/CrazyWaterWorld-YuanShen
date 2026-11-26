@@ -1,7 +1,11 @@
 package com.opamb.barotrauma.client;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.ClientConfig;
+import com.opamb.barotrauma.block.CoilgunBlock;
 import com.opamb.barotrauma.block.FreeAimTurretBlock;
+import com.opamb.barotrauma.entity.CoilgunBolt;
+import com.opamb.barotrauma.ship.vs.VsClientTurret;
 import com.opamb.barotrauma.block.HullBlock;
 import com.opamb.barotrauma.block.TrackingTurretBlock;
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
@@ -10,6 +14,7 @@ import com.opamb.barotrauma.network.TurretAimPacket;
 import com.opamb.barotrauma.network.TurretExitPacket;
 import com.opamb.barotrauma.network.TurretFirePacket;
 import com.opamb.barotrauma.network.TurretModePacket;
+import com.opamb.barotrauma.network.CoilgunShotPacket;
 import com.opamb.barotrauma.network.TurretStatePacket;
 import com.opamb.barotrauma.registry.ModParticles;
 import com.opamb.barotrauma.registry.ModShipBlocks;
@@ -174,6 +179,23 @@ public final class TurretClient {
     private static int cooldown;
     /** 服务端同步的武器状态：决定 HUD 怎么画、空弹/无电时是否发开火包。 */
     private static boolean syncedUsesAmmo;
+    private static float chargeFraction;
+    private static float minimumChargeFraction;
+    private static boolean loaderBroken;
+    private static boolean boxPresent;
+    private static float shipYaw;
+    private static int noPowerFlash;
+    private static int loaderFlash;
+    private static float actualYaw;
+    private static float actualPitch;
+
+    public static float chargeFraction() { return chargeFraction; }
+    public static float minimumChargeFraction() { return minimumChargeFraction; }
+    public static boolean loaderBroken() { return loaderBroken; }
+    public static boolean boxPresent() { return boxPresent; }
+    public static int noPowerFlash() { return noPowerFlash; }
+    public static int loaderFlash() { return loaderFlash; }
+
     private static int syncedAmmoShots;
     private static boolean syncedPowered = true;
     /** 服务端下发的射击模式：true = 全自动（5 发/秒）。 */
@@ -339,12 +361,14 @@ public final class TurretClient {
         if (minecraft.level == null) {
             return null;
         }
-        // 服务端给的世界镜头位置优先：船坞坐标不能直接拿来画。
-        if (activeCamera != null) {
-            return activeCamera;
-        }
         BlockState state = minecraft.level.getBlockState(activePos);
-        return TurretBlockEntity.cameraPosition(state, activePos);
+        if (state.getBlock() instanceof CoilgunBlock) {
+            Vec3 sight = CoilgunBlock.sight(state, activePos, aimYaw, aimPitch);
+            return VsClientTurret.toWorld(minecraft.level, activePos, sight);
+        }
+        Vec3 local = TurretBlockEntity.cameraPosition(state, activePos);
+        Vec3 rendered = VsClientTurret.toWorld(minecraft.level, activePos, local);
+        return rendered != local || activeCamera == null ? rendered : activeCamera;
     }
 
     /** 世界瞄准方向；安装面只影响放置外观，不改变操作。 */
@@ -352,13 +376,35 @@ public final class TurretClient {
         return lookVector(aimYaw, aimPitch);
     }
 
-    /** 相机角度 = 炮塔瞄准角，和落地炮塔完全一致。 */
-    public static float cameraYaw() {
-        return aimYaw;
+    public record CameraAngles(float yaw, float pitch) {}
+
+    public static CameraAngles cameraAngles() {
+        Minecraft mc = Minecraft.getInstance();
+        if (syncedUsesAmmo && mc.level != null && activePos != null) {
+            Vec3 direction = VsClientTurret.directionToWorld(mc.level, activePos, aimDirection());
+            return new CameraAngles((float) Math.toDegrees(Math.atan2(-direction.x, direction.z)),
+                    (float) Math.toDegrees(Math.atan2(-direction.y, Math.hypot(direction.x, direction.z))));
+        }
+        return new CameraAngles(aimYaw + shipYaw, aimPitch);
     }
 
-    public static float cameraPitch() {
-        return aimPitch;
+    @Nullable
+    public static Vec3 coilgunImpact() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || activePos == null) return null;
+        Vec3 muzzle = TurretBlockEntity.muzzlePosition(mc.level.getBlockState(activePos), activePos,
+                actualYaw, actualPitch);
+        Vec3 origin = VsClientTurret.toWorld(mc.level, activePos, muzzle);
+        Vec3 direction = VsClientTurret.directionToWorld(mc.level, activePos, lookVector(actualYaw, actualPitch));
+        Vec3 end = origin.add(direction.scale(CoilgunBolt.RANGE));
+        var hit = mc.level.clip(new ClipContext(origin, end, ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE, mc.player));
+        if (hit.getType() == HitResult.Type.BLOCK) {
+            Vec3 raw = hit.getLocation();
+            Vec3 world = VsClientTurret.toWorld(mc.level, hit.getBlockPos(), raw);
+            if (world.distanceToSqr(origin) < raw.distanceToSqr(origin)) return world;
+        }
+        return hit.getLocation();
     }
 
     private static float clampAimYaw(float yaw) {
@@ -397,11 +443,18 @@ public final class TurretClient {
         if (minecraft.player == null) {
             return;
         }
-        syncedUsesAmmo = state.usesAmmo();
-        syncedAmmoShots = state.ammoShots();
-        syncedPowered = state.powered();
         boolean mine = state.operatorEntityId() == minecraft.player.getId();
         if (mine) {
+            syncedUsesAmmo = state.usesAmmo();
+            syncedAmmoShots = state.ammoShots();
+            syncedPowered = state.powered();
+            chargeFraction = state.chargeFraction();
+            minimumChargeFraction = state.minimumChargeFraction();
+            loaderBroken = state.loaderBroken();
+            boxPresent = state.boxPresent();
+            shipYaw = state.shipYaw();
+            actualYaw = state.yaw();
+            actualPitch = state.pitch();
             // 站台绑定距离不限：炮塔区块没加载时客户端没有方块状态/地形可渲染，
             // 不能把相机丢进虚空。直接回退出包，服务端会清占用。
             if (minecraft.level == null || !minecraft.level.hasChunkAt(state.pos())) {
@@ -498,6 +551,9 @@ public final class TurretClient {
         }
         minecraft.options.setCameraType(previousCameraType);
         active = false;
+        noPowerFlash = 0;
+        loaderFlash = 0;
+        shipYaw = 0;
         activePos = null;
         activeAnchor = null;
         activeCamera = null;
@@ -538,22 +594,28 @@ public final class TurretClient {
         if (!active || activePos == null || cooldown > 0) {
             return;
         }
-        // 空弹/无电时不要先画一道本地曳光再被服务端拒绝。
-        if (syncedUsesAmmo && (!syncedPowered || syncedAmmoShots <= 0)) {
+        if (syncedUsesAmmo && (!syncedPowered || syncedAmmoShots <= 0 || loaderBroken)) {
+            if (!syncedPowered && noPowerFlash == 0) noPowerFlash = 20;
+            else if (syncedPowered && loaderFlash == 0) loaderFlash = 20;
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
         long tick = minecraft.level != null ? minecraft.level.getGameTime() : 0L;
         // startAttack 与全自动轮询可能在同一 tick 各调一次；只允许真正发出一包。
-        if (autoFire && tick == lastFireTick) {
+        if ((autoFire || syncedUsesAmmo) && tick == lastFireTick) {
             return;
         }
         lastFireTick = tick;
+        if (syncedUsesAmmo) sendAimIfChanged();
         ModNetwork.sendToServer(new TurretFirePacket(activePos));
         // 全自动按服务端同款 4 tick 本地门控，避免状态包到达前每 tick 都发包/画曳光；
         // onState 里的 Math.max 再按服务端剩余冷却校正相位。
-        cooldown = autoFire ? TurretBlockEntity.AUTO_FIRE_COOLDOWN_TICKS : LOCAL_COOLDOWN;
-        startBeam();
+        if (syncedUsesAmmo) {
+            cooldown = com.opamb.barotrauma.block.TurretWeaponKind.COILGUN.cooldownTicks();
+        } else {
+            cooldown = autoFire ? TurretBlockEntity.AUTO_FIRE_COOLDOWN_TICKS : LOCAL_COOLDOWN;
+            startBeam();
+        }
     }
 
     /** 由 {@code MouseHandler#turnPlayer} 的 mixin 调用。 */
@@ -563,12 +625,13 @@ public final class TurretClient {
         }
         Minecraft minecraft = Minecraft.getInstance();
 
+        double turretSensitivity = ClientConfig.TURRET_SENSITIVITY.get() / 100.0;
         if (freeAim) {
             // 自由瞄准：鼠标只推光标，视角在渲染帧里限速追它（见 stepFreeAim）。
             // 光标按“屏幕像素”移动（像普通鼠标指针），再用当前 FOV 换算成角度；
             // 不能直接套原版角度灵敏度——宽屏上那会让准心以 2~3 倍指针速度飞。
-            float pixelYaw = (float) deltaX;
-            float pixelPitch = (float) deltaY;
+            float pixelYaw = (float) (deltaX * turretSensitivity);
+            float pixelPitch = (float) (deltaY * turretSensitivity);
             if (minecraft.options.invertYMouse().get()) {
                 pixelPitch = -pixelPitch;
             }
@@ -590,7 +653,7 @@ public final class TurretClient {
         double sensitivity = minecraft.options.sensitivity().get() * 0.6D + 0.2D;
         double scale = sensitivity * sensitivity * sensitivity * 8.0D * 0.15D;
         // 瞄准时降低角度增益：同样的鼠标移动转得更少，配合 FOV 缩放做微调。
-        scale *= mouseAimScale();
+        scale *= mouseAimScale() * turretSensitivity;
         float rawYaw = (float) (deltaX * scale);
         float rawPitch = (float) (deltaY * scale);
         if (minecraft.options.invertYMouse().get()) {
@@ -602,8 +665,10 @@ public final class TurretClient {
         lastTurnNanos = now;
         float maxDelta = TurretBlockEntity.MAX_TURN_PER_SECOND * deltaSeconds;
 
-        aimYaw = clampAimYaw(aimYaw + Mth.clamp(rawYaw, -maxDelta, maxDelta));
-        aimPitch = Mth.clamp(aimPitch + Mth.clamp(rawPitch, -maxDelta, maxDelta),
+        // For coilguns the camera follows input immediately; the server still limits barrel speed.
+        float maxInputStep = syncedUsesAmmo ? 180.0F : maxDelta;
+        aimYaw = clampAimYaw(aimYaw + Mth.clamp(rawYaw, -maxInputStep, maxInputStep));
+        aimPitch = Mth.clamp(aimPitch + Mth.clamp(rawPitch, -maxInputStep, maxInputStep),
                 pitchMin(), pitchMax());
     }
 
@@ -698,6 +763,17 @@ public final class TurretClient {
         spawnMuzzleEffects(origin, direction);
     }
 
+    public static void onCoilgunShot(CoilgunShotPacket packet) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) return;
+        if (minecraft.level.hasChunkAt(packet.turret())
+                && minecraft.level.getBlockEntity(packet.turret()) instanceof TurretBlockEntity turret) {
+            turret.animateCoilgunShot();
+        }
+        spawnFlash(packet.muzzle(), 6, 0.23);
+        spawnMuzzleEffects(packet.muzzle(), packet.direction());
+    }
+
     /** 取一个空闲槽位；理论并发不会占满，真占满就覆盖最早的一发。 */
     private static TurretShotFx acquireShot() {
         for (int i = 0; i < SHOT_SLOTS; i++) {
@@ -772,7 +848,7 @@ public final class TurretClient {
             return null;
         }
         return TurretBlockEntity.muzzlePosition(
-                minecraft.level.getBlockState(activePos), activePos, direction);
+                minecraft.level.getBlockState(activePos), activePos, aimYaw, aimPitch);
     }
 
     /** 每帧推进所有在飞的炮弹特效。 */
@@ -1259,7 +1335,7 @@ public final class TurretClient {
         }
         // 即使不在炮塔里也要清空按键队列，避免进入炮塔后补触发一次切换。
         while (TOGGLE_FIRE_MODE.consumeClick()) {
-            if (active && activePos != null) {
+            if (active && activePos != null && !syncedUsesAmmo) {
                 ModNetwork.sendToServer(new TurretModePacket(activePos));
             }
         }
@@ -1317,12 +1393,14 @@ public final class TurretClient {
         if (!useDown) {
             aimArmed = true;
         }
-        aiming = aimArmed && useDown;
+        aiming = !syncedUsesAmmo && aimArmed && useDown;
+        if (noPowerFlash > 0) noPowerFlash--;
+        if (loaderFlash > 0) loaderFlash--;
         if (cooldown > 0) {
             cooldown--;
         }
         // 全自动：按住左键，冷却归零就补一发；单发只走 startAttack。
-        if (autoFire && minecraft.options.keyAttack.isDown()) {
+        if ((autoFire || syncedUsesAmmo) && minecraft.options.keyAttack.isDown()) {
             requestFire();
         }
         // F5 不能切回第一人称：否则本机模型被剔除，玩家会以为人消失了。
@@ -1330,6 +1408,10 @@ public final class TurretClient {
             minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
         }
 
+        sendAimIfChanged();
+    }
+
+    private static void sendAimIfChanged() {
         if (Math.abs(Mth.wrapDegrees(aimYaw - lastSentYaw)) > 0.05F
                 || Math.abs(aimPitch - lastSentPitch) > 0.05F) {
             ModNetwork.sendToServer(new TurretAimPacket(activePos, aimYaw, aimPitch));
@@ -1424,8 +1506,9 @@ public final class TurretClient {
         if (freeAim) {
             stepFreeAim();
         }
-        float camYaw = cameraYaw();
-        float camPitch = cameraPitch();
+        CameraAngles angles = cameraAngles();
+        float camYaw = angles.yaw();
+        float camPitch = angles.pitch();
         viewYaw = camYaw;
         viewPitch = camPitch;
         event.setYaw(camYaw);

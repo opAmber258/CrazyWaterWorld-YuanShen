@@ -55,6 +55,8 @@ public class BatteryBlockEntity extends BlockEntity
 
     private boolean dugongStock;
     private double chargeKwm;
+    private ShipSimulation reportedGrid;
+    private BlockPos reportedCell;
 
     public void configureDugongBattery(boolean newBoat) {
         if (dugongStock) return;
@@ -62,6 +64,14 @@ public class BatteryBlockEntity extends BlockEntity
         chargeKwm = newBoat ? 500.0D : Math.min(chargeKwm, 500.0D);
         rechargeKw = newBoat || rechargeKw == MAX_RECHARGE_KW ? 160.0D : rechargeKw;
         setChanged();
+    }
+
+    public boolean gridConnected() {
+        return reportedGrid != null && reportedGrid.storageConnected(reportedCell);
+    }
+
+    public double gridFlowKw() {
+        return gridConnected() ? reportedGrid.storageFlowKw(reportedCell) : 0.0D;
     }
 
     public double maxRechargeKw() {
@@ -91,6 +101,8 @@ public class BatteryBlockEntity extends BlockEntity
         if (!(level instanceof ServerLevel server) || be.isRemoved()) {
             return;
         }
+        be.reportedGrid = null;
+        be.reportedCell = null;
         ShipState ship = be.resolveShip(server, pos);
         if (ship == null) {
             return;
@@ -141,7 +153,9 @@ public class BatteryBlockEntity extends BlockEntity
         be.chargeKwm = Mth.clamp(be.chargeKwm, 0.0D, be.capacityKwm());
 
         simulation.reportStorage(cell, be.chargeKwm, be.capacityKwm(),
-                be.dugongStock ? 650.0D : MAX_OUTPUT_KW, be.rechargeKw, be.boundBox, be.condition);
+                be.weaponMaxOutputKw(), be.rechargeKw, be.boundBox, be.condition);
+        be.reportedGrid = simulation;
+        be.reportedCell = cell;
         be.syncChargeLevel(server, pos, state);
         // 原作 PowerContainer 的 OnActive：电池自身电量 >1% 时给槽里的电池 cell
         // 每秒 +2 耐久（Condition="2.0"）。
@@ -238,6 +252,39 @@ public class BatteryBlockEntity extends BlockEntity
     @Override
     public double storedKwm() {
         return chargeKwm;
+    }
+
+    @Override
+    public double weaponCharge(ServerLevel level) {
+        ShipState ship = resolveShip(level, worldPosition);
+        if (ship != null && ship.tracksHullBlock(assemblyPos(worldPosition))) {
+            Double reported = ship.simulation().storageCharge(assemblyPos(worldPosition));
+            if (reported != null) chargeKwm = reported;
+        }
+        return condition > 0 ? chargeKwm : 0;
+    }
+
+    @Override
+    public boolean weaponOutputEnabled() {
+        return condition > 0;
+    }
+
+    @Override
+    public double weaponMaxOutputKw() {
+        return dugongStock ? 650.0D : MAX_OUTPUT_KW;
+    }
+
+    @Override
+    public void consumeWeaponCharge(ServerLevel level, double amount) {
+        chargeKwm = Math.max(0, chargeKwm - amount);
+        ShipState ship = resolveShip(level, worldPosition);
+        BlockPos cell = assemblyPos(worldPosition);
+        if (ship != null && ship.tracksHullBlock(cell)) {
+            ship.simulation().reportStorage(cell, chargeKwm, capacityKwm(), weaponMaxOutputKw(),
+                    rechargeKw, boundBox, condition);
+        }
+        setChanged();
+        syncChargeLevel(level, worldPosition, getBlockState());
     }
 
     @Override

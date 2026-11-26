@@ -17,16 +17,14 @@ import net.minecraft.world.entity.player.Inventory;
  */
 public class MissionScreen extends ScaledContainerScreen<MissionMenu> {
 
-    private static final int PANEL_W = 420;
-    private static final int PANEL_H = 96;
+    private static final int PANEL_W = 328;
+    private static final int PANEL_H = 118;
 
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int BOX = 0xFF232B25;
     private static final int TEXT = PanelStyle.TEXT;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.SERVICE;
     private static final int GREEN = 0xFF7BE38B;
-    private static final int HOVER = 0xFF39483A;
 
     public MissionScreen(MissionMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -42,7 +40,7 @@ public class MissionScreen extends ScaledContainerScreen<MissionMenu> {
 
     /** 商店按钮的顶边（屏幕坐标）。 */
     private int shopTop() {
-        return topPos + 40;
+        return topPos + 33;
     }
 
     @Override
@@ -54,9 +52,8 @@ public class MissionScreen extends ScaledContainerScreen<MissionMenu> {
         Component wallet = Component.translatable("campaign.barotrauma.wallet",
                 ClientMissionCache.credits());
         graphics.drawString(font, wallet,
-                x + PANEL_W - 8 - font.width(wallet), y + 6, GREEN, false);
-        graphics.drawString(font, "任务在码头上找站务员接；靠泊目的站后自动结算",
-                x + 10, y + 22, DIM, false);
+                x + PANEL_W - 8 - font.width(wallet), y + 9, GREEN, false);
+        PanelStyle.divider(graphics, x + 10, y + 23, PANEL_W - 20);
 
         int shopY = shopTop();
         graphics.fill(x + 8, shopY - 4, x + PANEL_W - 8, shopY - 3, EDGE);
@@ -66,13 +63,12 @@ public class MissionScreen extends ScaledContainerScreen<MissionMenu> {
         String[] labels = {"修船（1/HP）", "氧气瓶（40）", "焊枪（150）",
                 "船体加固（150 起）", "引擎（150 起）", "深潜许可（500）"};
         for (int i = 0; i < labels.length; i++) {
-            int bx = x + 8 + (i % 3) * 80;
-            int by = shopY + 12 + (i / 3) * 20;
-            boolean hover = mouseX >= bx && mouseX < bx + 76
-                    && mouseY >= by && mouseY < by + 14;
-            graphics.fill(bx, by, bx + 76, by + 14, hover ? HOVER : BOX);
-            graphics.fill(bx, by, bx + 76, by + 1, EDGE);
-            graphics.drawCenteredString(font, labels[i], bx + 38, by + 3, TEXT);
+            int bx = x + 10 + (i % 3) * 104;
+            int by = shopY + 16 + (i / 3) * 28;
+            boolean hover = mouseX >= bx && mouseX < bx + 100
+                    && mouseY >= by && mouseY < by + 22;
+            PanelStyle.control(graphics, bx, by, 100, 22, true, hover);
+            graphics.drawCenteredString(font, labels[i], bx + 50, by + 7, TEXT);
         }
     }
 
@@ -83,19 +79,19 @@ public class MissionScreen extends ScaledContainerScreen<MissionMenu> {
         // 商店按钮（无 missionId）：两行三列
         int shopY = shopTop();
         int localX = (int) mouseX - leftPos;
-        if (button == 0 && mouseY >= shopY + 12 && mouseY < shopY + 52
-                && localX >= 8 && localX < PANEL_W - 8) {
-            int relX = localX - 8;
-            int col = relX / 80;
-            int offX = relX - col * 80;
-            int relY = (int) mouseY - (shopY + 12);
-            int row = relY / 20;
-            int offY = relY - row * 20;
+        if (button == 0 && mouseY >= shopY + 16 && mouseY < shopY + 72
+                && localX >= 10 && localX < PANEL_W - 10) {
+            int relX = localX - 10;
+            int col = relX / 104;
+            int offX = relX - col * 104;
+            int relY = (int) mouseY - (shopY + 16);
+            int row = relY / 28;
+            int offY = relY - row * 28;
             int[] actions = {MissionActionPacket.BUY_REPAIR, MissionActionPacket.BUY_OXYGEN,
                     MissionActionPacket.BUY_WELDER, MissionActionPacket.BUY_UPGRADE,
                     MissionActionPacket.BUY_ENGINE_UPGRADE, MissionActionPacket.BUY_DEEP_PERMIT};
-            if (relX < 0 || col >= 3 || offX >= 76
-                    || relY < 0 || row >= 2 || offY >= 14) {
+            if (relX < 0 || col >= 3 || offX >= 100
+                    || relY < 0 || row >= 2 || offY >= 22) {
                 return super.mouseClicked(screenX, screenY, button);
             }
             int idx = row * 3 + col;

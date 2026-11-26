@@ -1,201 +1,134 @@
 package com.opamb.barotrauma.client;
 
+import com.opamb.barotrauma.client.gui.PanelStyle;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import com.opamb.barotrauma.menu.PumpMenu;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.PumpActionPacket;
-import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
-import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 
-/**
- * 水泵面板，布局照原版 {@code pump + water detector} 的组合界面：
- *
- * <pre>
- *   能源 ●        自动控制 ●
- *   泵出速度: -100%
- *   [====滑块====]
- *   泵出                泵入
- * </pre>
- *
- * <p>原版是水泵读水传感器；这里传感器已经并进泵里，所以"自动控制"就是
- * 有水自动泵出、没水停机。自动控制打开时滑块置灰，等同原版传感器接管。</p>
- */
 public class PumpScreen extends ScaledContainerScreen<PumpMenu> {
 
-    private static final int W = 220;
-    private static final int H = 176;
-
-    private static final int EDGE = PanelStyle.EDGE;
-    private static final int PANEL = PanelStyle.RECESS;
-    private static final int TEXT = PanelStyle.TEXT;
-    private static final int DIM = PanelStyle.DIM;
-    private static final int ACCENT = PanelStyle.AMBER;
-    private static final int GREEN = 0xFF6FD07A;
-    private static final int RED = 0xFFC8483C;
-    private static final int YELLOW = 0xFFD8B44A;
-    private static final int TRACK = PanelStyle.RECESS;
-
-    /** 滑块的百分比下限/上限。 */
-    private static final int FLOW_MIN = -100;
-    private static final int FLOW_MAX = 100;
+    private static final int WIDTH = 236;
+    private static final int HEIGHT = 120;
+    private static final int FLOW_LEFT = 79;
+    private static final int FLOW_WIDTH = WIDTH - FLOW_LEFT - 12;
 
     private boolean dragging;
+    private int requestedFlow;
 
     public PumpScreen(PumpMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        this.imageWidth = W;
-        this.imageHeight = H;
+        imageWidth = WIDTH;
+        imageHeight = HEIGHT;
     }
 
-
-    @Override
-    protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, 9, 7, ACCENT, false);
+    private boolean flag(int index) {
+        return menu.data().get(index) != 0;
     }
 
     @Override
-    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        int x = leftPos;
-        int y = topPos;
-        PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
-
-        boolean auto = menu.data().get(PumpMenu.DATA_AUTO) != 0;
-        int flow = menu.data().get(PumpMenu.DATA_FLOW);
-        boolean powered = menu.data().get(PumpMenu.DATA_POWER) != 0;
-        boolean ballast = menu.data().get(PumpMenu.DATA_BALLAST) != 0;
-
-        // 能源灯（原版左上角那颗）
-        graphics.drawString(font, "能源", x + 10, y + 24, TEXT, false);
-        drawLamp(graphics, x + 44, y + 27, powered ? GREEN : RED);
-
-        // 自动控制开关
-        graphics.drawString(font, "自动控制", x + W - 74, y + 24, TEXT, false);
-        drawLamp(graphics, x + W - 22, y + 27, auto ? YELLOW : 0xFF39423A);
-
-        // 泵出速度
-        int percentY = y + 44;
-        graphics.drawString(font, "泵出速度: " + flow + "%", x + 10, percentY,
-                auto ? DIM : TEXT, false);
-
-        // 滑块
-        int trackX = x + 10;
-        int trackW = W - 20;
-        int trackY = y + 60;
-        graphics.fill(trackX, trackY, trackX + trackW, trackY + 8, TRACK);
-        graphics.fill(trackX, trackY, trackX + trackW, trackY + 1, EDGE);
-        // 中位刻度（0%）
-        int midX = trackX + trackW / 2;
-        graphics.fill(midX, trackY, midX + 1, trackY + 8, EDGE);
-        int knobX = trackX + Math.round((flow - FLOW_MIN) / (float) (FLOW_MAX - FLOW_MIN) * trackW);
-        graphics.fill(knobX - 3, trackY - 2, knobX + 3, trackY + 10,
-                auto ? 0xFF4A544B : 0xFFB8C0B4);
-
-        // 两端说明
-        graphics.drawString(font, "泵出", trackX, trackY + 14, flow < 0 ? GREEN : DIM, false);
-        graphics.drawString(font, "泵入", trackX + trackW - font.width("泵入"),
-                trackY + 14, flow > 0 ? ACCENT : DIM, false);
-
-        // 状态/提示
-        String state;
-        if (menu.data().get(PumpMenu.DATA_CONDITION) <= 0) {
-            state = "泵已损坏，需要扳手修理";
-        } else if (!powered) {
-            state = "无电力，泵无法运行";
-        } else if (auto && ballast) {
-            state = flow > 0 ? "跟随舵台：下潜，泵入压载舱"
-                    : flow < 0 ? "跟随舵台：上浮，泵出压载舱"
-                    : "跟随舵台：停车，保持压载水位";
-        } else if (auto) {
-            state = flow < 0 ? "自动：检测到积水，全速泵出" : "自动：舱内干燥，待机";
-        } else if (flow == 0) {
-            state = "已停机";
-        } else if (flow < 0) {
-            state = "手动：泵出 " + (-flow) + "%";
-        } else {
-            state = "手动：泵入 " + flow + "%";
-        }
-        graphics.drawString(font, state, x + 10, y + 92,
-                powered ? DIM : RED, false);
+    protected void renderLabels(GuiGraphics g, int x, int y) {
+        g.drawString(font, title, 12, 9, PanelStyle.TEXT, false);
     }
 
-    /** 圆角指示灯（4 层像素圆，避免引入额外贴图）。 */
-    private static void drawLamp(GuiGraphics graphics, int cx, int cy, int color) {
-        graphics.fill(cx - 3, cy - 3, cx + 3, cy + 3, color);
-        graphics.fill(cx - 4, cy - 2, cx + 4, cy + 2, color);
-        graphics.fill(cx - 2, cy - 4, cx + 2, cy + 4, color);
-    }
+    @Override
+    protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+        PanelStyle.frame(g, 0, 0, WIDTH, HEIGHT, PanelStyle.AMBER);
+        PanelStyle.divider(g, 12, 23, WIDTH - 24);
+        boolean enabled = flag(PumpMenu.DATA_ENABLED);
+        boolean motionPower = flag(PumpMenu.DATA_POWER);
+        boolean auto = flag(PumpMenu.DATA_AUTO);
+        boolean ballast = flag(PumpMenu.DATA_BALLAST);
+        int flow = dragging ? requestedFlow : menu.data().get(PumpMenu.DATA_FLOW);
+        boolean broken = !flag(PumpMenu.DATA_CONDITION);
 
-    private int trackLeft() {
-        return leftPos + 10;
-    }
+        PanelStyle.well(g, 12, 29, 54, 65);
+        g.drawCenteredString(font, "能源", 39, 33, PanelStyle.DIM);
+        PanelStyle.lamp(g, 39, 48, enabled, motionPower ? 0xFF6CB39D : 0xFFD27465);
+        PanelStyle.control(g, 25, 57, 28, 27, true, hit(mouseX, mouseY, 25, 57, 28, 27));
+        g.fillGradient(30, 62, 48, 79, enabled ? 0xFFE16C56 : 0xFF823C35, 0xFF5C2928);
+        g.hLine(33, 44, 63, 0x70FFFFFF);
 
-    private int trackWidth() {
-        return W - 20;
-    }
+        PanelStyle.control(g, FLOW_LEFT, 30, FLOW_WIDTH, 16, true,
+                hit(mouseX, mouseY, FLOW_LEFT, 30, FLOW_WIDTH, 16));
+        PanelStyle.lamp(g, FLOW_LEFT + 10, 37, auto, PanelStyle.AMBER);
+        g.drawString(font, "自动控制", FLOW_LEFT + 21, 34, PanelStyle.TEXT, false);
+        String percent = (flow > 0 ? "+" : "") + flow + "%";
+        g.drawString(font, "泵速", FLOW_LEFT, 53, PanelStyle.DIM, false);
+        g.drawString(font, percent, WIDTH - 12 - font.width(percent), 53, PanelStyle.TEXT, false);
+        PanelStyle.slider(g, FLOW_LEFT, 65, FLOW_WIDTH, (flow + 100.0D) / 200.0D,
+                enabled && !auto && !broken, dragging);
+        g.drawString(font, "泵出", FLOW_LEFT, 82, flow < 0 ? PanelStyle.TEXT : PanelStyle.DIM, false);
+        g.drawCenteredString(font, "0", FLOW_LEFT + FLOW_WIDTH / 2, 82, PanelStyle.DIM);
+        g.drawString(font, "泵入", WIDTH - 12 - font.width("泵入"), 82,
+                flow > 0 ? PanelStyle.TEXT : PanelStyle.DIM, false);
 
-    private int flowAt(double mouseX) {
-        double t = Mth.clamp((mouseX - trackLeft()) / trackWidth(), 0.0D, 1.0D);
-        int value = (int) Math.round(FLOW_MIN + t * (FLOW_MAX - FLOW_MIN));
-        // 对齐滑块刻度，避免鼠标抖动发出大量包
-        return Math.round(value / 5.0F) * 5;
-    }
-
-    private boolean inSlider(double mouseX, double mouseY) {
-        int y = topPos + 56;
-        return mouseX >= trackLeft() - 4 && mouseX <= trackLeft() + trackWidth() + 4
-                && mouseY >= y && mouseY <= y + 20;
-    }
-
-    private boolean inAutoToggle(double mouseX, double mouseY) {
-        int x = leftPos + W - 84;
-        int y = topPos + 18;
-        return mouseX >= x && mouseX <= leftPos + W - 10 && mouseY >= y && mouseY <= y + 22;
+        PanelStyle.divider(g, 12, 98, WIDTH - 24);
+        String status = broken ? "泵已损坏" : !enabled ? "泵已关闭" : !motionPower ? "电压不足"
+                : auto ? (ballast ? "跟随舵台的压载目标" : "跟随舱室水位") : "手动控制";
+        g.drawString(font, status, 12, 104, broken || enabled && !motionPower ? 0xFFD47766 : PanelStyle.DIM, false);
     }
 
     @Override
     public boolean mouseClicked(double screenX, double screenY, int button) {
-        double mouseX = designX(screenX);
-        double mouseY = designY(screenY);
-        if (button != 0) {
-            return super.mouseClicked(screenX, screenY, button);
-        }
-        if (inAutoToggle(mouseX, mouseY)) {
-            ModNetwork.CHANNEL.sendToServer(
-                    new PumpActionPacket(menu.pumpPos(), PumpActionPacket.TOGGLE_AUTO, 0));
-            return true;
-        }
-        if (inSlider(mouseX, mouseY) && menu.data().get(PumpMenu.DATA_AUTO) == 0) {
-            dragging = true;
-            sendFlow(flowAt(mouseX));
-            return true;
+        double x = designX(screenX);
+        double y = designY(screenY);
+        if (button == 0) {
+            if (hit(x, y, 25, 57, 28, 27)) {
+                send(PumpActionPacket.TOGGLE_POWER, 0);
+                return true;
+            }
+            if (hit(x, y, FLOW_LEFT, 30, FLOW_WIDTH, 16)) {
+                send(PumpActionPacket.TOGGLE_AUTO, 0);
+                return true;
+            }
+            if (hit(x, y, FLOW_LEFT, 62, FLOW_WIDTH, 16)
+                    && flag(PumpMenu.DATA_ENABLED) && !flag(PumpMenu.DATA_AUTO) && flag(PumpMenu.DATA_CONDITION)) {
+                dragging = true;
+                requestedFlow = Integer.MIN_VALUE;
+                moveFlow(x);
+                return true;
+            }
         }
         return super.mouseClicked(screenX, screenY, button);
     }
 
     @Override
-    public boolean mouseDragged(double screenX, double screenY, int button, double dragX, double dragY) {
-        double mouseX = designX(screenX);
-        double mouseY = designY(screenY);
-        if (dragging && button == 0) {
-            sendFlow(flowAt(mouseX));
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (button == 0 && dragging) {
+            moveFlow(designX(mouseX));
             return true;
         }
-        return super.mouseDragged(screenX, screenY, button, dragX, dragY);
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double screenX, double screenY, int button) {
-        double mouseX = designX(screenX);
-        double mouseY = designY(screenY);
-        dragging = false;
-        return super.mouseReleased(screenX, screenY, button);
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && dragging) {
+            dragging = false;
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
-    private void sendFlow(int value) {
-        ModNetwork.CHANNEL.sendToServer(
-                new PumpActionPacket(menu.pumpPos(), PumpActionPacket.SET_FLOW, value));
+    private void moveFlow(double x) {
+        double fraction = Mth.clamp((x - FLOW_LEFT - 4.0D) / (FLOW_WIDTH - 8), 0.0D, 1.0D);
+        int next = (int) Math.round((fraction * 200.0D - 100.0D) / 5.0D) * 5;
+        if (next != requestedFlow) {
+            requestedFlow = next;
+            send(PumpActionPacket.SET_FLOW, next);
+        }
+    }
+
+    private void send(int action, int value) {
+        ModNetwork.sendToServer(new PumpActionPacket(menu.pumpPos(), action, value));
+    }
+
+    private static boolean hit(double mx, double my, int x, int y, int width, int height) {
+        return mx >= x && mx < x + width && my >= y && my < y + height;
     }
 }

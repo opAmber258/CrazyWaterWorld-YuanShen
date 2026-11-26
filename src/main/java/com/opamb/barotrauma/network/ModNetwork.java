@@ -37,7 +37,7 @@ public final class ModNetwork {
     // 37：SonarDataPacket/SonarPingPacket 改为按脉冲与回波同步（世界坐标 + 到达 tick）。
     // 38：ShipActionPacket 增加驾驶状态/定点目标与舵令确认，功率拒绝回显。
     // 39：RepairActionPacket 与设备修理/接线盒菜单改版。
-    private static final String PROTOCOL = "39";
+    private static final String PROTOCOL = "43";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -155,6 +155,9 @@ CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(TurretStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretStatePacket::encode).decoder(TurretStatePacket::decode)
                 .consumerNetworkThread(TurretStatePacket::handle).add();
+        CHANNEL.messageBuilder(CoilgunShotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(CoilgunShotPacket::encode).decoder(CoilgunShotPacket::decode)
+                .consumerNetworkThread(CoilgunShotPacket::handle).add();
         CHANNEL.messageBuilder(TurretHitPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretHitPacket::encode).decoder(TurretHitPacket::decode)
                 .consumerNetworkThread(TurretHitPacket::handle).add();

@@ -10,7 +10,7 @@ edges:
     condition: when checking what the client and server are responsible for
   - target: patterns/debug-ship-water.md
     condition: when the beam or its water tint is missing in a flooded room
-last_updated: 2026-11-25
+last_updated: 2026-11-26
 ---
 
 # 手电筒与舱灯排查
@@ -19,8 +19,10 @@ last_updated: 2026-11-25
 
 - `FlashlightLightEvents.onPlayerTick` 和 `FlashlightItem.findEmitter` 决定手持或头戴发光、电池消耗和低电状态。实体数据通过 `PlayerMixin` 同步。玩家同时带多支时按主手、副手、头部顺序选第一支带电的灯。
 - `FlashlightRenderer.onRenderLevel` 在水面之前取得场景颜色及深度。光束最远 12 格，8 格后逐渐收尾。第三人称和其他持灯玩家使用绘制实体之前的区块深度算光路，避免玩家本体形成假遮挡。实心船壳的区块深度仍可遮挡。只由方块实体渲染的模型不在这一阶段的阴影采样内。
-- 主画面和手电副本保留 16 位颜色，`flashlight.fsh` 按同一倍率提亮场景 RGB，保留暗色贴图里的细微色差。滑动视角时，单次深度命中只会形成弱阴影。正常电量恒亮，最后一格以 0.1 Hz 平滑起伏。深海的 2.6 格近身微光只为本机正在控制的活角色绘制。
-- `LightTextureMixin` 仅在深海忽略亮度滑杆。相机位于船舱时使用 0.016 的中性光图混合值，手电合成保留这部分材质亮度。相机在舱外时仍扣掉暗材质占位值。舱内亮度按相机所在环境统一应用，避免用水盒在不同设备和舱壁的表面画出蓝黑边线。
+- 主画面和手电副本保留 16 位颜色，`flashlight.fsh` 按同一倍率提亮场景 RGB，保留暗色贴图里的细微色差。滑动视角时，单次深度命中只会形成弱阴影。正常电量恒亮，最后一格以 0.1 Hz 平滑起伏。深海的 2.6 格近身微光只为本机正在控制的活角色绘制。近身增益只随距离变，逐像素随亮度急降的增益会压平高光并翻转暗色纹理的明暗。
+- 电磁枪默认有跟随炮轴的方向灯，原作 `coilgun.xml` 的色值为 1/0.8/0.8、标称范围 2500 显示单位。灯在开火储能不足时照常工作。最多同时选两盏并优先保留当前操作的炮灯。每灯用 17×17 的世界射线深度记录船和地形，即使挡墙在相机画面外也参与遮挡。场景深度只用来定位接收光的表面。进潜望镜后舱外相机旁没有玩家近身微光。
+- 炮灯掠过船壳时，邻格的命中深度差很大也可能在同一个平面。`coilgunVisibility` 先算受光面在每条采样射线上的深度，再做遮挡比较，最后按权重合成可见度。用同一斜面检查自阴影，并用斜面后方和开口检查漏光。[离屏复现](../../PLAN.md#2026-11-26-炮灯沿船壳出现放射状暗条)
+- `LightTextureMixin` 仅在深海忽略亮度滑杆。相机位于船舱时使用 0.074 的中性光图混合值（名义值约 14/255），手电合成保留这部分材质亮度。相机在舱外时仍扣掉暗材质占位值。舱内亮度按相机所在环境统一应用，避免用水盒在不同设备和舱壁的表面画出蓝黑边线。
 - 舱口或舱壁门在普通光下局部发红时，检查 `BlockLightSampler` 是否用 `LevelRenderer.getLightColor` 取样并保留 Colorful Lighting 的 RGB 光图标记。把带彩色标记的整数和原版光照值直接拆包取最大会产生假红光。
 - `LightBlockEntity.serverTick` 根据电网决定固定舱灯的方块光照等级。`LightClientColors` 为可选的 Colorful Lighting 提供每盏灯的颜色，跳过默认或重复值，单个客户端刻最多通知 32 个已变色的位置。
 

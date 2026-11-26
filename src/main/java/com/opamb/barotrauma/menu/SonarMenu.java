@@ -103,6 +103,14 @@ public class SonarMenu extends DeviceMenu {
         return terminal.state() != null ? terminal.state() : terminal.rescan(level);
     }
 
+    public boolean controls(ShipState ship, Player player) {
+        if (!stillValid(player) || terminal == null || terminal.condition() <= 0.0D) return false;
+        ShipState controlled = physical ? VsState.activeState() : terminal.state();
+        if (controlled != ship) return false;
+        BlockPos cell = physical ? VsPilot.toAssembly(terminal.getBlockPos()) : terminal.getBlockPos();
+        return ship.simulation().consumerVoltage(cell) >= ShipCoreBlockEntity.TERMINAL_MIN_VOLTAGE;
+    }
+
     @Override
     public boolean stillValid(Player player) {
         if (!(player.level() instanceof ServerLevel level)) {

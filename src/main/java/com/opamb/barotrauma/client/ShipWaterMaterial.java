@@ -38,6 +38,11 @@ final class ShipWaterMaterial {
     private static ShaderInstance shader;
     private static TextureTarget scene;
     private static boolean captureFailed;
+    private static SeaFilter lastSeaFilter;
+
+    private enum SeaFilter {
+        ACTIVE, DEBUG_DISABLED, SHADER_UNAVAILABLE, FRAMEBUFFER_UNAVAILABLE
+    }
 
     private ShipWaterMaterial() {
     }
@@ -77,16 +82,21 @@ final class ShipWaterMaterial {
                        boolean eyeWet, boolean eyeInSea) {
         boolean hasGeometry = pool != null || flows != null && flows.hasPaths();
         boolean seaFog = eyeInSea && !DeepBrightnessDebug.seaFogDisabled();
+        if (eyeInSea && !seaFog) logSeaFilter(SeaFilter.DEBUG_DISABLED);
         if (!hasGeometry && !seaFog) {
             return new Result(0, 0, false);
         }
         RenderTarget target = Minecraft.getInstance().getMainRenderTarget();
         boolean refract = refractionAvailable() && canCopy(target) && capture(target);
+        if (seaFog && !refract) {
+            logSeaFilter(shader == null ? SeaFilter.SHADER_UNAVAILABLE : SeaFilter.FRAMEBUFFER_UNAVAILABLE);
+        }
         if (!refract && !hasGeometry) {
             return new Result(0, 0, false);
         }
         var light = UnderwaterEffects.waterLight(eye.y);
-        var seaView = UnderwaterEffects.seaView(eye.y);
+        var seaView = UnderwaterEffects.HUMAN_SEA_VIEW;
+        var litSeaView = UnderwaterEffects.LIT_SEA_VIEW;
         ShaderInstance previousShader = RenderSystem.getShader();
         if (refract) {
             // 扣掉装配原点再变成 float，让波纹一直跟船走，远离世界原点时也有足够精度。
@@ -102,11 +112,16 @@ final class ShipWaterMaterial {
             shader.safeGetUniform("WaveTime").set(time);
             shader.safeGetUniform("EyeWet").set(0.0F);
             shader.safeGetUniform("VolumeFill").set(0.0F);
-            shader.safeGetUniform("WaterLight").set(light.red(), light.green(), light.blue(), light.seaDensity());
+            shader.safeGetUniform("WaterLight").set(light.red(), light.green(), light.blue());
             shader.safeGetUniform("SeaEye").set(seaFog ? 1.0F : 0.0F);
             shader.safeGetUniform("SeaBounds").set((float) (ModDimensions.WATER_TOP_Y - eye.y),
                     (float) (eye.y - ModDimensions.WATER_BOTTOM_Y));
             shader.safeGetUniform("SeaRange").set(seaView.near(), seaView.far());
+            shader.safeGetUniform("LitSeaRange").set(litSeaView.near(), litSeaView.far());
+            if (seaFog) {
+                shader.safeGetUniform("SeaWavePhase").set((float) ((eye.x * 0.13 + time * 0.7) % (2 * Math.PI)),
+                        (float) ((eye.z * 0.13 + eye.y * 0.16 - time * 0.5) % (2 * Math.PI)));
+            }
             shader.safeGetUniform("ViewUp").set(view.m10(), view.m11(), view.m12());
             shader.setSampler("SceneColor", scene.getColorTextureId());
             shader.setSampler("SceneDepth", scene.getDepthTextureId());
@@ -125,6 +140,7 @@ final class ShipWaterMaterial {
         try {
             if (refract && seaFog) {
                 fillSubmergedScene(2.0F);
+                logSeaFilter(SeaFilter.ACTIVE);
             }
             if (!hasGeometry) {
                 return new Result(0, 0, refract);
@@ -177,6 +193,17 @@ final class ShipWaterMaterial {
             if (BUFFER.building()) {
                 BUFFER.end().release();
             }
+        }
+    }
+
+    static void resetSeaFilterLog() {
+        lastSeaFilter = null;
+    }
+
+    private static void logSeaFilter(SeaFilter mode) {
+        if (lastSeaFilter != mode) {
+            lastSeaFilter = mode;
+            BarotraumaMod.LOGGER.info("[water] 外海滤镜：{}", mode);
         }
     }
 

@@ -1,180 +1,92 @@
 package com.opamb.barotrauma.client;
 
 import com.opamb.barotrauma.blockentity.BatteryBlockEntity;
-import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
-import com.opamb.barotrauma.menu.BatteryMenu;
-import net.minecraft.client.Minecraft;
+import com.opamb.barotrauma.client.equipment.BagOverlay;
+import com.opamb.barotrauma.client.equipment.HandsSlotOverlay;
 import com.opamb.barotrauma.client.gui.PanelStyle;
+import com.opamb.barotrauma.client.gui.PowerStorageControls;
+import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
+import com.opamb.barotrauma.equipment.BagSlots;
+import com.opamb.barotrauma.menu.BatteryMenu;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 
-/**
- * 电池面板，照原作 {@code PowerContainer} 的布局：
- *
- * <pre>
- *   电量: 1200 / 2000 kW·min (60%)
- *   [==========电量条==========]
- *   充电速率: 500 kW (100%)
- *   [==========滑条==========]
- *   耐久: 100%
- *   接线盒: 已连接
- * </pre>
- *
- * <p>滑条 0..100% 对应 0..500 kW；拖动时通过
- * {@link BatteryMenu#clickMenuButton} 回服务端。没有物品槽。</p>
- */
 public class BatteryScreen extends ScaledContainerScreen<BatteryMenu> {
 
-    private static final int W = 224;
-    private static final int H = 292;
-
-    private static final int EDGE = PanelStyle.EDGE;
-    private static final int PANEL = PanelStyle.RECESS;
-    private static final int TEXT = PanelStyle.TEXT;
-    private static final int DIM = PanelStyle.DIM;
-    private static final int ACCENT = PanelStyle.AMBER;
-    private static final int GREEN = 0xFF6FD07A;
-    private static final int RED = 0xFFC8483C;
-    private static final int YELLOW = 0xFFD8B44A;
-    private static final int TRACK = PanelStyle.RECESS;
-
-    private RechargeSlider slider;
+    private static final int WIDTH = 244;
+    private static final int HEIGHT = 246;
+    private PowerStorageControls.RechargeSlider recharge;
 
     public BatteryScreen(BatteryMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        this.imageWidth = W;
-        this.imageHeight = H;
+        imageWidth = WIDTH;
+        imageHeight = HEIGHT;
     }
 
     @Override
     protected void init() {
         super.init();
-        double ratio = rechargeRatio();
-        slider = addRenderableWidget(new RechargeSlider(
-                leftPos + 12, topPos + 90, W - 24, 20, ratio));
-    }
-
-    private double rechargeRatio() {
-        return Mth.clamp(menu.data().get(BatteryMenu.DATA_RECHARGE)
-                / (double) Math.max(1, menu.data().get(BatteryMenu.DATA_MAX_RECHARGE)), 0.0D, 1.0D);
+        recharge = addRenderableWidget(new PowerStorageControls.RechargeSlider(12, 41, WIDTH - 24,
+                () -> data(BatteryMenu.DATA_MAX_RECHARGE), percent -> {
+                    if (minecraft != null && minecraft.gameMode != null) {
+                        minecraft.gameMode.handleInventoryButtonClick(menu.containerId, percent);
+                    }
+                }));
+        recharge.sync(data(BatteryMenu.DATA_RECHARGE));
     }
 
     @Override
     protected void containerTick() {
         super.containerTick();
-        if (slider != null && !slider.isFocused()) slider.updateFromServer(rechargeRatio());
+        if (recharge != null) recharge.sync(data(BatteryMenu.DATA_RECHARGE));
     }
 
     @Override
-    protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, 10, 8, ACCENT, false);
+    protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
+        g.drawString(font, title, 12, 9, PanelStyle.TEXT, false);
     }
 
     @Override
-    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        int x = leftPos;
-        int y = topPos;
-        PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
-
-        int chargeRaw = Math.max(0, menu.data().get(BatteryMenu.DATA_CHARGE));
-        int capacityRaw = Math.max(1, menu.data().get(BatteryMenu.DATA_CAPACITY));
-        double fraction = Mth.clamp(chargeRaw / (double) capacityRaw, 0.0D, 1.0D);
-        double charge = chargeRaw / 10.0D;
-        double capacity = capacityRaw / 10.0D;
-
-        graphics.drawString(font, String.format("电量: %.0f / %.0f kW·min (%.0f%%)",
-                charge, capacity, fraction * 100.0D), x + 12, y + 32, TEXT, false);
-
-        int barX = x + 12;
-        int barY = y + 46;
-        int barW = W - 24;
-        int barH = 14;
-        graphics.fill(barX - 1, barY - 1, barX + barW + 1, barY + barH + 1, EDGE);
-        graphics.fill(barX, barY, barX + barW, barY + barH, TRACK);
-        int fillColor = fraction <= 0.2D ? RED : fraction <= 0.5D ? YELLOW : GREEN;
-        graphics.fill(barX, barY, barX + (int) Math.round(barW * fraction), barY + barH,
-                fillColor);
-        // 原版电池屏的三段刻度，方便看出 1/3、2/3。
-        for (int i = 1; i < 3; i++) {
-            int segX = barX + barW * i / 3;
-            graphics.fill(segX, barY, segX + 1, barY + barH, 0x66000000);
+    protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+        PanelStyle.frame(g, 0, 0, WIDTH, HEIGHT, PanelStyle.AMBER);
+        PanelStyle.divider(g, 12, 23, WIDTH - 24);
+        Component setting = recharge.getMessage();
+        g.drawString(font, text("recharge"), 12, 29, PanelStyle.TEXT, false);
+        g.drawString(font, setting, WIDTH - 12 - font.width(setting), 29, PanelStyle.DIM, false);
+        PowerStorageControls.charge(g, font, 12, 63, WIDTH - 24,
+                data(BatteryMenu.DATA_CHARGE), data(BatteryMenu.DATA_CAPACITY), 3);
+        int flow = data(BatteryMenu.DATA_GRID_FLOW);
+        boolean connected = data(BatteryMenu.DATA_GRID_CONNECTED) != 0;
+        String status = data(BatteryMenu.DATA_CONDITION) == 0 ? "broken"
+                : !connected ? "disconnected" : flow > 0 ? "charging" : flow < 0 ? "discharging" : "standby";
+        PanelStyle.lamp(g, 17, 108, true, connected ? 0xFF62A78D : 0xFFD47766);
+        g.drawString(font, text(status, Math.abs(flow)), 28, 104, connected ? PanelStyle.TEXT : 0xFFD47766, false);
+        g.drawString(font, text("cells"), 12, 122, PanelStyle.DIM, false);
+        for (int i = 0; i < BatteryBlockEntity.CELL_SLOTS; i++) {
+            PanelStyle.slot(g, 11 + i * 22, 133);
         }
 
-        boolean bound = menu.data().get(BatteryMenu.DATA_BOUND) != 0;
-        graphics.drawString(font, bound ? "接线盒: 已连接" : "接线盒: 默认总线",
-                x + 12, y + 160, bound ? GREEN : DIM, false);
-        if (menu.data().get(BatteryMenu.DATA_CONDITION) <= 0) {
-            graphics.drawString(font, "已损坏，需要螺丝刀修理",
-                    x + 12, y + 176, RED, false);
-        } else {
-            graphics.drawString(font, "耐久: " + Math.round(
-                            menu.data().get(BatteryMenu.DATA_CONDITION) / 10.0D) + "%",
-                    x + 12, y + 176, DIM, false);
-        }
-
-        // 三个电池 cell 充电槽（原作 batterycellrecharger）。
-        graphics.drawString(font, "电池槽", x + 12, y + 122, DIM, false);
-        for (int i = 0; i < 3; i++) {
-            slotBg(graphics, x + 12 + i * 22 - 1, y + 134 - 1);
-        }
-        // 快捷栏槽位底纹；上面那 27 格是"装备背包区"，由 BagOverlay 整块画。
+        int bagX = BatteryMenu.INV_AREA_X;
+        int bagY = BatteryMenu.INV_AREA_Y;
+        PanelStyle.divider(g, 12, bagY - 10, WIDTH - 24);
         for (int col = 0; col < 9; col++) {
-            slotBg(graphics, x + BatteryMenu.INV_AREA_X + col * 18 - 1,
-                    y + BatteryMenu.INV_AREA_Y + 58 - 1);
+            PanelStyle.slot(g, bagX + col * 18 - 1, bagY + 57);
         }
         if (minecraft != null && minecraft.player != null) {
-            com.opamb.barotrauma.equipment.BagSlots.rebuildClientAt(menu, minecraft.player,
-                    BatteryMenu.INV_START, BatteryMenu.INV_AREA_X, BatteryMenu.INV_AREA_Y,
+            BagSlots.rebuildClientAt(menu, minecraft.player, BatteryMenu.INV_START,
+                    bagX, bagY, BatteryMenu.INV_AREA_W, BatteryMenu.INV_AREA_H);
+            BagOverlay.renderIn(g, 0, 0, minecraft.player, bagX, bagY,
                     BatteryMenu.INV_AREA_W, BatteryMenu.INV_AREA_H);
-            com.opamb.barotrauma.client.equipment.BagOverlay.renderIn(graphics, x, y,
-                    minecraft.player, BatteryMenu.INV_AREA_X, BatteryMenu.INV_AREA_Y,
-                    BatteryMenu.INV_AREA_W, BatteryMenu.INV_AREA_H);
-            com.opamb.barotrauma.client.equipment.HandsSlotOverlay.renderIn(graphics, menu, x, y);
+            HandsSlotOverlay.renderIn(g, menu, 0, 0);
         }
     }
 
-    private void slotBg(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 18, y + 18, 0xFF8B8B8B);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF373737);
+    private int data(int id) {
+        return menu.data().get(id);
     }
 
-    /** 0..1 的充电速率滑条，松手/拖动时把百分比发给服务端。 */
-    private final class RechargeSlider extends AbstractSliderButton {
-
-        private int lastSent;
-
-        RechargeSlider(int x, int y, int width, int height, double value) {
-            super(x, y, width, height, Component.empty(), value);
-            this.lastSent = (int) Math.round(value * 100.0D);
-            updateMessage();
-        }
-
-        private void updateFromServer(double ratio) {
-            value = ratio;
-            updateMessage();
-        }
-
-        @Override
-        protected void updateMessage() {
-            int percent = (int) Math.round(value * 100.0D);
-            int kw = (int) Math.round(menu.data().get(BatteryMenu.DATA_MAX_RECHARGE) * value);
-            setMessage(Component.literal("充电速率: " + kw + " kW (" + percent + "%)"));
-        }
-
-        @Override
-        protected void applyValue() {
-            int percent = (int) Math.round(value * 100.0D);
-            if (percent == lastSent) {
-                return;
-            }
-            lastSent = percent;
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.gameMode != null) {
-                minecraft.gameMode.handleInventoryButtonClick(menu.containerId, percent);
-            }
-        }
+    private static Component text(String key, Object... args) {
+        return Component.translatable("gui.barotrauma.storage." + key, args);
     }
 }

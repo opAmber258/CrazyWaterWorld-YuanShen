@@ -23,9 +23,6 @@ import net.minecraft.world.inventory.Slot;
 public class CrateScreen extends ScaledContainerScreen<CrateMenu> {
 
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int EDGE_DARK = 0xFF0B0D0F;
-    private static final int SLOT_BORDER = 0xFF373737;
-    private static final int SLOT_FILL = 0xFF8B8B8B;
     private static final int HINT = 0xFF5A5A5A;
     private static final int TITLE = 0xFFC8CDD2;
 
@@ -75,10 +72,10 @@ public class CrateScreen extends ScaledContainerScreen<CrateMenu> {
 
         Font font = Minecraft.getInstance().font;
         for (Slot slot : menu.slots) {
+            if (!slot.isActive()) continue;
             int sx = x + slot.x;
             int sy = y + slot.y;
-            graphics.fill(sx - 1, sy - 1, sx + 17, sy + 17, SLOT_BORDER);
-            graphics.fill(sx, sy, sx + 16, sy + 16, SLOT_FILL);
+            PanelStyle.slot(graphics, sx - 1, sy - 1);
             if (slot.hasItem()) {
                 continue;
             }
@@ -107,8 +104,7 @@ public class CrateScreen extends ScaledContainerScreen<CrateMenu> {
     private static void panel(GuiGraphics graphics, int x, int y, int width, int height) {
         PanelStyle.frame(graphics, x, y, width, height, PanelStyle.SERVICE);
         // 顶部标题栏
-        graphics.fill(x + 1, y + 1, x + width - 1, y + 18, 0xFF23282D);
-        graphics.fill(x + 1, y + 18, x + width - 1, y + 19, EDGE_DARK);
+        PanelStyle.divider(graphics, x + 8, y + 20, width - 16);
     }
 
     @Override

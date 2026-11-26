@@ -28,14 +28,17 @@ import net.minecraft.world.phys.Vec3;
 public class ReactorMenu extends DeviceMenu {
 
     public static final int FUEL_SLOTS = ReactorBlockEntity.FUEL_SLOTS;
+    public static final int FUEL_X = 16;
+    public static final int FUEL_Y = 84;
+    public static final int FUEL_STEP = 25;
 
     /** 玩家主物品栏 27 格的菜单位置（这 27 格会被换成装备背包 + 禁用占位）。 */
     public static final int INV_START = FUEL_SLOTS;
     public static final int HOTBAR_START = INV_START + 27;
     public static final int HOTBAR_END = HOTBAR_START + 9;
     /** 物品栏区域（GUI 局部坐标）。 */
-    public static final int INV_AREA_X = 119;
-    public static final int INV_AREA_Y = 214;
+    public static final int INV_AREA_X = 150;
+    public static final int INV_AREA_Y = 212;
     public static final int INV_AREA_W = 160;
     public static final int INV_AREA_H = 54;
 
@@ -82,7 +85,7 @@ public class ReactorMenu extends DeviceMenu {
 
         Container fuelContainer = reactor != null ? reactor : new SimpleContainer(FUEL_SLOTS);
         for (int i = 0; i < FUEL_SLOTS; i++) {
-            addSlot(new Slot(fuelContainer, i, 12, 32 + i * 24) {
+            addSlot(new Slot(fuelContainer, i, FUEL_X, FUEL_Y + i * FUEL_STEP) {
                 @Override
                 public boolean mayPlace(ItemStack stack) {
                     return ReactorFuel.isFuel(stack);

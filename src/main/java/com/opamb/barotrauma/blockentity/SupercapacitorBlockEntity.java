@@ -29,9 +29,7 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * <p>数值按本机原作 {@code Content/Items/Electricity/poweritems.xml} 的
  * {@code PowerContainer capacity="20" maxoutput="20000000" maxrechargespeed="1000"
  * efficiency="0.1"}：容量很小（20 kW·min），但可以瞬间放出极大电流。本模组的
- * 电网是 0.1 秒一步的连续功率，{@link com.opamb.barotrauma.ship.PowerGrid#batteryOutputAvailable}
- * 会把单步输出限制在“这一步内能放出的能量”，所以满电时一 step 约 12 MW，
- * 相当于一个 0.1 秒的高压脉冲——这是没有轨道炮之前最接近原作的近似。</p>
+ * 船网只为电容充电。电磁枪绕过连续耗电结算，发射时从直连电容扣除一次脉冲。
  *
  * <p>充电效率 0.1：充进去 100 kW 只有 10 kW 存下来（原作 PowerContainer.efficiency）。
  * 耐久对应原作 Repairable：通电自然衰减 0.125/s（120–240 秒宽限），泡水 -0.5/s。</p>
@@ -44,6 +42,7 @@ public class SupercapacitorBlockEntity extends BlockEntity
 
     /** 原作 capacity：kW·min。 */
     public static final double CAPACITY_KWM = 20.0D;
+    private static final double WEAPON_MAX_OUTPUT_KW = 20_000_000;
     /** 原作 maxoutput：kW。 */
     public static final double MAX_OUTPUT_KW = 20_000_000.0D;
     /** 原作 maxrechargespeed：kW。 */
@@ -116,14 +115,12 @@ public class SupercapacitorBlockEntity extends BlockEntity
         be.condition = Mth.clamp(be.condition, 0.0D, 100.0D);
         be.chargeKwm = Mth.clamp(be.chargeKwm, 0.0D, CAPACITY_KWM);
 
-        // 必须先接到接线盒才参与充放电。以前不管 boundBox 直接上报满输出/满充电，
-        // 放下去没接线也会自己充（用户实测）。未绑定时仍上报 0 输出/0 充电，
-        // 这样电力面板里还能看到它并从面板绑定，只是不参与电网结算。
+        // Only the input goes through the junction box. Turret pulses use the dedicated output.
         boolean connected = be.boundBox != null
                 && ship.tracksHullBlock(be.boundBox)
                 && simulation.boxCondition(be.boundBox) > 0.0D;
         simulation.reportStorage(cell, be.chargeKwm, CAPACITY_KWM,
-                connected ? MAX_OUTPUT_KW : 0.0D,
+                0.0D,
                 connected ? be.rechargeKw : 0.0D,
                 be.boundBox, be.condition, EFFICIENCY);
         be.syncChargeLevel(server, pos, state);
@@ -132,6 +129,43 @@ public class SupercapacitorBlockEntity extends BlockEntity
             be.saveTicks = 0;
             be.setChanged();
         }
+    }
+
+    /** Read the live grid value so two turrets sharing this capacitor cannot spend the same shot. */
+    @Override
+    public double weaponCharge(ServerLevel level) {
+        ShipState ship = resolveShip(level, worldPosition);
+        if (ship != null && ship.tracksHullBlock(assemblyPos(worldPosition))) {
+            Double reported = ship.simulation().storageCharge(assemblyPos(worldPosition));
+            if (reported != null) chargeKwm = reported;
+        }
+        return condition > 0 ? chargeKwm : 0;
+    }
+
+    @Override
+    public boolean weaponOutputEnabled() {
+        return condition > 0;
+    }
+
+    @Override
+    public double weaponMaxOutputKw() {
+        return WEAPON_MAX_OUTPUT_KW;
+    }
+
+    @Override
+    public void consumeWeaponCharge(ServerLevel level, double amount) {
+        chargeKwm = Math.max(0, chargeKwm - amount);
+        ShipState ship = resolveShip(level, worldPosition);
+        BlockPos cell = assemblyPos(worldPosition);
+        if (ship != null && ship.tracksHullBlock(cell)) {
+            ShipSimulation simulation = ship.simulation();
+            boolean connected = boundBox != null && ship.tracksHullBlock(boundBox)
+                    && simulation.boxCondition(boundBox) > 0;
+            simulation.reportStorage(cell, chargeKwm, CAPACITY_KWM, 0,
+                    connected ? rechargeKw : 0, boundBox, condition, EFFICIENCY);
+        }
+        setChanged();
+        syncChargeLevel(level, worldPosition, getBlockState());
     }
 
     /** 5 段电量屏：0 空、1..5 格；损坏时全暗。 */

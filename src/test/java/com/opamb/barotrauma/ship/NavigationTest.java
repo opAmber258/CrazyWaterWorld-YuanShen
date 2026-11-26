@@ -143,4 +143,26 @@ class NavigationTest {
         ship.acceptManualInput(observer, 31, 0.4, 0, 0, true);
         assertEquals(0.4, ship.engineThrottle(true));
     }
+
+    @Test
+    void helmTakeoverClearsLocalEngineWithoutResumingItOnRelease() {
+        ShipState ship = new ShipState(null, new MachineCount(0, 0, 0, 0, 0, 0, 0));
+        BlockPos engine = new BlockPos(3, 0, 1);
+        UUID pilot = UUID.randomUUID();
+        ship.setLocalEngineForce(engine, -50);
+        assertFalse(ship.helmHasControl(100));
+        assertEquals(-50, ship.localEngineForce(engine));
+
+        ship.acceptManualInput(pilot, 100, 0.25, 0, 0, true);
+        assertTrue(ship.helmHasControl(100));
+        assertEquals(0, ship.localEngineForce(engine));
+        assertTrue(ship.expireManualInput(120));
+        assertFalse(ship.helmHasControl(120));
+        assertFalse(ship.hasLocalEngineControl());
+
+        ship.setLocalEngineForce(engine, 30);
+        ship.setAutopilotTarget(BlockPos.ZERO);
+        assertTrue(ship.helmHasControl(121));
+        assertFalse(ship.hasLocalEngineControl());
+    }
 }

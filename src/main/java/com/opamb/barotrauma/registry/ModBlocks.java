@@ -370,9 +370,12 @@ public final class ModBlocks {
     public static final RegistryObject<Block> TRACKING_TURRET = BLOCKS.register("tracking_turret",
             () -> new TrackingTurretBlock(turretProperties()));
 
-    /** 电磁炮：复用炮塔瞄准，弹药箱装填 + 船电网 1000 kW。 */
+    /** 由潜望镜控制、连接装弹器和超级电容器的原尺寸电磁枪。 */
     public static final RegistryObject<Block> COILGUN = BLOCKS.register("coilgun",
             () -> new com.opamb.barotrauma.block.CoilgunBlock(turretProperties()));
+
+    public static final RegistryObject<Block> COILGUN_LOADER = BLOCKS.register("coilgun_loader",
+            () -> new com.opamb.barotrauma.block.CoilgunLoaderBlock(turretProperties()));
 
     /** 炮塔瞄准站（开发者工具）：绑定炮塔后右键接管瞄准视角。 */
     public static final RegistryObject<Block> TURRET_STATION = BLOCKS.register("turret_station",

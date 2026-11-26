@@ -107,7 +107,12 @@ public record ShipUseBlockPacket(BlockPos yardPos, Direction face, InteractionHa
                     .add(hitX, hitY, hitZ);
             BlockHitResult hit = new BlockHitResult(localHit, message.face, message.yardPos, false);
             BarotraumaMod.LOGGER.info("[ship-use] 执行 {} @ {}", state.getBlock(), message.yardPos);
-            state.use(level, player, message.hand, hit);
+            var held = player.getItemInHand(message.hand);
+            if (held.getItem() instanceof com.opamb.barotrauma.item.TurretBinderItem binder) {
+                binder.useOn(new net.minecraft.world.item.context.UseOnContext(player, message.hand, hit));
+            } else {
+                state.use(level, player, message.hand, hit);
+            }
         });
         context.setPacketHandled(true);
     }
