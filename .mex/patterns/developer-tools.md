@@ -42,7 +42,7 @@ mex:
 - `MedicalDebugPacket` 动作 0–6：SET/ADD 病症、清部位、清全部、SET/ADD/CLEAR 活力覆盖。服务端校验 `isCreative() || hasPermissions(2)`，每次编辑回发一次 `MedicalSyncPacket` 快照，面板不用等每秒同步。
 - 活力覆盖存在 `AfflictionContainer.vitalityOverride`，以 `v|<值>` 行进 NBT/同步（`rows()`/`loadRow`），可以设负数测倒地、−100 测真死。
 - `CthulhuTriggerItem` + `CthulhuGazePacket` 用同一套校验（`canUse`），证明这套模式可以复用。
-- 深海亮度调试器只改本机渲染。右键循环亮度（最亮后回到 0%），Shift + 右键切换海雾，Ctrl + 右键仍可用。调试器在设备的右键交互之前处理快捷键，同一按压只处理一次。仅海雾设置会绕过深海地形雾和外海屏幕后处理，舱内水面仍按正常光学路径绘制。限定未开放局域网的本地单人深海，必须是创造玩家或有管理员权限。切换世界、退出或失去权限后清除覆盖。状态无需同步或保存。
+- 深海亮度调节器只改本机渲染。普通右键打开 `BrightnessDebuggerScreen`（光照模式、环境底光、海雾、夜视）；按住 Shift 或 Ctrl 再右键时由 `BrightnessFogShortcut` 在设备右键交互之前截住点击，只切换海雾，同一按压只处理一次；F7 快捷切换模组/原版光照。仅海雾关闭会绕过深海地形雾和外海屏幕后处理，舱内水面仍按正常光学路径绘制。限定未开放局域网的本地单人深海，必须是创造玩家或有管理员权限；离开深海、退出单人世界或失去权限后覆盖自动失效，设置本身保留到游戏退出。状态无需同步或保存。
 
 ## Steps
 
