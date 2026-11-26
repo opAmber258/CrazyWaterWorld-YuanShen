@@ -51,15 +51,15 @@ class DeepBrightnessDebugTest {
     }
 
     @Test
-    void waterAndFogOnlyHiddenInVanillaModeWithRestoreOn() {
-        assertFalse(DeepBrightnessDebug.hidesWaterAndFog());
+    void modeAndWaterRestoreFlagAreStoredIndependently() {
+        assertFalse(DeepBrightnessDebug.isVanilla());
+        assertTrue(DeepBrightnessDebug.vanillaRestoresWater());
         DeepBrightnessDebug.setMode(DeepBrightnessDebug.Mode.VANILLA);
-        assertTrue(DeepBrightnessDebug.hidesWaterAndFog());
+        assertTrue(DeepBrightnessDebug.isVanilla());
         DeepBrightnessDebug.setVanillaRestoresWater(false);
-        assertFalse(DeepBrightnessDebug.hidesWaterAndFog());
+        assertFalse(DeepBrightnessDebug.vanillaRestoresWater());
         DeepBrightnessDebug.setMode(DeepBrightnessDebug.Mode.MOD);
-        DeepBrightnessDebug.setVanillaRestoresWater(true);
-        assertFalse(DeepBrightnessDebug.hidesWaterAndFog());
+        assertFalse(DeepBrightnessDebug.isVanilla());
     }
 
     @Test

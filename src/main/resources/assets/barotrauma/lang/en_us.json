@@ -19,7 +19,7 @@
   "brightness.screen.night_vision.remove": "Remove",
   "brightness.night_vision.on": "Infinite night vision granted",
   "brightness.night_vision.off": "Night vision removed",
-  "brightness.screen.hint": "Scroll to tune · applied live · Esc closes",
+  "brightness.screen.hint": "Wheel: mod ×10 / vanilla ×5 · Esc closes",
   "brightness.screen.reset": "Reset",
   "brightness.screen.done": "Done",
   "itemGroup.barotrauma.materials": "Barotrauma - Items & Materials",

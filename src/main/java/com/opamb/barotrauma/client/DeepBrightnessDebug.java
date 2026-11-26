@@ -98,8 +98,13 @@ public final class DeepBrightnessDebug {
         vanillaRestoresWater = value;
     }
 
+    /** 已保存的模式只有在本机允许的深海世界里才真正生效。 */
+    public static boolean effectiveVanilla() {
+        return isVanilla() && canUse();
+    }
+
     public static boolean hidesWaterAndFog() {
-        return isVanilla() && vanillaRestoresWater;
+        return effectiveVanilla() && vanillaRestoresWater;
     }
 
     /** 模组模式下单独关闭海雾（原 DeepBrightnessDebug 的 Ctrl+右键功能）。 */
@@ -128,7 +133,8 @@ public final class DeepBrightnessDebug {
     }
 
     private static boolean canUse(Minecraft mc) {
-        return mc.isSingleplayer() && mc.level != null && mc.level.dimension().equals(ModDimensions.THE_DEEP)
+        return mc != null && mc.isSingleplayer()
+                && mc.level != null && mc.level.dimension().equals(ModDimensions.THE_DEEP)
                 && mc.player != null && (mc.player.isCreative() || mc.player.hasPermissions(2));
     }
 }

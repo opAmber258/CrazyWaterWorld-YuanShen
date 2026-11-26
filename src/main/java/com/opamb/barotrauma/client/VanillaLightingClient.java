@@ -26,9 +26,9 @@ public final class VanillaLightingClient {
     private VanillaLightingClient() {
     }
 
-    /** true = 深海也使用原版光图与原版亮度滑杆，手电后处理关闭。 */
+    /** true = 当前允许的深海世界里使用原版光图与原版亮度滑杆，手电后处理关闭。 */
     public static boolean isVanilla() {
-        return DeepBrightnessDebug.isVanilla();
+        return DeepBrightnessDebug.effectiveVanilla();
     }
 
     @SubscribeEvent
@@ -42,6 +42,13 @@ public final class VanillaLightingClient {
             return;
         }
         if (!TOGGLE.consumeClick()) {
+            return;
+        }
+        if (!DeepBrightnessDebug.canUse()) {
+            if (mc.player != null) {
+                mc.player.displayClientMessage(Component.translatable(
+                        "item.barotrauma.brightness_debugger.scope"), true);
+            }
             return;
         }
         DeepBrightnessDebug.toggleMode();

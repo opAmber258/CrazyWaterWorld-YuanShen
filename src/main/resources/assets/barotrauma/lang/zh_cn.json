@@ -19,7 +19,7 @@
   "brightness.screen.night_vision.remove": "移除",
   "brightness.night_vision.on": "已给予无限夜视",
   "brightness.night_vision.off": "已移除夜视",
-  "brightness.screen.hint": "滚轮微调（Shift ×10）· 设置立即生效 · Esc 关闭",
+  "brightness.screen.hint": "滚轮微调（模组 Shift ×10 / 原版 ×5）· 设置立即生效 · Esc 关闭",
   "brightness.screen.reset": "恢复默认",
   "brightness.screen.done": "完成",
   "itemGroup.barotrauma.materials": "潜渊症-物品与材料",
