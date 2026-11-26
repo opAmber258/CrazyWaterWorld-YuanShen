@@ -102,3 +102,10 @@ enableDesignScissor(graphics, x1, y1, x2, y2); // 设计坐标
 - 缩放数学：`client/gui/GuiScale.java`（有单测 `GuiScaleTest`）
 - 容器界面：`SonarScreen`、`FabricatorScreen`、`DeconstructorScreen`、`BatteryScreen`、`CrateScreen`、`CabinetScreen`、`PumpScreen`、`EngineScreen`、`ReactorScreen`、`MissionScreen`、`RepairScreen`
 - 普通界面：`CampaignMapScreen`、`JunctionBoxScreen`、`StoreScreen`、`NpcDialogueScreen`、`MedicalScreen`、`MedicalClinicScreen`、`MedicalDebugScreen`、`CthulhuGazeScreen`
+
+
+## 玩家面板用法
+
+- 设备把操作和读数放在各自的仪表区。反应堆的燃料、转速表和供电曲线分区。电池和电容器使用共用的充电滑杆与储能表。新仪表由 `PanelStyle` 在设计坐标里画出。
+- 维修区由 `ScaledContainerScreen` 排在操作面板下方。缩放包含这段空间。单独打开的维修窗口复用同一区块。
+- 重新排版时一起改菜单的槽位常量、屏幕中的槽位背板、鼠标命中和滚动范围。哨站和医疗相关面板使用自己的内容布局与共用的框架和控件。

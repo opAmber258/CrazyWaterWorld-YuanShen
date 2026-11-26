@@ -124,9 +124,12 @@ public final class ShipBlockUseEvents {
                 || block instanceof OxygenGeneratorBlock
                 || block instanceof JunctionBoxBlock
                 || block instanceof SupercapacitorBlock
+                || block instanceof com.opamb.barotrauma.block.BatteryBlock
                 // 灯具面板：物理船上也要能右键开 RGB 面板。
                 || block instanceof LightBlock
                 // 炮塔/潜望镜放在物理船上时方块也在船坞里，右键坐标同样是船坞坐标。
+                || block instanceof com.opamb.barotrauma.block.CoilgunLoaderBlock
+                || block instanceof com.opamb.barotrauma.block.TurretStationBlock
                 || block instanceof TurretBlock
                 || block instanceof PeriscopeBlock
                 || block instanceof ReactorBlock

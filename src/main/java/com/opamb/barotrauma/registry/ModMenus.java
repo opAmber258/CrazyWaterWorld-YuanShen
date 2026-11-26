@@ -104,6 +104,9 @@ public final class ModMenus {
             MENUS.register("junction_box", () -> IForgeMenuType.create(
                     com.opamb.barotrauma.menu.JunctionBoxMenu::new));
 
+    public static final RegistryObject<MenuType<com.opamb.barotrauma.menu.CoilgunLoaderMenu>> COILGUN_LOADER =
+            MENUS.register("coilgun_loader", () -> IForgeMenuType.create(com.opamb.barotrauma.menu.CoilgunLoaderMenu::new));
+
     private ModMenus() {
     }
 

@@ -200,6 +200,10 @@ public final class ModBlockEntities {
                     .build(null));
 
     /** 炮塔瞄准站：只存绑定的炮塔坐标，同步给客户端画绑定连线。 */
+    public static final RegistryObject<BlockEntityType<com.opamb.barotrauma.blockentity.CoilgunLoaderBlockEntity>> COILGUN_LOADER =
+            BLOCK_ENTITIES.register("coilgun_loader", () -> BlockEntityType.Builder.of(
+                    com.opamb.barotrauma.blockentity.CoilgunLoaderBlockEntity::new, ModBlocks.COILGUN_LOADER.get()).build(null));
+
     public static final RegistryObject<BlockEntityType<TurretStationBlockEntity>> TURRET_STATION =
             BLOCK_ENTITIES.register("turret_station", () -> BlockEntityType.Builder
                     .of(TurretStationBlockEntity::new, ModBlocks.TURRET_STATION.get())

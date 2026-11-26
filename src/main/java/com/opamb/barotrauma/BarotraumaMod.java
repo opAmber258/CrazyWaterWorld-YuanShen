@@ -12,7 +12,9 @@ import com.opamb.barotrauma.registry.ModParticles;
 import com.opamb.barotrauma.registry.ModRecipes;
 import com.opamb.barotrauma.registry.ModShipBlocks;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 
@@ -38,6 +40,7 @@ public final class BarotraumaMod {
     public BarotraumaMod() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
 
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
         ModBlocks.register(modBus);
         ModItems.register(modBus);
         // 玩家装备栏（ID卡/耳机/头盔/护甲/腰带/潜水服/氧气瓶）的独立注册表。

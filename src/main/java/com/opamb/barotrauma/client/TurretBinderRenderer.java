@@ -6,9 +6,12 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.TurretBlock;
-import com.opamb.barotrauma.block.TurretStationBlock;
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
 import com.opamb.barotrauma.blockentity.TurretStationBlockEntity;
+import com.opamb.barotrauma.blockentity.PeriscopeBlockEntity;
+import com.opamb.barotrauma.blockentity.CoilgunLoaderBlockEntity;
+import com.opamb.barotrauma.blockentity.SupercapacitorBlockEntity;
+import com.opamb.barotrauma.ship.vs.VsClientTurret;
 import com.opamb.barotrauma.registry.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -155,33 +158,26 @@ public final class TurretBinderRenderer {
         Vec3 end = eye.add(player.getViewVector(partialTick).scale(INSPECT_DISTANCE));
         BlockHitResult hit = level.clip(new ClipContext(eye, end,
                 ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
-        if (hit.getType() != HitResult.Type.BLOCK) {
+        BlockPos pos;
+        if (Minecraft.getInstance().hitResult instanceof net.minecraft.world.phys.EntityHitResult entityHit
+                && entityHit.getEntity() instanceof com.opamb.barotrauma.entity.CoilgunInteractionEntity coilgun) {
+            pos = coilgun.masterPos();
+        } else if (hit.getType() == HitResult.Type.BLOCK) {
+            pos = hit.getBlockPos();
+        } else {
             return List.of();
         }
-        BlockPos pos = hit.getBlockPos();
         BlockState state = level.getBlockState(pos);
 
-        if (state.getBlock() instanceof TurretStationBlock) {
-            if (level.getBlockEntity(pos) instanceof TurretStationBlockEntity station
-                    && station.turretPos() != null
-                    && level.hasChunkAt(station.turretPos())) {
-                return List.of(station.turretPos());
-            }
-            return List.of();
+        BlockPos master = state.getBlock() instanceof TurretBlock
+                ? TurretBlockEntity.masterPos(state, pos) : pos;
+        List<BlockPos> result = new ArrayList<>();
+        for (Link link : links) {
+            BlockPos other = link.turretPos().equals(master) ? link.stationPos()
+                    : link.stationPos().equals(master) ? link.turretPos() : null;
+            if (other != null && level.hasChunkAt(other) && !result.contains(other)) result.add(other);
         }
-
-        if (state.getBlock() instanceof TurretBlock) {
-            // 未来多块炮塔：点到任意一块都换算成主方块再匹配绑定。
-            BlockPos master = TurretBlockEntity.masterPos(state, pos);
-            List<BlockPos> result = new ArrayList<>();
-            for (Link link : links) {
-                if (link.turretPos().equals(master) && level.hasChunkAt(link.stationPos())) {
-                    result.add(link.stationPos());
-                }
-            }
-            return result;
-        }
-        return List.of();
+        return result;
     }
 
     /** 发光描边：一圈贴方块的实线 + 一圈更淡的外晕，脉冲呼吸。 */
@@ -190,9 +186,12 @@ public final class TurretBinderRenderer {
         VertexConsumer vertices = GLOW_BUFFERS.getBuffer(GlowLineType.TYPE);
         float pulse = 0.72F + 0.28F * Mth.sin((level.getGameTime() + partialTick) * 0.4F);
         for (BlockPos pos : highlights) {
-            box(vertices, matrix, camera, new AABB(pos).inflate(0.004D),
+            Vec3 center = Vec3.atCenterOf(pos);
+            Vec3 offset = VsClientTurret.toWorld(level, pos, center).subtract(center);
+            AABB outline = new AABB(pos).move(offset);
+            box(vertices, matrix, camera, outline.inflate(0.004D),
                     0.45F, 1.0F, 0.95F, 0.95F * pulse);
-            box(vertices, matrix, camera, new AABB(pos).inflate(0.035D),
+            box(vertices, matrix, camera, outline.inflate(0.035D),
                     0.18F, 0.85F, 0.80F, 0.30F * pulse);
         }
         GLOW_BUFFERS.endBatch(GlowLineType.TYPE);
@@ -253,9 +252,17 @@ public final class TurretBinderRenderer {
     }
 
     private static List<Link> scan(ClientLevel level, BlockPos center) {
+        List<Link> found = new ArrayList<>();
+        scanAround(level, center, found);
+        VsClientTurret.nearbyYardCenters(level, Vec3.atCenterOf(center),
+                yard -> scanAround(level, yard, found));
+        return found;
+    }
+
+    private static void scanAround(ClientLevel level, BlockPos center, List<Link> found) {
+        if (found.size() >= MAX_LINKS) return;
         int centerChunkX = center.getX() >> 4;
         int centerChunkZ = center.getZ() >> 4;
-        List<Link> found = new ArrayList<>();
         for (int dx = -SCAN_CHUNK_RADIUS; dx <= SCAN_CHUNK_RADIUS; dx++) {
             for (int dz = -SCAN_CHUNK_RADIUS; dz <= SCAN_CHUNK_RADIUS; dz++) {
                 ChunkAccess chunk = level.getChunkSource()
@@ -267,32 +274,39 @@ public final class TurretBinderRenderer {
                     if (blockEntity instanceof TurretStationBlockEntity station
                             && station.turretPos() != null) {
                         found.add(new Link(station.getBlockPos(), station.turretPos()));
-                        if (found.size() >= MAX_LINKS) {
-                            return found;
+                    } else if (blockEntity instanceof PeriscopeBlockEntity periscope
+                            && periscope.turretPos() != null) {
+                        found.add(new Link(periscope.getBlockPos(), periscope.turretPos()));
+                    } else if (blockEntity instanceof TurretBlockEntity turret && turret.weaponKind().usesAmmo()) {
+                        if (turret.loaderPos() != null) found.add(new Link(turret.loaderPos(), turret.getBlockPos()));
+                        for (BlockPos source : turret.powerSourcePositions()) {
+                            if (found.size() >= MAX_LINKS) break;
+                            found.add(new Link(source, turret.getBlockPos()));
                         }
                     }
+                    if (found.size() >= MAX_LINKS) return;
                 }
             }
         }
-        return found;
     }
 
     private static void drawLink(VertexConsumer vertices, Matrix4f matrix, Vec3 camera,
                                  ClientLevel level, Link link) {
-        Vec3 start = Vec3.atCenterOf(link.stationPos()).add(0.0D, 0.35D, 0.0D);
-        Vec3 end = new Vec3(link.turretPos().getX() + 0.5D,
-                link.turretPos().getY() + 0.75D,
-                link.turretPos().getZ() + 0.5D);
+        Vec3 start = VsClientTurret.toWorld(level, link.stationPos(),
+                Vec3.atCenterOf(link.stationPos()).add(0, 0.35, 0));
+        Vec3 end = VsClientTurret.toWorld(level, link.turretPos(),
+                Vec3.atCenterOf(link.turretPos()).add(0, 0.25, 0));
 
         float red;
         float green;
         float blue;
-        if (!level.hasChunkAt(link.turretPos())) {
+        if (!level.hasChunkAt(link.turretPos()) || !level.hasChunkAt(link.stationPos())) {
             // 未加载：琥珀色。客户端不能为了画线去同步加载区块。
             red = 1.0F;
             green = 0.68F;
             blue = 0.18F;
-        } else if (!(level.getBlockState(link.turretPos()).getBlock() instanceof TurretBlock)) {
+        } else if (!(level.getBlockState(link.turretPos()).getBlock() instanceof TurretBlock)
+                || !validDevice(level.getBlockEntity(link.stationPos()))) {
             red = 1.0F;
             green = 0.26F;
             blue = 0.20F;
@@ -325,6 +339,11 @@ public final class TurretBinderRenderer {
         // 两端各画一个小十字，明确“这一格是端点”。
         cross(vertices, matrix, camera, start, red, green, blue);
         cross(vertices, matrix, camera, end, red, green, blue);
+    }
+
+    private static boolean validDevice(BlockEntity device) {
+        return device instanceof TurretStationBlockEntity || device instanceof PeriscopeBlockEntity
+                || device instanceof CoilgunLoaderBlockEntity || device instanceof SupercapacitorBlockEntity;
     }
 
     private static void cross(VertexConsumer vertices, Matrix4f matrix, Vec3 camera, Vec3 point,

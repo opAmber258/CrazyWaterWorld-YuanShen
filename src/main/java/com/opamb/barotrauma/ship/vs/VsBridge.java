@@ -19,6 +19,8 @@ import org.valkyrienskies.mod.common.assembly.ShipAssembler;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.UnaryOperator;
+import net.minecraft.world.level.Level;
 
 /**
  * VS2 的薄封装：只管"装船 / 拆船 / 读变换"，不掺业务。
@@ -82,6 +84,16 @@ public final class VsBridge {
             // 没装 VS2 / 版本对不上都当作"不在船里"
             return null;
         }
+    }
+
+    public static UnaryOperator<Vec3> collisionTransform(Level level, BlockPos pos) {
+        var ship = VSGameUtilsKt.getShipManagingPos(level, pos);
+        if (ship == null) return UnaryOperator.identity();
+        var matrix = ship.getTransform().getShipToWorld();
+        return point -> {
+            var result = matrix.transformPosition(new Vector3d(point.x, point.y, point.z));
+            return new Vec3(result.x, result.y, result.z);
+        };
     }
 
     public static Vec3 position(ServerShip ship) {

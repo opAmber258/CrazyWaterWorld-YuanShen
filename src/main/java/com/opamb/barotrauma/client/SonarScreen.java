@@ -54,19 +54,14 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     private static final int HELM_PAD_R = 24;
 
     // ---- 配色 ----
-    private static final int BOX_BG = 0xFF2A322C;
-    private static final int BOX_EDGE = 0xFF4A554B;
+    private static final int BOX_EDGE = 0xFF385459;
     private static final int TEXT = PanelStyle.TEXT;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.AMBER;
     private static final int LED = 0xFF7BE38B;
     private static final int SCOPE_BG = 0xFF05090A;
-    private static final int SCOPE_RIM = 0xFF3A4238;
+    private static final int SCOPE_RIM = 0xFF294246;
     private static final int TARGET_COLOR = 0xFFFFB03A;
-    private static final int BTN_BG = 0xFF232B25;
-    private static final int BTN_ON = 0xFF3F5A40;
-    private static final int BANNER_BG = 0xFF3B3222;
-    private static final int BANNER_EDGE = 0xFFC3AD72;
     private static final int BANNER_TEXT = 0xFFEDE1BE;
     private static final int WAYPOINT_COLOR = 0xFF83BCCE;
 
@@ -347,9 +342,11 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         int x = leftPos + MARGIN;
         int y = topPos + 9;
         int w = PANEL_W - MARGIN * 2;
-        graphics.fill(x, y, x + w, y + 17, BANNER_BG);
-        graphics.fill(x, y + 16, x + w, y + 17, BANNER_EDGE);
-        graphics.drawCenteredString(font, text, x + w / 2, y + 5, BANNER_TEXT);
+        PanelStyle.divider(graphics, x, y + 17, w);
+        graphics.drawString(font, "声纳 / 导航", x + 3, y + 4, TEXT, false);
+        if (state != null) {
+            graphics.drawString(font, text, x + w - 3 - font.width(text), y + 4, BANNER_TEXT, false);
+        }
     }
 
     private static String nodeName(int id) {
@@ -380,16 +377,20 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         int cx = leftPos + SCOPE_CX;
         int cy = topPos + SCOPE_CY;
 
+        PanelStyle.well(graphics, MARGIN, SONAR_BOX_Y, COL_X - MARGIN * 2, 265);
         disc(graphics, cx, cy, SCOPE_R, SCOPE_RIM);
+        disc(graphics, cx, cy, SCOPE_R - 2, 0xFF102126);
         disc(graphics, cx, cy, FIELD_R, SCOPE_BG);
         // 表圈刻度与两道量程参考线。
-        ring(graphics, cx, cy, SCOPE_R - 3, 0xFF3F4841);
+        ring(graphics, cx, cy, SCOPE_R - 3, 0xFF446167);
         for (int deg = 0; deg < 360; deg += 15) {
             int inner = SCOPE_R - (deg % 90 == 0 ? 11 : 5);
-            radial(graphics, cx, cy, inner, SCOPE_R - 2, deg, 0xFF576055);
+            radial(graphics, cx, cy, inner, SCOPE_R - 2, deg, 0xFF55777A);
         }
-        ring(graphics, cx, cy, FIELD_R, 0xFF2C3329);
+        ring(graphics, cx, cy, FIELD_R, 0xFF345C58);
         ring(graphics, cx, cy, FIELD_R / 2, 0xFF16302A);
+        line(graphics, cx - FIELD_R + 1, cy, cx + FIELD_R - 1, cy, 0xFF111F23);
+        line(graphics, cx, cy - FIELD_R + 1, cx, cy + FIELD_R - 1, 0xFF111F23);
 
         SonarScan.Frame frame = ClientSonarCache.frame();
         int viewRange = viewRange();
@@ -635,11 +636,9 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         int barX = x + 8;
         int barW = COL_W - 16;
         int barY = y + 70;
-        graphics.fill(barX, barY, barX + barW, barY + 6, 0xFF141A16);
-        int knob = barX + Math.round(barW * (range - SonarScan.MIN_RANGE)
-                / (float) (SonarScan.MAX_RANGE - SonarScan.MIN_RANGE));
-        graphics.fill(barX, barY, knob, barY + 6, 0xFF4E6A52);
-        graphics.fill(knob - 2, barY - 2, knob + 2, barY + 8, 0xFFC8CBB4);
+        PanelStyle.slider(graphics, barX, barY - 2, barW,
+                (range - SonarScan.MIN_RANGE) / (double) (SonarScan.MAX_RANGE - SonarScan.MIN_RANGE),
+                true, false);
     }
 
     // ---------------------------------------------------------- 右中：操舵
@@ -664,9 +663,7 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         int barX = x + 42;
         int barW = COL_W - 92;
         int barY = y + 111;
-        graphics.fill(barX, barY, barX + barW, barY + 6, 0xFF141A16);
-        int filled = barX + Math.round(barW * power / 100.0F);
-        graphics.fill(barX, barY, filled, barY + 6, 0xFF1FD3B8);
+        PanelStyle.meter(graphics, barX, barY - 2, barW, 9, power / 100.0D, 0xFF589E98, 10);
         String pct = power + "%";
         graphics.drawString(font, pct, x + COL_W - 8 - font.width(pct), y + 108, LED, false);
     }
@@ -705,8 +702,7 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
 
     private void controlButton(GuiGraphics graphics, int x, int y, int w, String label, int mouseX, int mouseY) {
         boolean hover = inRect(mouseX, mouseY, x, y, w, 16);
-        graphics.fill(x, y, x + w, y + 16, hover ? BTN_ON : BTN_BG);
-        graphics.fill(x, y, x + w, y + 1, BOX_EDGE);
+        PanelStyle.control(graphics, x, y, w, 16, true, hover);
         graphics.drawCenteredString(font, label, x + w / 2, y + 4, TEXT);
     }
 
@@ -753,8 +749,8 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         boolean enabled = mode != DOCK_FAR;
         boolean hover = enabled && inCircle(mouseX, mouseY, cx, cy, DOCK_R);
 
-        // 外层金属圈
-        disc(graphics, cx, cy, DOCK_R, 0xFF3B4143);
+        PanelStyle.well(graphics, COL_X, 270, COL_W, 58);
+        disc(graphics, cx, cy, DOCK_R, 0xFF405A60);
         disc(graphics, cx, cy, DOCK_R - 3, 0xFF1B2022);
         // 四段卡箍，和原作的机械钮一个味道
         for (int deg = 45; deg < 360; deg += 90) {
@@ -823,18 +819,11 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     // ---------------------------------------------------------- 小工具
 
     private void box(GuiGraphics graphics, int x, int y, int w, int h) {
-        graphics.fill(x, y, x + w, y + h, BOX_BG);
-        graphics.fill(x, y, x + w, y + 1, BOX_EDGE);
-        graphics.fill(x, y + h - 1, x + w, y + h, BOX_EDGE);
-        graphics.fill(x, y, x + 1, y + h, BOX_EDGE);
-        graphics.fill(x + w - 1, y, x + w, y + h, BOX_EDGE);
+        PanelStyle.well(graphics, x, y, w, h);
     }
 
     private void radio(GuiGraphics graphics, int x, int y, String label, boolean selected) {
-        graphics.fill(x, y, x + 8, y + 8, 0xFF11160F);
-        if (selected) {
-            graphics.fill(x + 2, y + 2, x + 6, y + 6, ACCENT);
-        }
+        PanelStyle.lamp(graphics, x + 4, y + 4, selected, ACCENT);
         graphics.drawString(font, label, x + 13, y, selected ? TEXT : DIM, false);
     }
 

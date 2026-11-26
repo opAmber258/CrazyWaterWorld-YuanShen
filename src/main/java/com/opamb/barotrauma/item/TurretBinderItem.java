@@ -2,6 +2,12 @@ package com.opamb.barotrauma.item;
 
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.TurretBlock;
+import com.opamb.barotrauma.blockentity.CoilgunLoaderBlockEntity;
+import com.opamb.barotrauma.blockentity.PeriscopeBlockEntity;
+import com.opamb.barotrauma.blockentity.SupercapacitorBlockEntity;
+import com.opamb.barotrauma.blockentity.BatteryBlockEntity;
+import com.opamb.barotrauma.ship.PowerStorage;
+import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.block.TurretStationBlock;
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
 import com.opamb.barotrauma.blockentity.TurretStationBlockEntity;
@@ -50,7 +56,7 @@ public class TurretBinderItem extends Item {
 
     private enum Endpoint {
         TURRET,
-        STATION
+        STATION, PERISCOPE, LOADER, CAPACITOR, BATTERY
     }
 
     private record Pending(BlockPos pos, ResourceKey<Level> dimension, long createdAtNanos) {
@@ -68,16 +74,13 @@ public class TurretBinderItem extends Item {
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
-        Level level = context.getLevel();
-        if (level.isClientSide) {
-            // 客户端只负责拦掉方块自己的 use（否则右键炮塔会直接进视角）。
-            return InteractionResult.SUCCESS;
-        }
-        if (context.getPlayer() == null) {
-            return InteractionResult.PASS;
-        }
         Player player = context.getPlayer();
-        BlockPos clicked = context.getClickedPos();
+        return player == null ? InteractionResult.PASS : bindAt(player, context.getHand(), context.getClickedPos());
+    }
+
+    public InteractionResult bindAt(Player player, InteractionHand hand, BlockPos clicked) {
+        Level level = player.level();
+        if (level.isClientSide) return InteractionResult.SUCCESS;
 
         if (player.isShiftKeyDown()) {
             handleSneak(level, player, clicked);
@@ -85,6 +88,9 @@ public class TurretBinderItem extends Item {
         }
 
         Endpoint clickedEndpoint = endpointOf(level, clicked);
+        if (clickedEndpoint == Endpoint.TURRET) {
+            clicked = TurretBlockEntity.masterPos(level.getBlockState(clicked), clicked);
+        }
         if (clickedEndpoint == null) {
             message(player, "msg.barotrauma.turret.binder.only");
             return InteractionResult.CONSUME;
@@ -112,29 +118,35 @@ public class TurretBinderItem extends Item {
             message(player, "msg.barotrauma.turret.binder.invalid_target");
             return InteractionResult.CONSUME;
         }
-        if (pendingEndpoint == clickedEndpoint) {
+        if ((pendingEndpoint == Endpoint.TURRET) == (clickedEndpoint == Endpoint.TURRET)) {
             // 两端同类型：保留第一端，让玩家去点另一端，避免误点覆盖。
             message(player, "msg.barotrauma.turret.binder.need_pair");
             return InteractionResult.CONSUME;
         }
 
-        BlockPos stationPos = pendingEndpoint == Endpoint.STATION ? pending.pos() : clicked;
+        BlockPos stationPos = pendingEndpoint == Endpoint.TURRET ? clicked : pending.pos();
         BlockPos rawTurretPos = pendingEndpoint == Endpoint.TURRET ? pending.pos() : clicked;
         // 未来 2×2/3×3 炮塔：绑定到主方块，站台/状态包始终按主坐标工作。
         BlockPos turretPos = TurretBlockEntity.masterPos(
                 level.getBlockState(rawTurretPos), rawTurretPos);
-        if (!(level.getBlockEntity(stationPos) instanceof TurretStationBlockEntity station)) {
+        TurretBlockEntity turret = TurretBlockEntity.at(level, turretPos);
+        if (turret != null && level.getBlockEntity(stationPos) instanceof PowerStorage
+                && !turret.hasPowerInputFor(stationPos)) {
+            PENDING.remove(player.getUUID());
+            message(player, "msg.barotrauma.turret.binder.power_full");
+            return InteractionResult.CONSUME;
+        }
+        if (turret == null || !bind(level, stationPos, turret)) {
             PENDING.remove(player.getUUID());
             message(player, "msg.barotrauma.turret.binder.invalid_target");
             return InteractionResult.CONSUME;
         }
 
-        station.bindTo(turretPos);
         PENDING.remove(player.getUUID());
         message(player, "msg.barotrauma.turret.binder.bound",
                 Component.literal(stationPos.toShortString()),
                 Component.literal(turretPos.toShortString()));
-        player.swing(context.getHand(), true);
+        player.swing(hand, true);
         return InteractionResult.CONSUME;
     }
 
@@ -151,7 +163,49 @@ public class TurretBinderItem extends Item {
         return InteractionResultHolder.success(player.getItemInHand(hand));
     }
 
+    private static boolean bind(Level level, BlockPos pos, TurretBlockEntity turret) {
+        BlockPos target = turret.getBlockPos();
+        var device = level.getBlockEntity(pos);
+        if (device instanceof TurretStationBlockEntity station) {
+            station.bindTo(target);
+            return true;
+        }
+        // Relative links survive VS assembly and docking when the two blocks move together.
+        if (!(level instanceof net.minecraft.server.level.ServerLevel server)
+                || VsState.isPhysical(server, pos) != VsState.isPhysical(server, target)) return false;
+        if (device instanceof PeriscopeBlockEntity periscope) {
+            periscope.bindTo(target);
+            return true;
+        }
+        if (!turret.weaponKind().usesAmmo()) return false;
+        if (device instanceof CoilgunLoaderBlockEntity loader) {
+            turret.bindLoader(loader);
+            return true;
+        }
+        return device instanceof PowerStorage && turret.bindPowerSource(pos);
+    }
+
     private static void handleSneak(Level level, Player player, BlockPos clicked) {
+        Pending pending = currentPending(level, player);
+        TurretBlockEntity selected = pending == null || !level.hasChunkAt(pending.pos())
+                ? null : TurretBlockEntity.at(level, pending.pos());
+        if (selected != null && level.getBlockEntity(clicked) instanceof PowerStorage
+                && selected.unbindPowerSource(clicked)) {
+            PENDING.remove(player.getUUID());
+            message(player, "msg.barotrauma.turret.binder.power_unbound");
+            return;
+        }
+        if (level.getBlockEntity(clicked) instanceof PeriscopeBlockEntity periscope) {
+            periscope.bindTo(null);
+            message(player, "msg.barotrauma.turret.binder.cleared");
+            return;
+        }
+        TurretBlockEntity turret = TurretBlockEntity.at(level, clicked);
+        if (turret != null && turret.weaponKind().usesAmmo() && !PENDING.containsKey(player.getUUID())) {
+            turret.clearSupplies();
+            message(player, "msg.barotrauma.turret.binder.supplies_cleared");
+            return;
+        }
         if (level.getBlockEntity(clicked) instanceof TurretStationBlockEntity station
                 && level.getBlockState(clicked).getBlock() instanceof TurretStationBlock) {
             boolean hadBinding = station.isBound();
@@ -200,13 +254,16 @@ public class TurretBinderItem extends Item {
         if (block instanceof TurretStationBlock) {
             return Endpoint.STATION;
         }
+        var device = level.getBlockEntity(pos);
+        if (device instanceof PeriscopeBlockEntity) return Endpoint.PERISCOPE;
+        if (device instanceof CoilgunLoaderBlockEntity) return Endpoint.LOADER;
+        if (device instanceof SupercapacitorBlockEntity) return Endpoint.CAPACITOR;
+        if (device instanceof BatteryBlockEntity) return Endpoint.BATTERY;
         return null;
     }
 
     private static String endpointKey(Endpoint endpoint) {
-        return endpoint == Endpoint.TURRET
-                ? "msg.barotrauma.turret.binder.type.turret"
-                : "msg.barotrauma.turret.binder.type.station";
+        return "msg.barotrauma.turret.binder.type." + endpoint.name().toLowerCase(java.util.Locale.ROOT);
     }
 
     private static void message(Player player, String key, Component... args) {
@@ -225,6 +282,8 @@ public class TurretBinderItem extends Item {
         tooltip.add(Component.translatable("tooltip.barotrauma.turret_binder.4")
                 .withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable("tooltip.barotrauma.turret_binder.5")
+                .withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("tooltip.barotrauma.turret_binder.6")
                 .withStyle(ChatFormatting.DARK_GRAY));
     }
 }

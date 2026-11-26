@@ -38,7 +38,10 @@ public final class ModNetwork {
     // 38：ShipActionPacket 增加驾驶状态/定点目标与舵令确认，功率拒绝回显。
     // 39：RepairActionPacket 与设备修理/接线盒菜单改版。
     // 40：新增 NightVisionPacket（亮度调节器面板的无限夜视开关）。
-    private static final String PROTOCOL = "40";
+    // 41：TurretStatePacket 增加储能总容量/最低门槛/装弹器状态/是否装弹箱/船艏方向（潜望镜 HUD）。
+    // 42：ShipUseBlockPacket 支持手持炮台绑定器直接命中；PumpActionPacket 增加 TOGGLE_POWER。
+    // 43：新增 CoilgunShotPacket（服务端确认单发，客户端据此播后坐与枪口特效）。
+    private static final String PROTOCOL = "43";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -156,6 +159,9 @@ CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(TurretStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretStatePacket::encode).decoder(TurretStatePacket::decode)
                 .consumerNetworkThread(TurretStatePacket::handle).add();
+        CHANNEL.messageBuilder(CoilgunShotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(CoilgunShotPacket::encode).decoder(CoilgunShotPacket::decode)
+                .consumerNetworkThread(CoilgunShotPacket::handle).add();
         CHANNEL.messageBuilder(TurretHitPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretHitPacket::encode).decoder(TurretHitPacket::decode)
                 .consumerNetworkThread(TurretHitPacket::handle).add();

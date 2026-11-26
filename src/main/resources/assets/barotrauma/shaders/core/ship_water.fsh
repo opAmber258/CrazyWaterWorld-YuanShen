@@ -7,10 +7,12 @@ uniform mat4 ViewToShip;
 uniform float WaveTime;
 uniform float EyeWet;
 uniform float VolumeFill;
-uniform vec4 WaterLight;
+uniform vec3 WaterLight;
 uniform float SeaEye;
 uniform vec2 SeaBounds;
 uniform vec2 SeaRange;
+uniform vec2 LitSeaRange;
+uniform vec2 SeaWavePhase;
 uniform vec3 ViewUp;
 
 in vec3 viewPosition;
@@ -30,13 +32,48 @@ vec3 waterColor(vec3 background, float path) {
     return background * attenuation + WaterLight.rgb * illumination * (1.0 - attenuation);
 }
 
-vec3 seaColor(vec3 background, vec3 endPoint) {
+float seaDistance(vec3 endPoint) {
     float rise = dot(ViewUp, endPoint);
     float boundary = rise > 0.0 ? SeaBounds.x : SeaBounds.y;
     float fraction = clamp(boundary / max(abs(rise), 0.0001), 0.0, 1.0);
-    float waterDistance = length(endPoint) * fraction;
-    vec3 attenuated = waterColor(background, min(12.0, waterDistance * WaterLight.w));
-    return attenuated * (1.0 - smoothstep(SeaRange.x, SeaRange.y, waterDistance));
+    return length(endPoint) * fraction;
+}
+
+const vec3 seaTint = vec3(0.375, 0.400, 0.450);
+const vec3 seaBackground = vec3(0.0, 0.0, 5.0 / 255.0);
+
+vec3 seaHaze(vec3 ray) {
+    float upward = dot(ray, ViewUp) / max(length(ray), 0.0001);
+    float scatter = mix(0.28, 0.68, smoothstep(-0.6, 0.5, upward));
+    // Cold Caverns pairs the nearly black background with a blue-green backdrop.
+    return mix(seaBackground, WaterLight, scatter);
+}
+
+vec3 seaColor(vec3 background, vec3 ray, float waterDistance) {
+    // The original outdoor pass mixes the scene with half-strength water color.
+    vec3 tint = mix(vec3(1.0), seaTint, 0.5 * smoothstep(0.0, 0.75, waterDistance));
+    float unlitFog = smoothstep(SeaRange.x, SeaRange.y, waterDistance);
+    float litFog = smoothstep(LitSeaRange.x, LitSeaRange.y, waterDistance);
+    float illumination = max(background.r, max(background.g, background.b));
+    float fog = mix(unlitFog, litFog, smoothstep(0.025, 0.16, illumination));
+    return mix(background, seaHaze(ray), fog) * tint;
+}
+
+vec2 seaSample(vec2 uv, vec2 size, vec3 hit, float waterDistance) {
+    vec2 texel = 1.0 / size;
+    // Two layers of procedural ripples reproduce the moving bump samples without copying the texture.
+    vec2 a = vec2(dot(uv, vec2(27.0, 18.0)), dot(uv, vec2(-21.6, 18.0))) + SeaWavePhase;
+    vec2 b = vec2(dot(uv, vec2(17.0, -28.0)), dot(uv, vec2(11.05, 28.0))) - SeaWavePhase * 2.0;
+    vec2 ripple = 0.5 * (vec2(sin(a.x), cos(a.y)) + vec2(cos(b.x), sin(b.y)));
+    float wet = smoothstep(0.25, 2.0, waterDistance);
+    // A 1080-line picture bends by at most five vertical pixels; scale with image height.
+    vec2 bend = ripple * vec2(1.0, 5.0) * (size.y / 1080.0) * texel;
+    vec2 displaced = clamp(uv + bend * wet, texel * 0.5, 1.0 - texel * 0.5);
+    float originalDepth = -hit.z;
+    float displacedDepth = -scenePosition(displaced).z;
+    // Do not pull dry openings or distant background across a nearby silhouette.
+    float depthJump = abs(displacedDepth - originalDepth) / (1.0 + min(displacedDepth, originalDepth));
+    return mix(uv, displaced, 1.0 - smoothstep(0.018, 0.075, depthJump));
 }
 
 void main() {
@@ -45,8 +82,13 @@ void main() {
     bool stream = surface.x < 0.0;
     vec3 hit = scenePosition(uv);
     if (VolumeFill > 1.5) {
-        // Open sea uses one color lookup. Refraction is applied at actual water interfaces.
-        fragColor = vec4(seaColor(texture(SceneColor, uv).rgb, hit), 1.0);
+        float waterDistance = seaDistance(hit);
+        if (waterDistance >= LitSeaRange.y) {
+            fragColor = vec4(seaHaze(hit) * mix(vec3(1.0), seaTint, 0.5), 1.0);
+            return;
+        }
+        vec2 sampleUV = seaSample(uv, size, hit, waterDistance);
+        fragColor = vec4(seaColor(texture(SceneColor, sampleUV).rgb, hit, waterDistance), 1.0);
         return;
     }
     if (VolumeFill > 0.5) {
@@ -105,7 +147,7 @@ void main() {
     }
     vec3 background = texture(SceneColor, sampleUV).rgb;
     if (SeaEye > 0.5) {
-        background = seaColor(background, viewPosition);
+        background = seaColor(background, viewPosition, seaDistance(viewPosition));
     }
     vec3 color = waterColor(background, min(path * weight, 5.0));
     // 只有被照亮的场景能给水面提供散射、边缘反光和水花亮度。

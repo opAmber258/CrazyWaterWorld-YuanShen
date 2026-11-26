@@ -3,10 +3,16 @@
 uniform sampler2D SceneColor;
 uniform sampler2D SceneDepth;
 uniform sampler2D ShadowDepth;
+uniform sampler2D CoilgunShadowDepth;
+uniform vec3 CoilgunShadowOrigin;
+uniform vec3 CoilgunShadowForward;
+uniform vec3 CoilgunShadowRight;
+uniform vec3 CoilgunShadowUp;
 uniform mat4 SceneProjection;
 uniform mat4 InverseProjection;
 uniform vec4 BeamOrigin;
 uniform vec4 BeamDirection;
+uniform vec4 BeamTintRange;
 uniform vec4 PlayerHalo;
 uniform float DeepScene;
 uniform float RemoveDarkFloor;
@@ -15,7 +21,18 @@ uniform float KeepDimScene;
 in vec2 uv;
 out vec4 fragColor;
 
-const float range = 12.0;
+float coilgunProfile(vec3 offset, vec3 direction) {
+    // Revolve the soft 2D light cone around the barrel in three dimensions.
+    float along = dot(offset, direction);
+    float u = along / BeamTintRange.w;
+    if (u <= 0.0 || u >= 1.0) {
+        return 0.0;
+    }
+    float width = BeamTintRange.w * (0.02 + 0.12 * u + 0.32 * u * u);
+    float normalizedRadius = length(offset - direction * along) / width;
+    float falloff = 1.0 - smoothstep(0.55, 0.99, u);
+    return smoothstep(0.0, 0.06, u) * falloff * exp2(-normalizedRadius * normalizedRadius);
+}
 
 vec3 unproject(vec2 coord, float depth) {
     vec4 p = InverseProjection * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
@@ -28,7 +45,7 @@ float coneProfile(float angle) {
 }
 
 float rangeFalloff(float d) {
-    return (1.0 - smoothstep(8.0, range, d)) / (1.0 + d * d * 0.04);
+    return (1.0 - smoothstep(8.0, BeamTintRange.w, d)) / (1.0 + d * d * 0.04);
 }
 
 float visibility(vec3 from, vec3 to) {
@@ -65,6 +82,52 @@ float visibility(vec3 from, vec3 to) {
     return 1.0 - max(nextStrongest, strongest * 0.22);
 }
 
+float shadowDepth(ivec2 texel) {
+    vec2 encoded = texelFetch(CoilgunShadowDepth, texel, 0).rg;
+    return (encoded.r * 65280.0 + encoded.g * 255.0) * BeamTintRange.w / 65535.0;
+}
+
+float coilgunVisibility(vec3 point, vec3 surfaceNormal) {
+    vec3 ray = point - CoilgunShadowOrigin;
+    float along = dot(ray, CoilgunShadowForward);
+    if (along <= 0.0) return 0.0;
+    vec2 slope = vec2(dot(ray, CoilgunShadowRight), dot(ray, CoilgunShadowUp)) / along;
+    if (any(greaterThan(abs(slope), vec2(1.0)))) return 0.0;
+    ivec2 last = textureSize(CoilgunShadowDepth, 0) - 1;
+    vec2 grid = (slope * 0.5 + 0.5) * vec2(last);
+    ivec2 cell = min(ivec2(grid), last - 1);
+    vec2 fraction = grid - vec2(cell);
+    vec4 blockers = vec4(shadowDepth(cell), shadowDepth(cell + ivec2(1, 0)),
+            shadowDepth(cell + ivec2(0, 1)), shadowDepth(cell + ivec2(1, 1)));
+
+    // Intersect each sample ray with the receiver plane before comparing depths.
+    // Grazing rays can hit the same hull face at very different axial depths.
+    float planeDistance = dot(surfaceNormal, ray);
+    if (abs(planeDistance) < 0.005) {
+        surfaceNormal = CoilgunShadowForward;
+        planeDistance = along;
+    }
+    vec3 facingNormal = surfaceNormal * sign(planeDistance);
+    vec2 slopeStep = 2.0 / vec2(last);
+    vec2 firstSlope = vec2(cell) * slopeStep - 1.0;
+    vec2 gradient = vec2(dot(facingNormal, CoilgunShadowRight), dot(facingNormal, CoilgunShadowUp));
+    float first = dot(facingNormal, CoilgunShadowForward) + dot(gradient, firstSlope);
+    vec2 change = gradient * slopeStep;
+    vec4 denominator = first + vec4(0.0, change.x, change.y, change.x + change.y);
+    vec4 receiverDepths = abs(planeDistance) / max(denominator, vec4(0.00001));
+    float tolerance = 0.12 + along * 0.018;
+    vec4 visible = 1.0 - smoothstep(vec4(tolerance * 0.5), vec4(tolerance), receiverDepths - blockers);
+    visible = max(visible, step(vec4(BeamTintRange.w - 0.0005), blockers));
+
+    vec2 complement = 1.0 - fraction;
+    vec4 weights = vec4(complement.x * complement.y, fraction.x * complement.y,
+            complement.x * fraction.y, fraction.x * fraction.y);
+    // Rays pointing away from the plane cannot tell us whether it is in shadow.
+    weights *= step(vec4(0.00001), denominator);
+    float coverage = dot(visible, weights) / max(dot(weights, vec4(1.0)), 0.00001);
+    return smoothstep(0.5, 1.0, coverage);
+}
+
 float toLinear(float color) {
     return color <= 0.04045 ? color / 12.92 : pow((color + 0.055) / 1.055, 2.4);
 }
@@ -97,29 +160,35 @@ void main() {
     float distanceToLight = length(offset);
     vec3 ray = offset / max(distanceToLight, 0.0001);
     float surface = 0.0;
-    if (BeamOrigin.w > 0.0 && depth < 0.999999 && distanceToLight < range) {
-        float profile = coneProfile(dot(ray, BeamDirection.xyz));
+    bool coilgun = BeamDirection.w > 1.5;
+    bool scatterInWater = BeamDirection.w > 0.5 && !coilgun;
+    if (BeamOrigin.w > 0.0 && depth < 0.999999 && distanceToLight < BeamTintRange.w) {
+        float profile = coilgun ? coilgunProfile(offset, BeamDirection.xyz)
+                : coneProfile(dot(ray, BeamDirection.xyz)) * rangeFalloff(distanceToLight);
         if (profile > 0.0) {
             float lambert = 0.55;
+            vec3 surfaceNormal = vec3(0.0);
             if (dot(normal, normal) > 1.0e-14) {
+                surfaceNormal = normalize(normal);
                 float confidence = 1.0 - smoothstep(0.12, 0.32, max(length(dx), length(dy)));
-                lambert = mix(lambert, max(0.0, dot(normalize(normal), -ray)), confidence);
+                lambert = mix(lambert, max(0.0, dot(surfaceNormal, -ray)), confidence);
             }
-            surface = profile * rangeFalloff(distanceToLight) * mix(0.12, 1.0, lambert)
-                    * visibility(BeamOrigin.xyz, point);
-            if (BeamDirection.w > 0.5) {
+            surface = profile * mix(0.12, 1.0, lambert)
+                    * (coilgun ? coilgunVisibility(point, surfaceNormal) : visibility(BeamOrigin.xyz, point));
+            if (scatterInWater) {
                 surface *= exp(-0.075 * distanceToLight);
             }
         }
     }
 
     float scatter = 0.0;
-    if (BeamDirection.w > 0.5) {
+    if (scatterInWater) {
         // 沿着眼睛到第一层不透明表面只积少量水中反向散射。
         vec3 start = unproject(uv, 0.0);
         vec3 viewRay = normalize(point - start);
         if (dot(viewRay, BeamDirection.xyz) > 0.80) {
-            float lengthInView = depth >= 0.999999 ? range : min(range, length(point - start));
+            float lengthInView = depth >= 0.999999 ? BeamTintRange.w
+                    : min(BeamTintRange.w, length(point - start));
             for (int step = 0; step < 5; ++step) {
                 float t = (float(step) + 0.5) * (lengthInView / 5.0);
                 vec3 delta = start + viewRay * t - BeamOrigin.xyz;
@@ -138,17 +207,15 @@ void main() {
         discard;
     }
     vec3 scene = texture(SceneColor, uv).rgb;
-    float luma = dot(scene, vec3(0.2126, 0.7152, 0.0722));
     float beamExposure = surface * BeamOrigin.w * 88.0;
-    float nearExposure = halo * (1.0 - smoothstep(0.035, 0.16, luma)) * 16.0;
+    if (DeepScene > 0.5) beamExposure *= mix(5.0, 1.4, KeepDimScene);
+    // The gain depends on distance only, so bright and dark texels keep their order.
+    float nearExposure = halo * mix(4.0, 1.7, KeepDimScene);
     float scenePeak = max(scene.r, max(scene.g, scene.b));
     // Colorful Lighting 混合天空和方块项，未照亮的表面最多得到两个 8 位光图码值。
     float existingLight = smoothstep(2.0 / 255.0, 3.0 / 255.0, scenePeak);
     float exposure = max(beamExposure, nearExposure);
-    if (DeepScene > 0.5) {
-        exposure *= mix(8.0, 1.0, smoothstep(2.0 / 255.0, 0.045, scenePeak));
-    }
-    vec3 reflected = whiteLight(scene, exposure);
+    vec3 reflected = whiteLight(scene, exposure) * BeamTintRange.rgb;
     vec3 base = RemoveDarkFloor > 0.5 ? scene * max(existingLight, KeepDimScene) : vec3(0.0);
     vec3 haze = vec3(0.28, 0.54, 0.64) * scatter;
     fragColor = vec4(base + reflected + haze * BeamOrigin.w, RemoveDarkFloor);

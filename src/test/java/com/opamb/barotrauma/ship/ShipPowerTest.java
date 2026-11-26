@@ -233,4 +233,46 @@ class ShipPowerTest {
         assertEquals(1.0, sim.consumerVoltage(engine), 1.0E-6);
         assertEquals(600.0, sim.batteryOutputKw(), 1.0E-6);
     }
+
+    @Test
+    void parallelDugongBatteriesShareTheEngineSpikeWithoutUsingEmptyBoxes() {
+        ShipSimulation sim = simulation(0);
+        BlockPos bus = BlockPos.ZERO;
+        BlockPos engine = new BlockPos(-1, 0, 0);
+        BlockPos leftBattery = new BlockPos(-1, 0, 1);
+        BlockPos rightBattery = new BlockPos(1, 0, 1);
+        sim.reportJunctionBox(bus, 100);
+        sim.reportJunctionBox(new BlockPos(2, 0, 1), 0);
+        sim.reportJunctionBox(new BlockPos(2, 0, 2), 0);
+        sim.reportReactor(new BlockPos(0, 1, 0), 1000, 1000, 3000, 50, false, false);
+        sim.reportConsumer(new BlockPos(0, 0, -1), 1000, 0.5, bus);
+        sim.reportConsumer(engine, 600, 0.5, bus);
+        sim.reportStorage(leftBattery, 500, 500, 650, 160, bus, 100);
+        sim.reportStorage(rightBattery, 500, 500, 650, 160, bus, 100);
+
+        sim.tick(0.1);
+        assertEquals(1, sim.consumerVoltage(engine), 1.0E-6);
+        assertEquals(-300, sim.storageFlowKw(leftBattery), 1.0E-6);
+        assertEquals(-300, sim.storageFlowKw(rightBattery), 1.0E-6);
+        assertEquals(500 - 0.5, sim.storageCharge(leftBattery), 1.0E-6);
+        assertEquals(500 - 0.5, sim.storageCharge(rightBattery), 1.0E-6);
+
+        sim.reportJunctionBox(bus, 0);
+        sim.tick(0.1);
+        assertFalse(sim.storageConnected(leftBattery));
+        assertFalse(sim.storageConnected(rightBattery));
+        assertEquals(0, sim.consumerVoltage(engine), 1.0E-6);
+        assertEquals(0, sim.batteryOutputKw(), 1.0E-6);
+    }
+
+    @Test
+    void batteryTapersTheLastKilowattMinuteOfCharge() {
+        ShipSimulation sim = simulation(0);
+        BlockPos battery = new BlockPos(0, 0, 1);
+        sim.reportReactor(new BlockPos(0, 1, 0), 0, 3000, 3000, 50, false, false);
+        sim.reportStorage(battery, 499.75, 500, 650, 160, null, 100);
+        sim.tick(0.1);
+        assertEquals(40, sim.storageFlowKw(battery), 1.0E-6);
+        assertEquals(499.75 + 40 * 0.1 * 0.95 / 60, sim.storageCharge(battery), 1.0E-6);
+    }
 }

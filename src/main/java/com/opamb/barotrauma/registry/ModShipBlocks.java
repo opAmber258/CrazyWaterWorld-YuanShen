@@ -228,7 +228,11 @@ public final class ModShipBlocks {
             return false;
         }
         // 超级电容器同样是墙挂设备（1.5×1.4×0.81），不能隔舱。
-        if (state.getBlock() == ModBlocks.SUPERCAPACITOR.get()) {
+        if (state.getBlock() == ModBlocks.SUPERCAPACITOR.get()
+                || state.getBlock() == ModBlocks.COILGUN.get()
+                || state.getBlock() == ModBlocks.COILGUN_LOADER.get()
+                || state.getBlock() == ModBlocks.PERISCOPE.get()
+                || state.getBlock() == ModBlocks.PERISCOPE_STAND.get()) {
             return false;
         }
         // 通风口是墙挂小设备（临时单格占位）：如果算整格墙，分舱扫描会跳过
@@ -279,6 +283,10 @@ public final class ModShipBlocks {
                 || block == ModBlocks.BALLAST_PUMP.get()
                 || block == ModBlocks.BATTERY.get()
                 || block == ModBlocks.SUPERCAPACITOR.get()
+                || block == ModBlocks.COILGUN.get()
+                || block == ModBlocks.COILGUN_LOADER.get()
+                || block == ModBlocks.PERISCOPE.get()
+                || block == ModBlocks.PERISCOPE_STAND.get()
                 || block == ModBlocks.FABRICATOR.get()
                 || block == ModBlocks.DECONSTRUCTOR.get()
                 || block == ModBlocks.OXYGEN_GENERATOR.get()
@@ -314,6 +322,10 @@ public final class ModShipBlocks {
                 || block == ModBlocks.JUNCTION_BOX.get()
                 || block == ModBlocks.BATTERY.get()
                 || block == ModBlocks.SUPERCAPACITOR.get()
+                || block == ModBlocks.COILGUN.get()
+                || block == ModBlocks.COILGUN_LOADER.get()
+                || block == ModBlocks.PERISCOPE.get()
+                || block == ModBlocks.PERISCOPE_STAND.get()
                 || block == ModBlocks.FABRICATOR.get()
                 || block == ModBlocks.DECONSTRUCTOR.get()
                 || block == ModBlocks.OXYGEN_GENERATOR.get()

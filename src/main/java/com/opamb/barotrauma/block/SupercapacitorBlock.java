@@ -128,6 +128,9 @@ public class SupercapacitorBlock extends BaseEntityBlock {
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, net.minecraft.world.phys.BlockHitResult hit) {
+        if (player.getItemInHand(hand).getItem() instanceof com.opamb.barotrauma.item.TurretBinderItem) {
+            return InteractionResult.PASS;
+        }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             // 物理船上 use 跑在船坞坐标里；菜单要同时拿到船坞坐标（找 BE）和
             // 世界锚点（客户端 stillValid 用，客户端没有 VsPilot 的变换）。

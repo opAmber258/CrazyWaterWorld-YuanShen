@@ -826,6 +826,7 @@ public final class VsPilot {
         // 舵效供电：必须看导航终端自己的电压。全船电压可能还有 1.0，但终端绑定的
         // 接线盒坏了以后 consumerVoltage(终端)=0，这时不能再执行残留舵令。
         target.setHelmPowered(helmPowered(control));
+        target.setLocalEngineControl(control.hasLocalEngineControl());
         target.setEngineCount(control.simulation().engineCount());
         // 原作 Engine.Update 的逐引擎力：maxforce × 推力% × 电压^(2/3) × 耐久插值。
         target.setEngineForceRaw(control.simulation().engineForceRaw());
@@ -1075,6 +1076,9 @@ public final class VsPilot {
             }
         }
         // 油门 / 功率 / 压载每 tick 同步一次：声纳面板改了状态，物理那边立刻生效
+        if (state != null && state.hasLocalEngineControl()) {
+            state.pruneLocalEngineCommands(level, VsPilot::toYard);
+        }
         applyControl(state);
         // 无人掌舵看门狗：正常关屏会发 STOP，但掉线/崩溃不会。
         tickHelmWatchdog(level, state);
@@ -1905,6 +1909,19 @@ public final class VsPilot {
      * 物理船左键：先扣船壳耐久；0 时方块切成 breached（无碰撞、保留数据），不删除。
      * {@code ShipBreakMixin} 在服务端收到"开始破坏"时调用。
      */
+    public static void damageHullAtImpact(ServerLevel level, BlockPos yardPos, float amount) {
+        if (state == null || lastLevel != level || !isYardBlock(yardPos)) return;
+        BlockPos cell = toAssembly(yardPos);
+        BlockState block = snapshot.get(cell);
+        if (block == null) return;
+        float max = state.hullMaxHealth(block);
+        if (max <= 0 || HullBlock.isBreached(block)) return;
+        if (state.hullDamage().applyDamage(cell, amount, max) <= 0) {
+            breachSnapshotBlock(level, null, cell, block);
+        }
+        sendHullDamageState(state);
+    }
+
     private static boolean tryDamage(ServerLevel level, ServerPlayer player, BlockPos packetPos, float amount) {
         if (ship == null || state == null || lastLevel != level || snapshot.isEmpty()
                 || player.isSpectator() || amount <= 0.0F) {

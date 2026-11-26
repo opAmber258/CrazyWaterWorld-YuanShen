@@ -6,6 +6,7 @@
   "refmap": "barotrauma.refmap.json",
   "mixins": [
     "AbstractContainerMenuAccessor",
+    "CoilgunCollisionMixin",
     "EntityPickMixin",
     "EntitySwimmingMixin",
     "InventoryMenuMixin",
@@ -24,6 +25,7 @@
     "AbstractContainerScreenAccessor",
     "AbstractContainerScreenMixin",
     "CameraProjectionMixin",
+    "CoilgunPickMixin",
     "CreativeScreenMixin",
     "GuiMixin",
     "HumanoidModelMixin",

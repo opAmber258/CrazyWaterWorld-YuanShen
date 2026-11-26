@@ -24,6 +24,20 @@ public final class ModEntities {
                     .clientTrackingRange(10)
                     .build(new ResourceLocation(BarotraumaMod.MOD_ID, "vessel").toString()));
 
+    public static final RegistryObject<EntityType<com.opamb.barotrauma.entity.CoilgunBolt>> COILGUN_BOLT =
+            ENTITIES.register("coilgun_bolt", () -> EntityType.Builder
+                    .<com.opamb.barotrauma.entity.CoilgunBolt>of(
+                            com.opamb.barotrauma.entity.CoilgunBolt::new, MobCategory.MISC)
+                    .sized(0.1F, 0.1F).clientTrackingRange(8).updateInterval(2).noSave().noSummon()
+                    .build("barotrauma:coilgun_bolt"));
+
+    public static final RegistryObject<EntityType<com.opamb.barotrauma.entity.CoilgunInteractionEntity>> COILGUN_INTERACTION =
+            ENTITIES.register("coilgun_interaction", () -> EntityType.Builder
+                    .<com.opamb.barotrauma.entity.CoilgunInteractionEntity>of(
+                            com.opamb.barotrauma.entity.CoilgunInteractionEntity::new, MobCategory.MISC)
+                    .sized(0.25F, 0.25F).clientTrackingRange(8).updateInterval(1).noSave().noSummon()
+                    .build("barotrauma:coilgun_interaction"));
+
     /** 哨站站务员：玩家人形、站桩、右键发任务。 */
     public static final RegistryObject<EntityType<com.opamb.barotrauma.entity.NpcEntity>> NPC =
             ENTITIES.register("npc", () -> EntityType.Builder

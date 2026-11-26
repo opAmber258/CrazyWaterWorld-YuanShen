@@ -24,6 +24,7 @@ public record PumpActionPacket(BlockPos pos, int action, int value) {
 
     public static final int TOGGLE_AUTO = 0;
     public static final int SET_FLOW = 1;
+    public static final int TOGGLE_POWER = 2;
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
@@ -58,6 +59,7 @@ public record PumpActionPacket(BlockPos pos, int action, int value) {
                 return;
             }
             switch (action) {
+                case TOGGLE_POWER -> pump.setEnabled(!pump.enabled());
                 case TOGGLE_AUTO -> pump.setAuto(!pump.auto());
                 case SET_FLOW -> pump.setFlow(Mth.clamp(value, -100, 100));
                 default -> { /* 未知操作忽略 */ }

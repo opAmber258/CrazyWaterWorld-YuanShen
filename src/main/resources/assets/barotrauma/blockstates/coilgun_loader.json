@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "barotrauma:block/coilgun_loader"
+    }
+  }
+}

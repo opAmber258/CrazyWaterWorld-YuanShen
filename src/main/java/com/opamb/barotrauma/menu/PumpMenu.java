@@ -3,7 +3,6 @@ package com.opamb.barotrauma.menu;
 import com.opamb.barotrauma.blockentity.DrainPumpBlockEntity;
 import com.opamb.barotrauma.registry.ModMenus;
 import com.opamb.barotrauma.registry.ModShipBlocks;
-import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
@@ -36,7 +35,8 @@ public class PumpMenu extends DeviceMenu {
     /** 数据位 4：耐久 × 10。 */
     public static final int DATA_CONDITION = 4;
 
-    public static final int DATA_COUNT = 5;
+    public static final int DATA_ENABLED = 5;
+    public static final int DATA_COUNT = 6;
 
     private final BlockPos pumpPos;
     private final ContainerData data;
@@ -49,7 +49,6 @@ public class PumpMenu extends DeviceMenu {
         super(ModMenus.PUMP.get(), id, inventory, pumpPos);
         this.pumpPos = pumpPos;
         DrainPumpBlockEntity resolved = null;
-        ShipState ship = null;
         if (!inventory.player.level().isClientSide
                 && inventory.player.level() instanceof ServerLevel serverLevel) {
             if (serverLevel.getBlockEntity(pumpPos) instanceof DrainPumpBlockEntity direct) {
@@ -59,18 +58,17 @@ public class PumpMenu extends DeviceMenu {
                 // 物理船：按被右键的代理位置找回对应的那台泵（每台泵各有一个代理）。
                 resolved = VsPilot.pumpBlockEntity(serverLevel, pumpPos);
             }
-            ship = DrainPumpBlockEntity.resolveShip(serverLevel, pumpPos);
         }
         if (resolved != null) {
             DrainPumpBlockEntity pump = resolved;
-            ShipState shipState = ship;
             this.data = new ContainerData() {
                 @Override
                 public int get(int index) {
                     return switch (index) {
                         case DATA_AUTO -> pump.auto() ? 1 : 0;
                         case DATA_FLOW -> pump.effectiveFlow();
-                        case DATA_POWER -> powered(shipState) ? 1 : 0;
+                        case DATA_POWER -> pump.gridPowered() ? 1 : 0;
+                        case DATA_ENABLED -> pump.enabled() ? 1 : 0;
                         case DATA_BALLAST -> pump.ballast() ? 1 : 0;
                         case DATA_CONDITION -> (int) Math.round(pump.condition() * 10.0D);
                         default -> 0;
@@ -92,14 +90,10 @@ public class PumpMenu extends DeviceMenu {
             fallback.set(DATA_AUTO, 1);
             fallback.set(DATA_FLOW, -100);
             fallback.set(DATA_CONDITION, 1000);
+            fallback.set(DATA_ENABLED, 1);
             this.data = fallback;
         }
         addDataSlots(data);
-    }
-
-    /** 船上电力够不够（对标原版水泵面板左上角的能源灯）。 */
-    private static boolean powered(ShipState ship) {
-        return ship != null && ship.simulation().report().powerRatio() > 0.02D;
     }
 
     public ContainerData data() {

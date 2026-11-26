@@ -220,6 +220,7 @@ public final class ModItems {
 
     /** 电磁炮：炮塔瞄准 + 弹药箱装填 + 船电网。 */
     public static final RegistryObject<Item> COILGUN = blockItem("coilgun", ModBlocks.COILGUN);
+    public static final RegistryObject<Item> COILGUN_LOADER = blockItem("coilgun_loader", ModBlocks.COILGUN_LOADER);
 
     /** 电磁炮弹药箱：一箱 200 发。 */
     public static final RegistryObject<Item> COILGUN_AMMO_BOX = ITEMS.register(

@@ -44,6 +44,8 @@ public final class ClientSetup {
             // 测试船壳要真的透过去看见里面，cutout 只有全透明/全不透明两态，不够
             ItemBlockRenderTypes.setRenderLayer(ModShipBlocks.TEST_HULL.get(), RenderType.translucent());
             net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.opamb.barotrauma.registry.ModMenus.COILGUN_LOADER.get(), CoilgunLoaderScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.SONAR.get(), SonarScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.MISSION_TERMINAL.get(), MissionScreen::new);
@@ -107,6 +109,7 @@ public final class ClientSetup {
     public static void onRegisterShaders(RegisterShadersEvent event) {
         ShipWaterMaterial.register(event);
         FlashlightRenderer.register(event);
+        DivingVisorOverlay.registerShader(event);
     }
 
 
@@ -150,6 +153,8 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.TURRET.get(), TurretRenderer::new);
         event.registerEntityRenderer(com.opamb.barotrauma.registry.ModEntities.VESSEL.get(), VesselRenderer::new);
         event.registerEntityRenderer(com.opamb.barotrauma.registry.ModEntities.NPC.get(), NpcRenderer::new);
+        event.registerEntityRenderer(ModEntities.COILGUN_BOLT.get(), net.minecraft.client.renderer.entity.NoopRenderer::new);
+        event.registerEntityRenderer(ModEntities.COILGUN_INTERACTION.get(), net.minecraft.client.renderer.entity.NoopRenderer::new);
         event.registerEntityRenderer(ModEntities.TRAINING_DUMMY.get(), TrainingDummyRenderer::new);
         event.registerEntityRenderer(ModEntities.ADVANCED_TRAINING_DUMMY.get(),
                 AdvancedTrainingDummyRenderer::new);
@@ -161,10 +166,11 @@ public final class ClientSetup {
                         BarotraumaMod.MOD_ID, "textures/entity/advanced_balloon_dummy.png")));
     }
 
-    /** 炮塔 HUD：只在进入炮塔视角时绘制，叠在热键栏之上。 */
+    /** 头盔遮罩贴着场景，炮塔 HUD 叠在热键栏之上。 */
     @SubscribeEvent
     public static void onRegisterOverlays(
             net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
+        event.registerBelowAll("diving_visor", DivingVisorOverlay::render);
         event.registerAbove(net.minecraftforge.client.gui.overlay.VanillaGuiOverlay.HOTBAR.id(),
                 "turret_hud", new TurretHud());
     }
