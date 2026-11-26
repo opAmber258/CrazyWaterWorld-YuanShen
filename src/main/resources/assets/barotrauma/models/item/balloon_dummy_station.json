@@ -1,3 +1,156 @@
 {
-  "parent": "barotrauma:block/training_dummy_station"
+  "textures": {
+    "particle": "minecraft:block/iron_block",
+    "base": "minecraft:block/iron_block",
+    "trim": "minecraft:block/polished_blackstone",
+    "pump": "minecraft:block/redstone_block",
+    "marker": "barotrauma:item/station_marker_balloon"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 3, 16],
+      "faces": {
+        "down": {
+          "texture": "#base"
+        },
+        "up": {
+          "texture": "#base"
+        },
+        "north": {
+          "texture": "#base"
+        },
+        "south": {
+          "texture": "#base"
+        },
+        "west": {
+          "texture": "#base"
+        },
+        "east": {
+          "texture": "#base"
+        }
+      }
+    },
+    {
+      "from": [4, 3, 4],
+      "to": [12, 10, 12],
+      "faces": {
+        "down": {
+          "texture": "#trim"
+        },
+        "up": {
+          "texture": "#trim"
+        },
+        "north": {
+          "texture": "#trim"
+        },
+        "south": {
+          "texture": "#trim"
+        },
+        "west": {
+          "texture": "#trim"
+        },
+        "east": {
+          "texture": "#trim"
+        }
+      }
+    },
+    {
+      "from": [3, 10, 3],
+      "to": [13, 12, 13],
+      "faces": {
+        "down": {
+          "texture": "#base"
+        },
+        "up": {
+          "texture": "#base"
+        },
+        "north": {
+          "texture": "#base"
+        },
+        "south": {
+          "texture": "#base"
+        },
+        "west": {
+          "texture": "#base"
+        },
+        "east": {
+          "texture": "#base"
+        }
+      }
+    },
+    {
+      "from": [11, 3, 1],
+      "to": [15, 9, 5],
+      "faces": {
+        "down": {
+          "texture": "#pump"
+        },
+        "up": {
+          "texture": "#pump"
+        },
+        "north": {
+          "texture": "#pump"
+        },
+        "south": {
+          "texture": "#pump"
+        },
+        "west": {
+          "texture": "#pump"
+        },
+        "east": {
+          "texture": "#pump"
+        }
+      }
+    },
+    {
+      "from": [7, 12, 7],
+      "to": [9, 14, 9],
+      "faces": {
+        "down": {
+          "texture": "#trim"
+        },
+        "up": {
+          "texture": "#trim"
+        },
+        "north": {
+          "texture": "#trim"
+        },
+        "south": {
+          "texture": "#trim"
+        },
+        "west": {
+          "texture": "#trim"
+        },
+        "east": {
+          "texture": "#trim"
+        }
+      }
+    },
+    {
+      "from": [4, 3.01, 14.0],
+      "to": [12, 11.01, 14.8],
+      "faces": {
+        "down": {
+          "texture": "#trim"
+        },
+        "up": {
+          "texture": "#trim"
+        },
+        "north": {
+          "texture": "#trim"
+        },
+        "south": {
+          "texture": "#marker",
+          "uv": [0, 0, 16, 16]
+        },
+        "west": {
+          "texture": "#trim"
+        },
+        "east": {
+          "texture": "#trim"
+        }
+      }
+    }
+  ]
 }

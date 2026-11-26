@@ -44,6 +44,9 @@ public final class UnderwaterEffects {
 
     @SubscribeEvent
     public static void onFogColor(ViewportEvent.ComputeFogColor event) {
+        if (DeepBrightnessDebug.hidesWaterAndFog()) {
+            return;
+        }
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null && mc.level.dimension().equals(ModDimensions.THE_DEEP)) {
             event.setRed(0.0F);
@@ -54,6 +57,9 @@ public final class UnderwaterEffects {
 
     @SubscribeEvent
     public static void onRenderFog(ViewportEvent.RenderFog event) {
+        if (DeepBrightnessDebug.hidesWaterAndFog()) {
+            return;
+        }
         if (event.getMode() != FogMode.FOG_TERRAIN) {
             return;
         }
@@ -77,6 +83,9 @@ public final class UnderwaterEffects {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+        if (DeepBrightnessDebug.hidesWaterAndFog()) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
@@ -114,6 +123,9 @@ public final class UnderwaterEffects {
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) {
+            return;
+        }
+        if (DeepBrightnessDebug.hidesWaterAndFog()) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();

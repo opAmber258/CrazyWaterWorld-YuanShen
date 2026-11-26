@@ -25,13 +25,14 @@ public final class ClientSetup {
     private ClientSetup() {
     }
 
-    /** 注册模组按键：战役地图与水中自然下沉开关。 */
+    /** 注册模组按键：战役地图、水中自然下沉、原版光照切换等。 */
     @SubscribeEvent
     public static void onRegisterKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
         event.register(CampaignClient.OPEN_MAP);
         event.register(UnderwaterMovement.TOGGLE_NATURAL_SINK);
         event.register(PowerClient.OPEN_POWER);
         event.register(TurretClient.TOGGLE_FIRE_MODE);
+        event.register(VanillaLightingClient.TOGGLE);
     }
 
     /** 客户端初始化：干燥区回调、渲染层与菜单界面注册。 */

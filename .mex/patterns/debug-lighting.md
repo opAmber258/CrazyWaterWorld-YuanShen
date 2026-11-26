@@ -10,7 +10,7 @@ edges:
     condition: when checking what the client and server are responsible for
   - target: patterns/debug-ship-water.md
     condition: when the beam or its water tint is missing in a flooded room
-last_updated: 2026-11-24
+last_updated: 2026-11-26
 ---
 
 # 手电筒与舱灯排查
@@ -23,6 +23,9 @@ last_updated: 2026-11-24
 - `LightTextureMixin` 仅在深海忽略亮度滑杆。光图零照明只留一个码值供手电采样，合成的首个光照通道将这个底色扣除。Colorful Lighting 的天空和方块两项会合计接近两个码值。远处漏亮时也检查深海背景、水体散射和无光颗粒，它们都不能给黑像素加光。
 - 舱口或舱壁门在普通光下局部发红时，检查 `BlockLightSampler` 是否用 `LevelRenderer.getLightColor` 取样并保留 Colorful Lighting 的 RGB 光图标记。把带彩色标记的整数和原版光照值直接拆包取最大会产生假红光。
 - `LightBlockEntity.serverTick` 根据电网决定固定舱灯的方块光照等级。`LightClientColors` 为可选的 Colorful Lighting 提供每盏灯的颜色，跳过默认或重复值，单个客户端刻最多通知 32 个已变色的位置。
+- 深海亮度设置统一放在 `DeepBrightnessDebug`（客户端会话内状态）：模式 `MOD` / `VANILLA`、模组环境底光 0..100%、原版环境底光 0.00..0.20、原版模式是否还原雾与水体。F7（`VanillaLightingClient`，切换时打 `[light] 原版光照切换`）只做模式快捷切换；右键 `brightness_debugger` 打开 `BrightnessDebuggerScreen` 编辑全部参数，改动立即生效、不走服务端。物品图标是 16×16 的 `textures/item/brightness_debugger.png`，由 `tools/gen_item_icons.py` 生成。
+- `VANILLA` 模式打开后 `LightTextureMixin` 的三处改动（0.04 环境底光、材质底色、gamma 固定 0）全部放行原版值，并把 `getBrightness` 读到的环境底光换成 `vanillaAmbient`（默认 0.1，PR #83 把维度 JSON 从 0.1 改成了 0.0；不补这一项，无方块光的舱室在“原版模式”下仍然是纯黑），`FlashlightRenderer` 在深海整体跳过——否则它的 `RemoveDarkFloor` 会把刚恢复的原版底光再扣掉。只影响深海维度；该模式下深海不绘制手电光束/近身微光，但电池与服务端状态照常。排查“画面问题是不是模组光照引起”时先按 F7 对照。
+- `VANILLA` 模式且“还原雾与水体”打开时，还跳过 `UnderwaterEffects` 的黑色雾色、20/72 格雾距和 `AFTER_SKY` 清黑，以及 `ShipWaterRenderer` 在深海的整段水体绘制：水面、水下蓝黑滤镜和 `ship_water` 吸收都不画，天空/雾/背景走原版。流体场与物理不受影响，只是看不到模组水面；关掉开关或切回 `MOD` 后下一帧恢复。
 
 ## Debug
 
@@ -31,3 +34,4 @@ last_updated: 2026-11-24
 3. 在干舱和进水舱分别转动视角，检查同一面墙的光斑、近处被门框挡住的区域、门打开后的通光和水下小范围散射。用普通方块船和装配后的 VS2 船各看一次。
 4. 确认固定灯在更改颜色、熄灭和重新进入世界后仍能恢复设置。对照 `Powered` 状态、灯的实际方块亮度以及本世界的彩色光传播日志。
 5. 在无灯的干舱、灌水舱和舱外，把亮度从最低拖到最高。微光外应维持黑色。用一个固定灯或手电核对环境照明仍存在，切回普通维度核对亮度选项生效。
+6. 怀疑画面偏暗/漏光是模组光照造成时按 F7 切原版光照对照；再按一次恢复。若原版模式下仍偏暗，问题在水体/雾/粒子而不是光图。
