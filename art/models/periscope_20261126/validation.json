@@ -1,0 +1,93 @@
+{
+  "asset_id": "periscope",
+  "schema_version": 2,
+  "creation_source": "人工 + AI（Han-xing-official + GLM-5.3-Flash）",
+  "acceptance": {},
+  "inputs": {
+    "geometry": "aca6e321c273a4913ae77ab38653a754fe9b7dc9ee0ebdc32d43ae5eb7f2cf7c",
+    "textures": "a314da2d30046a5dbb9aa44a36580ee8ded21027426eb6d21d81ec6d1530d7af",
+    "previews": "a8aa665d871f8249bdda33ea4ad04d02f99f8a4bb0b468559a41920a74a233cb"
+  },
+  "measurements": {
+    "projects": [
+      {
+        "path": "periscope.bbmodel",
+        "format": "java_block",
+        "cubes": 84,
+        "meshes": 0,
+        "groups": 22
+      }
+    ],
+    "exports": [],
+    "java_exports": [],
+    "textures": [
+      {
+        "path": "periscope_tex.png",
+        "width": 128,
+        "height": 128,
+        "mode": "RGBA"
+      }
+    ],
+    "previews": [
+      {
+        "path": "preview_back.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_front.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_oblique.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_side.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      }
+    ]
+  },
+  "checks": {
+    "editor_reopen": "unverified",
+    "native_reexport": "unverified",
+    "visual_preview": "unverified"
+  },
+  "status": "incomplete",
+  "unresolved": [
+    "editor_reopen:unverified",
+    "native_reexport:unverified",
+    "visual_preview:unverified",
+    "periscope.bbmodel: missing Java model export periscope.json"
+  ],
+  "validator": {
+    "version": 2,
+    "sha256": "030083f30e86fbde97f34f8f7892ba535c1af436d39fe93a1454dee4ff8b7206"
+  },
+  "display_name_zh": "潜望镜",
+  "display_name_en": "Periscope",
+  "contributors": {
+    "human": [
+      "Han-xing-official"
+    ],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线校验、文档与登记起草；未参与几何/UV/贴图/预览制作"
+      }
+    ],
+    "division": "几何、UV、贴图、预览截图全部人工完成；AI 仅做交付打包与离线校验。"
+  },
+  "sources": {
+    "zh": "entityname.periscope → 潜望镜；沿用项目既有登记与中文维基引用（本机无游戏目录，未直接核验 SimplifiedChineseVanilla.xml）",
+    "en": "entityname.periscope → Periscope（英文文本条目；本机无游戏目录，未直接核验 EnglishVanilla.xml）"
+  }
+}
