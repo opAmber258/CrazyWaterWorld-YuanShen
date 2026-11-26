@@ -240,11 +240,6 @@ public class DeconstructorBlock extends Block implements EntityBlock {
             if (!(masterState.getBlock() instanceof DeconstructorBlock)) {
                 return InteractionResult.PASS;
             }
-            if (level.getBlockEntity(master) instanceof DeconstructorBlockEntity deconstructor
-                    && com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
-                            serverPlayer, master, deconstructor, false)) {
-                return InteractionResult.CONSUME;
-            }
             NetworkHooks.openScreen(serverPlayer, new MenuProvider() {
                 @Override
                 public Component getDisplayName() {

@@ -69,6 +69,7 @@ public final class ClientSetup {
                     com.opamb.barotrauma.registry.ModMenus.CRATE.get(), CrateScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.REPAIR.get(), RepairScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(com.opamb.barotrauma.registry.ModMenus.JUNCTION_BOX.get(), JunctionBoxScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(
                     com.opamb.barotrauma.registry.ModMenus.FABRICATOR.get(), FabricatorScreen::new);
             net.minecraft.client.gui.screens.MenuScreens.register(

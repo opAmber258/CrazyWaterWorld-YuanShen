@@ -2,7 +2,7 @@
   "itemGroup.barotrauma": "潜渊症",
   "itemGroup.barotrauma.dev": "潜渊症·开发者工具",
   "item.barotrauma.brightness_debugger": "深海亮度调节器",
-  "item.barotrauma.brightness_debugger.controls": "右键打开深海亮度面板",
+  "item.barotrauma.brightness_debugger.controls": "右键打开深海亮度面板（光照/海雾/夜视）",
   "item.barotrauma.brightness_debugger.scope": "仅限本地单人深海的创造玩家或管理员",
   "brightness.screen.title": "深海亮度调节器",
   "brightness.screen.live": "立即生效",
@@ -13,6 +13,7 @@
   "brightness.screen.vanilla_ambient": "原版环境底光",
   "brightness.screen.restore_water": "原版模式还原雾与水体",
   "brightness.screen.restore_water.desc": "关掉后只换光图，黑雾与水下压暗保留",
+  "brightness.screen.no_sea_fog": "关闭海雾",
   "brightness.screen.night_vision": "无限夜视",
   "brightness.screen.night_vision.give": "给予",
   "brightness.screen.night_vision.remove": "移除",
@@ -696,5 +697,14 @@
   "gui.barotrauma.repair.hint.tool": "手持对应工具才能修理",
   "gui.barotrauma.repair.hint.full": "耐久已满，不需要修理",
   "gui.barotrauma.repair.hint.threshold": "耐久高于修理阈值，暂时不用修",
-  "gui.barotrauma.repair.hint.qte": "点修理持续恢复；指针进绿色区域时点击额外 +3"
+  "gui.barotrauma.repair.hint.qte": "点修理持续恢复；指针进绿色区域时点击额外 +3",
+  "gui.barotrauma.repair.skill": "技能要求 %s，当前 %s",
+  "affliction.barotrauma.lacerations": "撕裂伤",
+  "power.indicator.powered": "已供电",
+  "power.indicator.high": "过压",
+  "power.indicator.low": "欠压",
+  "gui.barotrauma.repair.failed": "修理失败",
+  "gui.barotrauma.engine.helm_input": "驾驶台控制",
+  "gui.barotrauma.engine.reverse": "倒车",
+  "gui.barotrauma.engine.ahead": "前进"
 }

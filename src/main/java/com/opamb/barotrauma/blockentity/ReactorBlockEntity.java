@@ -15,6 +15,7 @@ import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.ParticleTypes;
@@ -60,6 +61,8 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
     public static final int FUEL_SLOTS = 4;
     private static final double SECONDS_PER_TICK = 1.0D / 20.0D;
 
+    private boolean dugongStock;
+    private double generatedKw;
     private final ReactorState state = new ReactorState();
     private final NonNullList<ItemStack> fuel = NonNullList.withSize(FUEL_SLOTS, ItemStack.EMPTY);
     /** 每格燃料棒的小数耐久损耗（0.2/s 太细，先攒到 1 再扣）。 */
@@ -132,13 +135,21 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
             if (ship.tracksHullBlock(assembly)) {
                 cell = assembly;
                 load = ship.simulation().report().powerDemand();
+                if (!be.dugongStock && com.opamb.barotrauma.world.StarterSub.stockEquipment(
+                        server, cell, VsState.isPhysical(server, pos), -3, -4, 1)) {
+                    be.dugongStock = true;
+                    be.state.setDugongStock(true);
+                    be.setChanged();
+                }
             }
         }
         be.lastLoadKw = load;
 
         // 耐久：反应堆开机时自然劣化（最低 10%，见 ConditionComponent）；
         // 泡水时按原作 reactor.xml 的 InWater 效果再掉 0.5/s，同样止于 10%。
-        if (be.condition.tick(server, be.state.powerOn())) {
+        if (be.condition.tick(server, be.state.temperature() > 0.1D
+                && !com.opamb.barotrauma.world.StarterSub.atFriendlyOutpost(server), SECONDS_PER_TICK,
+                (be.state.fission() + be.state.turbine()) / 200.0D)) {
             be.setChanged();
         }
         if (ship != null && cell != null && be.condition.condition() > 10.0D) {
@@ -156,6 +167,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         }
         if (be.condition.broken()) {
             be.state.setPowerOn(false);
+            be.generatedKw = 0.0D;
             be.lastRatio = 0.0D;
             // 原作 reactor.xml OnBroken：舱内还有燃料（AvailableFuel > 1）就直接熔毁爆炸。
             if (!be.meltdownDone && be.availableFuel() > 1.0D) {
@@ -177,6 +189,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         int events = be.state.tick(SECONDS_PER_TICK, available, load,
                 be.condition.fraction());
         be.burnFuel(SECONDS_PER_TICK);
+        be.generatedKw = Mth.clamp(load, be.state.minOutputKw(), be.state.maxOutputKw());
 
         if (ship != null && cell != null) {
             ship.simulation().reportReactor(cell, be.state.minOutputKw(),
@@ -320,6 +333,10 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
             sum += ReactorFuel.fuelValue(stack);
         }
         return sum;
+    }
+
+    public double generatedKw() {
+        return generatedKw;
     }
 
     public double lastLoadKw() {
@@ -537,6 +554,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         tag.put("ReactorBurn", doubleList(burnCarry));
         tag.putBoolean("MeltdownDone", meltdownDone);
         condition.save(tag, "Condition");
+        if (dugongStock) tag.putBoolean("DugongStock", true);
         ContainerHelper.saveAllItems(tag, fuel);
     }
 
@@ -550,6 +568,8 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         }
         meltdownDone = tag.getBoolean("MeltdownDone");
         condition.load(tag, "Condition");
+        dugongStock = tag.getBoolean("DugongStock");
+        state.setDugongStock(dugongStock);
         ContainerHelper.loadAllItems(tag, fuel);
     }
 

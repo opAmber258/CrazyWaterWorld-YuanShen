@@ -11,7 +11,7 @@ import net.minecraft.util.Mth;
  * <p>两种模式：</p>
  * <ul>
  *   <li>{@link Mode#MOD}：模组光照。环境底光由 {@link #percent()} 调（0..100%），
- *       再叠加手电后处理、黑雾与水体吸收。</li>
+ *       再叠加手电后处理、黑雾与水体吸收；{@link #seaFogDisabled()} 可单独关海雾。</li>
  *   <li>{@link Mode#VANILLA}：原版光照。光图放行原版，环境底光固定用
  *       {@link #vanillaAmbient()}（默认 0.1，即引入灯光系统前的维度值）；
  *       是否同时跳过黑雾/水体由 {@link #vanillaRestoresWater()} 决定。</li>
@@ -34,11 +34,12 @@ public final class DeepBrightnessDebug {
     private static Mode mode = Mode.MOD;
     private static float vanillaAmbient = DEFAULT_VANILLA_AMBIENT;
     private static boolean vanillaRestoresWater = true;
+    private static boolean noSeaFog;
 
     private DeepBrightnessDebug() {
     }
 
-    /** 打开面板前调用：允许时把设置接到当前世界，否则提示作用范围。 */
+    /** 打开面板前调用：允许时返回 true，否则提示作用范围。 */
     public static boolean activate() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) {
@@ -101,11 +102,21 @@ public final class DeepBrightnessDebug {
         return isVanilla() && vanillaRestoresWater;
     }
 
+    /** 模组模式下单独关闭海雾（原 DeepBrightnessDebug 的 Ctrl+右键功能）。 */
+    public static boolean seaFogDisabled() {
+        return noSeaFog && canUse();
+    }
+
+    public static void setSeaFogDisabled(boolean value) {
+        noSeaFog = value;
+    }
+
     public static void reset() {
         percent = 0;
         mode = Mode.MOD;
         vanillaAmbient = DEFAULT_VANILLA_AMBIENT;
         vanillaRestoresWater = true;
+        noSeaFog = false;
     }
 
     static int nextPercent(int current, boolean reset) {

@@ -10,6 +10,7 @@ uniform vec4 BeamDirection;
 uniform vec4 PlayerHalo;
 uniform float DeepScene;
 uniform float RemoveDarkFloor;
+uniform float KeepDimScene;
 
 in vec2 uv;
 out vec4 fragColor;
@@ -148,7 +149,7 @@ void main() {
         exposure *= mix(8.0, 1.0, smoothstep(2.0 / 255.0, 0.045, scenePeak));
     }
     vec3 reflected = whiteLight(scene, exposure);
-    vec3 base = RemoveDarkFloor > 0.5 ? scene * existingLight : vec3(0.0);
+    vec3 base = RemoveDarkFloor > 0.5 ? scene * max(existingLight, KeepDimScene) : vec3(0.0);
     vec3 haze = vec3(0.28, 0.54, 0.64) * scatter;
     fragColor = vec4(base + reflected + haze * BeamOrigin.w, RemoveDarkFloor);
 }

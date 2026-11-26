@@ -6,6 +6,7 @@ import com.opamb.barotrauma.equipment.HandsSlot;
 import com.opamb.barotrauma.menu.CrateMenu;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
@@ -21,8 +22,7 @@ import net.minecraft.world.inventory.Slot;
  */
 public class CrateScreen extends ScaledContainerScreen<CrateMenu> {
 
-    private static final int BG = 0xFF1A1D20;
-    private static final int EDGE = 0xFF4A5157;
+    private static final int EDGE = PanelStyle.EDGE;
     private static final int EDGE_DARK = 0xFF0B0D0F;
     private static final int SLOT_BORDER = 0xFF373737;
     private static final int SLOT_FILL = 0xFF8B8B8B;
@@ -105,11 +105,7 @@ public class CrateScreen extends ScaledContainerScreen<CrateMenu> {
 
     /** 一块深色钢板面板：底色 + 上/左亮边、下/右暗边。 */
     private static void panel(GuiGraphics graphics, int x, int y, int width, int height) {
-        graphics.fill(x, y, x + width, y + height, BG);
-        graphics.fill(x, y, x + width, y + 1, EDGE);
-        graphics.fill(x, y + height - 1, x + width, y + height, EDGE_DARK);
-        graphics.fill(x, y, x + 1, y + height, EDGE);
-        graphics.fill(x + width - 1, y, x + width, y + height, EDGE_DARK);
+        PanelStyle.frame(graphics, x, y, width, height, PanelStyle.SERVICE);
         // 顶部标题栏
         graphics.fill(x + 1, y + 1, x + width - 1, y + 18, 0xFF23282D);
         graphics.fill(x + 1, y + 18, x + width - 1, y + 19, EDGE_DARK);

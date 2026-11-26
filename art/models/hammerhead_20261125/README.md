@@ -28,7 +28,11 @@ Blockbench 5.2.2 重开工程、回导几何并复核两段巡航共 182 个采�
 
 ## 预览
 
-[前后对比](preview_comparison.png) · [整模正视](preview_front.png) · [整模斜视](preview_oblique.png) · [锤面正视](preview_head_front.png) · [锤面俯视](preview_head_top.png) · [锤面侧视](preview_head_profile.png) · [锤面下视](preview_head_below.png) · [锤面转向](preview_head_turn.png) · [慢速巡航](preview_swim_cruise_head.webp) · [高速巡航](preview_swim_fast_head.webp) · [验证记录](validation.json)
+[前后对比](preview_comparison.png) · [整模正视](preview_front.png) · [整模斜视](preview_oblique.png) · [锤面正视](preview_head_front.png) · [锤面俯视](preview_head_top.png) · [锤面侧视](preview_head_profile.png) · [锤面下视](preview_head_below.png) · [锤面转向](preview_head_turn.png) · [慢速巡航 GIF](preview_swim_cruise.gif) · [高速巡航 GIF](preview_swim_fast.gif) · [慢速巡航 WebP](preview_swim_cruise.webp) · [高速巡航 WebP](preview_swim_fast.webp) · [验证记录](validation.json)
+
+![慢速巡航](preview_swim_cruise.gif) ![高速巡航](preview_swim_fast.gif)
+
+两条巡航都是**整模**循环预览：GIF 540×405、WebP 720×540，均 20 fps 无缝循环。相机固定为整模 3/4 斜视（方向 `-1.90, 0.74, 1.11`，透视 31°），取景按两条动画全部采样帧的并集包围盒一次锁定，全片不再重新构图，因此不会出现镜头跟随、裁掉尾部或只剩头部的问题。锤面细节另见上列的锤面正视 / 俯视 / 侧视 / 下视静态预览。
 
 ## 复现
 
@@ -38,8 +42,14 @@ Blockbench 5.2.2 重开工程、回导几何并复核两段巡航共 182 个采�
 python reference/render_blockbench.py hammerhead.bbmodel --port 9430 --output scratch --mesh-snapshot --check-reimport --views front back side oblique head_top head_profile head_front head_turn head_turn_right head_below
 python reference/verify_flare.py hammerhead.bbmodel scratch
 python reference/check_motion.py hammerhead.bbmodel scratch --port 9430
+python reference/render_animation.py hammerhead.bbmodel --port 9430 --output .
 ```
 
 `reference/assemble.py` 与 `reference/parts/head/patch.py` 记录本轮如何从上一版本地底稿生成成品；底稿未随包，对成品重跑会重复施加局部补丁，仅供追溯。`reference/compare_head.py` 生成前后对比图，默认字体取本机 `C:/Windows/Fonts/msyh.ttc`，可用 `--font` 指向其他字体。
 
-预览与两条巡航的 WebP 由上述 Blockbench 调试会话经 `reference/render_blockbench.py` 和 `reference/check_motion.py` 导出：没有可连接的 Blockbench 5.2.2 调试会话时，仓库内无法重现这批图。
+静态预览由 `reference/render_blockbench.py` 导出；两条巡航的整模 WebP 由 `reference/render_animation.py` 在同一 Blockbench 调试会话内逐帧渲染后编码，GIF 再经 `reference/make_gif.py` 缩到 540×405 转出。没有可连接的 Blockbench 5.2.2 调试会话时，仓库内无法重现这批图；GIF 一步只要已有 WebP 即可重跑：
+
+```powershell
+python reference/make_gif.py preview_swim_cruise.webp preview_swim_cruise.gif
+python reference/make_gif.py preview_swim_fast.webp preview_swim_fast.gif
+```

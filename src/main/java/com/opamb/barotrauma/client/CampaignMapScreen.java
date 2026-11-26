@@ -7,6 +7,7 @@ import com.opamb.barotrauma.mission.MissionCatalog;
 import com.opamb.barotrauma.mission.MissionSpec;
 import com.opamb.barotrauma.network.*;
 import net.minecraft.client.Minecraft;
+import com.opamb.barotrauma.client.gui.PanelStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import com.opamb.barotrauma.client.gui.ScaledScreen;
@@ -70,7 +71,7 @@ public final class CampaignMapScreen extends ScaledScreen {
         mapW = (int) (CampaignMap.VIEW_WIDTH * scale); mapH = (int) (CampaignMap.MAP_HEIGHT * scale);
         mapX = 10 + (availableW - mapW) / 2; mapY = 45 + (availableH - mapH) / 2;
         bodyY = 53; bodyBottom = MAP_H - 54;
-        dive = addRenderableWidget(Button.builder(tr("dive"), button -> {
+        dive = addRenderableWidget(PanelStyle.button(tr("dive"), button -> {
             if (!canDive()) {
                 Component why = selected < 0 ? Component.translatable("campaign.barotrauma.select_first")
                         : pending ? Component.translatable("campaign.barotrauma.pending")
@@ -88,9 +89,9 @@ public final class CampaignMapScreen extends ScaledScreen {
             ModNetwork.CHANNEL.sendToServer(new CampaignActionPacket(origin, selected, ids));
             // 服务端会立刻把全员传送进艇；先关掉海图，否则玩家会卡在 GUI 里点不到声纳/水泵。
             onClose();
-        }).bounds(panelX + 6, MAP_H - 44, panelW - 12, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable("campaign.barotrauma.close"), button -> onClose())
-                .bounds(10, MAP_H - 28, 70, 20).build());
+        }).bounds(panelX + 6, MAP_H - 44, panelW - 12, 20));
+        addRenderableWidget(PanelStyle.button(Component.translatable("campaign.barotrauma.close"), button -> onClose())
+                .bounds(10, MAP_H - 28, 70, 20));
         dive.active = canDive();
     }
 
@@ -131,7 +132,7 @@ public final class CampaignMapScreen extends ScaledScreen {
     }
 
     @Override protected void renderDesign(GuiGraphics g, int mx, int my, float partialTick) {
-        g.fill(5, 5, MAP_W - 5, MAP_H - 5, 0xF0081116);
+        PanelStyle.frame(g, 0, 0, MAP_W, MAP_H, PanelStyle.SERVICE);
         g.drawString(font, title, 12, 12, 0xFFC1E8D9);
         g.drawString(font, tr("biome"), 12, 28, 0xFF80CEAF);
         g.drawString(font, tr("wallet", CampaignClient.state() == null ? 0 : CampaignClient.state().credits()), panelX, 28, 0xFFE3D78D);

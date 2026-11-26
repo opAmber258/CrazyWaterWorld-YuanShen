@@ -96,6 +96,9 @@ enableDesignScissor(graphics, x1, y1, x2, y2); // 设计坐标
 
 ## 9. 参考实现
 
+- 玩家使用的设备和服务面板通过 `client/gui/PanelStyle` 绘制外框、配色和标准按钮。各面板在自己的设计坐标内画仪表与槽位。
+- 有维修能力的设备菜单继承 `menu/DeviceMenu`。容器屏幕把主体和底部维护框一起缩放，主体保留自己的 `imageHeight` 和槽位范围。维修框只在持对应工具且达到阈值时出现。舱门和舱口使用同一组件的独立界面。
+
 - 缩放数学：`client/gui/GuiScale.java`（有单测 `GuiScaleTest`）
 - 容器界面：`SonarScreen`、`FabricatorScreen`、`DeconstructorScreen`、`BatteryScreen`、`CrateScreen`、`CabinetScreen`、`PumpScreen`、`EngineScreen`、`ReactorScreen`、`MissionScreen`、`RepairScreen`
 - 普通界面：`CampaignMapScreen`、`JunctionBoxScreen`、`StoreScreen`、`NpcDialogueScreen`、`MedicalScreen`、`MedicalClinicScreen`、`MedicalDebugScreen`、`CthulhuGazeScreen`

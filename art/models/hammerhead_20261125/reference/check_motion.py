@@ -1,13 +1,11 @@
-"""Check the retained cruise tracks natively, sample head motion and render both clips."""
+"""Check the retained cruise tracks natively and sample head motion for both clips."""
 import argparse
-import io
 import json
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 
-from render_blockbench import Blockbench, OPEN, RENDER
+from render_blockbench import Blockbench, OPEN
 
 CLIPS={"swim_cruise":3.0,"swim_fast":1.5}
 SELECT = """
@@ -41,11 +39,6 @@ SAMPLE = """
     return model;
 })()
 """.replace("FUNCTIONS",SELECT).replace("KEYS",json.dumps(list(CLIPS)))
-
-CROP={"direction":[-.67,.68,1.52],"target":[0,34,55],"width":95}
-FRAME_RENDER=RENDER.replace("const aspect = 4/3;", "const aspect = 720/540;")
-FRAME_RENDER=FRAME_RENDER.replace("renderer.setSize(1200,900,false);","renderer.setSize(720,540,false);")
-FRAME_RENDER=FRAME_RENDER.replace("PRESET",json.dumps(CROP))
 
 def load(client,path):
     model=path.read_text(encoding="utf-8-sig")
@@ -82,16 +75,6 @@ def main():
         target_samples=bb.evaluate(SAMPLE)
         unchanged=assert_poses(source_samples,target_samples)
         (args.output/"hammerhead.animation.json").write_text(json.dumps(target_export,indent=2)+"\n",encoding="utf-8")
-        from base64 import b64decode
-        for clip,duration in CLIPS.items():
-            key=json.dumps("animation.hammerhead."+clip)
-            bb.evaluate("(() => {"+SELECT+"selectClip("+key+");})()")
-            frames=[]
-            for frame in range(round(duration*20)):
-                uri=bb.evaluate("(() => {"+SELECT+f"seek({frame/20});return ("+FRAME_RENDER+").image;})()")
-                frames.append(Image.open(io.BytesIO(b64decode(uri.split(",",1)[1]))).convert("RGB"))
-            frames[0].save(args.output/f"preview_{clip}_head.webp",save_all=True,append_images=frames[1:],
-                           duration=50,loop=0,quality=88,method=4)
         bb.evaluate("""(async () => {
             setupProject(Formats.bedrock);
             await new Promise(resolve => setTimeout(resolve, 120));

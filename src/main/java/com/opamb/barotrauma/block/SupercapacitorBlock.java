@@ -143,10 +143,6 @@ public class SupercapacitorBlock extends BaseEntityBlock {
             if (!capacitor.inHull()) {
                 rescanShip(level, pos);
             }
-            if (com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
-                    serverPlayer, pos, capacitor, false)) {
-                return InteractionResult.CONSUME;
-            }
             Vec3 anchorFinal = anchor;
             NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(

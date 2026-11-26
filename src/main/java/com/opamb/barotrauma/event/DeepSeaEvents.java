@@ -677,8 +677,15 @@ public final class DeepSeaEvents {
             return 0;
         }
         ShipState ship = ensureState(core, player.serverLevel());
-        ship.setAutopilotHold(hold);
-        player.sendSystemMessage(Component.literal("自动驾驶：" + (hold ? "开启（等待标记点）" : "关闭"))
+        boolean physical = com.opamb.barotrauma.ship.vs.VsState.activeState() == ship;
+        var position = physical ? VsPilot.assemblyToWorld(com.opamb.barotrauma.ship.vs.VsState.corePos())
+                : ship.physics().positionAt(core.getBlockPos());
+        if (hold && position != null) {
+            ship.holdAt(position);
+        } else {
+            ship.setAutopilotHold(hold);
+        }
+        player.sendSystemMessage(Component.literal("自动驾驶：" + (hold ? "已锁定当前位置，正在稳船" : "关闭"))
                 .withStyle(ChatFormatting.AQUA));
         return 1;
     }

@@ -75,12 +75,6 @@ public class DrainPumpBlock extends BaseEntityBlock {
     public InteractionResult use(BlockState state, Level level, BlockPos pos,
                                  Player player, InteractionHand hand, BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            // 手持扳手且耐久低于阈值：先开独立修理窗口（原作 Repairable 的 GUI 帧）。
-            if (level.getBlockEntity(pos) instanceof com.opamb.barotrauma.blockentity.DrainPumpBlockEntity pump
-                    && com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
-                            serverPlayer, pos, pump, false)) {
-                return InteractionResult.CONSUME;
-            }
             NetworkHooks.openScreen(serverPlayer,
                     new MenuProvider() {
                         @Override

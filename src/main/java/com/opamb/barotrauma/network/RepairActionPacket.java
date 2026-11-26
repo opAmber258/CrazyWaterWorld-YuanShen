@@ -1,7 +1,7 @@
 package com.opamb.barotrauma.network;
 
 import com.opamb.barotrauma.blockentity.BatteryBlockEntity;
-import com.opamb.barotrauma.menu.RepairMenu;
+import com.opamb.barotrauma.menu.DeviceMenu;
 import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -15,57 +15,38 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-/**
- * 客户端 → 服务端：修理窗口的三个动作。
- *
- * <p>对应原作 {@code Repairable} 的 HUD：点“修理”开始持续修理（{@link #ACTION_START}），
- * 之后每次按下按钮做一次 QTE 判定（{@link #ACTION_QTE}，带指针位置），
- * 关窗口停止（{@link #ACTION_STOP}）。持续加耐久在服务端
- * {@link RepairMenu#serverTick()} 里按 tick 推进，客户端不再发进度包，
- * 所以进度条不会一蹦一蹦。</p>
- */
-public record RepairActionPacket(BlockPos pos, byte action, float marker) {
 
+/** Repair controls apply only to the server's currently open device menu. */
+public record RepairActionPacket(int menuId, byte action) {
     public static final byte ACTION_START = 0;
     public static final byte ACTION_QTE = 1;
     public static final byte ACTION_STOP = 2;
 
-    private static final double MAX_DISTANCE_SQ = 8.0D * 8.0D;
-
     public void encode(FriendlyByteBuf buf) {
-        buf.writeBlockPos(pos);
+        buf.writeVarInt(menuId);
         buf.writeByte(action);
-        buf.writeFloat(marker);
     }
 
     public static RepairActionPacket decode(FriendlyByteBuf buf) {
-        return new RepairActionPacket(buf.readBlockPos(), buf.readByte(), buf.readFloat());
+        return new RepairActionPacket(buf.readVarInt(), buf.readByte());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {
         NetworkEvent.Context context = supplier.get();
         context.enqueueWork(() -> {
-            context.setPacketHandled(true);
             ServerPlayer player = context.getSender();
-            if (player == null || !(player.containerMenu instanceof RepairMenu menu)) {
-                return;
-            }
-            if (!menu.pos().equals(pos)) {
-                return;
-            }
-            Vec3 center = worldCenter(player.level(), pos);
-            if (center != null && player.distanceToSqr(center) > MAX_DISTANCE_SQ) {
+            if (player == null || !(player.containerMenu instanceof DeviceMenu menu)
+                    || menu.containerId != menuId || !menu.stillValid(player)) {
                 return;
             }
             switch (action) {
-                case ACTION_START -> menu.startRepair();
-                case ACTION_QTE -> menu.qte(marker);
-                case ACTION_STOP -> menu.stopRepair();
-                default -> {
-                    // 未知动作忽略。
-                }
+                case ACTION_START -> menu.repair().start();
+                case ACTION_QTE -> menu.repair().timePress();
+                case ACTION_STOP -> menu.repair().stop();
+                default -> { }
             }
         });
+        context.setPacketHandled(true);
     }
 
     /** 电池/接线盒既可能在普通世界，也可能在 VS2 船坞里。 */

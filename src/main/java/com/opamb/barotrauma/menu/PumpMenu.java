@@ -11,7 +11,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
@@ -24,7 +23,7 @@ import net.minecraft.world.phys.Vec3;
  * 服务端实例直接代理方块实体的值；客户端实例用 {@link SimpleContainerData}，
  * 由原版 {@code ClientboundContainerSetDataPacket} 每 tick 刷新。</p>
  */
-public class PumpMenu extends AbstractContainerMenu {
+public class PumpMenu extends DeviceMenu {
 
     /** 数据位 0：自动控制（0/1）。 */
     public static final int DATA_AUTO = 0;
@@ -47,7 +46,7 @@ public class PumpMenu extends AbstractContainerMenu {
     }
 
     public PumpMenu(int id, Inventory inventory, BlockPos pumpPos) {
-        super(ModMenus.PUMP.get(), id);
+        super(ModMenus.PUMP.get(), id, inventory, pumpPos);
         this.pumpPos = pumpPos;
         DrainPumpBlockEntity resolved = null;
         ShipState ship = null;

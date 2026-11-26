@@ -23,7 +23,9 @@ import java.util.Locale;
  *   <li>光照模式：模组光照 / 原版光照（F7 仍可快捷切换）；</li>
  *   <li>模组环境底光 0..100%（沿用旧调试器的 ambientMix）；</li>
  *   <li>原版环境底光 0.00..0.20（默认 0.10，即引入灯光系统前的维度值）；</li>
- *   <li>原版模式是否同时还原雾与水体（关掉则只换光图）。</li>
+ *   <li>原版模式是否同时还原雾与水体（关掉则只换光图）；</li>
+ *   <li>模组模式下单独关闭海雾；</li>
+ *   <li>一键给予/移除无限时长夜视（服务端校验创造/权限）。</li>
  * </ul>
  *
  * <p>所有改动立即生效，不经过服务端；Esc / 完成关闭。</p>
@@ -31,7 +33,7 @@ import java.util.Locale;
 public final class BrightnessDebuggerScreen extends ScaledScreen {
 
     private static final int PANEL_W = 300;
-    private static final int PANEL_H = 268;
+    private static final int PANEL_H = 298;
 
     private static final int BG = 0xF01B2320;
     private static final int EDGE = 0xFF3B463C;
@@ -66,8 +68,11 @@ public final class BrightnessDebuggerScreen extends ScaledScreen {
     private static final int NIGHT_BTN_W = 84;
     private static final int NIGHT_BTN_H = 14;
 
-    private static final int HINT_Y = 232;
-    private static final int BUTTON_Y = 244;
+    private static final int FOG_CARD_Y = 230;
+    private static final int FOG_CARD_H = 26;
+
+    private static final int HINT_Y = 262;
+    private static final int BUTTON_Y = 274;
     private static final int BUTTON_H = 18;
     private static final int RESET_W = 96;
     private static final int DONE_W = 96;
@@ -165,6 +170,17 @@ public final class BrightnessDebuggerScreen extends ScaledScreen {
                 mouseX, mouseY, Component.translatable(infinite
                         ? "brightness.screen.night_vision.remove"
                         : "brightness.screen.night_vision.give"), !infinite);
+
+        boolean fogRedundant = DeepBrightnessDebug.hidesWaterAndFog();
+        boolean fogHover = !fogRedundant
+                && inBox(mouseX, mouseY, CARD_X, FOG_CARD_Y, CARD_W, FOG_CARD_H);
+        graphics.fill(CARD_X, FOG_CARD_Y, CARD_X + CARD_W, FOG_CARD_Y + FOG_CARD_H,
+                fogHover ? CARD_HOVER : CARD);
+        frame(graphics, CARD_X, FOG_CARD_Y, CARD_W, FOG_CARD_H, EDGE);
+        graphics.drawString(font, Component.translatable("brightness.screen.no_sea_fog"),
+                CARD_X + 8, FOG_CARD_Y + 9, fogRedundant ? DISABLED : TEXT, false);
+        drawToggle(graphics, CARD_X + CARD_W - 42, FOG_CARD_Y + 7,
+                DeepBrightnessDebug.seaFogDisabled() || fogRedundant, !fogRedundant);
 
         Component hint = Component.translatable("brightness.screen.hint");
         graphics.drawString(font, hint, CARD_X, HINT_Y, DIM, false);
@@ -291,6 +307,12 @@ public final class BrightnessDebuggerScreen extends ScaledScreen {
         }
         if (inBox(mouseX, mouseY, nightButtonX(), NIGHT_CARD_Y + 6, NIGHT_BTN_W, NIGHT_BTN_H)) {
             ModNetwork.sendToServer(new NightVisionPacket());
+            click();
+            return true;
+        }
+        if (!DeepBrightnessDebug.hidesWaterAndFog()
+                && inBox(mouseX, mouseY, CARD_X, FOG_CARD_Y, CARD_W, FOG_CARD_H)) {
+            DeepBrightnessDebug.setSeaFogDisabled(!DeepBrightnessDebug.seaFogDisabled());
             click();
             return true;
         }

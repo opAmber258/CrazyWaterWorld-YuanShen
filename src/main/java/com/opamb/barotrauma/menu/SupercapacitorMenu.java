@@ -9,7 +9,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
@@ -26,7 +25,7 @@ import net.minecraft.world.phys.Vec3;
  * 所以菜单拿到的是船坞坐标；同时服务端把世界锚点写进 buf，客户端
  * {@link #stillValid} 用锚点判距离，不依赖客户端没有的 VsPilot 变换。</p>
  */
-public class SupercapacitorMenu extends AbstractContainerMenu {
+public class SupercapacitorMenu extends DeviceMenu {
 
     /** 数据位 0：电量（kW·min × 10）。 */
     public static final int DATA_CHARGE = 0;
@@ -63,7 +62,7 @@ public class SupercapacitorMenu extends AbstractContainerMenu {
     }
 
     public SupercapacitorMenu(int id, Inventory inventory, BlockPos capacitorPos, Vec3 anchor) {
-        super(ModMenus.SUPERCAPACITOR.get(), id);
+        super(ModMenus.SUPERCAPACITOR.get(), id, inventory, capacitorPos);
         this.capacitorPos = capacitorPos;
         this.anchor = anchor;
         SupercapacitorBlockEntity resolved = null;

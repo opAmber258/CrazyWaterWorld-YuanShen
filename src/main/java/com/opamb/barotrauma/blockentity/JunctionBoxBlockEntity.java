@@ -48,6 +48,7 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
     private long graceTicks = -1L;
     private boolean submerged;
     private double lastVoltage;
+    private int overloadCooldown;
     /** 上次确认过的归属核心；正常 tick 直接用它，核心没了才重新搜。 */
     private BlockPos cachedCorePos;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
@@ -74,7 +75,8 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
         }
         double voltage = ship.simulation().voltage();
         be.lastVoltage = voltage;
-        boolean powered = voltage > 0.1D;
+        boolean powered = voltage > 0.1D && !be.broken();
+        boolean atOutpost = com.opamb.barotrauma.world.StarterSub.atFriendlyOutpost(server);
         // 按接线盒所在高度判泡水：舱底有积水不代表墙上的盒子被淹。
         // 连海空腔的 bodyLevel 是整块统一水位；两个低洼区只靠高处孔洞连通时，
         // 破口侧进水、另一侧仍干燥，必须按盒子所在列的实际水位判断。
@@ -93,11 +95,11 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
 
         double before = be.condition;
         if (powered) {
-            if (be.graceTicks > 0L) {
+            if (!atOutpost && be.graceTicks > 0L) {
                 be.graceTicks--;
                 // 持久字段变了要标脏，否则区块没别的变化时宽限期会回退。
                 be.setChanged();
-            } else {
+            } else if (!atOutpost) {
                 be.condition -= DECAY_POWERED / 20.0D;
             }
             if (be.submerged) {
@@ -105,16 +107,11 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
             }
             // 阈值判定走 PowerGrid，别在这里再写一份比较：两边各一份的话，
             // 以后调阈值只会改到其中一处。
-            if (PowerGrid.overvoltage(voltage, OVERVOLTAGE)) {
-                // 原作 PowerTransfer.UpdateOvervoltage：每帧 1% 概率扣
-                // deltaTime × Rand(10,500) × Lerp(5,1,condition/maxCondition)。
-                // 20Hz 下 1% 概率 + dt=1/20，每秒期望和原作 60Hz 一致
-                // （满耐久约 2.5/s，不是固定 10/s 十秒全烧）。
-                if (level.random.nextFloat() < 0.01F) {
-                    double fraction = Mth.clamp(be.condition / 100.0D, 0.0D, 1.0D);
-                    double scale = 5.0D - 4.0D * fraction;
-                    be.condition -= (1.0D / 20.0D)
-                            * (10.0D + level.random.nextDouble() * 490.0D) * scale;
+            if (PowerGrid.overvoltage(voltage, OVERVOLTAGE) && !inDepartureGrace(server)) {
+                if (be.overloadCooldown > 0) {
+                    be.overloadCooldown--;
+                } else {
+                    be.applyOvervoltage(level);
                 }
             }
         }
@@ -123,6 +120,25 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
             be.setChanged();
         }
         ship.simulation().reportJunctionBox(cell, be.condition);
+    }
+
+    private static boolean inDepartureGrace(ServerLevel level) {
+        if (!com.opamb.barotrauma.world.ModDimensions.THE_DEEP.equals(level.dimension())) return false;
+        var round = com.opamb.barotrauma.campaign.CampaignState.wallet(level).round();
+        return round.isDiving() && level.getGameTime() - round.startedAtGameTime() < 100;
+    }
+
+    private void applyOvervoltage(Level level) {
+        // Three 60 Hz substeps preserve the original probability and size of each hit.
+        for (int step = 0; step < 3; step++) {
+            if (level.random.nextFloat() >= 0.01F) continue;
+            double scale = 5.0D - 4.0D * Mth.clamp(condition / 100.0D, 0.0D, 1.0D);
+            condition -= (10.0D + level.random.nextDouble() * 490.0D) * scale / 60.0D;
+            if (condition <= 0.0D) {
+                overloadCooldown = 100;
+                return;
+            }
+        }
     }
 
     @Override

@@ -1,5 +1,8 @@
 package com.opamb.barotrauma.ship;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
+
 /**
  * 船的连续运动模型：速度、加速度、惯性、浮力，最后才量化成方块位移。
  *
@@ -39,10 +42,15 @@ public final class ShipPhysics {
 
     /** 手动：按八向推力 + 功率设定目标速度，再加上压载/进水带来的下沉。 */
     public void tickManual(double dt, int hx, int hy, int hz, int power, double ballastFilled, double flooded) {
+        double horizontal = Math.max(1.0D, Math.hypot(hx, hz));
+        tickVector(dt, hx / horizontal, hy, hz / horizontal, power, ballastFilled, flooded);
+    }
+
+    public void tickVector(double dt, double hx, double hy, double hz, int power,
+                           double ballastFilled, double flooded) {
         double throttle = power / 100.0D;
-        double horizontal = Math.sqrt((double) hx * hx + (double) hz * hz);
-        double tvx = horizontal > 0.0D ? hx / horizontal * MAX_SPEED * throttle : 0.0D;
-        double tvz = horizontal > 0.0D ? hz / horizontal * MAX_SPEED * throttle : 0.0D;
+        double tvx = hx * MAX_SPEED * throttle;
+        double tvz = hz * MAX_SPEED * throttle;
 
         // 压载过半才开始吃重量：半舱水是"配平"，满舱才是"下潜"
         double heavy = Math.max(0.0D, clamp01(ballastFilled) - 0.5D) * 2.0D;
@@ -54,6 +62,10 @@ public final class ShipPhysics {
     /** 自动驾驶：直接给目标速度（P 控制，靠近目标时自然减速）。 */
     public void tickAuto(double dt, double tvx, double tvy, double tvz) {
         approach(dt, tvx, tvy, tvz);
+    }
+
+    public Vec3 positionAt(BlockPos core) {
+        return Vec3.atCenterOf(core).add(fx, fy, fz);
     }
 
     private void approach(double dt, double tvx, double tvy, double tvz) {

@@ -100,6 +100,9 @@ public final class OutpostBuilder {
     }
 
     public static boolean intersects(ChunkPos pos, DockingBay.Site site) {
+        if (site.y(0) != 0) {
+            return HabitationOutpost.intersects(pos, site);
+        }
         Layout layout = layout(site);
         return pos.getMaxBlockX() >= site.x() - layout.halfX()
                 && pos.getMinBlockX() <= site.x() + layout.halfX()
@@ -161,13 +164,17 @@ public final class OutpostBuilder {
                 }
                 // 上界到中层舱口下方（-69）：-71..-69 是艇顶舱口/船体占的那几格，不能留岩石。
                 for (int y = -116; y <= DockingBay.MID_HATCH_Y - 1; y++) {
-                    chunk.setBlockState(new BlockPos(x, y, z), air, false);
+                    chunk.setBlockState(site.at(x - site.x(), y, z - site.z()), air, false);
                 }
             }
         }
     }
 
     public static void build(ChunkAccess chunk, DockingBay.Site site) {
+        if (site.y(0) != 0) {
+            HabitationOutpost.build(chunk, site);
+            return;
+        }
         ChunkPos pos = chunk.getPos();
         Layout layout = layout(site);
         int minX = site.x() - layout.halfX();
@@ -212,6 +219,21 @@ public final class OutpostBuilder {
 
         // 对接通道：站内地板开洞、向下 3长×4宽×6高的垂直气密通道、底部水平对接舱口
         DockingBay.buildStation(chunk, site);
+    }
+
+    static boolean isDryAt(net.minecraft.world.level.Level level, DockingBay.Site site,
+                           net.minecraft.world.phys.Vec3 point) {
+        int offset = site.heightOffset(level);
+        if (point.y < MIN_Y + offset || point.y > MAX_Y + offset
+                || (!site.equals(DockingBay.Site.MAIN) && level != null && !site.hasStationBlocks(level, offset))) {
+            return false;
+        }
+        if (offset != 0) {
+            BlockPos block = BlockPos.containing(point);
+            return HabitationOutpost.inside(block.getX() - site.x(), block.getY() - offset,
+                    block.getZ() - site.z());
+        }
+        return Math.abs(point.x - site.x()) <= HALF_X && Math.abs(point.z - site.z()) <= HALF_Z;
     }
 
     /** 局部坐标（相对站点中心）取方块；y 仍是绝对高度。 */

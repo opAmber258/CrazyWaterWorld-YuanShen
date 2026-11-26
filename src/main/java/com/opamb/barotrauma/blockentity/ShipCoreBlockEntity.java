@@ -12,6 +12,7 @@ import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.MachineCount;
 import com.opamb.barotrauma.ship.ShipGeometry;
 import com.opamb.barotrauma.ship.ShipState;
+import com.opamb.barotrauma.sonar.SonarCycle;
 import com.opamb.barotrauma.world.DockingBay;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -99,6 +100,15 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     private long lastWaterSyncGameTime = Long.MIN_VALUE;
     /** 船壳耐久同步计时（受击/焊接时立即发，平时低频刷新）。 */
     private long lastHullSyncGameTime = Long.MIN_VALUE;
+    private SonarCycle sonarCycle = new SonarCycle();
+
+    public SonarCycle sonarCycle() {
+        return sonarCycle;
+    }
+
+    public void transferSonarFrom(ShipCoreBlockEntity previous) {
+        sonarCycle = previous.sonarCycle;
+    }
 
     /**
      * 子类（声纳）用的构造：传入自己真实的方块实体类型。
@@ -123,6 +133,11 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     }
 
     @Override
+    public int requiredSkill() {
+        return 40;
+    }
+
+    @Override
     public void applyRepair(double points) {
         condition.repair(points);
         setChanged();
@@ -138,7 +153,8 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
 
     @Override
     public double powerDemandKw() {
-        return TERMINAL_POWER_KW;
+        return condition.broken() ? 0.0D : (TERMINAL_POWER_KW - 100.0D + sonarCycle.sonarPowerKw())
+                * condition.powerPenalty();
     }
 
     @Override
@@ -162,7 +178,7 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
         if (state == null) {
             return;
         }
-        state.simulation().reportTerminal(cell, TERMINAL_POWER_KW, TERMINAL_MIN_VOLTAGE, boundBox);
+        state.simulation().reportTerminal(cell, powerDemandKw(), TERMINAL_MIN_VOLTAGE, boundBox);
     }
 
     /** 服务端 tick：每 2 tick 推进一次模拟（0.1 s，即 10 Hz）。 */
@@ -178,7 +194,14 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
         be.lastTickGameTime = now;
         // 导航/声纳核心耐久：船在运行时缓慢劣化；0 时只影响终端，不阻断船体模拟。
         // 定时状态包不能替代存档标脏：自然劣化也要 setChanged。
-        if (be.condition.tick(level, be.state != null, 0.1D)) {
+        boolean physical = level instanceof ServerLevel server
+                && com.opamb.barotrauma.ship.vs.VsState.isPhysical(server, pos);
+        BlockPos conditionCell = physical ? com.opamb.barotrauma.ship.vs.VsPilot.toAssembly(pos) : pos;
+        ShipState runningShip = physical ? com.opamb.barotrauma.ship.vs.VsState.activeState() : be.state;
+        boolean powered = runningShip != null && com.opamb.barotrauma.ship.PowerGrid.canRun(
+                runningShip.simulation().consumerVoltage(conditionCell), TERMINAL_MIN_VOLTAGE);
+        if (be.condition.tick(level, powered && !com.opamb.barotrauma.world.StarterSub.atFriendlyOutpost(level),
+                0.1D)) {
             be.setChanged();
         }
         // 这艘船的方块是不是已经被收进 VS2 刚体了。方块进刚体之后并没有消失，
@@ -211,7 +234,7 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                     be.state, -pos.getY(), pressureDue)) {
                 be.setChanged();
             }
-            // 导航台/声纳终端耗电 110 kW（原作 Steering 10 + Sonar 100），
+            // 导航台按主动/被动模式报告负载，
             // 低于 MinVoltage 0.5 时终端完全不能用。
             be.reportTerminalPower(pos);
             be.state.simulation().tick(0.1D);

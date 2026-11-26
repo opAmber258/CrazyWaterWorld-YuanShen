@@ -132,11 +132,6 @@ public class JunctionBoxBlock extends BaseEntityBlock {
                 if (!box.inHull()) {
                     rescanShip(level, pos);
                 }
-                // 手持螺丝刀且耐久低于阈值：开独立修理窗口。
-                if (com.opamb.barotrauma.ship.RepairInteractions.tryOpen(
-                        serverPlayer, pos, box, false)) {
-                    return InteractionResult.CONSUME;
-                }
             }
             PowerPanelState.send(serverPlayer, cell, physical);
             return InteractionResult.CONSUME;

@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.campaign;
 
+import com.opamb.barotrauma.world.level.TerrainTemplate;
 import net.minecraft.nbt.CompoundTag;
 
 /** 一轮出勤的运行时状态：从出发到抵达/失败。 */
@@ -30,6 +31,7 @@ public final class RoundState {
      * 否则 instanceX 会被新间距算到别的槽位，航道和已生成的站点错开。
      */
     private int levelSpacing;
+    private TerrainTemplate terrain = TerrainTemplate.LEGACY;
 
     public RoundPhase phase() {
         return phase;
@@ -95,6 +97,10 @@ public final class RoundState {
         return levelSpacing;
     }
 
+    public TerrainTemplate terrain() {
+        return terrain;
+    }
+
     /** 记录本轮关卡类型/种子/难度（在 beginTravel 之后调用，失败回滚会恢复上一轮）。 */
     public void setLevel(String typeId, long seed, int difficulty) {
         setLevel(typeId, seed, difficulty, 0);
@@ -107,11 +113,17 @@ public final class RoundState {
 
     /** 记录本轮关卡类型/种子/难度/实际路线距离/槽位间距。 */
     public void setLevel(String typeId, long seed, int difficulty, int distance, int spacing) {
+        setLevel(typeId, seed, difficulty, distance, spacing, TerrainTemplate.LEGACY);
+    }
+
+    public void setLevel(String typeId, long seed, int difficulty, int distance, int spacing,
+                         TerrainTemplate terrain) {
         this.levelType = typeId == null || typeId.isBlank() ? "coldcavernsbasic" : typeId;
         this.levelSeed = seed;
         this.levelDifficulty = Math.max(0, difficulty);
         this.levelDistance = Math.max(0, distance);
         this.levelSpacing = Math.max(0, spacing);
+        this.terrain = terrain;
     }
 
     /** 记录本轮任务海域实例锚点（同一轮内不变）。 */
@@ -170,6 +182,7 @@ public final class RoundState {
         tag.putInt("levelDifficulty", levelDifficulty);
         tag.putInt("levelDistance", levelDistance);
         tag.putInt("levelSpacing", levelSpacing);
+        tag.putString("terrain", terrain.id());
         return tag;
     }
 
@@ -202,6 +215,7 @@ public final class RoundState {
         boolean hadSpacing = tag.contains("levelSpacing");
         levelDistance = hadDistance ? Math.max(0, tag.getInt("levelDistance")) : 0;
         levelSpacing = hadSpacing ? Math.max(0, tag.getInt("levelSpacing")) : 0;
+        terrain = TerrainTemplate.fromId(tag.getString("terrain"));
         if (hasInstance()) {
             // 旧存档没有字段：当时固定出发距离 192、槽位间距 1024。
             // 只迁移“字段缺失”；显式写入的 0 表示“按关卡默认值恢复”，

@@ -2831,3 +2831,130 @@ p_36201_ = new Vec3(d0, p_36201_.y, d1);   // y 原样保留
 1. 清理临时诊断（`[swim]`、`[vs] 卡住探针`、`[water]` 直方图/快照/干列、`[water-breach]`）；
 2. 清理后跑 `./gradlew test --offline`（当前 48 个测试通过）；
 3. 按 PR 优先规则发到 `修复/船内下潜` 分支并开 PR，等 CodeRabbit 审查后再合。
+
+## 声纳回波调研（2026-11-25）
+
+主屏保留可转动的 3D 视图，重做回波。操舵、靠泊、舰况和三维自动驾驶继续使用现有入口。
+
+### 原作与当前实现
+
+- 原作以 `deltaTime * 0.5` 推进脉冲，未经缩放时约两秒扫完整个量程。主动是全向，定向在发射时锁定 30° 扇区。客户端只在波前两次更新的半径之间生成新回波，回波点有各自的衰减时钟，地形采样挑选朝向声源的边。默认量程 100 米。原作缩放会影响视野和有效探测距离。参见[共享声纳](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Sonar.cs#L177-L287)、[客户端波前](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Sonar.cs#L770-L860)、[地形回波](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Sonar.cs#L1558-L1584)与[导航终端 Wiki](https://barotraumagame.com/wiki/Navigation_Terminal)。
+- 原作被动模式从有声源的位置生成弱回波，可以照出声源周围的地形。主动脉冲会扩大 AI 能听到的声程。原作声纳组件被动用电为主动的 10%，舵机独立计电。上述两项属于玩法与电力联动。参见[被动回波](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Sonar.cs#L827-L860)、[声纳 Wiki](https://barotraumagame.com/wiki/Sonar)和[共享声纳](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Sonar.cs#L217-L287)。
+- 模组的 `SonarScreen.sendPing` 每 10 tick 请求一次，部分界面操作也会立即请求。服务端 `SonarPingPacket` 限频后同步跑整球采样、矿脉查找和实体搜索，再把点云与舰况放进同一回复。主屏的两秒圆环独立于回复，按投影后的屏幕距离点亮地形和矿点。首次回波未到处仍显示 30% 暗底，接触点全亮。定向仅过滤地形与矿脉，活物只检查球形量程。被动直接标出声程内的活物，声程受本船反应堆出力和推进命令影响。`SonarHologram` 的台面点云来自另一次客户端采样。
+
+### 实施顺序与验收
+
+1. 将真实脉冲和舰况刷新解耦。服务端按终端安排脉冲，每发锁定坐标原点、模式、朝向、量程和起始 tick；同一终端的观察者共享扫描结果。先复用现有的已加载区块采样和矿脉标记；舰况轻量更新，缩放、拖拽和点选走显示或舵令。初版以两秒为主动脉冲基准，保留目前 16～248 格的可调量程，适配模组的 3D 洞穴尺度。
+2. 客户端用回波到达时刻和衰减计算亮度。回波存在于世界坐标，投影、旋转视角、点选已显示的地形或矿点共用同一批可见回波。定向世界圆锥同时约束地形、矿脉和活物，屏幕显示相应朝向。本船轮廓、舰况和导航标记独立绘制。验收同方向近点先于远点，转动视角不会提前揭示回波，移动后旧回波仍指向原来的岩壁，断电后不产生新回波，矿点仍可正确点选。
+3. 单独验证地形采样和被动监听。首选比较按世界坐标对齐的表面采样，确认航行时少跳点、近壁能辨形，且不再用逐帧射线查询。被动先从本船引擎、反应堆和可验证的外部声源生成局部弱回波。引怪和主动／被动电耗联动单独验收。台面全息独立采样的成本另测。
+4. 性能基线分开测每次扫描时长、主线程峰值、结果包大小、多人同台时的扫描次数和屏幕帧耗时。在相同已加载区块、量程和船状态下对比；保持未加载区块不触发同步加载。旧记录的 367 ms 属早期同步加载区块复现。当前客户端日志最近的聊天记录是 11:49:53 切旁观、11:50:13 切创造，未见当轮声纳计时，暂无现行性能数据。本轮只完成源码核对与设计。
+
+### 声纳界面
+
+- 保留左侧舰况、中间圆形 3D 声纳、右侧模式与操舵、右下靠泊的布局。压低表圈刻度和边框的对比度，让回波、目标和船头优先可读。沿用 `ScaledContainerScreen`，绘制与输入使用同一套设计坐标。
+- 主屏由暗色背景和少量量程环、回波、船体与导航标记三层组成。地形用短笔触与柔边亮点表现岩壁轮廓，强度来自回波衰减；活物亮点随回波淡出；矿脉用金色空心标记；本船用细轮廓和船头指示。回波用限定在圆内的批量绘制，标记按优先级叠在回波上方。参考原作的独立背景、发光回波和船体边界层，[DrawSonar](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Sonar.cs#L885-L979)。
+- 主动波前随实际脉冲扩张，定向模式显示实际发射方向和锥角。转动 3D 视角只改变投影；定向指示提供独立瞄准手柄，发射后显示锁定方向。被动只画收到的局部回波。失电或损坏时在主屏显示原因，停下扫描动画。保留操舵、靠泊和自动驾驶的原有操作入口。
+- 验收覆盖数档 GUI 缩放、旋转视角时的回波与点选一致性、同一位置的目标和回波叠加、圆形裁剪、定向发射后转动视角及断电。台面 3D 全息属于另一个渲染入口。
+
+### 实施记录
+
+- 协议 34。打开界面的观察者每 10 tick 请求舰况，同终端两次主动扫描至少间隔 40 tick，被动监听至少间隔 20 tick。结果按已接收的发射 tick 去重；量程和朝向从下一发开始生效。方块船平移继承终端的运行时声纳状态，VS2 以核心实际世界坐标发射。
+- 地形粗采样网格固定在世界坐标上，选择朝向声源的表面，矿脉继续逐区块过滤。定向约束主动扫描中全部环境回波。被动用反应堆出力和有供电的推进估算船噪，用海中活物的移动估算外部声源，采样声源附近的地形。这是模组的简化听音规则。
+- 右键在主屏瞄准下一发定向脉冲，左键拖转 3D 视角，Ctrl+滚轮只缩放视图，普通滚轮仍调推力。矿脉和地形的点选直接从绘制缓存取得世界位置。终端负载主动／定向 110 kW、被动 20 kW，均含 10 kW 舵机。
+- 台面全息和生物 AI 的声源追踪还未接入这一版。性能对比、外海的实际地形和 GUI 视觉效果仍需客户端验收。
+- 使用 Java 17 和本地缓存的 Forge 依赖检查改动并运行定向测试，26 项通过，覆盖波前到达与衰减、同台复用、断电、协议往返、点选世界坐标及既有船舶归属和电力测试。未运行 Gradle 或客户端。MEX 检查 0 错误。
+
+### 导航终端整体重做调研
+
+- 原作的手动舵令是连续向量。鼠标准星和键盘共同调整目标速度，自动驾驶分别处理保持位置和沿路点去关卡出入口。定点使用位置误差和实际速度控制。参见[客户端舵令](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Steering.cs#L751-L838)、[共享自动驾驶](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Steering.cs#L399-L435)及[导航终端 Wiki](https://barotraumagame.com/wiki/Navigation_Terminal#Usage)。
+- 当前 `SonarScreen` 集中处理 3D 声纳、键盘舵令、目标点选、任务和对接。方块船按世界轴给推力，VS2 按前进、偏航和压载控制。`autopilotHold` 同时承担自动模式开关和保持含义，物理船无目标时控制循环直接返回，抵达后清除目标并退出自动。客户端 13:45:09 日志出现「自动待命 100%」，仅表示面板处于此状态。
+- 建议统一导航终端的驾驶状态为手动、定点、航行和靠泊。先保留两种船的执行入口并复用已验收的回波。定点锁定当前世界位置并抵消漂移。航行分雷达局部目标与海图航线，沿已有航道通过已验证的路段，缺少安全路线时显示停航原因。靠泊界面优先显示对接口横向偏差、距离、艏向与相对速度，保留现有对接条件和出入港操作。
+- 界面扩大 3D 主屏，上方集中深度、航速、垂速，下方显示手动舵令或自动目标，右侧随驾驶状态切换。舰况和任务放入独立页签。保留键盘，增加可拖动的连续舵令。首轮验收驾驶员交接、断开手动时舵令归零、定点遇漂移回位、航线受阻减速及不满足靠泊条件时的提示。
+
+#### 首阶段：可拖定点和自动停车
+
+- 用户确认键盘回中、鼠标保持，优先实现可拖定点。原作按住鼠标会持续更新 `PosToMaintain`，`GetSteeringVelocity` 用当前位置、实际速度和接近目标时的减速量求目标速度。参见[拖动与设目标](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Steering.cs#L768-L789)和[减速计算](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Steering.cs#L665-L674)。
+- 3D 模组按下已有目标时锁住其世界深度平面，拖动更新平面中的目标，松开保留。点空处仍可设置目标，拖动空处仍转视角。服务端手动回中与自动刹车分开，自动根据实速纠偏，到点后保存停位；方块船接入位置积分余量，VS2 接入完整变换后的船核心。路线规划和靠泊对准在下一阶段。
+- 已扩大回波区域并把深度、航速、垂速置于主屏上方。手动侧栏提供水平／偏航舵盘、升潜和舵令归零；键盘松手回中，鼠标舵令保持至调整或驾驶员退出。自动侧栏显示前往、定点保持与受阻，提供锁定当前位置。按住目标拖动以 4 tick 为发送间隔，释放立即提交最终点。
+- VS2 水平驱动按实际速度误差控制出力比例，支持正航与倒车过快时反向制动。垂直舵令在中性压载与全注／全排间插值。当前方块船生命周期仍以停靠和装配为主，未启用旧的逐格移动入口。航线避障、靠泊辅助、实际 VS2 停车距离和 GUI 仍待后续验证。
+- Java 17 针对性验证 49 项通过，覆盖目标深度平面、实时模式协议往返、手动控制权、模型停车、水平及垂直制动、到达后漂移纠偏及既有推进、电力和声纳回归。未执行 Gradle 构建或启动客户端。
+
+#### 驾驶专用面板与船体轮廓
+
+- [原作驾驶台](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Steering.cs)把操舵与自动驾驶控件放在声纳旁，[原作声纳](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Sonar.cs#L1167-L1188)以传感器为基准画船体边界。模组沿用 3D，默认斜视，主屏在左，右侧集中声纳、操舵和靠泊。移出舰况、通讯和任务页，舰况监控留作独立界面。
+- 物理船轮廓传装配核心相对扫描中心的偏移与船体旋转。以方块角点投影得到连续外包轮廓，再沿声纳圆裁剪线段。航向改在表圈，目标改用圆环，哨站用蓝菱形，远处或背后的标记贴边。协议 36 移除只用于旧舰况页的字段。
+- Java 17 定向检查 52 项通过，新增船体变换、跨圆裁剪、背向标记，扩充姿态协议往返测试。客户端日志 14:09:42 的定点保持来自修改前的运行，本次未启动客户端，仍需实机查看界面和转向中轮廓。
+
+#### 驾驶台回归复查
+
+- 修复声纳与舵令、物理船与附近方块船各自按距离找核心造成的串船。绑定打开菜单的终端，代理移动后沿用绑定，原址终端替换后关闭旧菜单。方块船引擎按几何归属找到本船。有有效驾驶员时其他观察者不能覆盖功率、定点或靠泊请求。
+- 修复制动时原推力被瞬间改符号。按带方向的引擎力插值和汇总，保留耗电和面板的力幅度。定点制动读取核心点速度，计入船体转向带来的切向运动。
+- 修复小幅鼠标位移同时旋转并设点、右键定向准星偏离鼠标、失焦后旧舵令继续保持，以及功率被拒绝后侧栏仍显示未确认的值。高倍率下的轮廓裁剪、回波和目标拖动用现有用例回归。
+- Java 17 本地定向测试 50 项通过。旧距离猜测的 4 个单测已随启发式移除，改用已编译的终端绑定 GameTest 覆盖拆换终端的场景，尚未运行游戏侧验收。协议仍为 36。
+
+#### 声纳船体梯形修复
+
+- 上一版对整艘船的投影求凸包，跨过了驾驶舱与甲板之间的台阶。原作逐段画本船的边界顶点。模组按每个船壳方块的投影合并覆盖区域，从覆盖边界提取轮廓，保留台阶和断开的区域，沿圆屏裁剪。[原作声纳船体边界](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Sonar.cs#L1167-L1188)
+- Java 17 定向测试 52 项通过，新增台阶及断开区域用例，并用连续舱壳测试圆屏裁剪。未构建模组或启动客户端。
+
+#### 2026-11-25 声纳客户端验收
+
+- 用 Java 17 和 `runClient --offline` 启动，右键打开测试副本 `Sonar QA 1125` 中航行的 VS2 船驾驶台。旋转主屏后，舰桥台阶在不同角度保持可见。96 m 和 16 m 的实际画面通过，16 m 时船体在圆屏边缘裁剪。232 m 主动脉冲有传播波前、岩壁回波和矿脉标记。被动切换时主动波前停止。定向 30° 模式的偏心右键准星对鼠标，后续脉冲沿选定方向显示。实体终端重开后保留定向设置、96 m 量程和 60% 功率。手动鼠标舵令能保持，归零钮能回中。
+- 自动驾驶目标可拖动，单击空处也能设点。100% 推力下，拖出的约 13 m 目标一度接近 3.6 m，之后又偏离到 17 m 左右。60% 下以约 6.7 km/h 点击锁定当前位置，界面立即显示「定点保持」，后来距锁定位 20.6 m，仍在运动。第二轮约 2.0 km/h 锁位也未在观察窗口中稳定停住。停车与保持判定未通过。
+- 站在该船控制台前执行 `/barotrauma ship sonar` 未留下可用面板，右键实体仍正常。诊断入口用玩家脚下的坐标创建菜单，与按真实终端绑定的规则冲突。哨站实际对接、多人驾驶权和无电被动回波未在这次单机流程覆盖。
+- 原存档 `level.dat` 时间保持 17:20:10。仅保存测试副本，客户端返回主菜单。验证中的日志见 `run-client/logs/latest.log` 18:26–18:29。
+
+### 船体运动与寒冷深穴白模（2026-11-25）
+
+- 原作驾驶台先根据目标误差减去一段按实际速度外推的位移，定点比沿航点走使用更强的减速，通航自动驾驶还有独立路点和岩壁避让。引擎接收有符号的水平舵令，实际力逐步跟随信号，耗电按目标推力的 1.5 次方算。升沉由压载目标水位驱动，船体力随全船水量变化。参见[定点外推](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Steering.cs#L705-L743)、[航点避让](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Steering.cs#L431-L585)、[引擎](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Engine.cs#L114-L193)、[浮力](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/SubmarineBody.cs#L534-L569)、[官方引擎 Wiki](https://barotraumagame.com/wiki/Engines)。
+- 本地动力链已有逐台引擎的电压、耐久、带符号出力和中性压载。优先改制动和到达判定：`NavigationMotion` 假定 0.7 m/s²，健康单引擎在 60%、额定电压、默认驾驶系数时按当前公式约 0.12 m/s² 的满反推，测试中有更低的实际出力。下次同时记录减速前后的船速、偏航、目标误差、当时电压、目标／实际推力和压载量，重复验证直进、偏航、弱供电和升沉。`NavigationTest` 的纵向模型给 0.8 m/s²，只能证明单轴模型。另查到 `holdAt` 会立即显示已保持，`VsThruster` 在舵令回中时跳过残余出力，引擎菜单将取绝对值后的实际力标为目标力。服务端旧日志未有相应实船测试，客户端日志 18:26–18:29 的 [CHAT] 与推进器读数见上节。
+- 原作先定主线、旁路及潜水员洞的轴线，再生成 Voronoi 岩块、沿轴线挖开并扩到最低净宽。深渊为主航道下的独立地形区；当地形配置允许时加底部洞口。本机 ColdCaverns.xml 的 Basic 配置为 0–1 条旁路、1 个小洞，Advanced 为 0–1 条旁路、2 个小洞，Maze 为 3 条旁路、3 个小洞。参见[关卡生成](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Levels/Level.cs#L682-L824)、[侧洞](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Levels/Level.cs#L2140-L2218)、[生物群系 Wiki](https://www.barotraumagame.com/wiki/Biomes)、[深渊 Wiki](https://www.barotraumagame.com/wiki/Abyss)。现有 `RoutePath.openAt` 每列只返回最上和最下，重叠的上下航路会挖穿中间岩层。若批准改地形，候选是每列保留多个空段或等价三维占用，先以船体包围盒测主航道、弯道、上下回转区和哨站接近区。
+- 白模用当前儒艮 35 × 13 × 14 格与自定 T3 80 × 30 × 24 格比较，数字按长／宽／高，T3 可现场调整。官方 [Berilia Wiki](https://barotraumagame.com/wiki/Berilia) 的 67 × 20 米是二维长／高。白模的 4 格岩块对船体包围盒按路线 241 点检测。浏览器验证默认 T3 能过两版主线，原作式支路约 28% 首次碰壁，开阔版岩拱下方全程采样通过。还验证了儒艮支路、超尺寸碰壁、剖面、模式切换和试走。白模用于确认空间方案，未修改运行时代码或存档。
+
+#### 完整地形白模复查
+
+- 原作安装目录的 `Content/Map/Biomes/ColdCaverns/ColdCaverns.xml` 里，Basic 关卡全宽为 70000–90000 显示单位、高 60000，Advanced 为 140000–160000 宽、高 70000。[原作单位换算](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Physics/Physics.cs#L18-L25)按每 100 单位 1 米，分别得 700–900 米宽和 1400–1600 米宽。[原作入口与出口定位](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Levels/Level.cs#L578-L605)使用内缩范围做插值，关卡宽度包含航路两端之外的地形。原作儒艮侧视长高 39 × 10 米，[Berilia](https://barotraumagame.com/wiki/Berilia) 为 67 × 20 米，模组儒艮继续用实际方块包围盒。
+- 旧白模全宽 432 格，港到港横向约 329 格。新版同尺度预览范围 800 × 640 格，港到港横向 462 格，峡谷主线的航点折线约 508 格。开阔版移除沿路线围合的岩壁和连续洞顶，改成深海盆地和离散礁体。中段 Y=-124 的白模采样，峡谷横向连续净宽 168 格，开阔海在预览范围内整列 640 格打通。预览的 Z 向宽度与深盆形状是 3D 设计选择。
+- 白模统一使用完整地形，斜视、北朝上的俯视和船边近看共用正交投影。向右拖时朝前的部分向右走，WebGL 深度测试负责遮挡，比例尺随相同的格到 CSS 像素换算。Edge 验证了两图尺度一致、比例尺换算、拖动方向、滚轮、单图与并排切换、路线播放、默认 T3 通行及放大船的碰撞。当前粗网格和包围盒采样用于预览，游戏地形与存档未改。
+
+#### 两种地形模板实装
+
+- 原作 [Level.Generate](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Levels/Level.cs#L682-L824) 共用同一条种子化生成流水线。它按预设安排航线、旁路和洞穴，用各预设的间隔与随机偏移布置 Voronoi 站点，沿航线开挖。靠近小洞的站点更密，远离航线更稀。[LevelData](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Map/Levels/LevelData.cs#L147-L156) 按关卡选型的宽度区间和连接长度决定具体尺寸。与 [原作群系参数](https://barotraumagame.com/wiki/Biomes#Biome_Level_Generation_Parameters) 对照，本次沿用已存在的按种子生成路线和体素噪声，使用地形模板做结构差异。
+- 新航次以原作尺寸区间中值 × 1.3 定纵向范围，站距按原作先内缩通道半径、再套起终点比例。原作是 2D，模组横向宽度取参考范围的 80%。高度服从已有深海底界，Maze 高度会触及该上限。旧航次保留落盘的距离和生成方式。
+- 用户确认两端标高错开并且中段也要有升沉。目的地比出发端低 72 格，主航线经谷底后回升到深侧。原作本机 `Content/Map/Outposts/OutpostGenerationParameters.xml` 的居民站 `outpost` 含气闸、行政、工程、船员和医疗模块。模组以现有方块搭一套新的居民站，把码头大厅、供给端、诊所、工程和上层宿舍接成完整结构，使用现有站务与气闸流程。[原作哨站类型](https://barotraumagame.com/wiki/Outposts)
+- Tutorial 与 Maze 使用峡谷，Advanced 使用海盆，Basic 按关卡种子稳定选择两者。Basic 的参考地形范围为纵向 1040、横向 832 格，哨站间距约 601 格。两端气闸靠泊舱口标高分别为 -64、-136，终点中层舱口为 -140。新居民站使用多舱壳体的并集定义房间，商人和医生优先生成在各自房间。干湿判定会检查真实的站体方块，无人航路点仍可作为深侧航行终点。
+- 以本机 Java 17 和 Forge 缓存编译改动，并运行地形、航道、靠泊坐标与存档相关的 65 项定向测试。用 4 种关卡、两种地形、3 个种子的 51 处航路位置抽样检查 80×30×24 格 T3 包围盒。未启动客户端或改写存档。检查了服务端、客户端已有日志，最近的客户端 [CHAT] 仍是上一轮驾驶验收，未作为本轮整船实测证据。
+
+#### 哨站站距、声纳标记与灯光复查
+
+- 原作 [Cold Caverns 预设](https://barotraumagame.com/wiki/Biomes#Biome_Level_Generation_Parameters) 在本机 1.13.5 安装目录给出 Tutorial 全宽 600 米，Basic 700–900 米，Advanced 1400–1600 米。港口只占内缩范围的两个比例位置。模组第一趟强制 Tutorial。客户端 `2026-11-25-1.log.gz` 20:33 的 `[level]` 显示 `type=coldcavernstutorial terrain=canyon difficulty=3 route=420`，随后 `[CHAT]` 提示全员登船。旧版日志为 518 格，旧版按航距玩法倍率计算且没有扣端点内缩。第二趟从 B 中继站到锈锚站，难度 5，按种子分 Basic 601 格或 Advanced 1422 格。到寒晶矿站、冰隙航路和沉船航路的难度分别为 6、6、7，均为 Advanced 1422 格。后两处是无站出口。以上均为水平端点间距，实际绕行更长。
+- [原作声纳](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Sonar.cs#L1948-L2015) 对量程外的导航标记使用圆周方向，旁边画地点名称和距离。模组已从服务端接收站名，但只在靠泊区下方显示，圆内或圆边的菱形没有名字。按用户确认，把站名显示到现有目的地标记旁，保留三维回波和驾驶目标投影。
+- 原作本机 `Content/Items` 数据中，手电筒与普通舱灯的 `range` 均为 800，应急灯为 250，舷外探照灯为 2500。以每 100 显示单位 1 米作量级参考，分别是 8、8、2.5、25 米。该参数与光纹理、方向和衰减共同决定可见范围。本模组手电 8 格后渐隐，12 格截断，海水会进一步压暗远处。满电的默认白色舱灯发出等级 12，按方块光逐格衰减。应急灯默认等级 5。扩展舷外照明可以参考 [Searchlight](https://barotraumagame.com/wiki/Searchlight) 的独立窄束用途。深海亮度调试器已接入本地单人光图，右键循环，潜行右键归零。亮度对海水雾无效。
+- 后续船体运动优先验证弱动力时的提前反推和停车判定。原作 [Engine.Update](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Engine.cs#L126-L166) 将目标力与实际力分开，随电压平滑改变实际力，再叠加耐久等因素给船体施力。原作二维推进和压载分别管横向和升沉，模组仍需根据 VS2 实际艏向、质量和当前可用推力计算制动余量。
+- `gradlew build --offline` 通过，438 项单测全绿。新增回归覆盖圆心、圆内和圆边各方位的最长站名布局，检查文字框留在圆内且避开菱形。服务端与客户端现存日志用于核对站距，本次未重新启动游戏验证渲染。
+
+#### 推进制动与深海调试
+
+- 原作 [Steering.GetSteeringVelocity](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Steering.cs#L705-L743) 用目标位置扣除按当前速度预估的位移。原作 [引擎](https://barotraumagame.com/wiki/Engines) 沿一条横向轴输出正反推，实际出力跟随目标，在 [Engine.Update](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Engine.cs#L126-L166) 按电压和耐久修正。VS2 有横漂和偏航，制动力使用现有同一套引擎→加速度换算，自动舵令按已联网的引擎、堆当前发电区间、电池余量和非推进负载估算。保留原作水阻和压载分工。
+- [原作调试控制台](https://barotraumagame.com/wiki/Console) 分别暴露照明、环境光和视线调试。模组沿用现有单人深海亮度调试器，添加独立海雾开关。海雾出现于地形雾距离和海水屏幕后处理，关闭时同时绕过两处；舱内水体保留。贴身光仅在本机玩家没有实际发光的手持或头戴手电时绘制。
+- 新增稳船状态，船位、横竖速度、偏航速度与残余轴力连续半秒达标才显示保持。自动航行按当前供电预算把预测电压限制在 80% 以上，手动舵令仍可按原流程操作。引擎面板分开显示带符号的目标和当前值，舵令归零后轴力仍按引擎原有惯性衰减。菜单同步与新增状态使用协议 37。
+- 离线构建与 441 项单测通过，弱推力模型包含 0.08 m/s²、引擎响应和二次阻力，另检查横漂、按当前位置锁定时的残余推力和断开的引擎支路。服务端日志 21:06:58 为 `All 7 required tests passed :)`。Forge 覆盖了临时工作目录设置，GameTest 把测试区块和世界元数据写进 `run/world`。客户端日志仍停在 20:41，单人存档未参与测试。此次没有实船重复停车或客户端画面复测。
+
+#### 声纳余辉、航速与舱内底光复查
+
+- [原作声纳](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Machines/Sonar.cs) 逐帧读取本艇和换能器世界位置。主动地形首个点的计时为 `2 × Rand(1.5,2) × (1−距离/量程)`，后续径向样本的计时逐步减少。每秒扣 `lerp(0.5,2,损伤)`，各点独立消退。颜色由 `计时/2` 在透明黑、(0,50,160)、(0,133,166)、(2,159,30)、白之间插值，叠加混合，径向一笔加弱扩散一笔。原作样本来自二维壁线，模组用已扫描的体素表面点和程序绘制的亮斑；矿点继续用独立的采矿标记。
+- 原作站点标签带米数，量程外优先按 Pathfinder 航路、否则按直线。原作声纳本身无俯仰。三维版本用水平罗盘方向稳定绘制站点，量程内外都带距离；峡谷可用主航道估算远处站点，其他情况用直线。船体使用 VS2 每帧的姿态，声纳包轮询保留给服务器状态和扫描。
+- [儒艮官方 Wiki](https://barotraumagame.com/wiki/Dugong) 标出最大横速 21.6 km/h、最大下潜速度 13.6 km/h。本机 `Dugong.sub` 的引擎覆盖额定耗电 600 kW、MaxForce 270。模组通用引擎为原作零件规格 2000 kW、MaxForce 300。现有推进单位换算用估测刚体质量，单通用引擎、额定供电、满推力时算得约 16 km/h。按同一二次水阻用实测参考速度标定现有单引擎儒艮的横向加速，供电、耐久、惯性和制动继续使用同一条力值换算。
+- 原作 `Dugong.sub` 的 16 个 Hull 均为 `AmbientLight=50,100,200,20`。[LightManager](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Lights/LightManager.cs#L350-L376) 在舱室范围以 alpha 乘色写入光图，最后乘法混合的两项相加。按该系数恢复冷色底光，限定在实际舱内像素。寒冷深穴的级别环境颜色另有 `4,6,8,255` 配置，本轮针对舱内底光。
+- `gradlew build --offline` 与 444 项单测通过。回归覆盖亚格级船体移动时仍点到同一世界方块、站点水平朝向、原作色阶断点、强弱回波的独立寿命、协议 38 的船位与距离字段。隐藏 OpenGL 3.2 窗口编译并执行手电着色器，满白材料的舱内底光读回约 `(8,16,31)/255`，舱外为黑。读取已有客户端日志，21:31 的 `[vs]` 样本只显示约 1.9–2.2 万原始推力，不能当满推力测速，21:32 的 `[CHAT]` 为旧客户端实测保存截图。本轮未启动客户端或服务器，航速与声纳整屏待实机验收。
+
+#### 儒艮号供电、极低亮度与维修界面（2026-11-26）
+
+- 本机原作 1.15.9.0 `Dugong.sub` 的发动机为 600 kW / 270 推力，反应堆为 3000 kW，电池每块 500 kW·min / 放电 650 kW / 充电 800 kW。通用引擎仍为 2000 kW / 300 推力。参考[官方儒艮号](https://barotraumagame.com/wiki/Dugong)。
+- 模组蓝图 `dugong_custom_20261117.nbt` 导航、反应堆、引擎的 Condition 为 100 但 ConditionGrace 已为 0；两块电池的 Charge 都是 0。旧实现导航只要船状态存在就劣化、反应堆只看开关。原作 `Repairable.cs` 按设备是否实际运行推进自然劣化，反应堆的宽限计时按（裂变率＋涡轮率）/200，友好哨站暂停自然劣化。配电箱 0.1 点/秒、120–720 秒宽限，原作儒艮过压 1.7。导航 0.125 点/秒、180–720 秒、80%；反应堆 0.125 点/秒、120–720 秒、自然下限 10%、维修阈值 50%。参考[维修源码](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Repairable.cs)及本机对应 XML。
+- 原作维修框与设备操作界面同时呈现，含技能要求、耐久条和修理键，判定与进度由服务端控制。确认用固定电气和机械技能，重绘玩家可用自建界面，排除调试工具和 MC 背包。
+- 用户截图能看到旧按面罩着色造成的蓝色与黑色分界。改成舱内极低的中性场景亮度。原作 2D 光照贴图无法直接移植到 MC 3D 光照图；沿用低色阶与真实光源合成。
+- 实船日志 22:00:42 的 `[CHAT]` 记录出航，22:00:43 的 `[vs]` 记录船坞与装配坐标换算。按照这个映射只读核对存档：儒艮布局 2，领航终端 73.81%，引擎 11.54%，反应堆 100%，七个配电箱与两块电池为 0%，实际绑定的驾驶／推进／电池共用配电箱为 27.63%。这些是退出时的持久值，既有日志没有当时电压时间序列，无法反推七个配电箱各自烧坏的原因。
+- 起始船原件按蓝图位置校准，兼容当前 VS2 装配和靠港。新船两块满电电池各按 160 kW 的原厂设置充电。旧档不重置损伤，电量超出新规格时限制到 500 kW·min。反应堆面板读本机负载所对应的发电值，配电箱同步当前全船供电数据。
+- 维修采用固定技能 40，原作技能差公式决定时长、启动成功率和成功指针的加成。常用设备面板的下方保留维修位，持正确工具且达到维修阈值才显示。单台设备同一时刻仅一人能修，工具、有效距离和设备身份在服务端校验。协议为 39。
+- 离线构建通过，447 项单测无失败。覆盖原作维修技能曲线、旧零宽限迁移、600 kW 负载突入时单块原厂电池补上缺口。OpenGL 3.2 编译执行光照着色器，在输入 1/255 中性素材样本时中心和边缘亮度相同。已核对客户端与服务端现有日志。没有启动游戏验证旧档的维修交互或新界面外观。

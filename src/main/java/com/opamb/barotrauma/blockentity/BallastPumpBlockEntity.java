@@ -53,8 +53,9 @@ public class BallastPumpBlockEntity extends DrainPumpBlockEntity implements GeoB
         if (!auto() || body < 0 || !simulation.ballastPrimed()) {
             return;
         }
-        int helm = ship.throttleY();
-        target = helm < 0 ? 1.0D : helm > 0 ? 0.0D : simulation.neutralBallastFill();
+        double helm = ship.verticalInput();
+        double neutral = simulation.neutralBallastFill();
+        target = neutral + (helm < 0.0D ? (1.0D - neutral) * -helm : -neutral * helm);
         double capacity = simulation.ballastUsableCapacity(body);
         double difference = target * capacity - simulation.bodyWater(body);
         if (Math.abs(difference) > 0.02D) {

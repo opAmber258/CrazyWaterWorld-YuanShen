@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.sonar;
 
+import com.opamb.barotrauma.world.OceanEnvironment;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -7,9 +8,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -24,7 +28,7 @@ import java.util.Set;
  * <ul>
  *   <li>{@link Mode#ACTIVE}：360° 全向脉冲，打出什么就显示什么；</li>
  *   <li>{@link Mode#DIRECTIONAL}：只在 30° 锥内打，其余方向不显示；</li>
- *   <li>{@link Mode#PASSIVE}：**不发射**，只听声音，所以没有地形，只有声源（生物 / 自己）。</li>
+ *   <li>{@link Mode#PASSIVE}：只听声源和声源附近的弱回波。</li>
  * </ul>
  */
 public final class SonarScan {
@@ -56,6 +60,8 @@ public final class SonarScan {
      * 地形最多用到 MAX_POINTS - 预留值，矿脉点始终有位置。</p>
      */
     private static final int VEIN_POINT_RESERVE = 512;
+    private static final int CONTACT_POINT_RESERVE = 128;
+    private static final int MAX_SOUND_SOURCES = 12;
 
     /** 定向脉冲的锥角：wiki 写的是 30 度。 */
     public static final float CONE_DEGREES = 30.0F;
@@ -65,7 +71,7 @@ public final class SonarScan {
     public enum Mode {
         /** 360° 主动脉冲。 */
         ACTIVE,
-        /** 被动：只听声音，没有地形。 */
+        /** 被动：只听声源及其附近的弱回波。 */
         PASSIVE,
         /** 30° 定向脉冲。 */
         DIRECTIONAL;
@@ -81,7 +87,7 @@ public final class SonarScan {
     }
 
     /**
-     * 一个扫描帧。{@code points} 是打包后的点：高 2 位类型，其余按 x/y/z 各 8 位存偏移 +64。
+     * 一个扫描帧。{@code points} 是打包后的点：类型 2 位，x/y/z 偏移各 9 位。
      */
     public record Frame(int range, int[] points) {
         public int size() {
@@ -106,11 +112,21 @@ public final class SonarScan {
     public static Frame scan(Level level, BlockPos center, int range,
                              @Nullable Set<BlockPos> hull, @Nullable Entity exclude,
                              Mode mode, float dirX, float dirY, float dirZ) {
+        return scan(level, center, range, hull, exclude, mode, dirX, dirY, dirZ, 0);
+    }
+
+    public static Frame listen(Level level, BlockPos center, int range, int shipSoundRange) {
+        return scan(level, center, range, null, null, Mode.PASSIVE, 0, 0, 0, shipSoundRange);
+    }
+
+    private static Frame scan(Level level, BlockPos center, int range,
+                              @Nullable Set<BlockPos> hull, @Nullable Entity exclude,
+                              Mode mode, float dirX, float dirY, float dirZ, int shipSoundRange) {
         int r = Mth.clamp(range, MIN_RANGE, MAX_RANGE);
 
         // 定向模式的锥向；没给方向就退化成全向
         float length = Mth.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
-        boolean directional = mode == Mode.DIRECTIONAL && length > 1.0E-4F;
+        boolean directional = mode == Mode.DIRECTIONAL && Float.isFinite(length) && length > 1.0E-4F;
         float ux = directional ? dirX / length : 0.0F;
         float uy = directional ? dirY / length : 0.0F;
         float uz = directional ? dirZ / length : 0.0F;
@@ -121,14 +137,28 @@ public final class SonarScan {
         int cx = center.getX();
         int cy = center.getY();
         int cz = center.getZ();
+        boolean passive = mode == Mode.PASSIVE;
+        List<SoundSource> sources = passive ? audibleSources(level, center, r, shipSoundRange, exclude) : List.of();
 
-        // ---- 地形：被动模式完全不做（不发脉冲就没有回波） ----
-        if (mode != Mode.PASSIVE) {
-            int stride = strideFor(r);
+        if (!passive || !sources.isEmpty()) {
+            int terrainRange = r;
+            if (passive) {
+                int maxReach = shipSoundRange;
+                for (SoundSource source : sources) {
+                    maxReach = Math.max(maxReach, source.reach());
+                }
+                terrainRange = Math.min(r, maxReach);
+            }
+            int terrainRangeSq = terrainRange * terrainRange;
+            int stride = strideFor(terrainRange);
             // 向上取整：r 不是 stride 整数倍时，射程边缘也要有采样点；
             // 球外点仍由 x²+y²+z² > r² 跳过，不会生成虚假球壳。
-            int base = ((r + stride - 1) / stride) * stride;
-            int n = 2 * (base / stride) + 1;
+            int base = ((terrainRange + stride - 1) / stride) * stride;
+            int n = 2 * (base / stride) + 2;
+            // Keep sampling the same world lattice while the submarine moves.
+            int startX = -base - Math.floorMod(cx, stride);
+            int startY = -base - Math.floorMod(cy, stride);
+            int startZ = -base - Math.floorMod(cz, stride);
 
             // 三态：0 = 不知道（球外 / 区块没加载），1 = 实心，2 = 空。
             // 之前用的是 boolean 且默认 true（"球外当实心"），结果球边界那一圈全被判成"实心且有空的邻居"，
@@ -137,10 +167,10 @@ public final class SonarScan {
 
             BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
             for (int i = 0; i < n; i++) {
-                int x = -base + i * stride;
+                int x = startX + i * stride;
                 for (int k = 0; k < n; k++) {
-                    int z = -base + k * stride;
-                    if (x * x + z * z > r * r) {
+                    int z = startZ + k * stride;
+                    if (x * x + z * z > terrainRangeSq) {
                         continue;
                     }
                     // 关键：没加载的区块**不能**去读。Level#getBlockState 会同步加载区块，
@@ -149,8 +179,8 @@ public final class SonarScan {
                         continue;
                     }
                     for (int j = 0; j < n; j++) {
-                        int y = -base + j * stride;
-                        if (x * x + y * y + z * z > r * r) {
+                        int y = startY + j * stride;
+                        if (x * x + y * y + z * z > terrainRangeSq) {
                             continue;
                         }
                         cursor.set(cx + x, cy + y, cz + z);
@@ -163,7 +193,7 @@ public final class SonarScan {
                 }
             }
 
-            int terrainBudget = MAX_POINTS - VEIN_POINT_RESERVE;
+            int terrainBudget = MAX_POINTS - VEIN_POINT_RESERVE - CONTACT_POINT_RESERVE;
             for (int i = 0; i < n && count < terrainBudget; i++) {
                 for (int j = 0; j < n && count < terrainBudget; j++) {
                     for (int k = 0; k < n && count < terrainBudget; k++) {
@@ -171,19 +201,17 @@ public final class SonarScan {
                         if (blockKind != SOLID) {
                             continue;
                         }
-                        // 只有"实心，且至少一个已知邻居是空"才算表面
-                        if (!knownEmpty(kind, i - 1, j, k, n) && !knownEmpty(kind, i + 1, j, k, n)
-                                && !knownEmpty(kind, i, j - 1, k, n) && !knownEmpty(kind, i, j + 1, k, n)
-                                && !knownEmpty(kind, i, j, k - 1, n) && !knownEmpty(kind, i, j, k + 1, n)) {
-                            continue;
-                        }
-                        int x = -base + i * stride;
-                        int y = -base + j * stride;
-                        int z = -base + k * stride;
+                        int x = startX + i * stride;
+                        int y = startY + j * stride;
+                        int z = startZ + k * stride;
                         if (directional && !inCone(x, y, z, ux, uy, uz)) {
                             continue;
                         }
-                        buffer[count++] = pack(TYPE_TERRAIN, x, y, z);
+                        int faceAxis = echoFaceAxis(kind, n, i, j, k, x, y, z, passive, sources);
+                        if (faceAxis == 0) {
+                            continue;
+                        }
+                        buffer[count++] = pack(TYPE_TERRAIN, x, y, z) | (faceAxis << 29);
                     }
                 }
             }
@@ -191,7 +219,7 @@ public final class SonarScan {
 
         // ---- 矿脉：按区块调色板精确找，不依赖上面的抽稀网格 ----
         // 矿脉只有 1~3 格，按 stride 抽稀很容易漏掉；原作的矿物扫描也是单独标簇的。
-        if (mode != Mode.PASSIVE) {
+        if (!passive) {
             count = addVeinPoints(level, cx, cy, cz, r, buffer, count, directional, ux, uy, uz);
         }
 
@@ -212,8 +240,15 @@ public final class SonarScan {
         }
 
         // ---- 接触点：被动模式靠的就是这些"声源" ----
-        AABB box = new AABB(center).inflate(r);
-        for (Entity entity : level.getEntities(exclude, box, e -> e instanceof LivingEntity && e.isAlive())) {
+        if (passive) {
+            for (SoundSource source : sources) {
+                if (source.contact() && count < MAX_POINTS) {
+                    buffer[count++] = pack(TYPE_CONTACT, source.x(), source.y(), source.z());
+                }
+            }
+            return new Frame(r, Arrays.copyOf(buffer, count));
+        }
+        for (Entity entity : detectableEntities(level, center, r, exclude)) {
             if (count >= MAX_POINTS) {
                 break;
             }
@@ -223,17 +258,121 @@ public final class SonarScan {
             if (dx * dx + dy * dy + dz * dz > r * r) {
                 continue;
             }
+            if (directional && !inCone(dx, dy, dz, ux, uy, uz)) {
+                continue;
+            }
             buffer[count++] = pack(TYPE_CONTACT, dx, dy, dz);
         }
 
         return new Frame(r, Arrays.copyOf(buffer, count));
     }
 
+    public static int[] hullPoints(@Nullable Set<BlockPos> hull, BlockPos center) {
+        if (hull == null) {
+            return new int[0];
+        }
+        int[] points = new int[Math.min(hull.size(), MAX_POINTS)];
+        int count = 0;
+        for (BlockPos pos : hull) {
+            int x = pos.getX() - center.getX();
+            int y = pos.getY() - center.getY();
+            int z = pos.getZ() - center.getZ();
+            if (Math.abs(x) > MAX_RANGE || Math.abs(y) > MAX_RANGE || Math.abs(z) > MAX_RANGE) {
+                continue;
+            }
+            points[count++] = pack(TYPE_HULL, x, y, z);
+            if (count == points.length) {
+                break;
+            }
+        }
+        return Arrays.copyOf(points, count);
+    }
+
+    private record SoundSource(int x, int y, int z, int radius, boolean contact) {
+        int reach() {
+            return (int) Math.ceil(Math.sqrt(x * x + y * y + z * z)) + radius;
+        }
+
+        boolean illuminates(int dx, int dy, int dz) {
+            int ox = dx - x;
+            int oy = dy - y;
+            int oz = dz - z;
+            return ox * ox + oy * oy + oz * oz <= radius * radius;
+        }
+    }
+
+    private static int echoFaceAxis(byte[] kind, int n, int i, int j, int k, int x, int y, int z,
+                                       boolean passive, List<SoundSource> sources) {
+        if (!passive) {
+            return exposedAxis(kind, n, i, j, k, -x, -y, -z);
+        }
+        for (SoundSource source : sources) {
+            if (source.illuminates(x, y, z)) {
+                int axis = exposedAxis(kind, n, i, j, k, source.x - x, source.y - y, source.z - z);
+                if (axis != 0) {
+                    return axis;
+                }
+            }
+        }
+        return 0;
+    }
+
+    private static int exposedAxis(byte[] kind, int n, int i, int j, int k, int x, int y, int z) {
+        int nx = x != 0 && knownEmpty(kind, i + Integer.signum(x), j, k, n) ? Math.abs(x) : 0;
+        int ny = y != 0 && knownEmpty(kind, i, j + Integer.signum(y), k, n) ? Math.abs(y) : 0;
+        int nz = z != 0 && knownEmpty(kind, i, j, k + Integer.signum(z), n) ? Math.abs(z) : 0;
+        if (nx == 0 && ny == 0 && nz == 0) {
+            return 0;
+        }
+        return nx >= ny && nx >= nz ? 1 : ny >= nz ? 2 : 3;
+    }
+
+    private static List<SoundSource> audibleSources(Level level, BlockPos center, int range,
+                                                    int shipSoundRange, @Nullable Entity exclude) {
+        List<SoundSource> sources = new ArrayList<>(MAX_SOUND_SOURCES);
+        if (shipSoundRange > 0) {
+            sources.add(new SoundSource(0, 0, 0, shipSoundRange, false));
+        }
+        // A submerged, moving entity is the initial external sound source. Quiet contacts need an active ping.
+        for (Entity entity : detectableEntities(level, center, Math.min(range, 34), exclude)) {
+            Vec3 velocity = entity.getDeltaMovement();
+            double speed = velocity.length();
+            if (speed < 0.045D) {
+                continue;
+            }
+            int audibleRange = Math.min(34, (int) Math.round(8 + 45 * speed));
+            BlockPos pos = entity.blockPosition();
+            int x = pos.getX() - center.getX();
+            int y = pos.getY() - center.getY();
+            int z = pos.getZ() - center.getZ();
+            int reach = Math.min(range, audibleRange);
+            if (x * x + y * y + z * z > reach * reach) {
+                continue;
+            }
+            sources.add(new SoundSource(x, y, z, Math.max(6, audibleRange / 2), true));
+            if (sources.size() == MAX_SOUND_SOURCES) {
+                break;
+            }
+        }
+        return sources;
+    }
+
+    private static List<Entity> detectableEntities(Level level, BlockPos center, int range, @Nullable Entity exclude) {
+        return level.getEntities(exclude, new AABB(center).inflate(range), entity -> {
+            if (!(entity instanceof LivingEntity) || !entity.isAlive() || entity.isSpectator()) {
+                return false;
+            }
+            Vec3 pos = entity.position();
+            return entity.isInWater() || (OceanEnvironment.isInOcean(level, pos)
+                    && !OceanEnvironment.isInsideShipCompartment(level, pos)
+                    && !OceanEnvironment.isInOutpostDryZone(level, pos));
+        });
+    }
+
     /**
      * 精确标出射程内的矿脉格。
      *
-     * <p>只遍历已加载区块；先用区块 section 的调色板判断"这段里有没有矿脉"，
-     * 没有就整段跳过，避免 10 Hz 扫描时把 4096 格全翻一遍。</p>
+     * <p>只遍历已加载区块；用 section 的调色板跳过没有矿脉的区段。</p>
      */
     private static int addVeinPoints(Level level, int cx, int cy, int cz, int r,
                                      int[] buffer, int count,
@@ -295,7 +434,7 @@ public final class SonarScan {
                                         0, 0, -1, r, directional, ux, uy, uz)) {
                                     continue;
                                 }
-                                if (count >= MAX_POINTS) {
+                                if (count >= MAX_POINTS - CONTACT_POINT_RESERVE) {
                                     return count;
                                 }
                                 buffer[count++] = pack(TYPE_ORE, ox, oy, oz);
@@ -335,7 +474,7 @@ public final class SonarScan {
     }
 
     /** 点是否落在以原点到该方向为中心的 30° 圆锥内。 */
-    private static boolean inCone(int x, int y, int z, float ux, float uy, float uz) {
+    static boolean inCone(int x, int y, int z, float ux, float uy, float uz) {
         float dot = x * ux + y * uy + z * uz;
         if (dot <= 0.0F) {
             return false;
@@ -377,6 +516,11 @@ public final class SonarScan {
 
     public static int type(int point) {
         return (point >>> 27) & 0x3;
+    }
+
+    /** 0 unspecified, 1 X, 2 Y, 3 Z. The face sign is irrelevant to the echo tail. */
+    public static int echoFaceAxis(int point) {
+        return (point >>> 29) & 0x3;
     }
 
     public static int x(int point) {

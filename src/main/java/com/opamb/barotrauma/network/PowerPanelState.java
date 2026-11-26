@@ -155,6 +155,17 @@ public final class PowerPanelState {
         }
         PANELS.put(player.getUUID(), new Panel(player.serverLevel().dimension(),
                 boxCell.immutable(), physical, corePos == null ? null : corePos.immutable()));
+        if (open) {
+            BlockPos pos = physical ? VsPilot.toYard(boxCell) : boxCell;
+            if (pos == null) return;
+            net.minecraftforge.network.NetworkHooks.openScreen(player, new net.minecraft.world.SimpleMenuProvider(
+                    (id, inventory, p) -> new com.opamb.barotrauma.menu.JunctionBoxMenu(id, inventory, pos, boxCell),
+                    net.minecraft.network.chat.Component.translatable("block.barotrauma.junction_box")),
+                    buf -> {
+                        buf.writeBlockPos(pos);
+                        buf.writeBlockPos(boxCell);
+                    });
+        }
         ModNetwork.sendToPlayer(player, state);
     }
 
@@ -167,7 +178,9 @@ public final class PowerPanelState {
     public static boolean bind(ServerPlayer player, BlockPos boxCell, BlockPos deviceCell, boolean bind) {
         ServerLevel level = player.serverLevel();
         Panel panel = PANELS.get(player.getUUID());
-        if (panel == null
+        if (!(player.containerMenu instanceof com.opamb.barotrauma.menu.JunctionBoxMenu open)
+                || !open.boxCell().equals(boxCell) || !open.stillValid(player)
+                || panel == null
                 || !panel.dimension().equals(level.dimension())
                 || !panel.boxCell().equals(boxCell)
                 || deviceCell == null) {

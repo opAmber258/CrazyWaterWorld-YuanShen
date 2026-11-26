@@ -87,7 +87,35 @@ public final class DockingBay {
         }
 
         public BlockPos at(int localX, int y, int localZ) {
-            return new BlockPos(x + localX, y, z + localZ);
+            return new BlockPos(x + localX, y(y), z + localZ);
+        }
+
+        public BlockPos at(Level level, int localX, int y, int localZ) {
+            return new BlockPos(x + localX, y + heightOffset(level), z + localZ);
+        }
+
+        public int y(int referenceY) {
+            return referenceY + MissionInstance.stationOffsetY(x, z);
+        }
+
+        int heightOffset(Level level) {
+            int active = MissionInstance.stationOffsetY(x, z);
+            if (level == null || equals(MAIN) || (active != 0 && !level.isClientSide())) {
+                return active;
+            }
+            // 专用服务器的客户端和离开后的旧站，从已经同步的哨站方块识别标高。
+            return hasStationBlocks(level, MissionInstance.DESTINATION_OFFSET_Y)
+                    ? MissionInstance.DESTINATION_OFFSET_Y : active;
+        }
+
+        boolean hasStationBlocks(Level level, int offset) {
+            if (level == null) {
+                return false;
+            }
+            BlockPos floor = new BlockPos(x + 10, STATION_FLOOR_Y + offset, z);
+            BlockPos hatch = new BlockPos(x, STATION_HATCH_Y + offset, z);
+            return (level.hasChunkAt(floor) && level.getBlockState(floor).is(ModShipBlocks.STATION_PLATING.get()))
+                    || (level.hasChunkAt(hatch) && level.getBlockState(hatch).getBlock() instanceof HatchBlock);
         }
     }
 
@@ -216,7 +244,7 @@ public final class DockingBay {
      * 码头位上，舱口对不上、看起来就是「对接对歪了」。</p>
      */
     public static BlockPos dockCore(Site site, StarterSub.Layout layout) {
-        return layout.coreAt(site.x(), site.z());
+        return layout.coreAt(site.x(), site.z()).offset(0, site.y(0), 0);
     }
 
     /** 是不是出生潜艇在码头的位置（三代布局的核心位都认，y 覆盖新旧几版）。 */
@@ -229,29 +257,39 @@ public final class DockingBay {
         // 和 StarterSub.starterCore 同一判定。
         for (StarterSub.Layout layout : StarterSub.Layout.values()) {
             if (layout.dugong()
-                    && StarterSub.isStarterCoreAt(layout.coreAt(site.x(), site.z()), core)) {
+                    && StarterSub.isStarterCoreAt(dockCore(site, layout), core)) {
                 return true;
             }
         }
         // 旧出生潜艇在码头里的几版位置。
         return core.getX() == site.x() + 1
                 && core.getZ() == site.z() - 3
-                && core.getY() >= StarterSub.LEGACY_ORIGIN_Y + 1
-                && core.getY() <= StarterSub.ORIGIN_Y + 1;
+                && core.getY() >= site.y(StarterSub.LEGACY_ORIGIN_Y + 1)
+                && core.getY() <= site.y(StarterSub.ORIGIN_Y + 1);
     }
 
     /** 船体扫描用站侧中层舱口封住对接缝。站侧平台以外的空格仍通海。 */
     public static boolean isDockCapRow(BlockPos pos) {
-        return pos.getY() == MID_HATCH_Y && isStationDockHatch(pos);
+        return isStationDockHatch(pos, true);
     }
 
     /** 站侧/中层 3×1 舱口格（中层舱口现在就是潜艇顶部舱口）。 */
     public static boolean isStationDockHatch(BlockPos pos) {
+        return isStationDockHatch(pos, false);
+    }
+
+    private static boolean isStationDockHatch(BlockPos pos, boolean midOnly) {
+        int y = pos.getY();
+        int deepY = y - MissionInstance.DESTINATION_OFFSET_Y;
+        if (y != MID_HATCH_Y && deepY != MID_HATCH_Y
+                && (midOnly || (y != STATION_HATCH_Y && deepY != STATION_HATCH_Y))) {
+            return false;
+        }
         Site site = siteAt(pos.getX(), pos.getZ());
         return site != null
                 && pos.getZ() == site.z()
                 && Math.abs(pos.getX() - site.x()) <= HALF_WIDTH
-                && (pos.getY() == STATION_HATCH_Y || pos.getY() == MID_HATCH_Y);
+                && (y == site.y(MID_HATCH_Y) || (!midOnly && y == site.y(STATION_HATCH_Y)));
     }
 
     /** 气闸室两侧的舱壁门：站体方块，不能算进潜艇船体（否则潜艇上移后会连成一片）。 */
@@ -260,7 +298,7 @@ public final class DockingBay {
         return site != null
                 && pos.getZ() == site.z()
                 && Math.abs(pos.getX() - site.x()) == ROOM_HALF_X + 1
-                && (pos.getY() == SIDE_DOOR_Y || pos.getY() == SIDE_DOOR_Y + 1);
+                && (pos.getY() == site.y(SIDE_DOOR_Y) || pos.getY() == site.y(SIDE_DOOR_Y + 1));
     }
 
     /** 站内竖井/地板洞口的铁梯：不属于潜艇，装配时不能被 collectBlocks 收走。 */
@@ -268,17 +306,17 @@ public final class DockingBay {
         Site site = siteAt(pos.getX(), pos.getZ());
         return site != null
                 && pos.getX() == site.x() && pos.getZ() == site.z()
-                && pos.getY() >= MID_HATCH_Y && pos.getY() <= STATION_FLOOR_UPPER_Y;
+                && pos.getY() >= site.y(MID_HATCH_Y) && pos.getY() <= site.y(STATION_FLOOR_UPPER_Y);
     }
 
     /** 站侧气闸室和相邻的舱口足迹，使用各格实际占用的半开区间。 */
     public static boolean inDryZone(double x, double z, double y) {
-        int layer = (int) Math.floor(y);
-        if (layer < SUB_HATCH_Y || layer > STATION_FLOOR_UPPER_Y) {
-            return false;
-        }
         Site site = siteAt((int) Math.floor(x), (int) Math.floor(z));
-        if (site == null) {
+        return site != null && inDryZone(site, x, z, (int) Math.floor(y) - site.y(0));
+    }
+
+    private static boolean inDryZone(Site site, double x, double z, int layer) {
+        if (layer < SUB_HATCH_Y || layer > STATION_FLOOR_UPPER_Y) {
             return false;
         }
         int lx = (int) Math.floor(x) - site.x();
@@ -288,11 +326,23 @@ public final class DockingBay {
     }
 
     public static boolean isDryPassage(Level level, Vec3 point) {
-        if (!inDryZone(point.x, point.z, point.y)) {
+        if (level == null) {
             return false;
         }
         BlockPos cell = BlockPos.containing(point);
-        if (cell.getY() == SUB_HATCH_Y) {
+        Site site = siteAt(cell.getX(), cell.getZ());
+        if (site == null) {
+            return false;
+        }
+        int offset = site.heightOffset(level);
+        int localY = cell.getY() - offset;
+        if (!inDryZone(site, point.x, point.z, localY)) {
+            return false;
+        }
+        if (!site.equals(Site.MAIN) && !site.hasStationBlocks(level, offset)) {
+            return false;
+        }
+        if (localY == SUB_HATCH_Y) {
             return level.getBlockState(cell).getBlock() instanceof HatchBlock
                     && level.getBlockState(cell.above()).getBlock() instanceof HatchBlock;
         }
@@ -316,7 +366,7 @@ public final class DockingBay {
         // 站内地板两层都开 3×1 洞：只开 -64 会被 -63 的表层挡住。
         for (int y = STATION_FLOOR_Y; y <= STATION_FLOOR_UPPER_Y; y++) {
             for (int x = sx - HALF_WIDTH; x <= sx + HALF_WIDTH; x++) {
-                setAir(chunk, x, y, sz);
+                setAir(chunk, x, site.y(y), sz);
             }
         }
         // -63 洞口围一圈半砖（5×3），和实机存档一致。
@@ -325,7 +375,7 @@ public final class DockingBay {
                 if (z == sz && Math.abs(x - sx) <= HALF_WIDTH) {
                     continue;
                 }
-                set(chunk, x, STATION_FLOOR_UPPER_Y, z, slab);
+                set(chunk, x, site.y(STATION_FLOOR_UPPER_Y), z, slab);
             }
         }
 
@@ -333,7 +383,7 @@ public final class DockingBay {
         for (int y = ROOM_MIN_Y; y <= ROOM_MAX_Y; y++) {
             for (int x = sx - ROOM_HALF_X; x <= sx + ROOM_HALF_X; x++) {
                 for (int z = sz - ROOM_HALF_Z; z <= sz + ROOM_HALF_Z; z++) {
-                    setAir(chunk, x, y, z);
+                    setAir(chunk, x, site.y(y), z);
                 }
             }
         }
@@ -347,23 +397,23 @@ public final class DockingBay {
                     boolean sideWall = Math.abs(x - sx) == ROOM_HALF_X + 1
                             && Math.abs(z - sz) <= ROOM_HALF_Z;
                     if (endWall || sideWall) {
-                        set(chunk, x, y, z, plating);
+                        set(chunk, x, site.y(y), z, plating);
                     }
                 }
             }
         }
         // 两侧舱壁门：门面朝气闸室内。
-        placeBulkheadDoor(chunk, sx - ROOM_HALF_X - 1, SIDE_DOOR_Y, sz, Direction.EAST);
-        placeBulkheadDoor(chunk, sx + ROOM_HALF_X + 1, SIDE_DOOR_Y, sz, Direction.WEST);
+        placeBulkheadDoor(chunk, sx - ROOM_HALF_X - 1, site.y(SIDE_DOOR_Y), sz, Direction.EAST);
+        placeBulkheadDoor(chunk, sx + ROOM_HALF_X + 1, site.y(SIDE_DOOR_Y), sz, Direction.WEST);
         // 门框下方的支撑块（-68，x=±3、z=0）。
         for (int side = -1; side <= 1; side += 2) {
-            set(chunk, sx + side * (ROOM_HALF_X + 1), MID_HATCH_Y, sz, plating);
+            set(chunk, sx + side * (ROOM_HALF_X + 1), site.y(MID_HATCH_Y), sz, plating);
         }
 
         // 中层平台（-68，5×3）+ 中层舱口。
         for (int x = sx - ROOM_HALF_X; x <= sx + ROOM_HALF_X; x++) {
             for (int z = sz - ROOM_HALF_Z; z <= sz + ROOM_HALF_Z; z++) {
-                set(chunk, x, MID_HATCH_Y, z, plating);
+                set(chunk, x, site.y(MID_HATCH_Y), z, plating);
             }
         }
         placeHatch(chunk, pos, site, MID_HATCH_Y, true);
@@ -373,9 +423,9 @@ public final class DockingBay {
 
         // 气闸室内和站内地板洞口的梯子（舱口格本身打开时可攀爬，不占梯子方块）。
         for (int y = ROOM_MIN_Y; y <= ROOM_MAX_Y; y++) {
-            set(chunk, sx, y, sz, ironLadder());
+            set(chunk, sx, site.y(y), sz, ironLadder());
         }
-        set(chunk, sx, STATION_FLOOR_UPPER_Y, sz, ironLadder());
+        set(chunk, sx, site.y(STATION_FLOOR_UPPER_Y), sz, ironLadder());
 
         // 站侧对接舱口（对接时打开）。
         placeHatch(chunk, pos, site, STATION_HATCH_Y, true);
@@ -409,25 +459,27 @@ public final class DockingBay {
         ensureHatchRow(level, site, STATION_HATCH_Y);
         ensureHatchRow(level, site, MID_HATCH_Y);
         ensureHatchRow(level, site, SUB_HATCH_Y);
-        ensureBulkhead(level, site.x() - ROOM_HALF_X - 1, SIDE_DOOR_Y, site.z());
-        ensureBulkhead(level, site.x() + ROOM_HALF_X + 1, SIDE_DOOR_Y, site.z());
+        int doorY = SIDE_DOOR_Y + site.heightOffset(level);
+        ensureBulkhead(level, site.x() - ROOM_HALF_X - 1, doorY, site.z());
+        ensureBulkhead(level, site.x() + ROOM_HALF_X + 1, doorY, site.z());
     }
 
-    /** 主站 + 本轮正在下潜的副本（目的站和出发站）；给开局补实体、开合舱口用。 */
+    /** 主站、当前目的站和航行中仍可返回的出发站。 */
     public static java.util.List<Site> activeSites(ServerLevel level) {
         java.util.List<Site> sites = new java.util.ArrayList<>(3);
         sites.add(Site.MAIN);
         try {
             var state = com.opamb.barotrauma.campaign.CampaignState.wallet(level);
             var round = state.round();
-            // 只有真正在航行中才认副本站点：到达后 roundsCompleted 已指向下一轮，
-            // 提前按下一轮出发站加载区块会把不该建的站生成出来。
-            if (round.phase() == com.opamb.barotrauma.campaign.RoundPhase.DIVING
-                    && round.hasInstance()) {
+            // 抵达后仍按保存的目的站操作气闸，出发站只在航行中补齐。
+            if (round.hasInstance() && round.endHasOutpost()) {
                 Site instance = new Site(round.instanceX(), round.instanceZ());
                 if (!instance.equals(Site.MAIN)) {
                     sites.add(instance);
                 }
+            }
+            if (round.phase() == com.opamb.barotrauma.campaign.RoundPhase.DIVING
+                    && round.hasInstance() && round.startHasOutpost()) {
                 // 旧存档的槽位间距/出发距离以保存值为准：按当前 SPACING 反推会把
                 // 槽位 5（锚点 25120）算成槽位 3，列出一个实际不存在的出发站，
                 // ensureStationHatch/open/close 于是漏掉真正的出发站。
@@ -450,7 +502,7 @@ public final class DockingBay {
     private static void ensureHatchRow(ServerLevel level, Site site, int y) {
         for (int i = 0; i < 3; i++) {
             int x = site.x() - HALF_WIDTH + i;
-            BlockPos pos = new BlockPos(x, y, site.z());
+            BlockPos pos = site.at(level, x - site.x(), y, 0);
             BlockState state = level.getBlockState(pos);
             if (!(state.getBlock() instanceof HatchBlock)) {
                 continue;
@@ -541,7 +593,7 @@ public final class DockingBay {
     /** 按行设置某层 3 格舱口的开关。 */
     private static void setHatchOpen(ServerLevel level, Site site, int y, boolean open) {
         for (int x = site.x() - HALF_WIDTH; x <= site.x() + HALF_WIDTH; x++) {
-            BlockPos pos = new BlockPos(x, y, site.z());
+            BlockPos pos = site.at(level, x - site.x(), y, 0);
             BlockState state = level.getBlockState(pos);
             if (state.getBlock() instanceof HatchBlock && state.hasProperty(HatchBlock.OPEN)) {
                 level.setBlock(pos, state.setValue(HatchBlock.OPEN, open), 2);
@@ -576,10 +628,11 @@ public final class DockingBay {
                     .setValue(HatchBlock.FACING, Direction.NORTH)
                     .setValue(HatchBlock.PART, parts[i])
                     .setValue(HatchBlock.OPEN, open);
-            chunk.setBlockState(new BlockPos(x, y, site.z()), state, false);
+            BlockPos pos = site.at(x - site.x(), y, 0);
+            chunk.setBlockState(pos, state, false);
             // 世界生成阶段就把中段的舱口 BE 建好，模型不用右键才出现
             if (state.getBlock() instanceof net.minecraft.world.level.block.EntityBlock entityBlock) {
-                var be = entityBlock.newBlockEntity(new BlockPos(x, y, site.z()), state);
+                var be = entityBlock.newBlockEntity(pos, state);
                 if (be != null) {
                     chunk.setBlockEntity(be);
                 }

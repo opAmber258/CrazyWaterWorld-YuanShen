@@ -2,7 +2,7 @@
   "itemGroup.barotrauma": "Barotrauma",
   "itemGroup.barotrauma.dev": "Barotrauma: Developer Tools",
   "item.barotrauma.brightness_debugger": "Deep Sea Brightness Controller",
-  "item.barotrauma.brightness_debugger.controls": "Right-click to open the deep sea brightness panel.",
+  "item.barotrauma.brightness_debugger.controls": "Right-click to open the deep sea brightness panel (lighting / fog / night vision).",
   "item.barotrauma.brightness_debugger.scope": "Local single-player Deep Sea only, in Creative or with operator permissions.",
   "brightness.screen.title": "Deep Sea Brightness",
   "brightness.screen.live": "Applied live",
@@ -13,6 +13,7 @@
   "brightness.screen.vanilla_ambient": "Vanilla ambient light",
   "brightness.screen.restore_water": "Restore fog & water (vanilla mode)",
   "brightness.screen.restore_water.desc": "Off: lightmap only; fog/water stay.",
+  "brightness.screen.no_sea_fog": "Disable ocean fog",
   "brightness.screen.night_vision": "Infinite night vision",
   "brightness.screen.night_vision.give": "Apply",
   "brightness.screen.night_vision.remove": "Remove",
@@ -696,5 +697,14 @@
   "gui.barotrauma.repair.hint.tool": "Hold the required tool to repair",
   "gui.barotrauma.repair.hint.full": "Condition is full",
   "gui.barotrauma.repair.hint.threshold": "Condition is above the repair threshold",
-  "gui.barotrauma.repair.hint.qte": "Click Repair to keep repairing; click again while the pointer is in the green area for +3"
+  "gui.barotrauma.repair.hint.qte": "Click Repair to keep repairing; click again while the pointer is in the green area for +3",
+  "gui.barotrauma.repair.skill": "Skill %s / You %s",
+  "affliction.barotrauma.lacerations": "Lacerations",
+  "power.indicator.powered": "Powered",
+  "power.indicator.high": "High voltage",
+  "power.indicator.low": "Low voltage",
+  "gui.barotrauma.repair.failed": "Repair failed",
+  "gui.barotrauma.engine.helm_input": "Helm linked",
+  "gui.barotrauma.engine.reverse": "Reverse",
+  "gui.barotrauma.engine.ahead": "Ahead"
 }

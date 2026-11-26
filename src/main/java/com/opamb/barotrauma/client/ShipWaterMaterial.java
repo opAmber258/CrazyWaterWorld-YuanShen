@@ -76,6 +76,10 @@ final class ShipWaterMaterial {
                        float originX, float originY, float originZ, float time, Vec3 eye,
                        boolean eyeWet, boolean eyeInSea) {
         boolean hasGeometry = pool != null || flows != null && flows.hasPaths();
+        boolean seaFog = eyeInSea && !DeepBrightnessDebug.seaFogDisabled();
+        if (!hasGeometry && !seaFog) {
+            return new Result(0, 0, false);
+        }
         RenderTarget target = Minecraft.getInstance().getMainRenderTarget();
         boolean refract = refractionAvailable() && canCopy(target) && capture(target);
         if (!refract && !hasGeometry) {
@@ -99,7 +103,7 @@ final class ShipWaterMaterial {
             shader.safeGetUniform("EyeWet").set(0.0F);
             shader.safeGetUniform("VolumeFill").set(0.0F);
             shader.safeGetUniform("WaterLight").set(light.red(), light.green(), light.blue(), light.seaDensity());
-            shader.safeGetUniform("SeaEye").set(eyeInSea ? 1.0F : 0.0F);
+            shader.safeGetUniform("SeaEye").set(seaFog ? 1.0F : 0.0F);
             shader.safeGetUniform("SeaBounds").set((float) (ModDimensions.WATER_TOP_Y - eye.y),
                     (float) (eye.y - ModDimensions.WATER_BOTTOM_Y));
             shader.safeGetUniform("SeaRange").set(seaView.near(), seaView.far());
@@ -119,7 +123,7 @@ final class ShipWaterMaterial {
         RenderSystem.depthMask(refract);
         boolean clampDepth = refract && eyeWet && !GL11.glIsEnabled(GL32.GL_DEPTH_CLAMP);
         try {
-            if (refract && eyeInSea) {
+            if (refract && seaFog) {
                 fillSubmergedScene(2.0F);
             }
             if (!hasGeometry) {
