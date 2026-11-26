@@ -1,0 +1,9 @@
+{
+  "asset": "periscope",
+  "date": "2026-11-26",
+  "findings": [
+    { "level": "warn", "code": "ROTATION_OVER_LIMIT", "detail": "62/84 cube 带旋转，含 28 个超限角度与 16 个多轴自由旋转，超出 1.20.1 原版 Java 模型 JSON 表达范围；运行时接入按 GeckoLib Bedrock geometry 路线（参照电池（设备）先例）。" },
+    { "level": "warn", "code": "ZERO_THICKNESS_PLANES", "detail": "2 个零厚度面片。" },
+    { "level": "info", "code": "INFLATE_PRESENT", "detail": "26 个 cube 带 inflate（Blockbench 语义膨胀），渲染核对时已按该语义应用。" }
+  ]
+}

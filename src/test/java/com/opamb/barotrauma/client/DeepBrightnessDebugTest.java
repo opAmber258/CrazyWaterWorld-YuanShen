@@ -1,5 +1,6 @@
 package com.opamb.barotrauma.client;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -7,25 +8,66 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DeepBrightnessDebugTest {
-    @Test
-    void cyclesAllFiveBrightnessLevelsAndKeepsFogSetting() {
-        var settings = new DeepBrightnessDebug.Settings(0, true);
-        for (int expected : new int[]{25, 50, 75, 100, 0}) {
-            settings = settings.afterUse(false);
-            assertEquals(expected, settings.brightness());
-            assertTrue(settings.noSeaFog());
-        }
+
+    @BeforeEach
+    void resetSettings() {
+        DeepBrightnessDebug.reset();
     }
 
     @Test
-    void togglesFogBothWaysWithoutResettingBrightness() {
-        for (int brightness : new int[]{0, 25, 50, 75, 100}) {
-            var clear = new DeepBrightnessDebug.Settings(brightness, false).afterUse(true);
-            assertTrue(clear.noSeaFog());
-            assertEquals(brightness, clear.brightness());
-            var restored = clear.afterUse(true);
-            assertFalse(restored.noSeaFog());
-            assertEquals(brightness, restored.brightness());
+    void nextPercentCyclesFourStepsAndWraps() {
+        int percent = 0;
+        for (int expected : new int[]{25, 50, 75, 100, 0}) {
+            percent = DeepBrightnessDebug.nextPercent(percent, false);
+            assertEquals(expected, percent);
         }
+        assertEquals(0, DeepBrightnessDebug.nextPercent(75, true));
+    }
+
+    @Test
+    void modAmbientClampsToZeroHundred() {
+        DeepBrightnessDebug.setPercent(-10);
+        assertEquals(0, DeepBrightnessDebug.percent());
+        DeepBrightnessDebug.setPercent(150);
+        assertEquals(100, DeepBrightnessDebug.percent());
+        DeepBrightnessDebug.setPercent(37);
+        assertEquals(37, DeepBrightnessDebug.percent());
+    }
+
+    @Test
+    void vanillaAmbientClampsToZeroTwoTenths() {
+        DeepBrightnessDebug.setVanillaAmbient(-1.0F);
+        assertEquals(0.0F, DeepBrightnessDebug.vanillaAmbient(), 1.0E-6F);
+        DeepBrightnessDebug.setVanillaAmbient(1.0F);
+        assertEquals(0.2F, DeepBrightnessDebug.vanillaAmbient(), 1.0E-6F);
+        DeepBrightnessDebug.setVanillaAmbient(0.15F);
+        assertEquals(0.15F, DeepBrightnessDebug.vanillaAmbient(), 1.0E-6F);
+    }
+
+    @Test
+    void modeAndWaterRestoreFlagAreStoredIndependently() {
+        assertFalse(DeepBrightnessDebug.isVanilla());
+        assertTrue(DeepBrightnessDebug.vanillaRestoresWater());
+        DeepBrightnessDebug.setMode(DeepBrightnessDebug.Mode.VANILLA);
+        assertTrue(DeepBrightnessDebug.isVanilla());
+        DeepBrightnessDebug.setVanillaRestoresWater(false);
+        assertFalse(DeepBrightnessDebug.vanillaRestoresWater());
+        DeepBrightnessDebug.setMode(DeepBrightnessDebug.Mode.MOD);
+        assertFalse(DeepBrightnessDebug.isVanilla());
+    }
+
+    @Test
+    void resetRestoresModeAndDefaults() {
+        DeepBrightnessDebug.setMode(DeepBrightnessDebug.Mode.VANILLA);
+        DeepBrightnessDebug.setPercent(75);
+        DeepBrightnessDebug.setVanillaAmbient(0.2F);
+        DeepBrightnessDebug.setVanillaRestoresWater(false);
+
+        DeepBrightnessDebug.reset();
+
+        assertEquals(DeepBrightnessDebug.Mode.MOD, DeepBrightnessDebug.mode());
+        assertEquals(0, DeepBrightnessDebug.percent());
+        assertEquals(0.1F, DeepBrightnessDebug.vanillaAmbient(), 1.0E-6F);
+        assertTrue(DeepBrightnessDebug.vanillaRestoresWater());
     }
 }

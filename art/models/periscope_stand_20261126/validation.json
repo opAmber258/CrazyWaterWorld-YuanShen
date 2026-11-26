@@ -1,0 +1,93 @@
+{
+  "asset_id": "periscope_stand",
+  "schema_version": 2,
+  "creation_source": "人工 + AI（Han-xing-official + GLM-5.3-Flash）",
+  "acceptance": {},
+  "inputs": {
+    "geometry": "4b21ddeae55bcb1030df5f53b07ababb73dd056acd734e2f1cb85cd9468e97ff",
+    "textures": "40fb19052a642974d3d17e802cb160537c9290904a20300616f27df051723219",
+    "previews": "ab54939f263661d14cccab780093a6e4f775c0b23242ad0e17fc4797ace5dc95"
+  },
+  "measurements": {
+    "projects": [
+      {
+        "path": "periscope_stand.bbmodel",
+        "format": "java_block",
+        "cubes": 35,
+        "meshes": 0,
+        "groups": 6
+      }
+    ],
+    "exports": [],
+    "java_exports": [],
+    "textures": [
+      {
+        "path": "periscope_stand_tex.png",
+        "width": 128,
+        "height": 128,
+        "mode": "RGBA"
+      }
+    ],
+    "previews": [
+      {
+        "path": "preview_back.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_front.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_oblique.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_side.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      }
+    ]
+  },
+  "checks": {
+    "editor_reopen": "unverified",
+    "native_reexport": "unverified",
+    "visual_preview": "unverified"
+  },
+  "status": "incomplete",
+  "unresolved": [
+    "editor_reopen:unverified",
+    "native_reexport:unverified",
+    "visual_preview:unverified",
+    "periscope_stand.bbmodel: missing Java model export periscope_stand.json"
+  ],
+  "validator": {
+    "version": 2,
+    "sha256": "030083f30e86fbde97f34f8f7892ba535c1af436d39fe93a1454dee4ff8b7206"
+  },
+  "display_name_zh": "潜望镜底座",
+  "display_name_en": "PeriscopeStand",
+  "contributors": {
+    "human": [
+      "Han-xing-official"
+    ],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线校验、文档与登记起草；未参与几何/UV/贴图/预览制作"
+      }
+    ],
+    "division": "几何、UV、贴图、预览截图全部人工完成；AI 仅做交付打包与离线校验。"
+  },
+  "sources": {
+    "zh": "非原版实体（项目定名）：潜望镜底座 PeriscopeStand",
+    "en": "非原版实体（项目定名）：PeriscopeStand"
+  }
+}

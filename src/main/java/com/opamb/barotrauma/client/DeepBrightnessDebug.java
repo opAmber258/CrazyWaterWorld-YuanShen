@@ -1,101 +1,140 @@
 package com.opamb.barotrauma.client;
 
-import com.opamb.barotrauma.BarotraumaMod;
-import com.opamb.barotrauma.item.BrightnessDebuggerItem;
 import com.opamb.barotrauma.world.ModDimensions;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraft.util.Mth;
 
-/** 仅本机当前单人世界的渲染覆盖。 */
-@Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID, value = Dist.CLIENT)
+/**
+ * 深海亮度/光照的客户端设置（调试器面板与 F7 共用）。
+ *
+ * <p>两种模式：</p>
+ * <ul>
+ *   <li>{@link Mode#MOD}：模组光照。环境底光由 {@link #percent()} 调（0..100%），
+ *       再叠加手电后处理、黑雾与水体吸收；{@link #seaFogDisabled()} 可单独关海雾。</li>
+ *   <li>{@link Mode#VANILLA}：原版光照。光图放行原版，环境底光固定用
+ *       {@link #vanillaAmbient()}（默认 0.1，即引入灯光系统前的维度值）；
+ *       是否同时跳过黑雾/水体由 {@link #vanillaRestoresWater()} 决定。</li>
+ * </ul>
+ *
+ * <p>只在本地单人深海、创造模式或权限 ≥ 2 时生效；设置本身保留到游戏退出。</p>
+ */
 public final class DeepBrightnessDebug {
-    private static final String MESSAGE = "item.barotrauma.brightness_debugger.";
-    private static ClientLevel activeLevel;
-    private static Settings settings = new Settings(0, false);
-    private static boolean useHeld;
 
-    record Settings(int brightness, boolean noSeaFog) {
-        Settings afterUse(boolean toggleFog) {
-            return toggleFog ? new Settings(brightness, !noSeaFog)
-                    : new Settings((brightness + 25) % 125, noSeaFog);
-        }
+    public enum Mode {
+        MOD,
+        VANILLA
     }
+
+    private static final String MESSAGE = "item.barotrauma.brightness_debugger.";
+    private static final float DEFAULT_VANILLA_AMBIENT = 0.1F;
+    private static final float MAX_VANILLA_AMBIENT = 0.2F;
+
+    private static int percent;
+    private static Mode mode = Mode.MOD;
+    private static float vanillaAmbient = DEFAULT_VANILLA_AMBIENT;
+    private static boolean vanillaRestoresWater = true;
+    private static boolean noSeaFog;
 
     private DeepBrightnessDebug() {
     }
 
-    @SubscribeEvent
-    public static void onUse(InputEvent.InteractionKeyMappingTriggered event) {
+    /** 打开面板前调用：允许时返回 true，否则提示作用范围。 */
+    public static boolean activate() {
         Minecraft mc = Minecraft.getInstance();
-        if (!event.isUseItem() || mc.player == null
-                || !(mc.player.getItemInHand(event.getHand()).getItem() instanceof BrightnessDebuggerItem)) return;
-        // Handle before block/entity use so the targeted machine cannot consume this click.
-        event.setSwingHand(false);
-        event.setCanceled(true);
-        if (useHeld) return;
-        useHeld = mc.options.keyUse.isDown();
-        if (!canUse(mc)) {
-            mc.player.displayClientMessage(Component.translatable(MESSAGE + "scope"), true);
-            return;
-        }
-        if (activeLevel != mc.level) clear();
-        boolean toggleFog = Screen.hasShiftDown() || mc.options.keyShift.isDown() || Screen.hasControlDown();
-        settings = settings.afterUse(toggleFog);
-        activeLevel = mc.level;
-        Component status = toggleFog
-                ? Component.translatable(MESSAGE + (settings.noSeaFog() ? "fog_off" : "fog_on"))
-                : Component.translatable(MESSAGE + "current", settings.brightness());
-        mc.player.displayClientMessage(status, true);
-    }
-
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && !Minecraft.getInstance().options.keyUse.isDown()) {
-            useHeld = false;
-        }
-    }
-
-    public static float ambientMix() {
-        return active() ? 0.60F * settings.brightness() / 100.0F : 0.0F;
-    }
-
-    static boolean seaFogDisabled() {
-        return active() && settings.noSeaFog();
-    }
-
-    private static boolean active() {
-        if (activeLevel == null) {
+        if (mc.player == null) {
             return false;
         }
-        Minecraft mc = Minecraft.getInstance();
-        if (activeLevel != mc.level || !canUse(mc)) {
-            clear();
+        if (!canUse(mc)) {
+            mc.player.displayClientMessage(Component.translatable(MESSAGE + "scope"), true);
             return false;
         }
         return true;
     }
 
+    /** 模组模式的额外环境底光（0..0.6），只在允许的世界里返回非零。 */
+    public static float ambientMix() {
+        return canUse() ? 0.60F * percent / 100.0F : 0.0F;
+    }
+
+    public static Mode mode() {
+        return mode;
+    }
+
+    public static void setMode(Mode value) {
+        mode = value == null ? Mode.MOD : value;
+    }
+
+    public static void toggleMode() {
+        mode = mode == Mode.MOD ? Mode.VANILLA : Mode.MOD;
+    }
+
+    public static boolean isVanilla() {
+        return mode == Mode.VANILLA;
+    }
+
+    public static int percent() {
+        return percent;
+    }
+
+    public static void setPercent(int value) {
+        percent = Mth.clamp(value, 0, 100);
+    }
+
+    public static float vanillaAmbient() {
+        return vanillaAmbient;
+    }
+
+    public static void setVanillaAmbient(float value) {
+        vanillaAmbient = Mth.clamp(value, 0.0F, MAX_VANILLA_AMBIENT);
+    }
+
+    /** 原版模式下是否同时跳过黑雾、黑色天空清屏与水体压暗。 */
+    public static boolean vanillaRestoresWater() {
+        return vanillaRestoresWater;
+    }
+
+    public static void setVanillaRestoresWater(boolean value) {
+        vanillaRestoresWater = value;
+    }
+
+    /** 已保存的模式只有在本机允许的深海世界里才真正生效。 */
+    public static boolean effectiveVanilla() {
+        return isVanilla() && canUse();
+    }
+
+    public static boolean hidesWaterAndFog() {
+        return effectiveVanilla() && vanillaRestoresWater;
+    }
+
+    /** 模组模式下单独关闭海雾（原 DeepBrightnessDebug 的 Ctrl+右键功能）。 */
+    public static boolean seaFogDisabled() {
+        return noSeaFog && canUse();
+    }
+
+    public static void setSeaFogDisabled(boolean value) {
+        noSeaFog = value;
+    }
+
+    public static void reset() {
+        percent = 0;
+        mode = Mode.MOD;
+        vanillaAmbient = DEFAULT_VANILLA_AMBIENT;
+        vanillaRestoresWater = true;
+        noSeaFog = false;
+    }
+
+    static int nextPercent(int current, boolean reset) {
+        return reset || current == 100 ? 0 : current + 25;
+    }
+
+    public static boolean canUse() {
+        return canUse(Minecraft.getInstance());
+    }
+
     private static boolean canUse(Minecraft mc) {
-        return mc.isSingleplayer() && mc.level != null && mc.level.dimension().equals(ModDimensions.THE_DEEP)
+        return mc != null && mc.isSingleplayer()
+                && mc.level != null && mc.level.dimension().equals(ModDimensions.THE_DEEP)
                 && mc.player != null && (mc.player.isCreative() || mc.player.hasPermissions(2));
-    }
-
-    @SubscribeEvent
-    public static void onLogout(ClientPlayerNetworkEvent.LoggingOut event) {
-        clear();
-        useHeld = false;
-    }
-
-    private static void clear() {
-        activeLevel = null;
-        settings = new Settings(0, false);
     }
 }

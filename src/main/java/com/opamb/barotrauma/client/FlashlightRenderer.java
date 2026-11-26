@@ -154,6 +154,11 @@ public final class FlashlightRenderer {
         if (mc.level == null || mc.player == null || shader == null || failed) {
             return;
         }
+        // F7 原版光照：深海不再合成手电/近身微光（该合成会去掉原版 0.04 环境底光）。
+        if (VanillaLightingClient.isVanilla()
+                && ModDimensions.THE_DEEP.equals(mc.level.dimension())) {
+            return;
+        }
         var stage = event.getStage();
         Camera camera = event.getCamera();
         if (stage == RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) {
