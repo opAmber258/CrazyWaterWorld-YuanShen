@@ -40,7 +40,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-25
+last_updated: 2026-11-26
 ---
 
 # Session Bootstrap
@@ -71,6 +71,12 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## Current Project State
 
+- **深海亮度面板 + 无限夜视 + 训练设施图标（2026-11-26，任务分支 `feat/vanilla-lighting-toggle-20261126`）**：
+  F7 与原亮度调试器合并为右键面板：模组/原版光照模式、模组环境底光 0..100%、原版环境底光 0.00..0.20、
+  原版模式是否还原雾与水体、单独关闭海雾、一键无限夜视（`NightVisionPacket`，协议 40，服务端只认创造/权限 ≥ 2）。
+  原版模式放行原版光图并补回 0.1 环境底光，跳过手电后处理、黑雾与深海水体绘制。四个训练设施 item 模型
+  追加 8×8 dummy/balloon 牌匾，亮度调节器换专有 16×16 图标；block 模型不变，贴图由 `tools/gen_item_icons.py` 生成。
+  420 项单测全绿；面板与图标已实机确认。细节见 `patterns/debug-lighting.md`、`patterns/training-dummy.md`。
 - **训练人偶/气球充气台 + 炮塔命中反馈（2026-11-25，任务分支 `feat/training-dummy-advanced-20261125`）**：
   新增 `training_dummy_station` / `advanced_training_dummy_station`（台座 1 格 + 人偶 1.5 格 = 2.5 格；
   普通 1 血、高级默认 50 血且无 10 tick 受击间隔）与六向吊挂、沿朝向占 2 格的 `balloon_dummy_station` /
@@ -215,7 +221,7 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 - **舱内水面渲染（2026-11-22）**。同一格列的湿区间合并，邻列只扣实际覆盖的边段。同舱多格设备的模型空隙接上同一水线。相连水面的顶边共享采样，落水和侧流驱动衰减涟漪。可见水界面按法向厚度控制折射，水下直视地板按水程着色。实机验收方法见 [水面排查](patterns/debug-ship-water.md)。
 - **寒冷深穴和对接干区（2026-11-22）**。人物外海水雾从约 7.4 格过渡至 18.7 格，取原作寒冷深穴调色。对接封盖只认站侧 3×1 开口，整船外接包围盒里的船外格仍是海。见 [水面排查](patterns/debug-ship-water.md)。
 - **寒冷深穴站距和声纳标记（2026-11-25）**。新生成的首航强制教程，水平站距 420 格。次航因目的地难度和种子选型为 601 或 1422 格。驾驶台直接在目的地标记旁绘制站名。见 [驾驶台架构](context/architecture.md#key-components) 和 [站距核对](../PLAN.md#哨站站距声纳标记与灯光复查)。
-- **自动制动与海雾调试（2026-11-25）**。制动估算共享物理推进器的轴力换算，按可接通引擎和供电估算制动余量，位置与速度连续稳定后显示保持。深海亮度调试器 Ctrl + 右键单独切换海雾。见 [驾驶台架构](context/architecture.md#key-components) 和 [开发者工具](patterns/developer-tools.md)。
+- **自动制动与海雾调试（2026-11-25）**。制动估算共享物理推进器的轴力换算，按可接通引擎和供电估算制动余量，位置与速度连续稳定后显示保持。深海亮度调试器 Ctrl + 右键单独切换海雾（2026-11-26 起并入亮度面板的“关闭海雾”开关）。见 [驾驶台架构](context/architecture.md#key-components) 和 [开发者工具](patterns/developer-tools.md)。
 - **声纳余辉、儒艮航速、舱室底光（2026-11-25）**。物理船每帧更新声纳姿态，体素回波用原作色阶和分点余辉，站点显示米数且跟随水平罗盘。横推按儒艮 21.6 km/h 标定。舱内无灯恢复极暗的原作底光。见 [驾驶台架构](context/architecture.md#key-components) 和 [灯光排查](patterns/debug-lighting.md)。
 - **儒艮供电与维修界面（2026-11-26）**。原厂引擎 600 kW / 270，反应堆 3000 kW，电池 500 kW·min。自然损耗按运行状态生效。设备下方显示服务端驱动的维修组件，电气与机械临时固定 40。舱室的极暗亮度改由中性光图提供。见 [本轮依据和复查](../PLAN.md#儒艮号供电极低亮度与维修界面2026-11-26)。
 - **手电筒和固定舱灯（2026-11-24）**。手电筒按客户端帧照明，从场景深度重建可见表面和遮挡。服务端消耗电池，只同步亮灯位置和低电标志。固定灯按电网和 RGBA 设置发光，彩色传播只处理有变化的颜色。单人深海可用开发者页签的亮度调试器临时补光。见 [灯光排查](patterns/debug-lighting.md) 和 [开发者工具](patterns/developer-tools.md)。

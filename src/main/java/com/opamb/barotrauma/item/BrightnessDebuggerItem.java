@@ -1,6 +1,5 @@
 package com.opamb.barotrauma.item;
 
-import com.opamb.barotrauma.client.DeepBrightnessDebug;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -24,7 +23,7 @@ public final class BrightnessDebuggerItem extends Item {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         if (level.isClientSide) {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                    () -> () -> DeepBrightnessDebug.use(player.isShiftKeyDown()));
+                    () -> com.opamb.barotrauma.client.BrightnessDebuggerScreen::open);
         }
         return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide);
     }
@@ -32,7 +31,6 @@ public final class BrightnessDebuggerItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("item.barotrauma.brightness_debugger.controls").withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("item.barotrauma.brightness_debugger.fog_controls").withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("item.barotrauma.brightness_debugger.scope").withStyle(ChatFormatting.DARK_GRAY));
     }
 }

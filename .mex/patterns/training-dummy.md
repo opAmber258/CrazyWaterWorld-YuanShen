@@ -13,12 +13,12 @@ triggers:
 edges:
   - target: patterns/add-ship-block.md
     condition: when the station must be treated as a ship block
-last_updated: 2026-11-25
+last_updated: 2026-11-26
 mex:
   id: mx_01M844RY52JXJTBH1FHERC1SSE
   type: pattern
   status: promoted
-  revision: 5
+  revision: 6
   title: training-dummy
 ---
 
@@ -81,6 +81,11 @@ mex:
 建模/动画是**临时占位**，不进入正式资产交付流程：
 
 - 台座：普通 JSON 方块模型，普通版铁块/红石，高级版金块/黑石/红石灯，不依赖 GeckoLib。
+- 物品图标：四个 `models/item/*_dummy_station.json` 是 block 模型的完整副本，各自追加一块
+  `[4,3.01,14]..[12,11.01,14.8]` 的正方形牌匾（8×8，整张 16×16 贴图无拉伸）；普通/高级继续靠铁/金底座区分，dummy/balloon 靠
+  `textures/item/station_marker_dummy.png` / `station_marker_balloon.png` 区分。block 模型
+  本身不改，所以放下的台座外观不变；两张 16×16 牌匾由 `tools/gen_item_icons.py` 生成。
+  改 block 模型元素时记得同步这四份 item 副本。
 - 人偶：`TrainingDummyModel<T>`（`EntityModel` + `ModelPart`，泛型以同时服务两个实体）
   + `TrainingDummyRenderer` / `AdvancedTrainingDummyRenderer`。
 - 气球：`BalloonDummyModel<T>` 四层方盒拼球 + 结 + 绳，`BalloonDummyRenderer<T>`

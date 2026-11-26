@@ -37,7 +37,8 @@ public final class ModNetwork {
     // 37：SonarDataPacket/SonarPingPacket 改为按脉冲与回波同步（世界坐标 + 到达 tick）。
     // 38：ShipActionPacket 增加驾驶状态/定点目标与舵令确认，功率拒绝回显。
     // 39：RepairActionPacket 与设备修理/接线盒菜单改版。
-    private static final String PROTOCOL = "39";
+    // 40：新增 NightVisionPacket（亮度调节器面板的无限夜视开关）。
+    private static final String PROTOCOL = "40";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -170,6 +171,9 @@ CHANNEL.messageBuilder(LightColorPacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(DummySettingsPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(DummySettingsPacket::encode).decoder(DummySettingsPacket::decode)
                 .consumerNetworkThread(DummySettingsPacket::handle).add();
+        CHANNEL.messageBuilder(NightVisionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(NightVisionPacket::encode).decoder(NightVisionPacket::decode)
+                .consumerNetworkThread(NightVisionPacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

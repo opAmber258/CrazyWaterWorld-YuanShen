@@ -234,6 +234,11 @@ public final class ShipWaterRenderer {
                 && (!RENDER_WATER || state.boxes().length < BOX_STRIDE))) {
             return;
         }
+        // F7 原版模式：深海不画模组水体（水面与水下压暗都是 ship_water 后处理）。
+        if (DeepBrightnessDebug.hidesWaterAndFog()
+                && mc.level.dimension().equals(ModDimensions.THE_DEEP)) {
+            return;
+        }
         // 切维度后旧包还在 state 里：源维度对不上就不画（否则另一维度同坐标会出水）。
         String dimension = state.dimension();
         if (dimension != null && !dimension.isEmpty()
