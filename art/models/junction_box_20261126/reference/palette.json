@@ -1,0 +1,23 @@
+{
+ "dominant": [
+  "#0f0f0f",
+  "#161616",
+  "#a7afb3",
+  "#a3abaf",
+  "#2d2d2d",
+  "#a5adb1",
+  "#aab1b5",
+  "#a5aeb2"
+ ],
+ "secondary": [
+  "#a4abaf",
+  "#a6afb3",
+  "#1e1e1e",
+  "#a6adb1",
+  "#a2abb0",
+  "#242424",
+  "#81502b",
+  "#353535"
+ ],
+ "opaque_colors": 576
+}

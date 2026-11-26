@@ -1,0 +1,10 @@
+{
+  "asset": "junction_box",
+  "date": "2026-11-26",
+  "findings": [
+    { "level": "warn", "code": "ROTATION_OVER_LIMIT", "detail": "10/22 cube 带旋转，其中 9 个为超限单轴角度（无多轴），超出 1.20.1 原版 Java 模型 JSON 角度限制；接入按 GeckoLib Bedrock geometry 路线处理。" },
+    { "level": "warn", "code": "ZERO_THICKNESS_PLANES", "detail": "2 个零厚度面片（门板表面细节）。" },
+    { "level": "info", "code": "INFLATE_PRESENT", "detail": "3 个 cube 带 inflate（Blockbench 语义膨胀）。" },
+    { "level": "info", "code": "GROUP_STRUCTURE", "detail": "8 个分组：接线盒 / 门板 / 表面 / 底座 / 罐 / 电线 ×3，组名语义可用于隐藏或动画。" }
+  ]
+}
