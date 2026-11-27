@@ -3,6 +3,7 @@ package com.opamb.barotrauma.registry;
 import com.mojang.serialization.Codec;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.world.DeepSeaChunkGenerator;
+import com.opamb.barotrauma.world.ShipyardChunkGenerator;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -22,6 +23,9 @@ public final class ModChunkGenerators {
 
     public static final RegistryObject<Codec<? extends ChunkGenerator>> DEEP_SEA =
             CHUNK_GENERATORS.register("deep_sea", () -> DeepSeaChunkGenerator.CODEC);
+
+    public static final RegistryObject<Codec<? extends ChunkGenerator>> SHIPYARD_VOID =
+            CHUNK_GENERATORS.register("shipyard_void", () -> ShipyardChunkGenerator.CODEC);
 
     private ModChunkGenerators() {
     }

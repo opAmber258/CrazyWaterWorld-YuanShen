@@ -40,7 +40,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 ---
 
 # Session Bootstrap
@@ -71,6 +71,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## Current Project State
 
+- **独立造船厂系统（2026-11-27，任务分支 `feat/shipyard-20261126`）**：
+  新增独立编辑维度 `barotrauma:shipyard` 与试航海水维度 `barotrauma:shipyard_test`（`ModDimensions`、`ShipyardChunkGenerator`），每玩家独立地块（`ShipyardSavedData`、`ShipyardPlot`、`ShipyardManager`、`ShipyardCommand`）。客户端编辑器 `ShipyardEditorScreen`（`640×360` `ScaledScreen` 悬浮 HUD）提供 12 种建模/连线工具（单块/`Alt` 连绘、填充、方壳、椭球艇壳、舱壁、直线、替换、框删、复制、剪切、旋转翻转微调粘贴、编辑器内连线绑定）、舱室预制件、分类方块库、Y 轴剖面（`ShipyardSliceMixin`）、舱室分区 3D 着色、多方块虚影与朝向箭头、问题优先校验卡（含压载%/发电负载/引擎预算与点击定位）、Gizmo 轴向视角。服务端支持原子撤销/重做、镜像对称、大船防抖校验（16 tick）、跨存档船库 `ShipLibrary`（`SCHEMA=2` 记录 `ownerUuid`/`ownerName`/`verified`）及试航分批清场（`>16384` 格每 tick 8192 格），`ModNetwork.PROTOCOL` 升至 **49**。详情见 `docs/SHIPYARD.md`。
 - **舱内微光、儒艮供电与玩家界面复核（2026-11-26）**：舱内中性光图混合调整至 0.105（名义 20/255）。儒艮引擎 600 kW、堆 3000 kW，导航终端含两颗 5 kW 背光。电池按可用输出并联分担，最后 1 kW·min 按余量降充电速率。电池面板显示实际有功流量和断线，配电箱面板区分本地电压与全船读数。已装配物理船允许从单台引擎直接设置正反推力，舵台接管会清掉本机设定；水泵有独立启停。协议 **41–42**。玩家界面按机电仪表、物资与战役服务、人体诊断重新布局，维修段保留在设备面板下方。详细证据见 [PLAN.md](../PLAN.md)。
 
 - **电磁枪实体碰撞与直连储能（2026-11-26）**：复用炮管分段形状阻挡角色移动；实体碰撞根据炮管与船体姿态生成。电池和电容可混接到原作的五个输入位置，检查瞬时输出再分摊单发耗电。旧单电容连接迁移。见 [炮塔实现](patterns/turret-aim-modes.md#电磁枪炮管选取)。

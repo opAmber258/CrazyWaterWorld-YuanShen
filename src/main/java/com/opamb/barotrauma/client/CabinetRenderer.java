@@ -44,22 +44,30 @@ public class CabinetRenderer extends GeoBlockRenderer<CabinetBlockEntity> {
             super(new ResourceLocation(BarotraumaMod.MOD_ID, "cabinet"));
         }
 
+        /** 氧气瓶架/潜水服站尚无独立 geo，复用中型钢柜避免 GeckoLib 找不到模型崩溃。 */
+        private static String assetId(CabinetBlockEntity animatable) {
+            return switch (animatable.kind()) {
+                case OXYGEN_TANK_SHELF, DIVING_SUIT_STATION -> "medium_steel_cabinet";
+                default -> animatable.kind().id();
+            };
+        }
+
         @Override
         public ResourceLocation getModelResource(CabinetBlockEntity animatable) {
             return new ResourceLocation(BarotraumaMod.MOD_ID,
-                    "geo/block/" + animatable.kind().id() + ".geo.json");
+                    "geo/block/" + assetId(animatable) + ".geo.json");
         }
 
         @Override
         public ResourceLocation getTextureResource(CabinetBlockEntity animatable) {
             return new ResourceLocation(BarotraumaMod.MOD_ID,
-                    "textures/block/" + animatable.kind().id() + ".png");
+                    "textures/block/" + assetId(animatable) + ".png");
         }
 
         @Override
         public ResourceLocation getAnimationResource(CabinetBlockEntity animatable) {
             return new ResourceLocation(BarotraumaMod.MOD_ID,
-                    "animations/block/" + animatable.kind().id() + ".animation.json");
+                    "animations/block/" + assetId(animatable) + ".animation.json");
         }
 
         @Override
