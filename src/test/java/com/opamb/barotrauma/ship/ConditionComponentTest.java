@@ -92,4 +92,18 @@ class ConditionComponentTest {
         device.tick(null, true, 1, 0.5);
         assertEquals(99, device.condition(), 1.0E-9);
     }
+
+    @Test
+    void startingANewVoyageRenewsGraceWithoutRepairingPreviousWear() {
+        var device = new ConditionComponent(100, 1, 2, 2, 0, 0.8);
+        device.tick(null, true, 2);
+        device.tick(null, true, 10);
+        assertEquals(90, device.condition(), 1.0E-9);
+
+        device.renewWearGrace();
+        device.tick(null, true, 2);
+        assertEquals(90, device.condition(), 1.0E-9);
+        device.tick(null, true, 1);
+        assertEquals(89, device.condition(), 1.0E-9);
+    }
 }

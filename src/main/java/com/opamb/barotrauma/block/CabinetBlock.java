@@ -520,7 +520,17 @@ public class CabinetBlock extends Block implements EntityBlock {
         if (part >= kind.cells()) {
             return true;
         }
-        BlockState master = level.getBlockState(pos.below(part));
+        BlockPos masterPos = pos.below(part);
+        BlockState master;
+        if (level instanceof Level world) {
+            // Lighting can ask for the shape before the chunk is full. Never wait for that
+            // chunk here, since the server may already be waiting for lighting to finish.
+            var chunk = world.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+            if (chunk == null) return false;
+            master = chunk.getBlockState(masterPos);
+        } else {
+            master = level.getBlockState(masterPos);
+        }
         return master.getBlock() != this || master.getValue(PART) != 0;
     }
 

@@ -49,9 +49,9 @@ public final class ModItems {
     public static final RegistryObject<Item> SCREWDRIVER = ITEMS.register("screwdriver",
             () -> new Item(new Item.Properties().stacksTo(1)));
 
-    /** 扳手：机械维修（泵/引擎/门/舱口；原作 wrench）。 */
+    /** 扳手：机械维修，潜行右键拆装设备。 */
     public static final RegistryObject<Item> WRENCH = ITEMS.register("wrench",
-            () -> new Item(new Item.Properties().stacksTo(1)));
+            () -> new com.opamb.barotrauma.item.WrenchItem(new Item.Properties().stacksTo(1)));
 
     /** 耐久调节器：调试工具，右键设备把耐久推到下一个档位（验收修理窗口用）。 */
     public static final RegistryObject<Item> CONDITION_TOOL = ITEMS.register("condition_tool",
@@ -174,6 +174,10 @@ public final class ModItems {
             blockItem("emergency_light", ModBlocks.EMERGENCY_LIGHT);
     public static final RegistryObject<Item> FLUORESCENT_LIGHT =
             blockItem("fluorescent_light", ModBlocks.FLUORESCENT_LIGHT);
+    public static final RegistryObject<Item> FLUORESCENT_LIGHT_L01 =
+            blockItem("fluorescent_light_l01", ModBlocks.FLUORESCENT_LIGHT_L01);
+    public static final RegistryObject<Item> FLUORESCENT_LIGHT_L02 =
+            blockItem("fluorescent_light_l02", ModBlocks.FLUORESCENT_LIGHT_L02);
 
     // ---- 潜渊症容器 ----
     public static final RegistryObject<Item> MEDIUM_STEEL_CABINET =

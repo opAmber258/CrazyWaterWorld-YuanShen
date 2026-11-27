@@ -71,7 +71,7 @@ public final class ShipMover {
         // 舱壁门的自动模式同理。
         Map<BlockPos, net.minecraft.nbt.CompoundTag> doorTags = new HashMap<>();
         for (BlockPos pos : moving) {
-            if (level.getBlockEntity(pos) instanceof PowerConsumer consumer
+            if (level.getBlockEntity(pos) instanceof PowerConnection consumer
                     && consumer.powerBox() != null) {
                 powerBoxes.put(pos.immutable(), consumer.powerBox());
             }
@@ -114,7 +114,7 @@ public final class ShipMover {
         // 恢复设备绑定：接线盒和设备一起平移，绑定坐标也要跟着走。
         for (Map.Entry<BlockPos, BlockPos> entry : powerBoxes.entrySet()) {
             BlockPos target = entry.getKey().offset(dx, dy, dz);
-            if (level.getBlockEntity(target) instanceof PowerConsumer consumer) {
+            if (level.getBlockEntity(target) instanceof PowerConnection consumer) {
                 consumer.setPowerBox(entry.getValue().offset(dx, dy, dz));
                 level.getBlockEntity(target).setChanged();
             }
@@ -125,6 +125,9 @@ public final class ShipMover {
             if (level.getBlockEntity(target)
                     instanceof com.opamb.barotrauma.blockentity.JunctionBoxBlockEntity junction) {
                 junction.load(entry.getValue());
+                if (junction.powerBox() != null) {
+                    junction.setPowerBox(junction.powerBox().offset(dx, dy, dz));
+                }
                 junction.setChanged();
             }
         }

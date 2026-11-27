@@ -5,6 +5,7 @@ import com.opamb.barotrauma.fabricator.FabricatorData;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.ship.ConditionComponent;
 import com.opamb.barotrauma.ship.PowerConsumer;
+import com.opamb.barotrauma.world.StarterOutpost;
 import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
@@ -91,38 +92,22 @@ public class FabricatorBlockEntity extends BlockEntity
             return;
         }
         ShipState ship = be.resolveShip(server, pos);
-        if (ship == null) {
-            // 核心被拆/区块未加载只是暂时找不到船：只暂停，保留 working 和已扣料，
-            // 核心恢复后继续做。
-            be.powered = false;
-            be.powerAvailable = false;
-            be.lastVoltage = 0.0D;
-            return;
-        }
         BlockPos cell = assemblyPos(server, pos);
-        if (!ship.tracksHullBlock(cell)) {
-            return;
+        if (ship != null && ship.tracksHullBlock(cell)) {
+            // 任一相邻舱室进水就算泡水，机器自身是实心格。
+            java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
+            for (ShipState.Breach breach : ship.breaches()) {
+                breachSources.add(breach.pos());
+            }
+            if (ship.simulation().submergedAt(cell, breachSources)) {
+                be.condition.damage(SUBMERGED_DECAY / 20.0D);
+                be.setChanged();
+            }
+            ship.simulation().reportConsumer(cell, be.powerDemandKw(), MIN_VOLTAGE, be.boundBox);
+            be.lastVoltage = ship.simulation().consumerVoltage(cell);
+        } else {
+            be.lastVoltage = StarterOutpost.voltage(server, pos, be.boundBox);
         }
-        // 泡水：原作 InWater 每秒 -0.5 耐久（与是否在加工无关）。
-        // 机器格本身是实心，bodyOf(自己) 恒为 -1；任一相邻舱室格进水就算泡水。
-        java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
-        for (ShipState.Breach breach : ship.breaches()) {
-            breachSources.add(breach.pos());
-        }
-        boolean submerged = ship.simulation().submergedAt(cell, breachSources);
-        if (submerged) {
-            be.condition.damage(SUBMERGED_DECAY / 20.0D);
-            be.setChanged();
-        }
-        // 耐久归零：只暂停进度，保留 working 和已扣的料；修理后接着做。
-        // 清 working 的话玩家再点制作会重新扣一份料。
-        // 空转也上报（需求 0），这样面板能直接读到"现在有没有电"，
-        // 而不是等到开工才发现电压不够。
-        // 损坏的机器保留任务但不再吃电：否则 750 kW 会一直计入全船负载。
-        double demand = be.working && !be.condition.broken()
-                ? POWER_KW * be.condition.powerPenalty() : 0.0D;
-        ship.simulation().reportConsumer(cell, demand, MIN_VOLTAGE, be.boundBox);
-        be.lastVoltage = ship.simulation().consumerVoltage(cell);
         be.powerAvailable = be.lastVoltage >= MIN_VOLTAGE;
         // 耐久归零的机器不能继续制作；working 保留，修理后接着做。
         be.powered = be.working && be.powerAvailable && !be.condition.broken();
@@ -410,7 +395,7 @@ public class FabricatorBlockEntity extends BlockEntity
 
     @Override
     public double powerDemandKw() {
-        return working && !condition.broken() ? POWER_KW : 0.0D;
+        return working && !condition.broken() ? POWER_KW * condition.powerPenalty() : 0.0D;
     }
 
     @Override

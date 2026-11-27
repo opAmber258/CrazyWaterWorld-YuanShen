@@ -56,9 +56,14 @@ public final class ReactorState {
     private double targetFission;
     private double targetTurbine;
     private boolean dugongStock;
+    private boolean outpost;
 
     public void setDugongStock(boolean dugongStock) {
         this.dugongStock = dugongStock;
+    }
+
+    public void setOutpost(boolean outpost) {
+        this.outpost = outpost;
     }
 
     private double fission;
@@ -319,6 +324,7 @@ public final class ReactorState {
     }
 
     public double capacityKw() {
+        if (outpost) return 20000.0D;
         return dugongStock ? 3000.0D : MAX_POWER_KW;
     }
 

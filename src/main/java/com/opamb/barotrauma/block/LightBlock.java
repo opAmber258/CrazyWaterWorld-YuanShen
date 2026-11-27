@@ -4,28 +4,32 @@ import com.opamb.barotrauma.blockentity.LightBlockEntity;
 import com.opamb.barotrauma.menu.LightMenu;
 import com.opamb.barotrauma.network.RepairActionPacket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.Nullable;
@@ -42,7 +46,7 @@ import org.jetbrains.annotations.Nullable;
  * 电网电压共同算出（原作亮度 {@code min(Voltage,1)}，不是"到 0.5V 才亮"）。
  * 0 用熄灯模型，1..15 用发光面板模型。</p>
  *
- * <p>方块本身无碰撞、不遮挡、不窒息：它只是挂在舱顶的薄板，不能把舱室
+ * <p>方块本身无碰撞、不遮挡、不窒息：它是贴着安装面的灯具，不能把舱室
  * 隔开，也不能挡水；{@code ModShipBlocks.isSolidForShip} 同样按可穿格处理。</p>
  */
 public class LightBlock extends BaseEntityBlock {
@@ -50,16 +54,22 @@ public class LightBlock extends BaseEntityBlock {
     /** 最终光照等级；0 = 不发光（关灯/无电/A=0）。 */
     public static final IntegerProperty LIGHT = IntegerProperty.create("light", 0, 15);
 
-    /** 占位灯具种类；射程/耗电按原版，正式模型替换时保留这三个入口。 */
+    public static final DirectionProperty BACKING = DirectionProperty.create("backing");
+
+    /** 灯具参数与选择框。 */
     public enum Kind {
         /** 吊灯：主照明（原作 range 800、5 kW、白色 α0.5）。 */
-        LAMP(15, 5.0D, MapColor.COLOR_LIGHT_BLUE, 1, 1, 15, 15,
+        LAMP(15, 5.0D, MapColor.COLOR_LIGHT_BLUE, 3.6, 6.545455, 1.890909,
                 0xFFFFFF, 128),
         /** 应急灯：断电也亮（原作 range 250、0 W、红色 α25）。 */
-        EMERGENCY(12, 0.0D, MapColor.COLOR_RED, 3, 3, 13, 13,
+        EMERGENCY(12, 0.0D, MapColor.COLOR_RED, 6.709091, 1.309091, 1.225532,
                 0xFF0000, 25),
         /** 荧光灯：大舱室主照明（原作 range 800、5 kW、白色 α0.5）。 */
-        FLUORESCENT(15, 5.0D, MapColor.COLOR_LIGHT_BLUE, 1, 2, 15, 14,
+        FLUORESCENT(15, 5.0D, MapColor.COLOR_LIGHT_BLUE, 5.154545, 7.363636, 2.07,
+                0xFFFFFF, 128),
+        FLUORESCENT_L01(15, 5.0D, MapColor.COLOR_LIGHT_BLUE, 18.163636, 4.909091, 2.32,
+                0xFFFFFF, 128),
+        FLUORESCENT_L02(15, 5.0D, MapColor.COLOR_LIGHT_BLUE, 22.090909, 3.518182, 1.85,
                 0xFFFFFF, 128);
 
         /** 灯泡开始工作所需的最低电压（原作 Powered.MinVoltage）。 */
@@ -68,17 +78,19 @@ public class LightBlock extends BaseEntityBlock {
         private final int lightLevel;
         private final double powerKw;
         private final MapColor mapColor;
-        private final VoxelShape shape;
+        private final VoxelShape[] shapes;
         private final int defaultColor;
         private final int defaultAlpha;
 
         Kind(int lightLevel, double powerKw, MapColor mapColor,
-             int minX, int minZ, int maxX, int maxZ, int defaultColor, int defaultAlpha) {
+             double width, double height, double depth, int defaultColor, int defaultAlpha) {
             this.lightLevel = lightLevel;
             this.powerKw = powerKw;
             this.mapColor = mapColor;
-            this.shape = Shapes.box(minX / 16.0D, 14.0D / 16.0D, minZ / 16.0D,
-                    maxX / 16.0D, 1.0D, maxZ / 16.0D);
+            this.shapes = new VoxelShape[Direction.values().length];
+            for (Direction backing : Direction.values()) {
+                shapes[backing.ordinal()] = mountedShape(backing, width / 2, height / 2, depth);
+            }
             this.defaultColor = defaultColor;
             this.defaultAlpha = defaultAlpha;
         }
@@ -92,8 +104,26 @@ public class LightBlock extends BaseEntityBlock {
             return mapColor;
         }
 
-        public VoxelShape shape() {
-            return shape;
+        public VoxelShape shape(Direction backing) {
+            return shapes[backing.ordinal()];
+        }
+
+        private static VoxelShape mountedShape(Direction backing, double halfWidth,
+                                               double halfHeight, double depth) {
+            return switch (backing) {
+                case SOUTH -> Block.box(8 - halfWidth, 8 - halfHeight, 16 - depth,
+                        8 + halfWidth, 8 + halfHeight, 16);
+                case NORTH -> Block.box(8 - halfWidth, 8 - halfHeight, 0,
+                        8 + halfWidth, 8 + halfHeight, depth);
+                case WEST -> Block.box(0, 8 - halfHeight, 8 - halfWidth,
+                        depth, 8 + halfHeight, 8 + halfWidth);
+                case EAST -> Block.box(16 - depth, 8 - halfHeight, 8 - halfWidth,
+                        16, 8 + halfHeight, 8 + halfWidth);
+                case UP -> Block.box(8 - halfWidth, 16 - depth, 8 - halfHeight,
+                        8 + halfWidth, 16, 8 + halfHeight);
+                case DOWN -> Block.box(8 - halfWidth, 0, 8 - halfHeight,
+                        8 + halfWidth, depth, 8 + halfHeight);
+            };
         }
 
         /** 原作 lightcolor 的 RGB 部分。 */
@@ -117,7 +147,7 @@ public class LightBlock extends BaseEntityBlock {
     public LightBlock(Kind kind, Properties properties) {
         super(properties);
         this.kind = kind;
-        registerDefaultState(stateDefinition.any().setValue(LIGHT, 0));
+        registerDefaultState(stateDefinition.any().setValue(LIGHT, 0).setValue(BACKING, Direction.UP));
     }
 
     public Kind kind() {
@@ -126,16 +156,31 @@ public class LightBlock extends BaseEntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(LIGHT);
+        builder.add(LIGHT, BACKING);
+    }
+
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        return defaultBlockState().setValue(BACKING, context.getClickedFace().getOpposite());
+    }
+
+    @Override
+    public BlockState rotate(BlockState state, Rotation rotation) {
+        return state.setValue(BACKING, rotation.rotate(state.getValue(BACKING)));
+    }
+
+    @Override
+    public BlockState mirror(BlockState state, Mirror mirror) {
+        return state.setValue(BACKING, mirror.mirror(state.getValue(BACKING)));
     }
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
                                CollisionContext context) {
-        return kind.shape();
+        return kind.shape(state.getValue(BACKING));
     }
 
-    /** 薄板本身有方块的 cube 模型（金属框 + 发光面板），不是 GeckoLib 方块。 */
+    /** 灯具使用原生方块模型，不是 GeckoLib 方块。 */
     @Override
     public RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;

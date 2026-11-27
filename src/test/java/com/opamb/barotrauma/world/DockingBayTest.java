@@ -89,17 +89,17 @@ class DockingBayTest {
     @DisplayName("新儒艮号蓝图：塔顶舱口正对站点竖井，核心/出生点落在模板对应格")
     void buildTemplateHatchAlignsWithShaft() {
         StarterSub.Layout v2 = StarterSub.Layout.DUGONG_V2;
-        // 模板尺寸 35×14×13。气闸塔顶舱口局部 (17..19, 13, 10)。
+        // 模板尺寸 35×15×13。气闸塔顶舱口局部 (17..19, 14, 10)。
         assertEquals(35, v2.sizeX);
-        assertEquals(14, v2.sizeY);
+        assertEquals(15, v2.sizeY);
         assertEquals(13, v2.sizeZ);
-        assertEquals(DockingBay.SUB_HATCH_Y, v2.originY + 13, "塔顶舱口在 -69");
+        assertEquals(DockingBay.SUB_HATCH_Y, v2.originY + 14, "塔顶舱口在 -69");
         assertEquals(-1, v2.originX + 17);
         assertEquals(1, v2.originX + 19);
         assertEquals(0, v2.originZ + 10);
-        // 核心 = 导航终端 lower_middle，模板局部 (16,6,2)。
+        // 核心 = 导航终端 lower_middle，模板局部 (16,7,2)。
         assertEquals(-2, v2.originX + 16);
-        assertEquals(-76, v2.originY + 6);
+        assertEquals(-76, v2.originY + 7);
         assertEquals(-8, v2.originZ + 2);
 
         // 出生点在下铺床边，必须落在船体包围盒里。

@@ -4,7 +4,7 @@ import com.opamb.barotrauma.block.CoilgunBlock;
 import com.opamb.barotrauma.block.CoilgunHitbox;
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
 import com.opamb.barotrauma.item.TurretBinderItem;
-import com.opamb.barotrauma.ship.vs.VsPilot;
+import com.opamb.barotrauma.item.WrenchItem;
 import com.opamb.barotrauma.ship.vs.VsSupport;
 import com.opamb.barotrauma.ship.vs.VsBridge;
 import net.minecraft.core.BlockPos;
@@ -14,6 +14,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -72,7 +73,7 @@ public final class CoilgunInteractionEntity extends Entity {
     }
 
     private Vec3 toWorld(Vec3 local) {
-        return VsPilot.shipyardPointToWorld(level(), masterPos(), local);
+        return VsSupport.available() ? VsBridge.collisionTransform(level(), masterPos()).apply(local) : local;
     }
 
     @Nullable
@@ -101,7 +102,9 @@ public final class CoilgunInteractionEntity extends Entity {
 
     @Override
     public InteractionResult interactAt(Player player, Vec3 relativeHit, InteractionHand hand) {
-        if (player.isSpectator() || !(player.getItemInHand(hand).getItem() instanceof TurretBinderItem binder)) {
+        var item = player.getItemInHand(hand).getItem();
+        boolean dismantling = WrenchItem.isDismantling(player, hand);
+        if (player.isSpectator() || (!dismantling && !(item instanceof TurretBinderItem))) {
             return InteractionResult.PASS;
         }
         if (level().isClientSide) return InteractionResult.SUCCESS;
@@ -114,9 +117,14 @@ public final class CoilgunInteractionEntity extends Entity {
         if (hit == null) return InteractionResult.FAIL;
         Vec3 reportedHit = eye.add(delta);
         Vec3 sightEnd = eye.distanceToSqr(hit) > delta.lengthSqr() ? hit : reportedHit;
-        if (level().clip(new ClipContext(eye, sightEnd, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player))
+        var blockingShape = dismantling ? ClipContext.Block.COLLIDER : ClipContext.Block.OUTLINE;
+        if (level().clip(new ClipContext(eye, sightEnd, blockingShape, ClipContext.Fluid.NONE, player))
                 .getType() == HitResult.Type.BLOCK) return InteractionResult.FAIL;
-        return binder.bindAt(player, hand, masterPos());
+        if (dismantling) {
+            return player instanceof ServerPlayer serverPlayer
+                    ? WrenchItem.dismantleAt(serverPlayer, masterPos()) : InteractionResult.FAIL;
+        }
+        return ((TurretBinderItem) item).bindAt(player, hand, masterPos());
     }
 
     @Override

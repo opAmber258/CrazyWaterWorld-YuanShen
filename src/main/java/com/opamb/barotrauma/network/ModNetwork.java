@@ -46,7 +46,8 @@ public final class ModNetwork {
     // 46：ShipyardStatusPacket 增加未连通/破口三维诊断坐标，新增 ShipyardPastePacket 选区粘贴。
     // 47：支持椭球艇壳/材质替换刷（ShipyardFillPacket 过滤状态）及船体包围盒标尺坐标。
     // 48-49：ShipyardStatusPacket 增加舱室着色/潜艇压载与供电预算/连线拓扑，新增 ShipyardWirePacket。
-    private static final String PROTOCOL = "49";
+    // 50：TurretFirePacket 同步电磁炮的扳机按下与松开（本分支在 43 基础上引入，合并造船厂后顺延到 50）。
+    private static final String PROTOCOL = "50";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);

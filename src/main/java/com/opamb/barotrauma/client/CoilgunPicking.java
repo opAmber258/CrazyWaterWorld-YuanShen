@@ -4,6 +4,7 @@ import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.CoilgunHitbox;
 import com.opamb.barotrauma.entity.CoilgunInteractionEntity;
 import com.opamb.barotrauma.item.TurretBinderItem;
+import com.opamb.barotrauma.item.WrenchItem;
 import com.opamb.barotrauma.ship.vs.VsClientTurret;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.AABB;
@@ -20,6 +21,7 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID, value = Dist.CLIENT)
 public final class CoilgunPicking {
     private static boolean binderUsed;
+    private static boolean wrenchUsed;
 
     private CoilgunPicking() {}
 
@@ -59,6 +61,19 @@ public final class CoilgunPicking {
     @SubscribeEvent
     public static void use(InputEvent.InteractionKeyMappingTriggered event) {
         Minecraft mc = Minecraft.getInstance();
+        if (event.isUseItem() && mc.player != null && mc.level != null
+                && WrenchItem.isDismantling(mc.player, event.getHand())) {
+            if (wrenchUsed) {
+                event.setSwingHand(false);
+                event.setCanceled(true);
+            } else if (mc.options.keyUse.isDown()) {
+                wrenchUsed = (mc.hitResult instanceof EntityHitResult hit
+                        && hit.getEntity() instanceof CoilgunInteractionEntity)
+                        || (mc.hitResult instanceof BlockHitResult block && block.getType() == HitResult.Type.BLOCK
+                        && WrenchItem.canTarget(mc.level.getBlockState(block.getBlockPos())));
+            }
+            return;
+        }
         if (!event.isUseItem() || mc.player == null || !(mc.hitResult instanceof EntityHitResult hit)
                 || !(hit.getEntity() instanceof CoilgunInteractionEntity)
                 || !(mc.player.getItemInHand(event.getHand()).getItem() instanceof TurretBinderItem)) return;
@@ -73,6 +88,7 @@ public final class CoilgunPicking {
     public static void release(TickEvent.ClientTickEvent event) {
         if (event.phase == TickEvent.Phase.END && !Minecraft.getInstance().options.keyUse.isDown()) {
             binderUsed = false;
+            wrenchUsed = false;
         }
     }
 }

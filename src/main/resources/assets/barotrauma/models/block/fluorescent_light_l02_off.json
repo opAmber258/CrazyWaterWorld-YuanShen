@@ -1,0 +1,6 @@
+{
+  "parent": "barotrauma:block/fluorescent_light_l02",
+  "textures": {
+    "body": "barotrauma:block/fluorescent_light_l02_off_fixture"
+  }
+}

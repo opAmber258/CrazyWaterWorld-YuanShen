@@ -89,7 +89,9 @@ public class SupercapacitorBlockEntity extends BlockEntity
             be.chargeKwm = charge;
         }
 
-        boolean powered = simulation.voltage() > 0.1D;
+        boolean connected = be.boundBox != null && ship.tracksHullBlock(be.boundBox)
+                && simulation.boxConnected(be.boundBox);
+        boolean powered = connected && simulation.voltage() > 0.1D;
         boolean wetBody = simulation.bodyIsWet(simulation.bodyOf(cell));
         if (wetBody) {
             java.util.List<BlockPos> breachSources = new java.util.ArrayList<>();
@@ -116,9 +118,6 @@ public class SupercapacitorBlockEntity extends BlockEntity
         be.chargeKwm = Mth.clamp(be.chargeKwm, 0.0D, CAPACITY_KWM);
 
         // Only the input goes through the junction box. Turret pulses use the dedicated output.
-        boolean connected = be.boundBox != null
-                && ship.tracksHullBlock(be.boundBox)
-                && simulation.boxCondition(be.boundBox) > 0.0D;
         simulation.reportStorage(cell, be.chargeKwm, CAPACITY_KWM,
                 0.0D,
                 connected ? be.rechargeKw : 0.0D,

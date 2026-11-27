@@ -2,12 +2,15 @@ package com.opamb.barotrauma.ship.vs;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4dc;
 import org.joml.Vector3d;
 import org.valkyrienskies.core.api.ships.ClientShip;
 import org.valkyrienskies.mod.common.VSGameUtilsKt;
 
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public final class VsClientTurret {
     private VsClientTurret() {
@@ -40,6 +43,32 @@ public final class VsClientTurret {
             if (transform.getPositionInWorld().distanceSquared(point.x, point.y, point.z) > 160 * 160) continue;
             var local = transform.getWorldToShip().transformPosition(new Vector3d(point.x, point.y, point.z));
             scan.accept(BlockPos.containing(local.x, local.y, local.z));
+        }
+    }
+
+    public static void forEachShadowShip(ClientLevel level, AABB bounds, BiConsumer<AABB, Matrix4dc> draw) {
+        if (!VsSupport.available()) return;
+        var ships = VSGameUtilsKt.getShipObjectWorld(level);
+        if (ships == null) return;
+        Vec3 center = bounds.getCenter();
+        double radius = bounds.getXsize() / 2.0;
+        for (ClientShip ship : ships.getLoadedShips()) {
+            var transform = ship.getRenderTransform();
+            var inverse = transform.getWorldToShip();
+            var local = inverse.transformPosition(new Vector3d(center.x, center.y, center.z));
+            // Bound the world cube after transforming it into the shipyard.
+            double rx = radius * (Math.abs(inverse.m00()) + Math.abs(inverse.m10()) + Math.abs(inverse.m20()));
+            double ry = radius * (Math.abs(inverse.m01()) + Math.abs(inverse.m11()) + Math.abs(inverse.m21()));
+            double rz = radius * (Math.abs(inverse.m02()) + Math.abs(inverse.m12()) + Math.abs(inverse.m22()));
+            ship.getActiveChunksSet().forEach((x, z) -> {
+                double minX = x * 16.0;
+                double minZ = z * 16.0;
+                if (minX <= local.x + rx && minX + 16 > local.x - rx
+                        && minZ <= local.z + rz && minZ + 16 > local.z - rz) {
+                    draw.accept(new AABB(minX, local.y - ry, minZ, minX + 15, local.y + ry, minZ + 15),
+                            transform.getShipToWorld());
+                }
+            });
         }
     }
 }

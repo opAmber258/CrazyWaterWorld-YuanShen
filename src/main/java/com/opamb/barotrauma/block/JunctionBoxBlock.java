@@ -29,36 +29,23 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * 接线盒：墙上分线/过压保护节点。
- *
- * <p>模型来自 {@code art/models/junction_box_20261108}：宽 0.625 格、高 1 格、
- * 深约 0.55 格（含背板），正面 +Z。碰撞按模型包围盒收紧，不占整格。</p>
  */
 public class JunctionBoxBlock extends BaseEntityBlock {
 
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
 
-    // 模型背板贴墙：深度 8.8px，背板在朝墙那一侧；四种朝向各一份碰撞。
-    private static final VoxelShape SHAPE_NORTH = Shapes.box(
-            3.0D / 16.0D, 0.0D, 7.2D / 16.0D,
-            13.0D / 16.0D, 1.0D, 1.0D);
-
-    private static final VoxelShape SHAPE_SOUTH = Shapes.box(
-            3.0D / 16.0D, 0.0D, 0.0D,
-            13.0D / 16.0D, 1.0D, 8.8D / 16.0D);
-
-    private static final VoxelShape SHAPE_EAST = Shapes.box(
-            0.0D, 0.0D, 3.0D / 16.0D,
-            8.8D / 16.0D, 1.0D, 13.0D / 16.0D);
-
-    private static final VoxelShape SHAPE_WEST = Shapes.box(
-            7.2D / 16.0D, 0.0D, 3.0D / 16.0D,
-            1.0D, 1.0D, 13.0D / 16.0D);
+    // 候选 C 安装后的边界约 10.11×16×5.91 像素，向外圆整以覆盖门锁。
+    private static final double EDGE = 2.94D;
+    private static final double DEPTH = 6.0D;
+    private static final VoxelShape SHAPE_NORTH = Block.box(EDGE, 0, 16 - DEPTH, 16 - EDGE, 16, 16);
+    private static final VoxelShape SHAPE_SOUTH = Block.box(EDGE, 0, 0, 16 - EDGE, 16, DEPTH);
+    private static final VoxelShape SHAPE_EAST = Block.box(0, 0, EDGE, DEPTH, 16, 16 - EDGE);
+    private static final VoxelShape SHAPE_WEST = Block.box(16 - DEPTH, 0, EDGE, 16, 16, 16 - EDGE);
 
     public JunctionBoxBlock(Properties properties) {
         super(properties);
@@ -72,7 +59,7 @@ public class JunctionBoxBlock extends BaseEntityBlock {
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        // 模型正面朝 +Z（south）；放置时让正面朝向玩家，和原版墙挂设备一致。
+        // 放置时让门板朝向玩家。
         return defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
 

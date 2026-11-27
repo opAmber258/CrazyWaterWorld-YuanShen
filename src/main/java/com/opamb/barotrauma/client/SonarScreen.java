@@ -124,6 +124,7 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
     private static final int DOCK_READY = 1;
     private static final int DOCK_FAR = 2;
     private static final int DOCK_DEPART = 3;
+    private static final int DOCK_EXIT = 5;
     private static final int DOCK_LAUNCH = 4;
 
     public SonarScreen(SonarMenu menu, Inventory inventory, Component title) {
@@ -734,6 +735,8 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         int state = ClientSonarCache.dockState();
         boolean physical = ClientSonarCache.physical();
         if (physical) {
+            if (CampaignClient.available()) return DOCK_DEPART;
+            if (state == 3) return DOCK_EXIT;
             return state == 1 ? DOCK_READY : DOCK_FAR;
         }
         if (state == 2) {
@@ -768,6 +771,11 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
                 label = "离港";
                 sub = "打开海图";
             }
+            case DOCK_EXIT -> {
+                inner = hover ? 0xFF2F7A56 : 0xFF256044;
+                label = "驶出";
+                sub = "结束航程";
+            }
             case DOCK_READY -> {
                 inner = hover ? 0xFF2F7A56 : 0xFF256044;
                 label = "对接";
@@ -795,7 +803,7 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
         graphics.drawCenteredString(font, label, cx, cy - 4, labelColor);
         int dockTextX = cx + DOCK_R + 8;
         String station = ClientSonarCache.dockLabel();
-        boolean namedDock = (mode == DOCK_READY || mode == DOCK_FAR) && !station.isBlank();
+        boolean namedDock = (mode == DOCK_READY || mode == DOCK_FAR || mode == DOCK_EXIT) && !station.isBlank();
         graphics.drawString(font, sub, dockTextX, cy - (namedDock ? 9 : 4), enabled ? TEXT : DIM, false);
         if (namedDock) {
             graphics.drawString(font, font.plainSubstrByWidth(station, PANEL_W - MARGIN * 2 - dockTextX),
@@ -1001,7 +1009,7 @@ public class SonarScreen extends ScaledContainerScreen<SonarMenu> {
                     minecraft.setScreen(new CampaignMapScreen());
                 }
             }
-            case DOCK_READY -> ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.DOCK));
+            case DOCK_READY, DOCK_EXIT -> ModNetwork.send(new ShipActionPacket(menu.sonarPos(), ShipActionPacket.DOCK));
             case DOCK_FAR -> {
                 if (minecraft != null && minecraft.player != null) {
                     int distance = ClientSonarCache.dockDistance();

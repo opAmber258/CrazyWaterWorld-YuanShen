@@ -2,6 +2,7 @@ package com.opamb.barotrauma.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.CabinetBlock;
 import com.opamb.barotrauma.blockentity.CabinetBlockEntity;
@@ -13,11 +14,17 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import software.bernie.geckolib.cache.GeckoLibCache;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.model.DefaultedBlockGeoModel;
 import software.bernie.geckolib.renderer.GeoBlockRenderer;
 import software.bernie.geckolib.renderer.GeoRenderer;
 import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * 钢柜 / 货架 / 潜水服柜 / 氧气瓶架渲染器。
@@ -38,6 +45,9 @@ public class CabinetRenderer extends GeoBlockRenderer<CabinetBlockEntity> {
     private static final float CRATE_SCALE = 0.6F;
     /** 货物中心在模型深度上的位置（每层隔板 z 约 -7.2..-0.5）。 */
     private static final float CRATE_Z = -3.8F;
+
+    private static final Map<CabinetBlock.Kind, Boolean> ASSETS_READY = new EnumMap<>(CabinetBlock.Kind.class);
+    private static Map<ResourceLocation, BakedGeoModel> bakedModels;
 
     private static final class KindModel extends DefaultedBlockGeoModel<CabinetBlockEntity> {
         KindModel() {
@@ -85,6 +95,82 @@ public class CabinetRenderer extends GeoBlockRenderer<CabinetBlockEntity> {
     @Override
     protected Direction getFacing(CabinetBlockEntity animatable) {
         return animatable.getBlockState().getValue(CabinetBlock.FACING).getOpposite();
+    }
+
+    /**
+     * GeckoLib 4.8.4 的 {@code GeoBlockRenderer.render} 擦除后固定是 {@code BlockEntity}，
+     * 子类没法覆盖（会报名称冲突），所以挡在 {@code defaultRender} 这一层：
+     * 它在 {@code GeoBlockRenderer.render} 里是虚调用，缺资源时可以在取模型前画替代外形。
+     */
+    @Override
+    public void defaultRender(PoseStack poseStack, CabinetBlockEntity animatable, MultiBufferSource bufferSource,
+                              RenderType renderType, VertexConsumer buffer, float partialTick, float red,
+                              int packedLight) {
+        if (!assetsReady(animatable)) {
+            renderFallback(poseStack, bufferSource, animatable, packedLight);
+            return;
+        }
+        super.defaultRender(poseStack, animatable, bufferSource, renderType, buffer, partialTick, red, packedLight);
+    }
+
+    private boolean assetsReady(CabinetBlockEntity animatable) {
+        var current = GeckoLibCache.getBakedModels();
+        if (current != bakedModels) {
+            ASSETS_READY.clear();
+            bakedModels = current;
+        }
+        var kind = animatable.kind();
+        Boolean cached = ASSETS_READY.get(kind);
+        if (cached != null) {
+            return cached;
+        }
+        var resources = Minecraft.getInstance().getResourceManager();
+        boolean ready = current.containsKey(getGeoModel().getModelResource(animatable))
+                && resources.getResource(getGeoModel().getTextureResource(animatable)).isPresent();
+        if (!ready) {
+            BarotraumaMod.LOGGER.warn("[cabinet] {} 缺可用模型或贴图，使用备用外形", kind.id());
+        }
+        ASSETS_READY.put(kind, ready);
+        return ready;
+    }
+
+    private static void renderFallback(PoseStack pose, MultiBufferSource buffers, CabinetBlockEntity cabinet, int light) {
+        var kind = cabinet.kind();
+        double depth = kind.depth() / 16.0;
+        // Match CabinetBlock.shape: full width, with the back flush against the wall.
+        pose.pushPose();
+        pose.translate(0.5, 0, 0.5);
+        pose.mulPose(Axis.YP.rotationDegrees(-cabinet.getBlockState().getValue(CabinetBlock.FACING).toYRot()));
+        pose.translate(-0.5, 0, -0.5);
+        if (kind == CabinetBlock.Kind.OXYGEN_TANK_SHELF || kind == CabinetBlock.Kind.DIVING_SUIT_STATION) {
+            fallbackPiece(pose, buffers, light, Blocks.IRON_BLOCK, 0, 0, 0, 1, 0.125, depth);
+            fallbackPiece(pose, buffers, light, Blocks.IRON_BLOCK, 0, 0.125, 0, 1, 0.61, 0.07);
+            for (int i = 0; i < 3; i++) {
+                double x = 0.125 + i * 0.29;
+                fallbackPiece(pose, buffers, light, Blocks.GRAY_CONCRETE, x, 0.125, 0.08, 0.17, 0.07, 0.25);
+                int slot = kind == CabinetBlock.Kind.DIVING_SUIT_STATION ? i + 1 : i;
+                if (cabinet.getItem(slot).isEmpty()) continue;
+                fallbackPiece(pose, buffers, light, Blocks.LIGHT_BLUE_CONCRETE, x, 0.196, 0.082, 0.17, 0.48, 0.235);
+                fallbackPiece(pose, buffers, light, Blocks.IRON_BLOCK, x + 0.04, 0.676, 0.13, 0.09, 0.11, 0.12);
+            }
+        }
+        if (kind != CabinetBlock.Kind.OXYGEN_TANK_SHELF) {
+            double base = kind == CabinetBlock.Kind.DIVING_SUIT_STATION ? 13.25 / 16.0 : 0.0;
+            fallbackPiece(pose, buffers, light, Blocks.IRON_BLOCK, 0, base, 0, 1, kind.height() / 16.0 - base, depth);
+            fallbackPiece(pose, buffers, light, Blocks.GRAY_CONCRETE, 0.14, base + 0.14, depth, 0.72,
+                    kind.height() / 16.0 - base - 0.28, 0.012);
+        }
+        pose.popPose();
+    }
+
+    private static void fallbackPiece(PoseStack pose, MultiBufferSource buffers, int light, Block block,
+                                      double x, double y, double z, double width, double height, double depth) {
+        pose.pushPose();
+        pose.translate(x, y, z);
+        pose.scale((float) width, (float) height, (float) depth);
+        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(block.defaultBlockState(), pose, buffers, light,
+                net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY);
+        pose.popPose();
     }
 
     /**

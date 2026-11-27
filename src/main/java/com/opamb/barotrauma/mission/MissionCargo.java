@@ -171,54 +171,40 @@ public final class MissionCargo {
 
     // ------------------------------------------------------------------ 判定 / 清理
 
-    /** 靠泊目的站时统计还在“船上”的任务箱（货架 + 玩家背包/双手 + 船附近散箱）。 */
+    /** 靠泊目的站时统计货架、舱内散箱及船员手上的货。 */
     public static int countDelivered(ServerLevel level, ServerPlayer player, Mission mission) {
-        int total = 0;
-        for (CabinetBlockEntity shelf : shelves(level, player)) {
-            for (int slot = 0; slot < shelf.getContainerSize(); slot++) {
-                if (isCargo(shelf.getItem(slot), mission.id)) {
-                    total++;
-                }
-            }
-        }
-        // 散箱必须还在船核心附近才算交到；丢进海里/丢在半路的箱子自然不计。
         Vec3 center = coreWorld(level, player);
-        if (center == null) {
-            center = player.position();
-        }
-        double radiusSqr = LOOSE_RADIUS * LOOSE_RADIUS;
-        for (ServerPlayer online : level.getServer().getPlayerList().getPlayers()) {
-            // 只统计已经随船抵达的玩家：留在出发站/别的维度的箱子不算交付。
-            if (online.level() != level
-                    || online.position().distanceToSqr(center) > radiusSqr) {
-                continue;
-            }
-            total += countInventory(online, mission.id);
-        }
-        for (ItemEntity entity : looseCrates(level, center)) {
-            if (isCargo(entity.getItem(), mission.id)) {
-                total++;
-            }
-        }
-        return Math.min(total, Math.max(1, mission.cargoTotal()));
+        return countDelivered(level, shelves(level, player), center == null ? player.position() : center,
+                mission, true);
     }
 
-    /** 离线持有者的交付统计：只数船上的货架和船附近的散箱，不碰任何玩家背包。 */
     public static int countDeliveredOffline(ServerLevel level, Mission mission) {
+        return countDelivered(level, shelves(level), coreWorld(level), mission, false);
+    }
+
+    /** 到站后物理船已拆回方块，按新泊位查找货物，无需从玩家位置猜船的位置。 */
+    public static int countAtBerth(ServerLevel level, BlockPos berth, Mission mission, boolean includePlayers) {
+        return countDelivered(level, shelvesNear(level, berth), Vec3.atCenterOf(berth), mission, includePlayers);
+    }
+
+    private static int countDelivered(ServerLevel level, List<CabinetBlockEntity> shelves, Vec3 center,
+                                      Mission mission, boolean includePlayers) {
         int total = 0;
-        for (CabinetBlockEntity shelf : shelves(level)) {
+        for (CabinetBlockEntity shelf : shelves) {
             for (int slot = 0; slot < shelf.getContainerSize(); slot++) {
-                if (isCargo(shelf.getItem(slot), mission.id)) {
-                    total++;
-                }
+                if (isCargo(shelf.getItem(slot), mission.id)) total++;
             }
         }
-        Vec3 center = coreWorld(level);
         if (center != null) {
-            for (ItemEntity entity : looseCrates(level, center)) {
-                if (isCargo(entity.getItem(), mission.id)) {
-                    total++;
+            if (includePlayers) {
+                for (ServerPlayer player : level.players()) {
+                    if (player.position().distanceToSqr(center) <= LOOSE_RADIUS * LOOSE_RADIUS) {
+                        total += countInventory(player, mission.id);
+                    }
                 }
+            }
+            for (ItemEntity entity : looseCrates(level, center)) {
+                if (isCargo(entity.getItem(), mission.id)) total++;
             }
         }
         return Math.min(total, Math.max(1, mission.cargoTotal()));
@@ -231,29 +217,39 @@ public final class MissionCargo {
 
     /** 清掉这条任务的所有货物：货架、玩家背包/双手、装备背包、地上散箱。 */
     public static void clear(ServerLevel level, ServerPlayer player, Mission mission) {
-        for (CabinetBlockEntity shelf : shelves(level, player)) {
-            for (int slot = 0; slot < shelf.getContainerSize(); slot++) {
-                if (isCargo(shelf.getItem(slot), mission.id)) {
-                    shelf.setItem(slot, ItemStack.EMPTY);
-                }
-            }
-        }
-        for (ServerPlayer online : level.getServer().getPlayerList().getPlayers()) {
-            clearInventory(online, mission.id);
-        }
+        clearShelves(shelves(level, player), mission.id);
+        clearInventories(level, mission.id);
         clearShipCrates(level, mission);
     }
 
-    /** 只清船上的任务货（货架 + 地上的散箱），不碰玩家背包；离线结算用。 */
+    /** 只清船上的任务货（货架 + 地上的散箱），离线结算用。 */
     public static void clearShip(ServerLevel level, Mission mission) {
-        for (CabinetBlockEntity shelf : shelves(level)) {
+        clearShelves(shelves(level), mission.id);
+        clearShipCrates(level, mission);
+    }
+
+    public static void clearAtBerth(ServerLevel level, BlockPos berth, Mission mission, boolean includePlayers) {
+        clearShelves(shelvesNear(level, berth), mission.id);
+        for (ItemEntity entity : looseCrates(level, Vec3.atCenterOf(berth))) {
+            if (isCargo(entity.getItem(), mission.id)) entity.discard();
+        }
+        if (includePlayers) clearInventories(level, mission.id);
+    }
+
+    private static void clearShelves(List<CabinetBlockEntity> shelves, int missionId) {
+        for (CabinetBlockEntity shelf : shelves) {
             for (int slot = 0; slot < shelf.getContainerSize(); slot++) {
-                if (isCargo(shelf.getItem(slot), mission.id)) {
+                if (isCargo(shelf.getItem(slot), missionId)) {
                     shelf.setItem(slot, ItemStack.EMPTY);
                 }
             }
         }
-        clearShipCrates(level, mission);
+    }
+
+    private static void clearInventories(ServerLevel level, int missionId) {
+        for (ServerPlayer online : level.getServer().getPlayerList().getPlayers()) {
+            clearInventory(online, missionId);
+        }
     }
 
     private static void clearShipCrates(ServerLevel level, Mission mission) {

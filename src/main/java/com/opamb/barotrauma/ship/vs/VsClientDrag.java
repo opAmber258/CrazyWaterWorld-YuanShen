@@ -17,6 +17,13 @@ public final class VsClientDrag {
     private VsClientDrag() {
     }
 
+    public static void detachForDock(Player player) {
+        if (VsSupport.available() && player != null) {
+            VsServerDrag.detach(player);
+        }
+        reset();
+    }
+
     /** 本客户端上次写入的船 id；-1 = 没写过/已清。 */
     private static long appliedShipId = -1L;
 
@@ -42,9 +49,8 @@ public final class VsClientDrag {
         // 只清我们自己写进去的那艘船；VS2 给"站在船上"玩家设的状态不动。
         if (appliedShipId >= 0L) {
             Long current = info.getLastShipStoodOn();
-            if (current != null && current == appliedShipId) {
-                info.setLastShipStoodOn(null);
-                info.setTicksSinceStoodOnShip(25);
+            if (current == null || current == appliedShipId) {
+                VsServerDrag.detach(player);
             }
             appliedShipId = -1L;
         }

@@ -9,6 +9,8 @@ final class NavigationMotion {
     private static final double HORIZONTAL_SETTLED_SPEED = 0.10D;
     private static final double VERTICAL_SETTLED_SPEED = 0.08D;
     private static final double ENGINE_RESPONSE = 0.35D;
+    private static final double HOLD_LOOKAHEAD_SECONDS = 10.0D;
+    private static final double HOLD_FULL_COMMAND_METERS = 5.0D;
 
     static double desiredSpeed(double error, double cap, double acceleration, double deadZone) {
         return desiredSpeed(error, cap, acceleration, deadZone, 0.0D);
@@ -35,8 +37,12 @@ final class NavigationMotion {
                                     double brakeAcceleration, double verticalAcceleration) {
         double horizontal = Math.hypot(dx, dz);
         double speed = Math.hypot(vx, vz);
-        double verticalSpeed = desiredSpeed(dy, 1.5D, 0.20D, 0.12D, 1.0D);
-        double vertical = thrust(verticalSpeed, vy + verticalAcceleration * 0.75D, 1.3D);
+        // Original Steering uses 10 s of projected movement and a 500 cm full-command radius.
+        double projectedY = dy - vy * HOLD_LOOKAHEAD_SECONDS;
+        double projectedHorizontal = Math.hypot(dx - vx * HOLD_LOOKAHEAD_SECONDS,
+                dz - vz * HOLD_LOOKAHEAD_SECONDS);
+        double vertical = projectedY / Math.max(HOLD_FULL_COMMAND_METERS,
+                Math.hypot(projectedHorizontal, projectedY));
         if (horizontal <= HORIZONTAL_STOP && Math.abs(dy) <= VERTICAL_STOP
                 && speed <= HORIZONTAL_SETTLED_SPEED && Math.abs(vy) <= VERTICAL_SETTLED_SPEED
                 && Math.abs(verticalAcceleration) <= 0.06D) {

@@ -4,9 +4,10 @@
 转换规则与 `art/models/battery_20261115/INTEGRATION.md` 一致（Blockbench
 `bedrock.js` 的 `compileCube` 行为）：
 
-- Blockbench 内部坐标以方块中心为 X/Z 原点，所以先减 8；
+- Java 方块工程的 X/Z 以格角为原点，进入 GeckoLib 时减 8 以方块中心为原点；
 - Bedrock 的 X 轴与 Blockbench 镜像：`origin.x = -(x_max)`，pivot 的 X 取反；
 - 旋转角 X/Y 取反、Z 保持；
+- 保留 inflate，包括用来避免重叠的微小偏移；
 - 普通面 `uv=[u1,v1] / uv_size=[u2-u1,v2-v1]`；`up`/`down` 面反向
   `uv=[u2,v2] / uv_size=[u1-u2,v1-v2]`；
 - Y 保持原样（作者建模时的安装高度就是游戏内相对方块底面的高度）。
@@ -62,6 +63,8 @@ def convert_cube(element: dict) -> dict:
         "size": [_num(abs(x1 - x0)), _num(abs(ty - fy)), _num(abs(z1 - z0))],
         "uv": {},
     }
+    if element.get("inflate"):
+        cube["inflate"] = _num(element["inflate"])
 
     rotation = element.get("rotation")
     if rotation and any(abs(float(v)) > 1e-9 for v in rotation):
@@ -89,11 +92,12 @@ def _cube_bounds(cube: dict) -> tuple[list[float], list[float]]:
     """
     ox, oy, oz = cube["origin"]
     sx, sy, sz = cube["size"]
+    inflate = cube.get("inflate", 0.0)
     x0 = -(ox + sx)
     corners = []
-    for dx in (0.0, sx):
-        for dy in (0.0, sy):
-            for dz in (0.0, sz):
+    for dx in (-inflate, sx + inflate):
+        for dy in (-inflate, sy + inflate):
+            for dz in (-inflate, sz + inflate):
                 corners.append([x0 + dx, oy + dy, oz + dz])
     rotation = cube.get("rotation")
     if not rotation:

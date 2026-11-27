@@ -20,7 +20,7 @@ public abstract class TurretInteractionMixin {
 
     @Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
     private void barotrauma$turretUse(CallbackInfo ci) {
-        if (TurretClient.isActive()) {
+        if (TurretClient.blocksUse()) {
             ci.cancel();
         }
     }

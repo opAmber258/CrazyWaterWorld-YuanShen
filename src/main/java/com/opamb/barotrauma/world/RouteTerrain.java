@@ -81,6 +81,10 @@ final class RouteTerrain {
 
     /** 模板影响范围外返回 null，区块生成接回全局海域。 */
     Column column(long worldSeed, int x, int z) {
+        return column(worldSeed, x, z, false);
+    }
+
+    Column column(long worldSeed, int x, int z, boolean sealed) {
         double dx = x - startX;
         double dz = z - startZ;
         double along = dx * ux + dz * uz;
@@ -149,8 +153,14 @@ final class RouteTerrain {
         bed = Math.min(bed, ceiling - 8.0D);
         bed = Math.max(bed, LevelParams.BAND_CEILING_Y - height);
         if (weight < 1.0D) {
-            ceiling = blend(SeaTerrain.baseCeilingY(worldSeed, x, z), ceiling, weight);
-            bed = blend(SeaTerrain.baseFloorY(worldSeed, x, z), bed, weight);
+            if (sealed) {
+                double center = (ceiling + bed) * 0.5D;
+                ceiling = blend(center, ceiling, weight);
+                bed = blend(center, bed, weight);
+            } else {
+                ceiling = blend(SeaTerrain.baseCeilingY(worldSeed, x, z), ceiling, weight);
+                bed = blend(SeaTerrain.baseFloorY(worldSeed, x, z), bed, weight);
+            }
         }
         int top = (int) Math.round(ceiling);
         int floor = (int) Math.round(bed);

@@ -2,6 +2,7 @@ package com.opamb.barotrauma.ship.vs;
 
 import com.opamb.barotrauma.BarotraumaMod;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import org.valkyrienskies.mod.common.util.EntityDraggingInformation;
 import org.valkyrienskies.mod.common.util.IEntityDraggingInformationProvider;
@@ -85,6 +86,23 @@ public final class VsServerDrag {
         } catch (Throwable ignored) {
             // VS2 没加载 / 船世界还没准备好：这一 tick 不拖，下一 tick 再试。
         }
+    }
+
+    /** 绝对传送前丢掉 VS2 的随船坐标和惯性，防止下一帧应用旧船的位移。 */
+    public static void detach(Entity entity) {
+        if (!(entity instanceof IEntityDraggingInformationProvider provider)) {
+            return;
+        }
+        EntityDraggingInformation info = provider.getDraggingInformation();
+        info.setLastShipStoodOn(null);
+        info.setLastShipStoodOnServerWriteOnly(null);
+        info.setTicksSinceStoodOnShip(EntityDraggingInformation.TICKS_TO_DRAG_ENTITIES);
+        info.setAddedMovementLastTick(new org.joml.Vector3d());
+        info.setAddedYawRotLastTick(0);
+        info.setShouldImpulseMovement(false);
+        info.setRestoreCachedLastPosition(false);
+        info.setServerRelativePlayerPosition(null);
+        info.setServerRelativePlayerYaw(null);
     }
 
     /** 每个玩家只打一次，确认拖拽真的挂上了。 */

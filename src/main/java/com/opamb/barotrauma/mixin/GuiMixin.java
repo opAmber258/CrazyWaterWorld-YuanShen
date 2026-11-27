@@ -1,13 +1,19 @@
 package com.opamb.barotrauma.mixin;
 
+import com.mojang.blaze3d.shaders.BlendMode;
+import com.opamb.barotrauma.world.ModDimensions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.material.Fluid;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL14;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -25,6 +31,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(Gui.class)
 public abstract class GuiMixin {
+    @Unique
+    private static final BlendMode barotrauma$opaqueBlend = new BlendMode();
+    @Unique
+    private static final BlendMode barotrauma$positionTexBlend =
+            new BlendMode(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL14.GL_FUNC_ADD);
+
+    @Inject(method = "renderVignette", at = @At("HEAD"))
+    private void barotrauma$prepareVignetteBlend(GuiGraphics graphics, Entity camera, CallbackInfo ci) {
+        var level = Minecraft.getInstance().level;
+        if (level == null || !ModDimensions.THE_DEEP.equals(level.dimension())) {
+            return;
+        }
+        // Cache the blit's shader blend before vanilla chooses its multiplicative blend factors.
+        barotrauma$opaqueBlend.apply();
+        barotrauma$positionTexBlend.apply();
+    }
 
     @Redirect(method = "renderPlayerHealth",
             at = @At(value = "INVOKE",

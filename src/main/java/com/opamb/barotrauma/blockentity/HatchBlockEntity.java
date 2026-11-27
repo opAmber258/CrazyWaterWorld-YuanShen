@@ -40,6 +40,7 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
     private AutomationMode automation = AutomationMode.MANUAL;
     private int motionHold;
     /** 最近一次手动右键的 tick：按住右键时原版每 4 tick 触发一次，必须节流。 */
+    private boolean manuallyClosed;
     private long lastManualUseTick = -100L;
     /** 舱口不自然劣化（原作 Repairable 默认 0/s），只被外力打坏后修理。 */
     private final ConditionComponent condition =
@@ -70,11 +71,17 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
             return;
         }
         boolean open = state.getValue(HatchBlock.OPEN);
+        boolean near = AutomationUtil.playerNear(server, ship, pos, state.getValue(HatchBlock.FACING), true);
+        if (be.manuallyClosed) {
+            if (near) return;
+            be.manuallyClosed = false;
+        }
+        // The manual command takes precedence over the automatic mode for the hold interval.
+        if (open && level.getGameTime() - be.lastManualUseTick < AutomationUtil.MOTION_HOLD_TICKS) return;
         boolean want = open;
         if (be.automation == AutomationMode.MOTION) {
             // 原作自动关舱口：运动探测器 + OrComponent TimeFrame=4
             // （Content/Items/Assemblies/AutoClosingHatch.xml，"nobody around for 4 seconds"）。
-            boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
             if (near) {
                 be.motionHold = AutomationUtil.MOTION_HOLD_TICKS;
             } else if (be.motionHold > 0) {
@@ -85,7 +92,6 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
             // 原作没有单独的“水密门”：自动关门装配用运动探测器（开门 + 延时关门），
             // 气闸装配用水探测器 + NOT/AND（只管有水时的时序）。合并到一扇门里就是
             // 运动负责开、水只负责关——水永远不触发“开”（用户要求：有水不自动开门）。
-            boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
             if (near) {
                 be.motionHold = AutomationUtil.MOTION_HOLD_TICKS;
             } else if (be.motionHold > 0) {
@@ -141,6 +147,7 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
     }
 
     public void holdAfterManualOpen() {
+        manuallyClosed = false;
         if (automation == AutomationMode.MOTION || automation == AutomationMode.WATERTIGHT) {
             motionHold = AutomationUtil.MOTION_HOLD_TICKS;
         }
@@ -148,11 +155,14 @@ public class HatchBlockEntity extends BlockEntity implements GeoBlockEntity, Rep
 
     /** 手动关闭：清掉运动保持计时，否则自动模式会在同一 tick 把舱口重新打开。 */
     public void releaseManualHold() {
+        manuallyClosed = true;
         motionHold = 0;
     }
 
     public void cycleAutomation() {
         automation = automation.next();
+        manuallyClosed = false;
+        lastManualUseTick = -100L;
         motionHold = 0;
         setChanged();
     }

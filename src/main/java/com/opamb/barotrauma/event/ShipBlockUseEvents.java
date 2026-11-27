@@ -19,6 +19,7 @@ import com.opamb.barotrauma.block.ReactorBlock;
 import com.opamb.barotrauma.block.SonarBlock;
 import com.opamb.barotrauma.block.SupercapacitorBlock;
 import com.opamb.barotrauma.block.TurretBlock;
+import com.opamb.barotrauma.item.WrenchItem;
 import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.network.ShipUseBlockPacket;
 import com.opamb.barotrauma.ship.vs.VsState;
@@ -77,7 +78,7 @@ public final class ShipBlockUseEvents {
             return;
         }
         Player player = event.getEntity();
-        if (player.isSpectator() || !VsState.active()) {
+        if (player.isSpectator()) {
             return;
         }
         BlockPos pos = event.getPos();
@@ -86,7 +87,8 @@ public final class ShipBlockUseEvents {
             return;
         }
         BlockState state = player.level().getBlockState(pos);
-        if (!interactive(state)) {
+        boolean dismantling = WrenchItem.isDismantling(player, event.getHand()) && WrenchItem.canTarget(state);
+        if (!dismantling && (!VsState.active() || !interactive(state))) {
             // 船壳等非交互方块不拦：放置方块等操作仍走原版/VS2 路径。
             return;
         }

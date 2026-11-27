@@ -30,6 +30,14 @@ class NavigationTest {
     }
 
     @Test
+    void distantDepthUsesFullBallastAtDugongDescentSpeed() {
+        var descent = NavigationMotion.physical(0, -80, 0, 0, -13.6 / 3.6, 0, 1, 0, 6, 0.08, 0);
+        assertEquals(-1.0D, descent.vertical());
+        var approaching = NavigationMotion.physical(0, -22, 0, 0, -2, 0, 1, 0, 6, 0.08, 0);
+        assertEquals(-0.4D, approaching.vertical(), 1.0E-8D);
+    }
+
+    @Test
     void anticipatesBrakingInAWeakEngineWithForceLag() {
         double x = 0.0D;
         double velocity = 3.0D;

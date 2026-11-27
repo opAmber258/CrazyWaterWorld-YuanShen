@@ -52,6 +52,8 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                     .apply(instance, DeepSeaChunkGenerator::new));
 
     private static final int STEP = 4;
+    private final java.util.Map<MissionInstance.RouteLevel, RouteTerrain> connectionTerrain =
+            new java.util.concurrent.ConcurrentHashMap<>();
     private static final int GRID_XZ = 16 / STEP + 1;
     private static final int GRID_Y = ModDimensions.HEIGHT / STEP + 1;
 
@@ -117,9 +119,18 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
         int originX = chunkPos.getMinBlockX();
         int originZ = chunkPos.getMinBlockZ();
         int minY = chunk.getMinBuildHeight();
-        // 本轮航行关卡的参数；没有活动关卡就是 null（走原来的全局地形）。
-        LevelParams params = MissionInstance.activeParams();
-        RouteTerrain terrain = MissionInstance.activeTerrain();
+        CampaignLevels.Connection connection = CampaignLevels.regionConnection(originX, originZ);
+        DockingBay.Site station = CampaignLevels.regionStation(originX, originZ);
+        MissionInstance.RouteLevel connectionLevel = connection == null ? null : connection.level(seed);
+        LevelParams params = connectionLevel == null ? MissionInstance.activeParams() : connectionLevel.type().params();
+        RouteTerrain terrain = connectionLevel == null ? MissionInstance.activeTerrain()
+                : connectionTerrain.computeIfAbsent(connectionLevel, level -> {
+                    MissionInstance.Anchor end = CampaignLevels.anchor(level);
+                    DockingBay.Site start = connection.endpoint(level, connection.first());
+                    RoutePath path = RoutePath.build(params, level.seed(),
+                            start.x(), start.z(), end.x(), end.z(), level.terrain());
+                    return new RouteTerrain(level, start, end, path);
+                });
 
         // 海域用空气而不是真实水：水下效果由客户端雾/滤镜表现，进水走数值模拟。
         BlockState ocean = Blocks.AIR.defaultBlockState();
@@ -160,7 +171,7 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             for (int lz = 0; lz < 16; lz++) {
                 int x = originX + lx;
                 int z = originZ + lz;
-                RouteTerrain.Column column = terrain == null ? null : terrain.column(seed, x, z);
+                RouteTerrain.Column column = terrain == null ? null : terrain.column(seed, x, z, connection != null);
                 if (column != null) {
                     for (int y = column.floor() + 1; y < column.ceiling(); y++) {
                         if (!column.hasRockAt(y)) {
@@ -171,6 +182,9 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                         setBlock(chunk, x, column.floor(), z, tuff);
                     }
                     continue;
+                }
+                if (connection != null || station != null) {
+                    continue; // 独立关卡外围保留岩层，不能游进通用海域。
                 }
                 int ceiling = SeaTerrain.ceilingY(seed, x, z);
                 int floor = SeaTerrain.floorY(seed, x, z);
@@ -272,8 +286,31 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             }
         }
 
-        // 6a) 采矿任务：副本航线附近的海底矿脉（按坐标 + 世界种子确定性生成）
-        placeVeins(chunk, seed, originX, originZ, minY);
+        if (connection != null) {
+            placeVeins(chunk, seed, originX, originZ, minY, connectionLevel, terrain);
+            for (int node : new int[]{connection.first(), connection.second()}) {
+                DockingBay.Site endpoint = connection.endpoint(connectionLevel, node);
+                if (CampaignLevels.hasOutpost(node) && OutpostBuilder.intersectsWell(chunkPos, endpoint)) {
+                    OutpostBuilder.carveDockWell(chunk, endpoint);
+                    DockingBay.buildEntrance(chunk, endpoint);
+                }
+            }
+        } else if (station != null) {
+            StationWaters.carve(chunk, station, seed);
+            if (OutpostBuilder.intersects(chunkPos, station)) {
+                OutpostBuilder.build(chunk, station);
+            }
+        } else {
+            generateLegacyStructures(chunk, seed, originX, originZ, minY);
+        }
+
+        Heightmap.primeHeightmaps(chunk,
+                EnumSet.of(Heightmap.Types.WORLD_SURFACE_WG, Heightmap.Types.OCEAN_FLOOR_WG));
+    }
+
+    private static void generateLegacyStructures(ChunkAccess chunk, long seed, int originX, int originZ, int minY) {
+        ChunkPos chunkPos = chunk.getPos();
+        placeVeins(chunk, seed, originX, originZ, minY, null, null);
 
         // 6b) 任务 POI：沉船/侦察点/B 中继站（确定性，幂等）
         PoiNetwork.buildInto(chunk);
@@ -295,10 +332,6 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                 OutpostBuilder.build(chunk, site);
             }
         }
-
-        // 7) 高度图
-        Heightmap.primeHeightmaps(chunk,
-                EnumSet.of(Heightmap.Types.WORLD_SURFACE_WG, Heightmap.Types.OCEAN_FLOOR_WG));
     }
 
     /**
@@ -311,19 +344,20 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
      * <p>除了海底，还会在岩柱/浮岩岛的表面按散列撒少量矿脉，这样不用一路潜到
      * 500 格海底也能采矿。</p>
      */
-    private static void placeVeins(ChunkAccess chunk, long seed, int originX, int originZ, int minY) {
-        if (!MissionInstance.inMiningZone(originX + 8, originZ + 8)
+    private static void placeVeins(ChunkAccess chunk, long seed, int originX, int originZ, int minY,
+                                   MissionInstance.RouteLevel connection, RouteTerrain connectionTerrain) {
+        if (connection == null && !MissionInstance.inMiningZone(originX + 8, originZ + 8)
                 && !MissionInstance.inMiningZone(originX, originZ)
                 && !MissionInstance.inMiningZone(originX + 15, originZ + 15)) {
             return;
         }
         // 关卡参数：海底/岩壁密度和盐只对本槽位的关卡生效，旧槽位保持原密度。
         // 按列认领活动关卡（旧存档锚点不一定落在当前间距反推的槽位上）。
-        LevelParams params = MissionInstance.paramsForColumn(originX);
+        LevelParams params = connection == null ? MissionInstance.paramsForColumn(originX) : connection.type().params();
         int floorModulus = params == null ? 1024 : params.seafloorVeinModulus();
         int wallModulus = params == null ? 256 : params.wallVeinModulus();
         long veinSeed = params == null ? seed
-                : seed ^ MissionInstance.routeLevel().seed();
+                : seed ^ (connection == null ? MissionInstance.routeLevel().seed() : connection.seed());
         // 环境矿脉：原作资源点间隔 96–192 格 × 0.2–0.3 概率；这里按区块门控，
         // 一个区块最多一簇，避免声纳上一扫全是矿。
         int gate = params == null ? 16 : params.ambientChunkGate();
@@ -341,12 +375,14 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
             for (int lz = 0; lz < 16; lz++) {
                 int x = originX + lx;
                 int z = originZ + lz;
-                if (!MissionInstance.inMiningZone(x, z)) {
+                RouteTerrain.Column column = connectionTerrain == null ? null : connectionTerrain.column(seed, x, z, true);
+                if (connection == null ? !MissionInstance.inMiningZone(x, z)
+                        : column == null || DockingBay.siteAt(x, z) != null) {
                     continue;
                 }
                 long hash = veinHash(veinSeed, x, z);
-                int floor = SeaTerrain.floorY(seed, x, z);
-                int ceiling = SeaTerrain.ceilingY(seed, x, z);
+                int floor = column == null ? SeaTerrain.floorY(seed, x, z) : column.floor();
+                int ceiling = column == null ? SeaTerrain.ceilingY(seed, x, z) : column.ceiling();
                 // 整列是岩（关卡隧道之外）：没有可采矿壁。
                 if (ceiling <= floor) {
                     continue;
@@ -365,8 +401,12 @@ public class DeepSeaChunkGenerator extends ChunkGenerator {
                             int nxWorld = originX + nx;
                             // 邻列海底高度可能不同：必须用邻列自己的 floorY，
                             // 否则矿脉会悬空或埋进岩石里。
-                            if (MissionInstance.inMiningZone(nxWorld, z)
-                                    && SeaTerrain.floorY(seed, nxWorld, z) == floor
+                            RouteTerrain.Column neighbor = connectionTerrain == null ? null
+                                    : connectionTerrain.column(seed, nxWorld, z, true);
+                            boolean sameFloor = connection == null
+                                    ? MissionInstance.inMiningZone(nxWorld, z) && SeaTerrain.floorY(seed, nxWorld, z) == floor
+                                    : neighbor != null && neighbor.floor() == floor && DockingBay.siteAt(nxWorld, z) == null;
+                            if (sameFloor
                                     && touchesAir(chunk, nxWorld, floor, z, nx, lz)) {
                                 setBlock(chunk, nxWorld, floor, z, vein);
                             }

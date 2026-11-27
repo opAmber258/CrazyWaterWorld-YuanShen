@@ -90,7 +90,9 @@ public final class ClientSetup {
         event.register(LightClientColors::tint,
                 com.opamb.barotrauma.registry.ModBlocks.LAMP.get(),
                 com.opamb.barotrauma.registry.ModBlocks.EMERGENCY_LIGHT.get(),
-                com.opamb.barotrauma.registry.ModBlocks.FLUORESCENT_LIGHT.get());
+                com.opamb.barotrauma.registry.ModBlocks.FLUORESCENT_LIGHT.get(),
+                com.opamb.barotrauma.registry.ModBlocks.FLUORESCENT_LIGHT_L01.get(),
+                com.opamb.barotrauma.registry.ModBlocks.FLUORESCENT_LIGHT_L02.get());
         // 手电筒的隐形光源：固定纯白，别让自动取色把不可见方块当成黑色。
         event.register((state, level, pos, tintIndex) -> 0xFFFFFF,
                 com.opamb.barotrauma.registry.ModBlocks.FLASHLIGHT_LIGHT.get());

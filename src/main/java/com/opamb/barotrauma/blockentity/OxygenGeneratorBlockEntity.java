@@ -4,6 +4,8 @@ import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.registry.ModItems;
 import com.opamb.barotrauma.ship.ConditionComponent;
 import com.opamb.barotrauma.ship.PowerConsumer;
+import com.opamb.barotrauma.world.StarterOutpost;
+import com.opamb.barotrauma.world.StarterSub;
 import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipSimulation;
@@ -47,8 +49,8 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
     public static final double MIN_VOLTAGE = 0.5D;
     /** 原作槽位里 {@code OnContaining Condition="2.0"}：每秒给瓶子回 2 点耐久。 */
     private static final double REFILL_PER_SECOND = 2.0D;
-    /** 泡水额外劣化（沿用机器系列口径）。 */
-    private static final double SUBMERGED_DECAY = 0.5D;
+    /** 原作 CurrFlow > 0.1，以原作满功率流量 400 × 100 按本模组流量单位换算。 */
+    private static final double MIN_FLOW_FOR_WEAR = ShipSimulation.O2_GENERATOR_OUTPUT * (0.1D / 40000.0D);
     private static final int SAVE_INTERVAL = 20;
 
     private final NonNullList<ItemStack> tanks =
@@ -64,6 +66,7 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
     private int shipCacheTicks;
     private boolean submerged;
     private int saveTicks;
+    private long maintenanceRound = -1L;
     /** 面板读数：上一 tick 的产氧量（单位/秒）和电压。 */
     private double lastFlow;
     private double lastVoltage;
@@ -80,17 +83,20 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
             return;
         }
         ShipState ship = be.resolveShip(server, pos);
-        if (ship == null) {
-            // 失去船体归属：面板还读同一个 BE，读数必须清零，不能停在上一艘船的值。
-            be.clearReadouts();
-            return;
-        }
         BlockPos cell = assemblyPos(pos);
-        if (!ship.tracksHullBlock(cell)) {
+        if (ship == null || !ship.tracksHullBlock(cell)) {
+            double voltage = StarterOutpost.voltage(server, pos, be.boundBox);
             be.clearReadouts();
+            if (voltage > 0.0D) be.updateOutput(voltage);
             return;
         }
         ShipSimulation simulation = ship.simulation();
+        long round = StarterSub.activeMaintenanceRound(server);
+        if (round >= 0 && round != be.maintenanceRound) {
+            be.maintenanceRound = round;
+            be.condition.renewWearGrace();
+            be.setChanged();
+        }
         boolean broken = be.condition.broken();
         // 供电：坏掉的机器不吃电；电压按全船电网算（和加工台同一套）。
         simulation.reportConsumer(cell, broken ? 0.0D : POWER_KW, MIN_VOLTAGE, be.boundBox);
@@ -103,32 +109,33 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
             breachSources.add(breach.pos());
         }
         be.submerged = simulation.submergedAt(cell, breachSources);
-        if (be.submerged) {
-            be.condition.damage(SUBMERGED_DECAY / 20.0D);
-        }
-        // 原作 Repairable.ShouldDeteriorate：制氧机只有 CurrFlow > 0.1（即有电）时才劣化。
-        boolean powered = voltage >= MIN_VOLTAGE;
-        if (be.condition.tick(level, !broken && powered)) {
+        double flow = be.updateOutput(voltage);
+        if (be.condition.tick(level, flow > MIN_FLOW_FOR_WEAR && !StarterSub.atFriendlyOutpost(server))) {
             be.setChanged();
         }
 
-        double fraction = be.condition.fraction();
+        simulation.reportOxygenSource(cell, flow);
+    }
+
+    private double updateOutput(double voltage) {
+        boolean broken = condition.broken();
+        double fraction = condition.fraction();
         // 原作 OxygenGenerator.Update：HasPower（Voltage >= MinVoltage）才产氧；
         // 0.25V 不能用 min(Voltage,2) 直接乘出一个"半供电"的产量。
-        double flow = (broken || !powered) ? 0.0D : ShipSimulation.O2_GENERATOR_OUTPUT
+        double flow = (broken || voltage < MIN_VOLTAGE) ? 0.0D : ShipSimulation.O2_GENERATOR_OUTPUT
                 * Math.min(voltage, 2.0D) * fraction * fraction;
-        be.lastVoltage = voltage;
-        be.lastFlow = flow;
-        simulation.reportOxygenSource(cell, flow);
+        lastVoltage = voltage;
+        lastFlow = flow;
 
         // 原作：容器里 Voltage > 0.1 才给瓶子充气。
         if (!broken && voltage > 0.1D) {
-            be.refillTanks(1.0D / 20.0D);
+            refillTanks(1.0D / 20.0D);
         }
-        if (++be.saveTicks >= SAVE_INTERVAL) {
-            be.saveTicks = 0;
-            be.setChanged();
+        if (voltage > 0.0D && ++saveTicks >= SAVE_INTERVAL) {
+            saveTicks = 0;
+            setChanged();
         }
+        return flow;
     }
 
     /** 失去船体归属时清空面板读数（面板还读同一个 BE）。 */
@@ -317,6 +324,7 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
         super.saveAdditional(tag);
         tag.put("Tanks", writeTanks());
         condition.save(tag, "Condition");
+        tag.putLong("MaintenanceRound", maintenanceRound);
         if (boundBox != null) {
             tag.putLong("PowerBox", boundBox.asLong());
         }
@@ -346,6 +354,7 @@ public class OxygenGeneratorBlockEntity extends BlockEntity
             }
         }
         condition.load(tag, "Condition");
+        maintenanceRound = tag.contains("MaintenanceRound") ? tag.getLong("MaintenanceRound") : -1L;
         boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
     }
 

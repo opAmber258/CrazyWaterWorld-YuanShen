@@ -20,7 +20,7 @@ edges:
     condition: when changing the turret block model or barrel rendering geometry
   - target: patterns/run-tests.md
     condition: when verifying the turret change beyond a compile
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 mex:
   id: mx_01M7M7HRZYXWEE1W4VEB95FRVX
   type: pattern
@@ -162,6 +162,7 @@ mex:
 - R9 模型用 GeckoLib 读取用户交付的 geo、图集和动画。底座原尺寸，地板/吊顶安装面以主格为中心预留 5×5，碰撞跟随固定底座的薄板，转动炮管不占方块。子段点击按 `CoilgunBlock.masterPos` 统一找主格。炮口从模型的偏航枢轴、俯仰枢轴、`muzzle_flash_origin` 推导。
 - 炮台绑定器可接潜望镜、装弹器、普通电池和超级电容器。相对坐标随当前装配、靠泊时的整体平移保持。VS2 装配期间跳过拆分片、掉落库存，避免重复掉落。旧原型保留就近潜望镜接管和原瞄准站。
 - 超级电容通过接线盒充电，其输出给直连电磁枪。单发成功扣 1 发和 1000/3600 kW·min，冷却 5 tick。先校验弹箱和可用的直连储能，再创建寿命 60 tick 的服务端弹体。确认开火才发枪口与后坐事件，弹体撞击后结算。
+- 普通电磁炮没有预热。协议 44 的 `TurretFirePacket` 同步扳机按下、持续和松开。电磁炮的每发冷却只由服务端确认射击后的游戏刻推进，开火请求不受客户端 HUD 冷却或滞后的弹药快照限制。原型炮塔仍沿用单发请求。
 - 潜望镜 HUD 按原作分离操控指向标和炮管准星，底部用弹箱槽及带最低门槛的实际电量条。装弹器用单槽容器和下方机械维修区。协议 41。
 
 ## 模块边界（换模型 / 2×2·3×3 时只动这些）
@@ -284,3 +285,7 @@ mex:
 - 弹道偏移：确认三处（服务端、预判、粒子）都用 `muzzlePosition()`，且用的是同一组 `aimYaw/aimPitch`。
 - 粒子看不见：先查 `assets/barotrauma/particles/turret_tracer.json` 与贴图路径，再看
   `ClientSetup.onRegisterParticleProviders` 是否注册了 `registerSpriteSet`。
+
+## 潜望镜退出后的镜头回跳
+
+- 本地退出先恢复玩家相机，再等待服务端确认释放该炮台。期间旧的占用广播只更新炮台显示，不能重新接管镜头。退出时如果仍按着使用键，松开后才允许新的右键交互。

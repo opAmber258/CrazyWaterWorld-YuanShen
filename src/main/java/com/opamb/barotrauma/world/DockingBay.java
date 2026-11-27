@@ -4,11 +4,13 @@ import com.opamb.barotrauma.block.BulkheadDoorBlock;
 import com.opamb.barotrauma.block.HatchBlock;
 import com.opamb.barotrauma.registry.ModBlocks;
 import com.opamb.barotrauma.registry.ModShipBlocks;
+import com.opamb.barotrauma.world.level.LevelParams;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LadderBlock;
 import net.minecraft.world.level.block.SlabBlock;
@@ -16,6 +18,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.function.Consumer;
 
 /**
  * 哨站与潜艇之间的对接结构（2026-11-07 按实机存档重做）。
@@ -50,6 +54,7 @@ public final class DockingBay {
     /** 气闸室内部：5 长（x -2..2）× 3 深（z -1..1）。 */
     public static final int ROOM_HALF_X = 2;
     public static final int ROOM_HALF_Z = 1;
+    private static final int ENTRANCE_ROCK_SLOPE = 8;
 
     /** 哨站外壳底层（也是站侧舱口所在层）。 */
     public static final int STATION_FLOOR_Y = OutpostBuilder.MIN_Y;
@@ -95,11 +100,12 @@ public final class DockingBay {
         }
 
         public int y(int referenceY) {
-            return referenceY + MissionInstance.stationOffsetY(x, z);
+            int campaignOffset = CampaignLevels.stationOffset(this);
+            return referenceY + (campaignOffset != 0 ? campaignOffset : MissionInstance.stationOffsetY(x, z));
         }
 
         int heightOffset(Level level) {
-            int active = MissionInstance.stationOffsetY(x, z);
+            int active = y(0);
             if (level == null || equals(MAIN) || (active != 0 && !level.isClientSide())) {
                 return active;
             }
@@ -183,6 +189,9 @@ public final class DockingBay {
     public static Site siteAt(int x, int z) {
         if (Math.abs(x) <= SITE_RADIUS && Math.abs(z) <= SITE_RADIUS) {
             return Site.MAIN;
+        }
+        if (x < 0) {
+            return CampaignLevels.nearbySite(x, z, SITE_RADIUS);
         }
         for (MissionInstance.Anchor anchor : anchorsNear(x)) {
             Site destination = new Site(anchor.x(), anchor.z());
@@ -339,7 +348,7 @@ public final class DockingBay {
         if (!inDryZone(site, point.x, point.z, localY)) {
             return false;
         }
-        if (!site.equals(Site.MAIN) && !site.hasStationBlocks(level, offset)) {
+        if (!site.equals(Site.MAIN) && !hasBerth(level, site)) {
             return false;
         }
         if (localY == SUB_HATCH_Y) {
@@ -347,6 +356,11 @@ public final class DockingBay {
                     && level.getBlockState(cell.above()).getBlock() instanceof HatchBlock;
         }
         return true;
+    }
+
+    public static boolean hasBerth(Level level, Site site) {
+        BlockPos hatch = site.at(level, 0, MID_HATCH_Y, 0);
+        return level.hasChunkAt(hatch) && level.getBlockState(hatch).getBlock() instanceof HatchBlock;
     }
 
     // ------------------------------------------------------------------
@@ -431,6 +445,61 @@ public final class DockingBay {
         placeHatch(chunk, pos, site, STATION_HATCH_Y, true);
     }
 
+    /** 航行关只有对接入口。顶盖封闭，靠泊时会切入完整站区。 */
+    static void buildEntrance(ChunkAccess chunk, Site site) {
+        buildStation(chunk, site);
+        BlockState plating = ModShipBlocks.STATION_PLATING.get().defaultBlockState();
+        for (int dx = -ROOM_HALF_X - 1; dx <= ROOM_HALF_X + 1; dx++) {
+            for (int dz = -ROOM_HALF_Z - 1; dz <= ROOM_HALF_Z + 1; dz++) {
+                set(chunk, site.x() + dx, site.y(STATION_HATCH_Y), site.z() + dz, plating);
+            }
+        }
+        set(chunk, site.x(), site.y(STATION_FLOOR_UPPER_Y), site.z(), plating);
+        placeHatch(chunk, chunk.getPos(), site, MID_HATCH_Y, false);
+        forEachEntranceRoofBlock(chunk.getPos(), site, pos -> {
+            if (chunk.getBlockState(pos).isAir()) {
+                chunk.setBlockState(pos, Blocks.STONE.defaultBlockState(), false);
+            }
+        });
+    }
+
+    private static void forEachEntranceRoofBlock(ChunkPos chunk, Site site, Consumer<BlockPos> place) {
+        int ceiling = site.y(LevelParams.BAND_CEILING_Y);
+        int cap = site.y(STATION_FLOOR_UPPER_Y);
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (int x = chunk.getMinBlockX(); x <= chunk.getMaxBlockX(); x++) {
+            int dx = Math.max(0, Math.abs(x - site.x()) - ROOM_HALF_X - 1);
+            for (int z = chunk.getMinBlockZ(); z <= chunk.getMaxBlockZ(); z++) {
+                int dz = Math.max(0, Math.abs(z - site.z()) - ROOM_HALF_Z - 1);
+                double blend = SeaTerrain.smooth(Math.hypot(dx, dz) / ENTRANCE_ROCK_SLOPE);
+                int bottom = cap + (int) Math.round((ceiling - cap) * blend);
+                for (int y = bottom; y < ceiling; y++) {
+                    place.accept(cursor.set(x, y, z));
+                }
+            }
+        }
+    }
+
+    /** Joins already-generated route entrances to their ceiling without replacing existing blocks. */
+    public static void repairEntranceRoof(ServerLevel level, Site site) {
+        if (!CampaignLevels.isEntrance(site)
+                || !level.getBlockState(site.at(0, STATION_FLOOR_UPPER_Y, 0)).is(ModShipBlocks.STATION_PLATING.get())) {
+            return;
+        }
+        int radiusX = ROOM_HALF_X + ENTRANCE_ROCK_SLOPE;
+        int radiusZ = ROOM_HALF_Z + ENTRANCE_ROCK_SLOPE;
+        for (int cx = (site.x() - radiusX) >> 4; cx <= (site.x() + radiusX) >> 4; cx++) {
+            for (int cz = (site.z() - radiusZ) >> 4; cz <= (site.z() + radiusZ) >> 4; cz++) {
+                var chunk = level.getChunk(cx, cz);
+                forEachEntranceRoofBlock(chunk.getPos(), site, pos -> {
+                    if (chunk.getBlockState(pos).isAir()) {
+                        level.setBlock(pos, Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+                    }
+                });
+            }
+        }
+    }
+
     /** 免支撑铁梯的默认状态（立在井里，不依赖墙面）。 */
     private static BlockState ironLadder() {
         return ModBlocks.IRON_LADDER.get().defaultBlockState()
@@ -456,6 +525,8 @@ public final class DockingBay {
     /** 单个站点：补齐三道舱口和两扇侧门的方块实体。 */
     public static void ensureStationHatch(ServerLevel level, Site site) {
         level.getChunk(site.x() >> 4, site.z() >> 4);
+        repairEntranceRoof(level, site);
+        StarterOutpost.repairLayout(level, site);
         ensureHatchRow(level, site, STATION_HATCH_Y);
         ensureHatchRow(level, site, MID_HATCH_Y);
         ensureHatchRow(level, site, SUB_HATCH_Y);
@@ -471,6 +542,16 @@ public final class DockingBay {
         try {
             var state = com.opamb.barotrauma.campaign.CampaignState.wallet(level);
             var round = state.round();
+            if (round.stationNode() > 0) {
+                sites.add(CampaignLevels.station(round.stationNode()));
+            }
+            if (round.connection()) {
+                if (round.isDiving()) {
+                    if (round.startHasOutpost()) sites.add(CampaignLevels.origin(round));
+                    if (round.endHasOutpost()) sites.add(CampaignLevels.destination(round));
+                }
+                return sites;
+            }
             // 抵达后仍按保存的目的站操作气闸，出发站只在航行中补齐。
             if (round.hasInstance() && round.endHasOutpost()) {
                 Site instance = new Site(round.instanceX(), round.instanceZ());
@@ -537,6 +618,7 @@ public final class DockingBay {
      * 不会重跑 worldgen。</p>
      */
     public static void repairStationShaft(ServerLevel level) {
+        StarterOutpost.repairLayout(level, Site.MAIN);
         // 修复只跑一次：之后玩家在通道放的装甲不再被删（StationRepairSavedData 标记）。
         if (StationRepairSavedData.get(level).done()) {
             return;
@@ -655,7 +737,7 @@ public final class DockingBay {
     }
 
     /** 2 格高舱壁门（侧向出口，门面朝气闸室内）。 */
-    private static void placeBulkheadDoor(ChunkAccess chunk, int x, int y, int z, Direction facing) {
+    static void placeBulkheadDoor(ChunkAccess chunk, int x, int y, int z, Direction facing) {
         if (!inChunk(chunk.getPos(), x, z)) {
             return;
         }

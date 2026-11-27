@@ -81,7 +81,7 @@ public final class ShipTemplateSpawner {
             if (be == null) {
                 continue;
             }
-            if (hasPower && be instanceof PowerConsumer consumer) {
+            if (hasPower && be instanceof PowerConnection consumer) {
                 consumer.setPowerBox(origin.offset(BlockPos.of(nbt.getLong("PowerBox"))));
                 be.setChanged();
             }

@@ -140,6 +140,10 @@ public final class ConditionComponent {
         return condition >= maxCondition - 1.0E-6D;
     }
 
+    public void renewWearGrace() {
+        graceTicks = -1L;
+    }
+
     public double decayPerSecond() {
         return decayPerSecond;
     }

@@ -165,11 +165,18 @@ public final class CampaignState extends SavedData {
 
     /** 抵达目的地：推进节点、记一轮、清空终点。 */
     public void arrive() {
-        if (round.destination() >= 0) {
-            currentNode = round.destination();
-            visited.add(currentNode);
+        finishTravel(round.destination(), false);
+    }
+
+    void finishTravel(int node, boolean station) {
+        if (node != currentNode && CampaignMap.isValid(node)) {
+            currentNode = node;
+            visited.add(node);
+            roundsCompleted++;
         }
-        roundsCompleted++;
+        if (station) {
+            round.enterStation(currentNode);
+        }
         selectedMissions = java.util.List.of();
         round.arrive(currentNode);
         // 抵达已经提交，出发前快照失效——不清掉的话 rollback() 还能撤销一次已完成的抵达。
@@ -225,12 +232,16 @@ public final class CampaignState extends SavedData {
         }
         visited.add(currentNode);
         round.load(tag.getCompound("round"));
-        var missions = tag.getList("selectedMissions", net.minecraft.nbt.Tag.TAG_STRING);
-        var ids = new java.util.ArrayList<String>();
-        for (int i = 0; i < Math.min(missions.size(), CampaignMission.LIMIT); i++) ids.add(missions.getString(i));
-        // 任务改由站务员/海图勾选、下潜时落到 MissionSavedData；这个旧字段只保留写入，
-        // 载入时不再当作有效任务源（旧档里是假的航线委托 id）。
         selectedMissions = java.util.List.of();
+        // 旧版名单可能是占位任务。新航次只恢复展示用的已勾选名单，任务仍由 MissionSavedData 持有。
+        if (round.connection() && round.isDiving()) {
+            var missions = tag.getList("selectedMissions", net.minecraft.nbt.Tag.TAG_STRING);
+            var ids = new java.util.ArrayList<String>();
+            for (int i = 0; i < Math.min(missions.size(), CampaignMission.LIMIT); i++) {
+                ids.add(missions.getString(i));
+            }
+            selectedMissions = java.util.List.copyOf(ids);
+        }
     }
 
     @Override

@@ -16,6 +16,9 @@ import java.util.function.Supplier;
  */
 public record SwimStatePacket(boolean swimMovement, boolean swimPose, long dragShipId) {
 
+    /** 即将靠泊传送。客户端须立刻清掉 VS2 自己缓存的拖拽，而非只清模组的标记。 */
+    public static final long DETACH_FOR_DOCK = -2L;
+
     public void encode(FriendlyByteBuf buf) {
         buf.writeBoolean(swimMovement);
         buf.writeBoolean(swimPose);

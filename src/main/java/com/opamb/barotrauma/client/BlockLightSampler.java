@@ -1,23 +1,16 @@
 package com.opamb.barotrauma.client;
 
+import com.opamb.barotrauma.block.BulkheadDoorBlock;
+import com.opamb.barotrauma.block.HatchBlock;
+import com.opamb.barotrauma.ship.vs.VsClientTurret;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.Vec3;
 
-/**
- * 给「完全挡光的薄板方块」补 BER 光照。
- *
- * <p>舱壁门和舱口为了不让光漏到隔壁，{@code getLightBlock} 在关闭时返回 15。
- * 代价是方块自己那一格的光照值是 0，而 GeckoLib 的 BER 只拿
- * {@code BlockEntityRenderer} 传进来的「方块所在格」光照，于是关着的门被手电筒
- * 照上去会整块全黑（相邻的普通墙面按面取空气格光照，所以正常）。</p>
- *
- * <p>这里改成取方块周围空气格的最亮值：门/舱口模型是薄的，两面都贴着空气格，
- * 取最大值就能让门和墙面亮度一致。多扫一格高度是因为舱壁门是 1×2、
- * 舱口是 3×1，光斑可能只贴着其中一段。</p>
- */
 public final class BlockLightSampler {
 
     // Colorful Lighting 用高四位标记 RGB 光图，其他位的布局也和原版不同。
@@ -33,11 +26,26 @@ public final class BlockLightSampler {
             return packedLight;
         }
         BlockPos pos = blockEntity.getBlockPos();
-        for (int dy = 0; dy <= 1; dy++) {
-            BlockPos center = pos.above(dy);
-            for (Direction direction : Direction.values()) {
-                int neighbor = LevelRenderer.getLightColor(level, center.relative(direction));
-                packedLight = brighterLight(packedLight, neighbor);
+        var state = blockEntity.getBlockState();
+        boolean hatch = state.getBlock() instanceof HatchBlock;
+        Direction facing = hatch ? state.getValue(HatchBlock.FACING) : state.getValue(BulkheadDoorBlock.FACING);
+        boolean open = hatch ? state.getValue(HatchBlock.OPEN) : state.getValue(BulkheadDoorBlock.OPEN);
+        Direction normal = hatch ? Direction.UP : facing;
+        Direction side = normal;
+        if (!open && level instanceof net.minecraft.client.multiplayer.ClientLevel clientLevel) {
+            Vec3 center = Vec3.atCenterOf(pos).add(0, hatch ? 0.4375D : 0.5D, 0);
+            Vec3 worldCenter = VsClientTurret.toWorld(clientLevel, pos, center);
+            Vec3 worldNormal = VsClientTurret.directionToWorld(clientLevel, pos, Vec3.atLowerCornerOf(normal.getNormal()));
+            Vec3 eye = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+            if (eye.subtract(worldCenter).dot(worldNormal) < 0.0D) side = side.getOpposite();
+        }
+        Direction segment = hatch ? facing.getClockWise() : Direction.UP;
+        for (int part = hatch ? -1 : 0; part <= 1; part++) {
+            BlockPos center = pos.relative(segment, part);
+            packedLight = brighterLight(packedLight, LevelRenderer.getLightColor(level, center.relative(side)));
+            if (open) {
+                packedLight = brighterLight(packedLight,
+                        LevelRenderer.getLightColor(level, center.relative(side.getOpposite())));
             }
         }
         return packedLight;

@@ -203,14 +203,11 @@ public record SonarPingPacket(BlockPos sonarPos, int menuId, int range, int mode
             }
             BlockPos target;
             if (round.endHasOutpost()) {
-                com.opamb.barotrauma.world.DockingBay.Site site =
-                        new com.opamb.barotrauma.world.DockingBay.Site(
-                                round.instanceX(), round.instanceZ());
+                var site = com.opamb.barotrauma.world.CampaignLevels.destination(round);
                 target = com.opamb.barotrauma.world.DockingBay.dockCore(
                         site, com.opamb.barotrauma.world.StarterSub.layout(level));
             } else {
-                target = new BlockPos(round.instanceX(),
-                        com.opamb.barotrauma.world.MissionInstance.destinationY(round.terrain()), round.instanceZ());
+                target = com.opamb.barotrauma.world.CampaignLevels.destinationExit(round);
             }
             var node = com.opamb.barotrauma.campaign.CampaignMap.node(round.destination());
             String label = node == null ? "目的站" : node.name();
@@ -234,9 +231,16 @@ public record SonarPingPacket(BlockPos sonarPos, int menuId, int range, int mode
      * 站点中心 + 该布局的核心偏移（新布局「儒艮号」是 +6,0，旧小艇是 +1,−3）。
      */
     private static Dock dockInfo(ServerLevel level, BlockPos coreWorld, boolean physical) {
+        if (physical) {
+            int exit = com.opamb.barotrauma.campaign.CampaignManager.exitAt(
+                    level, com.opamb.barotrauma.ship.vs.VsPilot.shipPosition());
+            if (exit >= 0) {
+                return new Dock(3, 0, com.opamb.barotrauma.campaign.CampaignMap.node(exit).name());
+            }
+        }
         com.opamb.barotrauma.world.DockingBay.Site site =
                 com.opamb.barotrauma.world.DockingBay.siteAt(coreWorld.getX(), coreWorld.getZ());
-        if (site == null) {
+        if (site == null || !com.opamb.barotrauma.world.DockingBay.hasBerth(level, site)) {
             return new Dock(0, -1, "");
         }
         BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(

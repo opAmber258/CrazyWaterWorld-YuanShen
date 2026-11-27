@@ -23,6 +23,8 @@ import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.ship.vs.VsSupport;
 import com.opamb.barotrauma.ship.water.ShipVolumeGuard;
 import com.opamb.barotrauma.sonar.SonarScan;
+import com.opamb.barotrauma.world.CampaignLevels;
+import com.opamb.barotrauma.world.DockingBay;
 import com.opamb.barotrauma.world.MissionInstance;
 import com.opamb.barotrauma.world.ModDimensions;
 import com.opamb.barotrauma.world.StarterSub;
@@ -123,7 +125,7 @@ public final class DeepSeaEvents {
                 .withStyle(ChatFormatting.GOLD));
         player.sendSystemMessage(Component.literal("▸ WASD/空格/Shift 操舵；受损船壳用焊接工具右键修复；破口会进水，别沉了")
                 .withStyle(ChatFormatting.GOLD));
-        player.sendSystemMessage(Component.literal("▸ 任务完成/打到东西后开回任务前哨站，点「对接」收船进站；深度越深海压越危险")
+        player.sendSystemMessage(Component.literal("▸ 到达目的地后靠泊进入哨站；无人航路点在出口点「驶出」。深度越深海压越危险")
                 .withStyle(ChatFormatting.GRAY));
     }
 
@@ -137,6 +139,9 @@ public final class DeepSeaEvents {
         if (deep == null) {
             BarotraumaMod.LOGGER.warn("[Barotrauma] 深海维度未加载，检查 data/barotrauma/dimension/the_deep.json");
             return false;
+        }
+        if (com.opamb.barotrauma.campaign.CampaignManager.rejoinScene(player, deep, true)) {
+            return true;
         }
         // 先造好潜艇，再把人放进舱内；否则出生点还是一片空水。
         StarterSub.ensure(deep);
@@ -1153,6 +1158,11 @@ public final class DeepSeaEvents {
             // 到达站后（AT_NODE）也要恢复；没有实例时这里会清掉上一个世界的静态路线。
             // 槽位换算/距离回退/哨站标记统一在 CampaignManager.restoreRoute 里。
             com.opamb.barotrauma.campaign.CampaignManager.restoreRoute(campaign.round());
+            var round = campaign.round();
+            if (round.isDiving() && round.connection() && round.hasInstance()) {
+                if (round.startHasOutpost()) DockingBay.repairEntranceRoof(adoptDeep, CampaignLevels.origin(round));
+                if (round.endHasOutpost()) DockingBay.repairEntranceRoof(adoptDeep, CampaignLevels.destination(round));
+            }
         }
         // P4 持久化实测（两段式）：
         //   .smoketest-persist       → 造初始潜艇 + 装配成物理船 + 损伤两格，然后正常停服存档

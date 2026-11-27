@@ -6,22 +6,19 @@
     "samplers": [
         {"name": "SceneColor"},
         {"name": "SceneDepth"},
-        {"name": "ShadowDepth"},
-        {"name": "CoilgunShadowDepth"}
+        {"name": "ShadowDepth"}
     ],
     "uniforms": [
         {"name": "SceneProjection", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]},
         {"name": "InverseProjection", "type": "matrix4x4", "count": 16, "values": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]},
         {"name": "BeamOrigin", "type": "float", "count": 4, "values": [0, 0, 0, 0]},
-        {"name": "BeamTintRange", "type": "float", "count": 4, "values": [1, 1, 1, 12]},
+        {"name": "FilledBeam", "type": "float", "count": 1, "values": [0]},
+        {"name": "BeamRange", "type": "float", "count": 1, "values": [12]},
         {"name": "BeamDirection", "type": "float", "count": 4, "values": [0, 0, -1, 0]},
-        {"name": "CoilgunShadowOrigin", "type": "float", "count": 3, "values": [0, 0, 0]},
-        {"name": "CoilgunShadowForward", "type": "float", "count": 3, "values": [0, 0, -1]},
-        {"name": "CoilgunShadowRight", "type": "float", "count": 3, "values": [1, 0, 0]},
-        {"name": "CoilgunShadowUp", "type": "float", "count": 3, "values": [0, 1, 0]},
         {"name": "PlayerHalo", "type": "float", "count": 4, "values": [0, 0, 0, 0]},
         {"name": "DeepScene", "type": "float", "count": 1, "values": [0]},
         {"name": "RemoveDarkFloor", "type": "float", "count": 1, "values": [0]},
-        {"name": "KeepDimScene", "type": "float", "count": 1, "values": [0]}
+        {"name": "KeepDimScene", "type": "float", "count": 1, "values": [0]},
+        {"name": "ScatterPass", "type": "float", "count": 1, "values": [0]}
     ]
 }

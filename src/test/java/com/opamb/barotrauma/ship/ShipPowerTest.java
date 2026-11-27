@@ -171,6 +171,62 @@ class ShipPowerTest {
     }
 
     @Test
+    void geometryRescanRetainsPowerBeforeDevicesReportAgain() {
+        ShipSimulation before = simulation(0);
+        BlockPos reactor = new BlockPos(0, 2, 0);
+        BlockPos box = new BlockPos(2, 1, 0);
+        BlockPos lamp = new BlockPos(2, 0, 0);
+        BlockPos secondLamp = new BlockPos(2, 0, 1);
+        BlockPos removedConsumer = new BlockPos(9, 0, 0);
+        before.reportReactor(reactor, 8, 3000, 20, false, false);
+        before.reportJunctionBox(box, 90);
+        before.reportConsumer(lamp, 5, 0.1, box);
+        before.reportConsumer(secondLamp, 5, 0.1, box);
+        before.reportConsumer(removedConsumer, 2, 0.1, box);
+        before.tick(0.05);
+
+        ShipSimulation rescanned = simulation(0);
+        rescanned.copySettingsFrom(before);
+        assertEquals(before.consumerVoltage(lamp), rescanned.consumerVoltage(lamp), 1.0E-6);
+        assertEquals(before.consumerVoltage(secondLamp), rescanned.consumerVoltage(secondLamp), 1.0E-6);
+        assertTrue(rescanned.consumerInfos().stream().noneMatch(info -> info.pos().equals(removedConsumer)));
+
+        rescanned.tick(0.05);
+        assertEquals(10, rescanned.report().powerDemand(), 1.0E-6);
+        assertEquals(0.8, rescanned.consumerVoltage(lamp), 1.0E-6);
+    }
+
+    @Test
+    void upstreamFailureOnlyDisconnectsItsBranchAndSurvivesRelocation() {
+        ShipSimulation sim = simulation(0);
+        BlockPos bus = new BlockPos(0, 1, 0);
+        BlockPos switchBox = new BlockPos(1, 1, 0);
+        BlockPos leaf = new BlockPos(2, 1, 0);
+        BlockPos lamp = new BlockPos(2, 0, 0);
+        BlockPos otherLamp = new BlockPos(0, 0, 0);
+        sim.reportJunctionBox(bus, 100, null);
+        sim.reportJunctionBox(switchBox, 100, bus);
+        sim.reportJunctionBox(leaf, 100, switchBox);
+        sim.reportConsumer(lamp, 5, 0.5, leaf);
+        sim.reportConsumer(otherLamp, 5, 0.5, bus);
+        sim.reportReactor(new BlockPos(0, 2, 0), 10, 3000, 20, false, false);
+        sim.tick(0.05);
+        assertEquals(10, sim.report().powerDemand(), 1e-6);
+
+        sim.reportJunctionBox(switchBox, 0, bus);
+        sim.tick(0.05);
+        assertEquals(0, sim.consumerVoltage(lamp), 1e-6);
+        assertEquals(5, sim.report().powerDemand(), 1e-6);
+        assertTrue(sim.consumerVoltage(otherLamp) >= 0.5);
+
+        sim.reportJunctionBox(switchBox, 100, bus);
+        sim.shiftReports(12, 1, -5);
+        sim.tick(0.05);
+        assertTrue(sim.consumerVoltage(lamp.offset(12, 1, -5)) >= 0.5);
+        assertEquals(10, sim.report().powerDemand(), 1e-6);
+    }
+
+    @Test
     void 设备改绑接线盒后负载跟着走() {
         ShipSimulation sim = simulation(0);
         BlockPos boxA = new BlockPos(0, 1, 0);

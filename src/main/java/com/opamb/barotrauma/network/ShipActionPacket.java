@@ -233,6 +233,9 @@ public record ShipActionPacket(BlockPos corePos, int action, int a, int b, int c
 
     /** 声纳屏"靠泊"：物理船按装配快照铺回世界；没船/不同维度由 {@code VsPilot.dock} 回报原因。 */
     private static void handleDock(ServerPlayer player, ServerLevel level) {
+        if (com.opamb.barotrauma.campaign.CampaignManager.leaveAtExit(player, level)) {
+            return;
+        }
         String message = com.opamb.barotrauma.ship.vs.VsPilot.dock(level);
         player.sendSystemMessage(Component.literal(message)
                 .withStyle(ChatFormatting.AQUA));

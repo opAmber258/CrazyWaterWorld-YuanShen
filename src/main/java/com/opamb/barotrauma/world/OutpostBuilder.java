@@ -17,7 +17,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 /**
  * 哨站（M1 版本）：一个气密的盒子建筑，内部分成前厅 / 医疗 / 补给等房间。
  *
- * <p>主站（教程哨站）保持原样；副本哨站按 slot 轮换 3 套外形/内装（小型中继站、
+ * <p>起始站有独立设施与上下层；其他哨站按 slot 轮换外形/内装（小型中继站、
  * 大型矿业站、研究站），避免每次下潜头顶都是同一栋房子。对接舱、竖井和停靠
  * 判定仍由 {@link DockingBay} 复用用户做的那套，不随变体改变。</p>
  *
@@ -100,6 +100,9 @@ public final class OutpostBuilder {
     }
 
     public static boolean intersects(ChunkPos pos, DockingBay.Site site) {
+        if (StarterOutpost.generatesAt(site)) {
+            return StarterOutpost.intersects(pos, site);
+        }
         if (site.y(0) != 0) {
             return HabitationOutpost.intersects(pos, site);
         }
@@ -133,7 +136,7 @@ public final class OutpostBuilder {
                     double dy = (y + 72) / 26.0D;
                     double dz = (z - site.z()) / 34.0D;
                     if (dx * dx + dy * dy + dz * dz < 1.0D) {
-                        chunk.setBlockState(new BlockPos(x, y, z), air, false);
+                        chunk.setBlockState(site.at(x - site.x(), y, z - site.z()), air, false);
                     }
                 }
             }
@@ -171,6 +174,10 @@ public final class OutpostBuilder {
     }
 
     public static void build(ChunkAccess chunk, DockingBay.Site site) {
+        if (StarterOutpost.generatesAt(site)) {
+            StarterOutpost.build(chunk, site);
+            return;
+        }
         if (site.y(0) != 0) {
             HabitationOutpost.build(chunk, site);
             return;
@@ -215,18 +222,24 @@ public final class OutpostBuilder {
             placeDoor(chunk, site.x(), ModDimensions.OUTPOST_SPAWN_Y, site.z() + layout.halfZ());
         }
 
-        // 任务终端已弃用：接单/交付/商店改在导航终端（船核心）上操作。
-
         // 对接通道：站内地板开洞、向下 3长×4宽×6高的垂直气密通道、底部水平对接舱口
         DockingBay.buildStation(chunk, site);
     }
 
     static boolean isDryAt(net.minecraft.world.level.Level level, DockingBay.Site site,
                            net.minecraft.world.phys.Vec3 point) {
+        if (CampaignLevels.isEntrance(site)) {
+            return false;
+        }
         int offset = site.heightOffset(level);
         if (point.y < MIN_Y + offset || point.y > MAX_Y + offset
                 || (!site.equals(DockingBay.Site.MAIN) && level != null && !site.hasStationBlocks(level, offset))) {
             return false;
+        }
+        if (StarterOutpost.isModular(level, site)) {
+            BlockPos block = BlockPos.containing(point);
+            return StarterOutpost.dryAt(block.getX() - site.x(), block.getY() - offset,
+                    block.getZ() - site.z());
         }
         if (offset != 0) {
             BlockPos block = BlockPos.containing(point);
