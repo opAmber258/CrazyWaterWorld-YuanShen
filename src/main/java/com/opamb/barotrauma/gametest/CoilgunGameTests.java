@@ -3,9 +3,12 @@ package com.opamb.barotrauma.gametest;
 import com.mojang.authlib.GameProfile;
 import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.block.CoilgunBlock;
+import com.opamb.barotrauma.block.EquipmentLayout;
+import com.opamb.barotrauma.block.EngineBlock;
 import com.opamb.barotrauma.block.TurretBlock;
 import com.opamb.barotrauma.blockentity.CoilgunLoaderBlockEntity;
 import com.opamb.barotrauma.blockentity.BatteryBlockEntity;
+import com.opamb.barotrauma.blockentity.EngineBlockEntity;
 import com.opamb.barotrauma.blockentity.PeriscopeBlockEntity;
 import com.opamb.barotrauma.blockentity.SupercapacitorBlockEntity;
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
@@ -13,6 +16,9 @@ import com.opamb.barotrauma.entity.CoilgunBolt;
 import com.opamb.barotrauma.entity.CoilgunInteractionEntity;
 import com.opamb.barotrauma.registry.ModBlocks;
 import com.opamb.barotrauma.registry.ModItems;
+import com.opamb.barotrauma.item.WrenchItem;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -22,13 +28,19 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.ClipContext;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
@@ -59,6 +71,116 @@ public final class CoilgunGameTests {
         level.destroyBlock(master.offset(2, 0, -2), false);
         helper.assertTrue(level.getBlockState(master).isAir(), "Breaking a mount section left the turret behind");
         helper.assertTrue(level.getBlockState(master.offset(-2, 0, 2)).isAir(), "Mount left an orphan section");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty_16x8x16")
+    public static void wrenchRecoversOneCoilgunFromItsOuterSection(GameTestHelper helper) {
+        BlockPos cell = new BlockPos(6, 2, 6);
+        helper.setBlock(cell.below(), Blocks.IRON_BLOCK);
+        FakePlayer player = playerAt(helper, cell.north(4));
+        ItemStack gun = new ItemStack(ModItems.COILGUN.get());
+        var context = new BlockPlaceContext(player, InteractionHand.MAIN_HAND, gun,
+                hit(helper.absolutePos(cell.below()), Direction.UP));
+        helper.assertTrue(((BlockItem) gun.getItem()).place(context).consumesAction(), "Coilgun placement rejected");
+        var level = helper.getLevel();
+        BlockPos master = helper.absolutePos(cell);
+        BlockPos rim = master.north(2);
+        player.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WRENCH.get()));
+        player.setShiftKeyDown(true);
+        player.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(rim).add(0, -0.44, 0.4));
+        Vec3 eye = player.getEyePosition();
+        var actualHit = level.clip(new ClipContext(eye, eye.add(player.getViewVector(1).scale(player.getBlockReach())),
+                ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
+        helper.assertTrue(rim.equals(actualHit.getBlockPos()) && actualHit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK,
+                "Test did not target the outer mount section: " + actualHit.getBlockPos() + " instead of " + rim);
+        var protection = new ProtectedSection(level, master.south(2));
+        MinecraftForge.EVENT_BUS.register(protection);
+        try {
+            helper.assertTrue(!WrenchItem.dismantleAt(player, rim).consumesAction(), "Wrench bypassed a protected section");
+            helper.assertTrue(level.getBlockState(master).is(ModBlocks.COILGUN.get()), "Protection allowed partial dismantle");
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(protection);
+        }
+        // The see-through reactor menu proxy must not mask the actual device behind it.
+        BlockPos proxy = rim.north();
+        level.setBlockAndUpdate(proxy, com.opamb.barotrauma.registry.ModShipBlocks.REACTOR_PROXY.get().defaultBlockState());
+        var proxyHit = level.clip(new ClipContext(eye, eye.add(player.getViewVector(1).scale(player.getBlockReach())),
+                ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
+        helper.assertTrue(proxy.equals(proxyHit.getBlockPos()), "Menu proxy did not intercept the ordinary ray");
+        helper.assertTrue(player.gameMode.useItemOn(player, level, player.getMainHandItem(),
+                InteractionHand.MAIN_HAND, proxyHit).consumesAction(), "Wrench use rejected");
+        for (BlockPos part : BlockPos.betweenClosed(master.offset(-2, 0, -2), master.offset(2, 0, 2))) {
+            helper.assertTrue(level.getBlockState(part).isAir(), "An orphan coilgun section remained");
+        }
+        helper.assertTrue(player.getInventory().countItem(ModItems.COILGUN.get()) == 1, "Expected one recovered gun");
+        helper.assertTrue(level.getBlockState(master.below()).is(Blocks.IRON_BLOCK), "Wrench removed the deck");
+        helper.assertTrue(!WrenchItem.dismantleAt(player, rim).consumesAction(), "Repeat dismantle recovered another gun");
+        helper.succeed();
+    }
+
+    public record ProtectedSection(ServerLevel level, BlockPos pos) {
+        @SubscribeEvent
+        public void protect(BlockEvent.BreakEvent event) {
+            if (event.getLevel() == level && event.getPos().equals(pos)) event.setCanceled(true);
+        }
+    }
+
+    @GameTest(template = "empty_16x8x16")
+    public static void creativeWrenchReturnsCabinetContentsWithoutAnotherCabinet(GameTestHelper helper) {
+        BlockPos master = helper.absolutePos(new BlockPos(6, 2, 6));
+        var level = helper.getLevel();
+        var cabinet = ModBlocks.MEDIUM_STEEL_CABINET.get();
+        var state = cabinet.defaultBlockState();
+        var layout = EquipmentLayout.at(master, state);
+        layout.cells().forEach((part, section) -> level.setBlockAndUpdate(part, section));
+        var container = (net.minecraft.world.Container) level.getBlockEntity(master);
+        container.setItem(0, new ItemStack(Items.DIAMOND, 7));
+        FakePlayer player = playerAt(helper, new BlockPos(6, 2, 4));
+        player.gameMode.changeGameModeForPlayer(GameType.CREATIVE);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WRENCH.get()));
+        player.setShiftKeyDown(true);
+        helper.assertTrue(player.isCreative(), "Test did not enter creative mode");
+        helper.assertTrue(WrenchItem.dismantleAt(player, master.above()).consumesAction(), "Cabinet dismantle rejected");
+        helper.assertTrue(layout.cells().keySet().stream().allMatch(pos -> level.getBlockState(pos).isAir()),
+                "An orphan cabinet section remained");
+        helper.assertTrue(player.getInventory().countItem(cabinet.asItem()) == 0, "Creative issued a cabinet");
+        helper.assertTrue(player.getInventory().countItem(Items.DIAMOND) == 7, "Cabinet contents were not recovered once");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty_16x8x16")
+    public static void survivalWrenchKeepsEngineWearAfterReinstallation(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var engine = ModBlocks.ENGINE.get();
+        BlockPos master = helper.absolutePos(new BlockPos(6, 2, 6));
+        var layout = EquipmentLayout.at(master, engine.defaultBlockState());
+        layout.cells().forEach((part, section) -> level.setBlockAndUpdate(part, section));
+        var installed = (EngineBlockEntity) level.getBlockEntity(master);
+        installed.damage(12);
+        double condition = installed.condition();
+        FakePlayer player = playerAt(helper, new BlockPos(6, 2, 4));
+        player.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
+        player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WRENCH.get()));
+        player.setShiftKeyDown(true);
+        BlockPos outer = layout.cells().keySet().stream().filter(pos -> pos.getY() > master.getY()).findFirst().orElseThrow();
+        helper.assertTrue(WrenchItem.dismantleAt(player, outer).consumesAction(), "Engine dismantle rejected");
+        helper.assertTrue(layout.cells().keySet().stream().allMatch(pos -> level.getBlockState(pos).isAir()),
+                "An orphan engine section remained");
+        helper.assertTrue(player.getInventory().countItem(engine.asItem()) == 1, "Expected one recovered engine");
+        ItemStack packed = player.getInventory().items.stream().filter(stack -> stack.is(engine.asItem())).findFirst().orElseThrow();
+        var facing = player.getDirection().getOpposite();
+        for (var part : EngineBlock.Part.values()) {
+            if (part.row() == 0 && part.layer() < 2) {
+                level.setBlockAndUpdate(EngineBlock.partPos(master, facing, part).below(), Blocks.IRON_BLOCK.defaultBlockState());
+            }
+        }
+        player.setShiftKeyDown(false);
+        var placement = new BlockPlaceContext(player, InteractionHand.MAIN_HAND, packed, hit(master.below(), Direction.UP));
+        helper.assertTrue(((BlockItem) packed.getItem()).place(placement).consumesAction(), "Recovered engine did not place");
+        var reinstalled = (EngineBlockEntity) level.getBlockEntity(master);
+        helper.assertTrue(reinstalled.condition() == condition, "Reinstalling the engine changed its condition");
         helper.succeed();
     }
 
@@ -118,8 +240,10 @@ public final class CoilgunGameTests {
         target.setPos(muzzle.x, muzzle.y - 0.25, muzzle.z + 3.0);
         level.addFreshEntity(target);
 
-        turret.fire(player);
-        turret.fire(player);
+        turret.fireInput(player, true);
+        turret.fireInput(player, false);
+        turret.fireInput(player, true);
+        turret.fireInput(player, false);
         var bolts = level.getEntitiesOfClass(CoilgunBolt.class, new AABB(muzzle, muzzle).inflate(0.5));
         helper.assertTrue(bolts.size() == 1, "Expected one bolt at the model muzzle");
         Vec3 fromSight = bolts.get(0).position().subtract(sight);
@@ -194,7 +318,17 @@ public final class CoilgunGameTests {
             BlockPos loaderPos = helper.absolutePos(loader);
             binder.useOn(new UseOnContext(player, InteractionHand.MAIN_HAND, hit(loaderPos, Direction.UP)));
             helper.assertTrue(loaderPos.equals(turret.loaderPos()), "Barrel did not bind to the loader");
-            level.destroyBlock(master, false);
+            player.gameMode.changeGameModeForPlayer(GameType.CREATIVE);
+            player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.WRENCH.get()));
+            player.setShiftKeyDown(true);
+            helper.setBlock(wall, Blocks.IRON_BLOCK);
+            helper.assertTrue(!barrel.interactAt(player, offset, InteractionHand.MAIN_HAND).consumesAction(),
+                    "Wrench dismantled a barrel through a wall");
+            helper.setBlock(wall, Blocks.AIR);
+            helper.assertTrue(barrel.interactAt(player, offset, InteractionHand.MAIN_HAND).consumesAction(),
+                    "Wrench did not accept a clear hit on the moving barrel");
+            helper.assertTrue(level.getBlockState(loaderPos).is(ModBlocks.COILGUN_LOADER.get()),
+                    "Dismantling the turret also removed its connected loader");
             helper.assertTrue(barrel.isRemoved(), "Removing the mount left its interaction entity behind");
             helper.succeed();
         });

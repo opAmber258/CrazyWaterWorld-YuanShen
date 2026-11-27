@@ -1,7 +1,11 @@
 package com.opamb.barotrauma.blockentity;
 
+import com.opamb.barotrauma.BarotraumaMod;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.PowerConnection;
 import com.opamb.barotrauma.ship.PowerGrid;
+import com.opamb.barotrauma.world.StarterOutpost;
+import com.opamb.barotrauma.world.StarterSub;
 import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
@@ -25,10 +29,12 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  *
  * <p>对应原版 {@code PowerTransfer}：电网耗电 0，只作为分线节点和故障点。
  * 通电自然衰减 0.1/s（120–720 秒宽限后），泡水通电 0.25/s；电压超过 1.7
- * 时按原作的随机过压损伤（每 tick 1% 概率，满耐久期望约 2.5/s），不是固定
- * 10/s。耐久归零后盒子失效，绑在它上面的设备拿不到电。</p>
+ * 时，每个原作 60 Hz 更新有 1% 概率触发过压损伤，满耐久期望约 2.55/s。
+ * 耐久归零后盒子失效，绑在它上面的设备拿不到电。</p>
  */
-public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget, GeoBlockEntity {
+public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget, GeoBlockEntity, PowerConnection {
+
+    private BlockPos boundBox;
 
     /** 通电自然衰减速度（/秒）。 */
     private static final double DECAY_POWERED = 0.1D;
@@ -46,9 +52,11 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
     private double condition = 100.0D;
     /** 通电自然衰减的宽限 tick 数；-1 = 还没初始化。 */
     private long graceTicks = -1L;
+    private long maintenanceRound = -1L;
     private boolean submerged;
     private double lastVoltage;
     private int overloadCooldown;
+    private long nextOvervoltageLogTick;
     /** 上次确认过的归属核心；正常 tick 直接用它，核心没了才重新搜。 */
     private BlockPos cachedCorePos;
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
@@ -66,17 +74,17 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
         // 方块船 B 的盒子不能减 A 的船坞偏移，否则 tracksHullBlock 会拒绝、设备断电。
         boolean physical = VsState.isPhysical(server, pos);
         ShipState ship = physical ? VsState.activeState() : be.resolveBlockShip(server, pos);
-        if (ship == null) {
-            return;
-        }
         BlockPos cell = physical ? VsPilot.toAssembly(pos) : pos;
-        if (!ship.tracksHullBlock(cell)) {
+        if (ship == null || !ship.tracksHullBlock(cell)) {
+            be.lastVoltage = be.broken() ? 0.0D : StarterOutpost.junctionVoltage(server, pos);
+            be.submerged = false;
             return;
         }
-        double voltage = ship.simulation().voltage();
+        double voltage = !be.broken() && ship.simulation().boxConnected(be.boundBox)
+                ? ship.simulation().voltage() : 0.0D;
         be.lastVoltage = voltage;
         boolean powered = voltage > 0.1D && !be.broken();
-        boolean atOutpost = com.opamb.barotrauma.world.StarterSub.atFriendlyOutpost(server);
+        boolean atOutpost = StarterSub.atFriendlyOutpost(server);
         // 按接线盒所在高度判泡水：舱底有积水不代表墙上的盒子被淹。
         // 连海空腔的 bodyLevel 是整块统一水位；两个低洼区只靠高处孔洞连通时，
         // 破口侧进水、另一侧仍干燥，必须按盒子所在列的实际水位判断。
@@ -88,8 +96,10 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
         be.submerged = ship.simulation().bodyIsWet(body)
                 && cell.getY() < ship.simulation().waterLevelAt(cell, breachSources);
 
-        if (be.graceTicks < 0L) {
-            be.graceTicks = 2400L + level.random.nextInt(12000);
+        long round = StarterSub.activeMaintenanceRound(server);
+        if (be.graceTicks < 0L || round >= 0 && round != be.maintenanceRound) {
+            if (round >= 0) be.maintenanceRound = round;
+            be.graceTicks = 2400L + level.random.nextInt(12001);
             be.setChanged();
         }
 
@@ -107,11 +117,23 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
             }
             // 阈值判定走 PowerGrid，别在这里再写一份比较：两边各一份的话，
             // 以后调阈值只会改到其中一处。
-            if (PowerGrid.overvoltage(voltage, OVERVOLTAGE) && !inDepartureGrace(server)) {
+            boolean departureGrace = round >= 0 && level.getGameTime() - round < 100;
+            if (PowerGrid.overvoltage(voltage, OVERVOLTAGE) && !departureGrace) {
                 if (be.overloadCooldown > 0) {
                     be.overloadCooldown--;
                 } else {
+                    double beforeOvervoltage = be.condition;
                     be.applyOvervoltage(level);
+                    long tick = level.getGameTime();
+                    if (be.condition < beforeOvervoltage && tick >= be.nextOvervoltageLogTick) {
+                        be.nextOvervoltageLogTick = tick + 100;
+                        double supply = ship.simulation().supplyKw();
+                        BarotraumaMod.LOGGER.info(
+                                "[power] 接线盒过压掉耐久 cell={} 电压={} 供电={}kW 负载={}kW 耐久={}→{}",
+                                cell.toShortString(), Math.round(voltage * 100.0D) / 100.0D,
+                                Math.round(supply), Math.round(supply / voltage),
+                                Math.round(beforeOvervoltage), Math.round(Math.max(0.0D, be.condition)));
+                    }
                 }
             }
         }
@@ -119,13 +141,7 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
         if (Math.abs(before - be.condition) > 0.001D) {
             be.setChanged();
         }
-        ship.simulation().reportJunctionBox(cell, be.condition);
-    }
-
-    private static boolean inDepartureGrace(ServerLevel level) {
-        if (!com.opamb.barotrauma.world.ModDimensions.THE_DEEP.equals(level.dimension())) return false;
-        var round = com.opamb.barotrauma.campaign.CampaignState.wallet(level).round();
-        return round.isDiving() && level.getGameTime() - round.startedAtGameTime() < 100;
+        ship.simulation().reportJunctionBox(cell, be.condition, be.boundBox);
     }
 
     private void applyOvervoltage(Level level) {
@@ -159,7 +175,7 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
         condition = Mth.clamp(condition + points, 0.0D, 100.0D);
         if (condition >= 100.0D) {
             // 原作修满后重置劣化延迟。
-            graceTicks = 2400L + (level == null ? 0 : level.random.nextInt(12000));
+            graceTicks = 2400L + (level == null ? 0 : level.random.nextInt(12001));
         }
         setChanged();
     }
@@ -245,16 +261,31 @@ public class JunctionBoxBlockEntity extends BlockEntity implements RepairTarget,
     }
 
     @Override
+    public BlockPos powerBox() {
+        return boundBox;
+    }
+
+    @Override
+    public void setPowerBox(BlockPos box) {
+        boundBox = box == null ? null : box.immutable();
+        setChanged();
+    }
+
+    @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
+        if (boundBox != null) tag.putLong("PowerBox", boundBox.asLong());
         tag.putDouble("Condition", condition);
         tag.putLong("Grace", graceTicks);
+        tag.putLong("MaintenanceRound", maintenanceRound);
     }
 
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
+        boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
         condition = tag.contains("Condition") ? tag.getDouble("Condition") : 100.0D;
         graceTicks = tag.contains("Grace") ? tag.getLong("Grace") : -1L;
+        maintenanceRound = tag.contains("MaintenanceRound") ? tag.getLong("MaintenanceRound") : -1L;
     }
 }

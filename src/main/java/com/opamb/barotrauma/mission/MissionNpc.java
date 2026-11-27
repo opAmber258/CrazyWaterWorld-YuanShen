@@ -7,6 +7,7 @@ import com.opamb.barotrauma.network.ModNetwork;
 import com.opamb.barotrauma.registry.ModEntities;
 import com.opamb.barotrauma.world.DockingBay;
 import com.opamb.barotrauma.world.MissionInstance;
+import com.opamb.barotrauma.world.StarterOutpost;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -77,7 +78,8 @@ public final class MissionNpc {
                 continue;
             }
             DockingBay.Site site = DockingBay.siteAt(player.getBlockX(), player.getBlockZ());
-            if (site == null || !MissionInstance.outpostExpected(site)) {
+            if (site == null || com.opamb.barotrauma.world.CampaignLevels.isEntrance(site)
+                    || !MissionInstance.outpostExpected(site)) {
                 continue;
             }
             ensureRole(level, site, NpcEntity.ROLE_MISSION);
@@ -98,8 +100,9 @@ public final class MissionNpc {
             }
             return;
         }
-        BlockPos spot = null;
-        if (station.getY() != SPOT_Y) {
+        BlockPos spot = StarterOutpost.staffSpot(level, site, role);
+        if (spot != null && !isStationSpot(level, spot, true)) spot = null;
+        if (spot == null && station.getY() != SPOT_Y) {
             BlockPos preferred = switch (role) {
                 case NpcEntity.ROLE_MERCHANT -> station.offset(-17, 0, 2);
                 case NpcEntity.ROLE_DOCTOR -> station.offset(17, 0, 2);

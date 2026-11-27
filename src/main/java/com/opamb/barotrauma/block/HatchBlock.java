@@ -321,6 +321,11 @@ public class HatchBlock extends BaseEntityBlock {
     }
 
     @Override
+    public VoxelShape getOcclusionShape(BlockState state, BlockGetter level, BlockPos pos) {
+        return state.getValue(OPEN) ? Shapes.empty() : Shapes.block();
+    }
+
+    @Override
     public boolean useShapeForLightOcclusion(BlockState state) {
         return !state.getValue(OPEN);
     }

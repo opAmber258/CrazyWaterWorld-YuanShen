@@ -8,15 +8,16 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-/** 客户端 → 服务端：开火。服务端校验占用者、距离和冷却后做射线命中。 */
-public record TurretFirePacket(BlockPos pos) {
+/** 原型炮塔接收单次开火，电磁炮接收扳机状态。 */
+public record TurretFirePacket(BlockPos pos, boolean held) {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
+        buf.writeBoolean(held);
     }
 
     public static TurretFirePacket decode(FriendlyByteBuf buf) {
-        return new TurretFirePacket(buf.readBlockPos());
+        return new TurretFirePacket(buf.readBlockPos(), buf.readBoolean());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {
@@ -30,7 +31,7 @@ public record TurretFirePacket(BlockPos pos) {
                 return;
             }
             if (player.level().getBlockEntity(pos) instanceof TurretBlockEntity turret) {
-                turret.fire(player);
+                turret.fireInput(player, held);
             }
         });
         context.setPacketHandled(true);

@@ -8,6 +8,9 @@ import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import com.opamb.barotrauma.ship.vs.VsSupport;
+import com.opamb.barotrauma.world.CampaignLevels;
+import com.opamb.barotrauma.world.DeepSeaChunkGenerator;
+import com.opamb.barotrauma.world.DockingBay;
 import com.opamb.barotrauma.world.ModDimensions;
 import com.opamb.barotrauma.world.MissionInstance;
 import com.opamb.barotrauma.world.StarterSub;
@@ -17,10 +20,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
-import java.util.ArrayList;
 import java.util.List;
 
-/** 航线选择到全员登船的服务端事务。副本生成/物理靠泊尚未实现。 */
+/** 战役的出航、返港和任务结算。 */
 public final class CampaignManager {
     // 只保留旧测试/诊断 API，不用于抵达判定。
     public static final double ARRIVAL_HORIZONTAL = 64, ARRIVAL_VERTICAL = 32;
@@ -52,162 +54,118 @@ public final class CampaignManager {
             sync(player);
             return false;
         }
-        var players = List.copyOf(player.server.getPlayerList().getPlayers());
-        if (players.stream().anyMatch(p -> !p.isAlive())) {
-            BarotraumaMod.LOGGER.info("[campaign] 下潜被拒绝：有玩家未复活");
-            player.sendSystemMessage(Component.translatable("campaign.barotrauma.not_ready"));
-            sync(player);
-            return false;
+        List<ServerPlayer> players = crew(deep);
+        DockingBay.Site station = currentSite(state);
+        boolean assembledHere = !VsState.active();
+        if (players.stream().anyMatch(p -> !p.isAlive())
+                || (station == null && (assembledHere || !crewAboard(deep)))
+                || (!assembledHere && station != null && !canDepartBerth(deep, station))) {
+            return departureFailed(player, "请把潜艇开回出发泊位，并让船员做好出航准备");
         }
-        // 1) 出发站 = 船现在停靠的站（第一次是主站，之后是本轮站立在副本顶部）。
-        //    离站前把对接口舱口都关上，否则装成物理船后艇顶是个洞。
-        com.opamb.barotrauma.world.DockingBay.Site originSite = currentSite(deep, state);
-        // 商店"送至潜艇"的订购货不在这里送：原作是关卡加载后
-        // （SinglePlayerCampaign.Start -> CargoManager.CreatePurchasedItems）才送进货舱；
-        // 早于船传送会把散货落在出发站（2026-11-19 存档实测：出发站留下
-        // 2 件玻璃潜水服 + 1 个装 naloxone 的金属箱）。调用点移到玩家登艇之后。
-        com.opamb.barotrauma.world.DockingBay.close(deep);
 
-        // 2) 船还是方块就先在出发站装配成 VS2 刚体；已经物理化就跳过。
-        final boolean assembledHere = !VsState.active();
+        var connection = CampaignLevels.connection(origin, destination);
+        if (!(deep.getChunkSource().getGenerator() instanceof DeepSeaChunkGenerator generator)) {
+            return departureFailed(player, "深海区块生成器不可用");
+        }
+        var level = connection.level(generator.terrainSeed(deep));
+        var anchor = CampaignLevels.anchor(level);
+        DockingBay.Site start = connection.endpoint(level, origin);
+        DockingBay.Site end = connection.endpoint(level, destination);
+        boolean startHasOutpost = CampaignLevels.hasOutpost(origin);
+        boolean endHasOutpost = CampaignLevels.hasOutpost(destination);
+        MissionInstance.preloadNear(deep, start.at(0, MissionInstance.ANCHOR_Y, 0), 2);
+        MissionInstance.preloadNear(deep, end.at(0, MissionInstance.ANCHOR_Y, 0), 1);
+        if ((startHasOutpost && !DockingBay.hasBerth(deep, start))
+                || (endHasOutpost && !DockingBay.hasBerth(deep, end))) {
+            return departureFailed(player, "航行关的对接入口未生成");
+        }
+        if (startHasOutpost) DockingBay.repairEntranceRoof(deep, start);
+        if (endHasOutpost) DockingBay.repairEntranceRoof(deep, end);
+
+        if (station != null) {
+            DockingBay.setHatchOpen(deep, station, false);
+        }
         if (assembledHere) {
-            String launch = launchStarter(deep, originSite);
+            String result = launchStarter(deep, station);
             if (!VsState.active()) {
-                player.sendSystemMessage(Component.translatable("campaign.barotrauma.launch_failed", launch));
-                sync(player);
-                return false;
+                DockingBay.setHatchOpen(deep, station, true);
+                return departureFailed(player, result);
             }
-            BarotraumaMod.LOGGER.info("[campaign] 下潜前装配物理船：{}", launch);
         }
 
-        // 3) 原作：关卡里同时有出发站和目的站，但无人航路点没有站
-        //    （Location.Type.HasOutpost）。两端的站点类型由本轮起终点决定，
-        //    先写进静态路由状态，世界生成据此决定建不建站。
-        MissionInstance.Anchor anchor = MissionInstance.anchorForRound(state.takeInstanceSlot());
-        com.opamb.barotrauma.world.DockingBay.Site destSite =
-                new com.opamb.barotrauma.world.DockingBay.Site(anchor.x(), anchor.z());
-        MapNode originNode = CampaignMap.node(state.currentNode());
-        MapNode destNode = CampaignMap.node(destination);
-        // 关卡类型：第一趟 tutorial；之后按目的节点深度 + 已完成出航数选 basic/advanced/maze。
-        // 必须在 startSite / stationExists / preload 之前写入静态配置，否则新区块会按旧地形生成。
-        int levelDifficulty = com.opamb.barotrauma.world.level.LevelSelector.difficulty(
-                destNode == null ? -62 : destNode.anchor().getY(), state.roundsCompleted());
-        long levelSeed = com.opamb.barotrauma.world.level.LevelSelector.levelSeed(
-                deep.getSeed(), anchor.slot());
-        com.opamb.barotrauma.world.level.LevelType levelType =
-                com.opamb.barotrauma.world.level.LevelSelector.connectionType(
-                        state.roundsCompleted() == 0, levelDifficulty, levelSeed);
-        com.opamb.barotrauma.world.level.TerrainTemplate terrain =
-                com.opamb.barotrauma.world.level.TerrainTemplate.forRoute(levelType, levelSeed);
-        int routeDistance = levelType.params().terrainRouteLength();
-        MissionInstance.RouteLevel routeLevel = new MissionInstance.RouteLevel(
-                anchor.slot(), levelType, levelSeed, levelDifficulty,
-                routeDistance, anchor.x(), terrain);
-        com.opamb.barotrauma.world.DockingBay.Site startSite =
-                MissionInstance.startSite(anchor, routeDistance);
-        boolean startHasOutpost = originNode != null && originNode.type() == NodeType.OUTPOST;
-        boolean endHasOutpost = destNode != null && destNode.type() == NodeType.OUTPOST;
-        // 关卡配置和哨站标记必须原子发布：新区块可能在下一 tick 就开始生成。
-        MissionInstance.publishRoute(routeLevel, anchor.slot(), startHasOutpost, endHasOutpost);
-        BarotraumaMod.LOGGER.info("[level] slot={} type={} terrain={} difficulty={} route={} start=({},{})",
-                anchor.slot(), levelType.id(), terrain.id(), levelDifficulty, routeDistance,
-                startSite.x(), startSite.z());
-        com.opamb.barotrauma.world.RoutePath path = MissionInstance.activePath();
-        if (path != null) {
-            com.opamb.barotrauma.world.RoutePath.Point mid = path.pointAt(0.5D);
-            BarotraumaMod.LOGGER.info("[level] 主航道中段=({},{},{}) 洞窟半宽={} 半高={} 侧洞环={} 洞室={}",
-                    Math.round(mid.x()), Math.round(mid.y()), Math.round(mid.z()),
-                    Math.round(mid.halfWidth()), Math.round(mid.halfHeight()),
-                    path.branches().size(), path.chambers().size());
-        }
-
-        // 旧存档里出发站那片区块已经生成过，不会再有世界生成的站：退回旧行为
-        // （目的站正下方），至少不会把船塞进岩石。新世界才会是完整的关卡。
-        boolean hasStartStation = !startHasOutpost || stationExists(deep, startSite);
-        if (startHasOutpost && !hasStartStation) {
-            BarotraumaMod.LOGGER.warn("[campaign] 出发站未生成（旧存档）：退回目的站正下方");
-        }
-        // 出发站有哨站但未生成时（旧存档），退回目的站正下方，避免把船放进岩石。
-        // 目的站无哨站时仍放在出发站正下方。
-        int destinationY = MissionInstance.destinationY(terrain);
-        Vec3 start;
-        if (hasStartStation || !endHasOutpost) {
-            start = new Vec3(startSite.x() + 0.5D, anchor.y(), startSite.z() + 0.5D);
-        } else {
-            start = new Vec3(anchor.x() + 0.5D, destinationY, anchor.z() + 0.5D);
-        }
-        int preloaded = MissionInstance.preloadNear(deep,
-                new BlockPos(startSite.x(), anchor.y(), startSite.z()), 2);
-        MissionInstance.preload(deep, anchor, endHasOutpost ? 2 : 1);
-        VsPilot.preloadShipChunks(deep);
-        Vec3 shipBefore = VsPilot.shipPosition();
-        String moved = VsPilot.teleportShipTo(deep, start);
-        if (moved != null) {
-            BarotraumaMod.LOGGER.info("[campaign] 出发站码头传送失败：{}", moved);
-            rollbackShip(deep, shipBefore, assembledHere);
-            player.sendSystemMessage(Component.translatable("campaign.barotrauma.instance_failed", moved));
-            sync(player);
-            return false;
-        }
-        BarotraumaMod.LOGGER.info("[campaign] 出发站=({},{}) 目的站=({},{})",
-                startSite.x(), startSite.z(), anchor.x(), anchor.z());
-        com.opamb.barotrauma.world.DockingBay.ensureStationHatch(deep, destSite);
-        // 传送到副本后停车：别把出发时的油门/自动驾驶带过去，船会自己开走。
-        if (VsPilot.state() != null) {
-            VsPilot.state().setThrottle(0, 0, 0);
-            VsPilot.state().setAutopilotHold(false);
-        }
+        Vec3 before = VsPilot.shipPosition();
+        Vec3 target = Vec3.atBottomCenterOf(start.at(0, MissionInstance.ANCHOR_Y, 0));
         List<Vec3> positions = VsState.boardingPositions(deep, players.size());
-        if (positions.size() != players.size()) {
-            BarotraumaMod.LOGGER.info("[campaign] 登船预检失败：support={} positions={}/{}",
-                    VsSupport.available(), positions.size(), players.size());
-            // 船已经传送过去了但没人能上船：把它送回出发站并拆回方块，别让船自己留在副本里。
-            rollbackShip(deep, shipBefore, assembledHere);
-            player.sendSystemMessage(Component.translatable("campaign.barotrauma.no_interior"));
-            sync(player);
-            return false;
+        String moveError = before == null || positions.size() != players.size()
+                ? "船内可用登船点不足" : VsPilot.checkTransfer(deep, target);
+        if (moveError == null) {
+            moveError = VsPilot.teleportShipTo(deep, target);
         }
-        BarotraumaMod.LOGGER.info("[campaign] 副本站点：slot={} 站点=({},{}) 预加载区块={}",
-                anchor.slot(), destSite.x(), destSite.z(), preloaded);
-        BarotraumaMod.LOGGER.info("[campaign] 登船预检通过：support={} positions={}",
-                VsSupport.available(), positions.size());
-        state.takeSnapshot();
+        if (moveError != null) {
+            if (assembledHere) {
+                VsPilot.dock(deep, true);
+                DockingBay.setHatchOpen(deep, station, true);
+            }
+            return departureFailed(player, moveError);
+        }
+
+        ShipState ship = VsPilot.state();
+        if (ship != null) {
+            ship.setThrottle(0, 0, 0);
+            ship.setHelm(0, 0, 0);
+            ship.setAutopilotHold(false);
+        }
         state.selectMissions(ids);
-        // 离开站点：本轮访问结束，下次靠泊站务员可以补发新任务。
-        com.opamb.barotrauma.data.MissionSavedData.get(deep).endVisit(origin);
         state.beginTravel(destination, deep.getGameTime(), startHasOutpost, endHasOutpost);
-        state.setInstance(anchor.x(), destinationY, anchor.z());
-        state.round().setLevel(levelType.id(), levelSeed, levelDifficulty,
-                routeDistance, MissionInstance.SPACING, terrain);
+        state.setInstance(anchor.x(), anchor.y(), anchor.z());
+        state.round().setLevel(level.type().id(), level.seed(), level.difficulty(),
+                level.startDistance(), MissionInstance.SPACING, level.terrain());
+        state.round().updateConnection(true);
+        restoreRoute(state.round());
+
+        Vec3 shift = target.subtract(before);
         for (int i = 0; i < players.size(); i++) {
             ServerPlayer online = players.get(i);
-            Vec3 pos = positions.get(i);
+            Vec3 pos = positions.get(i).add(shift);
             online.stopRiding();
-            online.teleportTo(deep, pos.x, pos.y, pos.z, online.getYRot(), 0);
+            online.teleportTo(deep, pos.x, pos.y, pos.z, online.getYRot(), online.getXRot());
             online.setDeltaMovement(Vec3.ZERO);
             online.fallDistance = 0;
-            BarotraumaMod.LOGGER.info("[campaign] 传送 {} -> {}", online.getGameProfile().getName(), pos);
             online.sendSystemMessage(Component.translatable("campaign.barotrauma.boarded"));
         }
-        // 商店"送至潜艇"：原作在关卡开始（SinglePlayerCampaign.Start ->
-        // CargoManager.CreatePurchasedItems）才送进货舱。这里等船传送到副本、
-        // 玩家登艇之后再送：货架按物理船快照扫，散货落在副本里的船核心附近。
-        BlockPos deliveryAnchor = com.opamb.barotrauma.ship.vs.VsPilot.corePos();
-        if (deliveryAnchor == null) {
-            deliveryAnchor = new BlockPos(destSite.x(), MissionInstance.ANCHOR_Y, destSite.z());
-        }
-        com.opamb.barotrauma.station.StoreService.deliverPendingOnDeparture(
-                deep, deliveryAnchor, players);
-        // 任务接取/装货必须等玩家进艇之后再执行：散箱是按玩家脚边 + 船核心偏移生成的，
-        // 早于传送会把箱子落在出发站（用户实测“三箱货不知道放哪去了”）。
+        com.opamb.barotrauma.data.MissionSavedData.get(deep).endVisit(origin);
+        com.opamb.barotrauma.station.StoreService.deliverPendingOnDeparture(deep, VsPilot.corePos(), players);
         if (!booked.isEmpty()) {
             com.opamb.barotrauma.mission.MissionNpc.accept(player, origin, destination, booked);
-            // 采矿任务：照原作在下潜时沿主航道岩壁放矿脉（旧存档的区块不会重生成，
-            // 只靠世界生成会出现"地图上没有矿点"）。
-            com.opamb.barotrauma.world.MineralVeins.spawnForTravel(deep, anchor, startSite, booked);
+            com.opamb.barotrauma.world.MineralVeins.spawnForTravel(
+                    deep, anchor, connection.endpoint(level, connection.first()), booked);
         }
+        BarotraumaMod.LOGGER.info("[campaign] 离港 {} → {}，关卡 {}，种子 {}，泊位 {} → {}",
+                origin, destination, level.type().id(), level.seed(), start, end);
         syncAll(player.server);
         return true;
+    }
+
+    private static boolean departureFailed(ServerPlayer player, String reason) {
+        BarotraumaMod.LOGGER.warn("[campaign] 离港失败：{}", reason);
+        player.sendSystemMessage(Component.translatable("campaign.barotrauma.instance_failed", reason));
+        sync(player);
+        return false;
+    }
+
+    private static List<ServerPlayer> crew(ServerLevel level) {
+        return level.players().stream().filter(player -> !player.isSpectator()).toList();
+    }
+
+    public static boolean crewAboard(ServerLevel level) {
+        return crew(level).stream().allMatch(player -> player.isAlive()
+                && Boolean.TRUE.equals(VsState.queryInsideCompartment(level, player.position())));
+    }
+
+    private static boolean canDepartBerth(ServerLevel level, DockingBay.Site station) {
+        Vec3 ship = VsPilot.shipPosition();
+        return ship != null && ship.distanceToSqr(Vec3.atCenterOf(
+                DockingBay.dockCore(station, StarterSub.layout(level)))) < 24.0D * 24.0D;
     }
 
     /** 海图下潜包里勾的任务 id（字符串）→ int；格式不对返回 null。 */
@@ -224,82 +182,64 @@ public final class CampaignManager {
     }
 
     /** 出发站是否已经由世界生成铺出来（旧存档的区块不会补生成）。 */
-    private static boolean stationExists(ServerLevel level,
-                                         com.opamb.barotrauma.world.DockingBay.Site site) {
-        BlockPos probe = site.at(10, -64, 0);
-        level.getChunkAt(probe);
-        return level.getBlockState(probe)
-                .is(com.opamb.barotrauma.registry.ModShipBlocks.STATION_PLATING.get());
+    private static DockingBay.Site currentSite(CampaignState state) {
+        if (!CampaignLevels.hasOutpost(state.currentNode())) {
+            return null;
+        }
+        RoundState round = state.round();
+        if (round.stationNode() >= 0) {
+            return CampaignLevels.station(round.stationNode());
+        }
+        if (round.hasInstance()) {
+            return new DockingBay.Site(round.instanceX(), round.instanceZ());
+        }
+        return CampaignLevels.station(state.currentNode());
     }
 
-    /** 船当前停靠的站：本轮副本（如果那里真有方块船）或主站。 */
-    private static com.opamb.barotrauma.world.DockingBay.Site currentSite(
-            ServerLevel deep, CampaignState state) {
-        if (state.round().hasInstance()) {
-            com.opamb.barotrauma.world.DockingBay.Site instance =
-                    new com.opamb.barotrauma.world.DockingBay.Site(
-                            state.round().instanceX(), state.round().instanceZ());
-            if (starterCorePos(deep, instance) != null) {
-                return instance;
+    /** 深海玩家从旧关卡重连时，先尝试回到当前站区或潜艇。 */
+    public static boolean rejoinScene(ServerPlayer player, ServerLevel deep, boolean force) {
+        if (player.isSpectator() || (!force && player.level() != deep)) {
+            return false;
+        }
+        RoundState round = CampaignState.get(deep).round();
+        Vec3 spawn;
+        if (round.connection()) {
+            var current = CampaignLevels.regionConnection(round.instanceX(), round.instanceZ());
+            var saved = CampaignLevels.regionConnection(player.getBlockX(), player.getBlockZ());
+            if (!force && current != null && current.equals(saved)) return false;
+            List<Vec3> positions = VsState.boardingPositions(deep, 1);
+            if (positions.isEmpty()) return false;
+            spawn = positions.get(0);
+        } else if (round.stationNode() >= 0) {
+            DockingBay.Site site = CampaignLevels.station(round.stationNode());
+            if (!force && site.equals(DockingBay.siteAt(player.getBlockX(), player.getBlockZ()))) return false;
+            Vec3 local = StarterSub.layout(deep).spawn();
+            spawn = local.add(site.x(), site.y(0), site.z());
+            BlockPos feet = BlockPos.containing(spawn);
+            deep.getChunkAt(feet);
+            if (!deep.noCollision(player, player.getBoundingBox().move(spawn.subtract(player.position())))) {
+                spawn = Vec3.atBottomCenterOf(site.at(4, -62, 3));
             }
+        } else {
+            return false;
         }
-        return com.opamb.barotrauma.world.DockingBay.Site.MAIN;
+        player.stopRiding();
+        if (com.opamb.barotrauma.ship.vs.VsSupport.available()) {
+            com.opamb.barotrauma.ship.vs.VsServerDrag.detach(player);
+        }
+        player.teleportTo(deep, spawn.x, spawn.y, spawn.z, player.getYRot(), player.getXRot());
+        player.setDeltaMovement(Vec3.ZERO);
+        player.fallDistance = 0;
+        return true;
     }
 
-    /** 下潜流程失败时把已经传过去的物理船送回出发站并拆回方块。 */
-    private static void rollbackShip(ServerLevel deep, Vec3 before, boolean assembledHere) {
-        // 只有"这次下潜刚装配出来"的船才能回滚；玩家原本就开着的船不能因为一次失败就被拆掉/挪走。
-        if (!assembledHere || before == null || !VsState.active()) {
-            return;
-        }
-        VsPilot.teleportShipTo(deep, before);
-        String docked = VsPilot.dock(deep, true);
-        BarotraumaMod.LOGGER.info("[campaign] 下潜失败回滚：{}", docked);
-    }
-
-    /** 下潜前把出发站的方块船收成 VS2 物理船；失败时返回原因，由调用方决定是否中止。 */
-    private static String launchStarter(ServerLevel deep, com.opamb.barotrauma.world.DockingBay.Site site) {
-        BlockPos corePos = starterCorePos(deep, site);
-        if (corePos == null
-                || !(deep.getBlockEntity(corePos) instanceof ShipCoreBlockEntity core)) {
-            return "找不到初始潜艇核心";
+    private static String launchStarter(ServerLevel deep, DockingBay.Site site) {
+        BlockPos pos = starterCorePos(deep, site);
+        if (pos == null || !(deep.getBlockEntity(pos) instanceof ShipCoreBlockEntity core)) {
+            return "找不到出发泊位的潜艇核心";
         }
         ShipState state = core.state() != null ? core.state() : core.rescan(deep);
-        if (state == null) {
-            return "初始潜艇状态不可用";
-        }
         return VsPilot.launch(deep, state.collectBlocks(deep), state, core.getBlockPos());
-    }
-
-    private static List<Vec3> blockBoardingPositions(ServerLevel deep, int count,
-                                                    com.opamb.barotrauma.world.DockingBay.Site site) {
-        // 只认这个站方块船的真实核心和已存在的安全舱内，绝不生成替身船。
-        BlockPos corePos = starterCorePos(deep, site);
-        if (corePos == null
-                || !(deep.getBlockEntity(corePos) instanceof com.opamb.barotrauma.blockentity.ShipCoreBlockEntity core))
-            return List.of();
-        // 核心在 originY+1；旧存档的船还在 -78。
-        int originY = corePos.getY() - 1;
-        StarterSub.Layout layout = StarterSub.layout(deep);
-        int shipX = site.x() + layout.originX;
-        int shipZ = site.z() + layout.originZ;
-        int sizeX = layout.sizeX;
-        int sizeZ = layout.sizeZ;
-        var boat = core.state() == null ? core.rescan(deep) : core.state();
-        if (boat == null || boat.compartments().isEmpty() || boat.floodRatio() > 0.001) return List.of();
-        List<Vec3> result = new ArrayList<>();
-        for (int x = shipX + 1; x < shipX + sizeX - 1; x++) {
-            for (int z = shipZ + 1; z < shipZ + sizeZ - 1; z++) {
-                BlockPos feet = new BlockPos(x, originY + 1, z);
-                if (boat.compartments().stream().noneMatch(c -> c.cells().contains(feet) && c.cells().contains(feet.above()))) continue;
-                if (!deep.getBlockState(feet).getCollisionShape(deep, feet).isEmpty()
-                        || !deep.getBlockState(feet.above()).getCollisionShape(deep, feet.above()).isEmpty()
-                        || !deep.getBlockState(feet.below()).isFaceSturdy(deep, feet.below(), net.minecraft.core.Direction.UP)) continue;
-                result.add(new Vec3(x + .5, feet.getY() + .05, z + .5));
-                if (result.size() == count) return List.copyOf(result);
-            }
-        }
-        return List.of();
     }
 
     /** 找到这个站停靠的出生潜艇核心；儒艮号只在主站，旧存档兼容 -75/-77。 */
@@ -342,7 +282,13 @@ public final class CampaignManager {
             MissionInstance.publishRoute(null, Integer.MIN_VALUE, true, true);
             return;
         }
-        int slot = MissionInstance.slotForX(round.instanceX(), round.levelSpacing());
+        var connection = round.connection() ? CampaignLevels.regionConnection(round.instanceX(), round.instanceZ()) : null;
+        if (round.connection() && connection == null) {
+            MissionInstance.publishRoute(null, Integer.MIN_VALUE, true, true);
+            return;
+        }
+        int slot = connection != null ? connection.slot()
+                : MissionInstance.slotForX(round.instanceX(), round.levelSpacing());
         com.opamb.barotrauma.world.level.LevelType type =
                 com.opamb.barotrauma.world.level.LevelType.fromId(round.levelType());
         com.opamb.barotrauma.world.level.LevelParams params = type.params();
@@ -354,87 +300,124 @@ public final class CampaignManager {
                 round.instanceX(), round.terrain());
         // AT_NODE 也恢复哨站标记：routeSlot 不随存档保存，重启后默认 true 会在无人航路点建站。
         // 关卡配置与标记一次写锁发布，生成线程不会读到"新关卡 + 旧 routeSlot"。
-        MissionInstance.publishRoute(level, slot, round.startHasOutpost(), round.endHasOutpost());
+        boolean reversed = connection != null && round.isDiving() && round.origin() == connection.second();
+        MissionInstance.publishRoute(level, slot,
+                reversed ? round.endHasOutpost() : round.startHasOutpost(),
+                reversed ? round.startHasOutpost() : round.endHasOutpost());
     }
 
-    /**
-     * 每 server tick：无人航路点目的地没有站，靠近目的坐标就算抵达
-     * （原作无人地点的 AtEndExit 近似）。有目的站时仍由靠泊触发。
-     */
     public static void tick(MinecraftServer server) {
         ServerLevel deep = server.getLevel(ModDimensions.THE_DEEP);
-        if (deep == null) {
-            return;
-        }
+        if (deep == null) return;
         CampaignState state = CampaignState.wallet(deep);
-        var round = state.round();
-        // 读档后静态关卡配置可能没设上：从 RoundState 重放（必须在新区块生成前）。
-        // 到达站后（AT_NODE）也要恢复：站体和码头竖井依赖关卡剖面，不能退回全局地形。
+        RoundState round = state.round();
         restoreRoute(round);
-        if (!round.hasInstance()) {
-            return;
+        // 在途旧存档仍可抵达以前生成的无人出口。
+        if (!round.connection() && round.isDiving() && !round.endHasOutpost()
+                && exitAt(deep, VsPilot.shipPosition()) >= 0) {
+            finishTravel(deep, state, round.destination(), false);
         }
-        if (round.phase() != RoundPhase.DIVING) {
-            return;
-        }
-        if (round.endHasOutpost()) {
-            return; // 有目的站：靠泊由 VsPilot.dock → onDocked 触发
-        }
-        Vec3 ship = VsPilot.shipPosition();
-        if (ship == null) {
-            return;
-        }
-        double dx = ship.x - round.instanceX();
-        double dy = ship.y - MissionInstance.destinationY(round.terrain());
-        double dz = ship.z - round.instanceZ();
-        if (dx * dx + dy * dy + dz * dz > 32.0D * 32.0D) {
-            return;
-        }
-        BarotraumaMod.LOGGER.info("[campaign] 无人航路点：靠近目的坐标，抵达结算");
-        settleArrival(deep, state);
-        syncAll(server);
-        server.saveEverything(false, false, true);
     }
 
-    /** 管理员调试：直接推进到目的地并自动存档。 */
+    /** 在无人端点显示结束航程按钮。返回值为即将进入的海图节点。 */
+    public static int exitAt(ServerLevel deep, Vec3 ship) {
+        if (ship == null || !deep.dimension().equals(ModDimensions.THE_DEEP)) return -1;
+        RoundState round = CampaignState.get(deep).round();
+        if (!round.isDiving() || !round.hasInstance() || MissionInstance.routeLevel() == null) return -1;
+        if (!round.endHasOutpost()
+                && ship.distanceToSqr(Vec3.atCenterOf(CampaignLevels.destinationExit(round))) <= 32 * 32) {
+            return round.destination();
+        }
+        if (round.connection() && !round.startHasOutpost()) {
+            DockingBay.Site start = CampaignLevels.origin(round);
+            if (ship.distanceToSqr(Vec3.atCenterOf(start.at(0, MissionInstance.ANCHOR_Y, 0))) <= 32 * 32) {
+                return round.origin();
+            }
+        }
+        return -1;
+    }
+
+    public static boolean leaveAtExit(ServerPlayer player, ServerLevel deep) {
+        int node = exitAt(deep, VsPilot.shipPosition());
+        if (node < 0) return false;
+        if (!crewAboard(deep)) {
+            player.sendSystemMessage(Component.translatable("campaign.barotrauma.not_ready"));
+            return true;
+        }
+        finishTravel(deep, CampaignState.get(deep), node, false);
+        return true;
+    }
+
+    /** 管理员结算只适用于无需转场的旧存档或已经到出口的航次。 */
     public static boolean forceArrive(MinecraftServer server) {
         ServerLevel deep = server.getLevel(ModDimensions.THE_DEEP);
         if (deep == null) return false;
         CampaignState state = CampaignState.wallet(deep);
-        if (state.round().phase() != RoundPhase.DIVING) return false;
-        settleArrival(deep, state);
-        syncAll(server);
-        server.saveEverything(false, false, true);
+        if (!state.round().isDiving() || (state.round().connection()
+                && exitAt(deep, VsPilot.shipPosition()) != state.round().destination())) {
+            return false;
+        }
+        finishTravel(deep, state, state.round().destination(), false);
         return true;
     }
 
-    /** 物理船在实际哨站靠泊成功：正在出勤就当作抵达，推进一轮。 */
-    public static void onDocked(ServerLevel deep, com.opamb.barotrauma.world.DockingBay.Site site) {
+    private static int dockingNode(RoundState round, DockingBay.Site approach) {
+        if (!round.isDiving() || !round.hasInstance() || MissionInstance.routeLevel() == null) return -1;
+        if (round.endHasOutpost() && CampaignLevels.destination(round).equals(approach)) return round.destination();
+        if (round.startHasOutpost() && CampaignLevels.origin(round).equals(approach)) return round.origin();
+        return -1;
+    }
+
+    /** 根据航行关对接的入口确定实际落位的独立站区。 */
+    public static DockingBay.Site transferDock(ServerLevel deep, DockingBay.Site approach) {
+        if (!deep.dimension().equals(ModDimensions.THE_DEEP)) return approach;
+        int node = dockingNode(CampaignState.get(deep).round(), approach);
+        return node >= 0 ? CampaignLevels.station(node) : approach;
+    }
+
+    public static void onDocked(ServerLevel deep, DockingBay.Site approach, DockingBay.Site berth) {
+        if (!deep.dimension().equals(ModDimensions.THE_DEEP)) return;
         CampaignState state = CampaignState.wallet(deep);
-        var round = state.round();
-        // 只有"本轮出勤的目标副本站"才算抵达；出发站/路上经过的站靠泊不能推进战役节点。
-        if (round.phase() != RoundPhase.DIVING || !round.hasInstance()
-                || site.x() != round.instanceX() || site.z() != round.instanceZ()) {
-            return;
+        int node = dockingNode(state.round(), approach);
+        if (node >= 0 && berth.equals(CampaignLevels.station(node))) {
+            finishTravel(deep, state, node, true);
         }
-        settleArrival(deep, state);
+    }
+
+    private static void finishTravel(ServerLevel deep, CampaignState state, int node, boolean atStation) {
+        RoundState round = state.round();
+        BlockPos berth = atStation ? DockingBay.dockCore(CampaignLevels.station(node), StarterSub.layout(deep)) : null;
+        if (node == round.destination()) {
+            settleMissions(deep, state, node, berth);
+        } else {
+            abandonRouteMissions(deep, round.destination(), berth);
+        }
+        if (!atStation && VsPilot.state() != null && VsPilot.shipPosition() != null) {
+            VsPilot.state().setHelm(0, 0, 0);
+            VsPilot.state().holdAt(VsPilot.shipPosition());
+        }
+        BarotraumaMod.LOGGER.info("[campaign] 结束航程 {} → {}，进入节点 {}（站区={}）",
+                round.origin(), round.destination(), node, atStation);
+        state.finishTravel(node, atStation);
+        restoreRoute(round);
+        com.opamb.barotrauma.data.MissionSavedData.get(deep).resetFailed();
+        for (ServerPlayer online : deep.players()) {
+            ModNetwork.sendToPlayer(online,
+                    com.opamb.barotrauma.network.MissionStatePacket.build(online, deep));
+        }
         syncAll(deep.getServer());
         deep.getServer().saveEverything(false, false, true);
     }
 
-    /** 抵达结算：先结算这一趟的全部任务，再推节点、记一轮、把超时失败的任务放回池子。 */
-    private static void settleArrival(ServerLevel deep, CampaignState state) {
-        settleMissions(deep, state, state.round().destination());
-        state.arrive();
-        int resetFailed = com.opamb.barotrauma.data.MissionSavedData.get(deep).resetFailed();
-        if (resetFailed > 0) {
-            BarotraumaMod.LOGGER.info("[campaign] 抵达目的地，重置 {} 条失败任务", resetFailed);
-        }
-        // 任务包按“当前站”下发报价：必须等节点推进/失败重置之后再同步，
-        // 否则客户端拿到的是出发站的报价，到站后海图会缺任务。
-        for (ServerPlayer online : deep.getServer().getPlayerList().getPlayers()) {
-            ModNetwork.sendToPlayer(online,
-                    com.opamb.barotrauma.network.MissionStatePacket.build(online, deep));
+    private static void abandonRouteMissions(ServerLevel deep, int destination, BlockPos berth) {
+        var data = com.opamb.barotrauma.data.MissionSavedData.get(deep);
+        for (var owner : data.playersWithActiveMissions()) {
+            ServerPlayer player = deep.getServer().getPlayerList().getPlayer(owner);
+            for (var mission : data.activeMissions(owner)) {
+                if (mission.destinationNode() != destination) continue;
+                clearCargo(deep, player, mission, berth);
+                data.failMission(mission);
+            }
         }
     }
 
@@ -452,7 +435,7 @@ public final class CampaignManager {
      *
      * <p>无论成败都清掉任务货（原作任务结束会移除所有货物）。</p>
      */
-    private static void settleMissions(ServerLevel deep, CampaignState wallet, int arrivedNode) {
+    private static void settleMissions(ServerLevel deep, CampaignState wallet, int arrivedNode, BlockPos berth) {
         com.opamb.barotrauma.data.MissionSavedData data =
                 com.opamb.barotrauma.data.MissionSavedData.get(deep);
         java.util.Set<java.util.UUID> holders =
@@ -478,11 +461,7 @@ public final class CampaignManager {
                 if (mission.isOverdue(deep.getGameTime())) {
                     data.failMission(mission);
                     if (cargo) {
-                        if (player != null) {
-                            com.opamb.barotrauma.mission.MissionCargo.clear(deep, player, mission);
-                        } else {
-                            com.opamb.barotrauma.mission.MissionCargo.clearShip(deep, mission);
-                        }
+                        clearCargo(deep, player, mission, berth);
                     }
                     if (player != null) {
                         player.sendSystemMessage(Component.literal(
@@ -492,15 +471,16 @@ public final class CampaignManager {
                     continue;
                 }
                 if (player == null) {
-                    settleOffline(deep, wallet, data, owner, mission, cargo);
+                    settleOffline(deep, wallet, data, owner, mission, cargo, berth);
                     continue;
                 }
                 int payout;
                 String detail;
                 boolean ok;
                 if (cargo) {
-                    int delivered = com.opamb.barotrauma.mission.MissionCargo.countDelivered(
-                            deep, player, mission);
+                    int delivered = berth == null
+                            ? com.opamb.barotrauma.mission.MissionCargo.countDelivered(deep, player, mission)
+                            : com.opamb.barotrauma.mission.MissionCargo.countAtBerth(deep, berth, mission, true);
                     ok = mission.cargoTotal() > 0
                             && com.opamb.barotrauma.mission.MissionCargo.deliveredEnough(
                             mission, delivered);
@@ -542,7 +522,7 @@ public final class CampaignManager {
                             .withStyle(net.minecraft.ChatFormatting.RED));
                 }
                 if (cargo) {
-                    com.opamb.barotrauma.mission.MissionCargo.clear(deep, player, mission);
+                    clearCargo(deep, player, mission, berth);
                 }
             }
         }
@@ -553,19 +533,20 @@ public final class CampaignManager {
                                       com.opamb.barotrauma.data.MissionSavedData data,
                                       java.util.UUID owner,
                                       com.opamb.barotrauma.mission.Mission mission,
-                                      boolean cargo) {
+                                      boolean cargo, BlockPos berth) {
         boolean ok;
         int payout;
         String detail;
         if (cargo) {
-            int delivered = com.opamb.barotrauma.mission.MissionCargo.countDeliveredOffline(
-                    deep, mission);
+            int delivered = berth == null
+                    ? com.opamb.barotrauma.mission.MissionCargo.countDeliveredOffline(deep, mission)
+                    : com.opamb.barotrauma.mission.MissionCargo.countAtBerth(deep, berth, mission, false);
             ok = mission.cargoTotal() > 0
                     && com.opamb.barotrauma.mission.MissionCargo.deliveredEnough(
                     mission, delivered);
             payout = mission.cargoPayout();
             detail = "货物 " + delivered + "/" + mission.cargoTotal() + " 箱";
-            com.opamb.barotrauma.mission.MissionCargo.clearShip(deep, mission);
+            clearCargo(deep, null, mission, berth);
         } else if (mission.type == com.opamb.barotrauma.mission.MissionType.SALVAGE) {
             ok = false;
             payout = 0;
@@ -590,6 +571,17 @@ public final class CampaignManager {
                 owner, mission.id, ok, detail);
     }
 
+    private static void clearCargo(ServerLevel level, ServerPlayer owner,
+                                   com.opamb.barotrauma.mission.Mission mission, BlockPos berth) {
+        if (berth != null) {
+            com.opamb.barotrauma.mission.MissionCargo.clearAtBerth(level, berth, mission, owner != null);
+        } else if (owner != null) {
+            com.opamb.barotrauma.mission.MissionCargo.clear(level, owner, mission);
+        } else {
+            com.opamb.barotrauma.mission.MissionCargo.clearShip(level, mission);
+        }
+    }
+
     /** 交付打捞：优先从背包扣一个黑匣子，其次装备背包；扣到返回 true。 */
     private static boolean consumeBlackBox(ServerPlayer player) {
         net.minecraft.world.item.Item blackBox =
@@ -605,9 +597,10 @@ public final class CampaignManager {
     /** 仅恢复战役核心数据，绝非船/玩家/物品的完整回档。 */
     public static boolean failAndRollback(ServerLevel level) {
         CampaignState state = CampaignState.wallet(level);
-        if (state.round().phase() != RoundPhase.DIVING || !state.hasSnapshot()) return false;
+        if (!state.round().isDiving() || state.round().connection() || !state.hasSnapshot()) return false;
         state.failRound();
         boolean restored = state.rollback();
+        restoreRoute(state.round());
         syncAll(level.getServer());
         return restored;
     }

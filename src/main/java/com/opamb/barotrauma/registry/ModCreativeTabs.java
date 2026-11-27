@@ -64,6 +64,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.LAMP.get());
                         output.accept(ModItems.EMERGENCY_LIGHT.get());
                         output.accept(ModItems.FLUORESCENT_LIGHT.get());
+                        output.accept(ModItems.FLUORESCENT_LIGHT_L01.get());
+                        output.accept(ModItems.FLUORESCENT_LIGHT_L02.get());
                         output.accept(ModItems.MEDIUM_STEEL_CABINET.get());
                         output.accept(ModItems.MEDIUM_WINDOWED_STEEL_CABINET.get());
                         output.accept(ModItems.CRATE_SHELF.get());

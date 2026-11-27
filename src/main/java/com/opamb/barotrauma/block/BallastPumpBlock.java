@@ -122,6 +122,10 @@ public class BallastPumpBlock extends Block implements EntityBlock {
         return pos.relative(axis, -(part.column() - 1)).below(part.row());
     }
 
+    public static BlockPos partPos(BlockPos master, Direction facing, Part part) {
+        return master.relative(facing.getClockWise(), part.column() - 1).above(part.row());
+    }
+
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Direction face = context.getClickedFace();
@@ -205,9 +209,9 @@ public class BallastPumpBlock extends Block implements EntityBlock {
             REMOVING.set(Boolean.TRUE);
             try {
                 BlockPos master = masterPos(pos, state);
-                Direction axis = state.getValue(FACING).getClockWise();
+                Direction facing = state.getValue(FACING);
                 for (Part part : Part.values()) {
-                    BlockPos partPos = master.relative(axis, part.column() - 1).above(part.row());
+                    BlockPos partPos = partPos(master, facing, part);
                     if (!partPos.equals(pos) && level.getBlockState(partPos).getBlock() == this) {
                         level.removeBlock(partPos, false);
                     }

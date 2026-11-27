@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.network;
 
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.item.WrenchItem;
 import com.opamb.barotrauma.ship.vs.VsPilot;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
@@ -57,6 +58,10 @@ public record ShipUseBlockPacket(BlockPos yardPos, Direction face, InteractionHa
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
             if (player == null || player.isSpectator() || !(player.level() instanceof ServerLevel level)) {
+                return;
+            }
+            if (WrenchItem.isDismantling(player, message.hand)) {
+                WrenchItem.dismantleBlock(player, message.yardPos);
                 return;
             }
             if (!VsState.active() || !VsPilot.isYardBlock(message.yardPos)) {

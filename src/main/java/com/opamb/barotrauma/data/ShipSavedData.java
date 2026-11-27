@@ -41,7 +41,7 @@ public final class ShipSavedData extends SavedData {
     private boolean starterClaimed;
     /**
      * 出生潜艇布局版本：0=老 9×5×15 小艇，1=旧儒艮号（17×9×5），
-     * 2=新儒艮号蓝图 {@code dugong_custom_20261117}（35×14×13）。
+     * 2=儒艮号（带倒装炮的初始模板和旧版儒艮共用泊位布局）。
      *
      * <p>旧存档只有布尔 {@code starterLayoutNew}，读档时迁移成 1。</p>
      */

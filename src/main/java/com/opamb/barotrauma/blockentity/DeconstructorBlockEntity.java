@@ -6,6 +6,7 @@ import com.opamb.barotrauma.fabricator.FabricatorData;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.ship.ConditionComponent;
 import com.opamb.barotrauma.ship.PowerConsumer;
+import com.opamb.barotrauma.world.StarterOutpost;
 import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipCores;
 import com.opamb.barotrauma.ship.ShipState;
@@ -92,17 +93,13 @@ public class DeconstructorBlockEntity extends BlockEntity
             return;
         }
         ShipState ship = be.resolveShip(server, pos);
-        if (ship == null) {
-            be.powered = false;
-            be.powerAvailable = false;
-            be.lastVoltage = 0.0D;
-            if (be.working) {
+        BlockPos cell = assemblyPos(server, pos);
+        if (ship == null || !ship.tracksHullBlock(cell)) {
+            double voltage = StarterOutpost.voltage(server, pos, be.boundBox);
+            if (ship == null && voltage == 0.0D && be.working) {
                 be.stopWorking(server, pos, state);
             }
-            return;
-        }
-        BlockPos cell = assemblyPos(server, pos);
-        if (!ship.tracksHullBlock(cell)) {
+            be.advance(server, pos, state, voltage);
             return;
         }
         // 机器格本身是实心，bodyOf(自己) 恒为 -1；任一相邻舱室格进水就算泡水。
@@ -115,22 +112,23 @@ public class DeconstructorBlockEntity extends BlockEntity
             be.condition.damage(SUBMERGED_DECAY / 20.0D);
             be.setChanged();
         }
-        if (be.condition.broken() && be.working) {
-            be.stopWorking(server, pos, state);
-        }
         // 空转也上报（需求 0），面板才能显示"现在有没有电"。
-        double demand = be.working ? POWER_KW * be.condition.powerPenalty() : 0.0D;
-        ship.simulation().reportConsumer(cell, demand, MIN_VOLTAGE, be.boundBox);
-        be.lastVoltage = ship.simulation().consumerVoltage(cell);
-        be.powerAvailable = be.lastVoltage >= MIN_VOLTAGE;
-        be.powered = be.working && be.powerAvailable;
-        if (!be.working || !be.powered) {
+        ship.simulation().reportConsumer(cell, be.powerDemandKw(), MIN_VOLTAGE, be.boundBox);
+        be.advance(server, pos, state, ship.simulation().consumerVoltage(cell));
+    }
+
+    private void advance(ServerLevel level, BlockPos pos, BlockState state, double voltage) {
+        if (condition.broken() && working) stopWorking(level, pos, state);
+        lastVoltage = voltage;
+        powerAvailable = voltage >= MIN_VOLTAGE;
+        powered = working && powerAvailable;
+        if (!powered) {
             return;
         }
-        be.progressSeconds += 1.0D / 20.0D;
-        be.setChanged();
-        if (be.progressSeconds >= be.durationSeconds) {
-            be.finish(server, pos, state);
+        progressSeconds += 1.0D / 20.0D;
+        setChanged();
+        if (progressSeconds >= durationSeconds) {
+            finish(level, pos, state);
         }
     }
 
@@ -302,7 +300,7 @@ public class DeconstructorBlockEntity extends BlockEntity
 
     @Override
     public double powerDemandKw() {
-        return working ? POWER_KW : 0.0D;
+        return working && !condition.broken() ? POWER_KW * condition.powerPenalty() : 0.0D;
     }
 
     @Override

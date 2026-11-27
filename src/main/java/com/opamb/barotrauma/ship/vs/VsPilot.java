@@ -358,6 +358,24 @@ public final class VsPilot {
         }
     }
 
+    /** 检查平移后的每个船体格，避免把物理船传进关卡岩壁。 */
+    @Nullable
+    public static String checkTransfer(ServerLevel level, Vec3 target) {
+        Vec3 before = shipPosition();
+        if (before == null || lastLevel != level || snapshot.isEmpty()) {
+            return "无法取得当前潜艇的位置和船体";
+        }
+        Vec3 shift = target.subtract(before);
+        for (BlockPos block : snapshot.keySet()) {
+            BlockPos dest = BlockPos.containing(toWorld(block).add(shift));
+            if (!level.isInWorldBounds(dest) || !level.getWorldBorder().isWithinBounds(dest)
+                    || !level.getBlockState(dest).getCollisionShape(level, dest).isEmpty()) {
+                return "目的地船体净空不足：" + dest.toShortString();
+            }
+        }
+        return null;
+    }
+
     /**
      * 把物理船传送到同一维度的目标坐标；成功返回 null，失败返回原因。
      *
@@ -394,8 +412,7 @@ public final class VsPilot {
                 for (net.minecraft.world.entity.item.ItemEntity item
                         : level.getEntitiesOfClass(
                                 net.minecraft.world.entity.item.ItemEntity.class, area)) {
-                    if (!item.getPersistentData().getBoolean(
-                            com.opamb.barotrauma.mission.MissionCargo.TAG_PINNED)) {
+                    if (!isInsideInterior(level, item.position())) {
                         continue;
                     }
                     carried.add(item);
@@ -417,7 +434,7 @@ public final class VsPilot {
                     item.setDeltaMovement(Vec3.ZERO);
                     moved++;
                 }
-                LOGGER.info("[vs] 传送时随船搬走钉住的散货 {} 件", moved);
+                LOGGER.info("[vs] 传送时随船搬走舱内散货 {} 件", moved);
             }
             LOGGER.info("[vs] 物理船传送：{} -> {}（船坞区块已预加载）", from, target);
             return null;
@@ -644,6 +661,12 @@ public final class VsPilot {
         }
     }
 
+    @Nullable
+    public static Vec3 worldToAssemblyPoint(ServerLevel level, Vec3 point) {
+        double[] local = toAssemblyLocal(level, point);
+        return local == null ? null : new Vec3(local[0], local[1], local[2]);
+    }
+
     /**
      * 物理船上新放的方块写进还原快照（装配坐标）。
      *
@@ -664,6 +687,35 @@ public final class VsPilot {
             snapshot = new java.util.HashMap<>(snapshot);
         }
         snapshot.put(cell.immutable(), level.getBlockState(pos));
+    }
+
+    /** Retire dismantled cells before a dock or save can restore them from the old snapshot. */
+    public static void recordDismantledEquipment(ServerLevel level, Map<BlockPos, BlockState> cells) {
+        if (ship == null || state == null || lastLevel != level || yardOffsetX == Integer.MIN_VALUE) return;
+        List<BlockPos> openings = new ArrayList<>();
+        for (var entry : cells.entrySet()) {
+            BlockPos yard = entry.getKey();
+            if (level.getBlockState(yard).is(entry.getValue().getBlock())) continue;
+            BlockPos assembly = toAssembly(yard);
+            snapshot.remove(assembly);
+            if (!pendingBlockEntityTags.isEmpty()) pendingBlockEntityTags.remove(assembly);
+            if (ModShipBlocks.sealsHull(entry.getValue())) openings.add(assembly);
+            if (assembly.equals(reactorAnchor)) {
+                clearProxy(level, reactorProxyPos, ModShipBlocks.REACTOR_PROXY.get());
+                reactorProxyPos = null;
+                reactorAnchor = findReactorAnchor(snapshot);
+            }
+            if (assembly.equals(engineAnchor)) {
+                clearProxy(level, engineProxyPos, ModShipBlocks.ENGINE_PROXY.get());
+                engineProxyPos = null;
+                engineAnchor = findEngineAnchor(snapshot);
+            }
+            if (pumpAnchors.contains(assembly)) {
+                clearProxy(level, pumpProxyByAnchor.get(assembly), ModShipBlocks.PUMP_PROXY.get());
+                pumpAnchors = findPumpAnchors(snapshot);
+            }
+        }
+        rebuildGeometry(level, openings);
     }
 
     /** 这个世界坐标是否真的在这艘船的舱内（装配坐标落进舱室/连海空腔格）。
@@ -2568,6 +2620,13 @@ public final class VsPilot {
     }
 
     /** 撤掉交互锚点（拆船 / 船丢了的时候）。 */
+    private static boolean isOwnProxy(BlockPos pos, BlockState block) {
+        if (block.is(ModShipBlocks.SONAR_PROXY.get())) return pos.equals(proxyPos);
+        if (block.is(ModShipBlocks.REACTOR_PROXY.get())) return pos.equals(reactorProxyPos);
+        if (block.is(ModShipBlocks.ENGINE_PROXY.get())) return pos.equals(engineProxyPos);
+        return block.is(ModShipBlocks.PUMP_PROXY.get()) && pumpProxyByAnchor.containsValue(pos);
+    }
+
     private static void removeProxy(ServerLevel level) {
         if (level != null) {
             if (proxyPos != null && level.getBlockState(proxyPos).is(ModShipBlocks.SONAR_PROXY.get())) {
@@ -3141,19 +3200,14 @@ public final class VsPilot {
                     oldCoreWorld.x + 48.0D, oldCoreWorld.y + 48.0D, oldCoreWorld.z + 48.0D);
             for (net.minecraft.world.entity.item.ItemEntity item
                     : level.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area)) {
-                if (item.getPersistentData().getBoolean(
-                        com.opamb.barotrauma.mission.MissionCargo.TAG_PINNED)
-                        && isInsideInterior(level, item.position())) {
+                if (isInsideInterior(level, item.position())) {
                     pinnedCargo.add(item);
                 }
             }
         }
-        int snapX = 0;
-        int snapY = 0;
-        int snapZ = 0;
-
         // 0) 靠泊判定：必须把船开到某个哨站对接口附近；靠泊时吸附到码头标准位。
         com.opamb.barotrauma.world.DockingBay.Site dockSite = null;
+        com.opamb.barotrauma.world.DockingBay.Site berth = null;
         if (!force) {
             BlockPos currentCore = oldCore == null ? null : oldCore.offset(dx, dy, dz);
             if (currentCore == null || oldCoreWorld == null) {
@@ -3163,7 +3217,7 @@ public final class VsPilot {
             // “未旋转核心 + 平移”与真实位置能差 2·cu，实际已经贴到对接口也会被判太远。
             BlockPos checkCore = BlockPos.containing(oldCoreWorld);
             dockSite = com.opamb.barotrauma.world.DockingBay.siteAt(checkCore.getX(), checkCore.getZ());
-            if (dockSite == null) {
+            if (dockSite == null || !com.opamb.barotrauma.world.DockingBay.hasBerth(level, dockSite)) {
                 return "离哨站太远：把船开到哨站对接口附近再靠泊";
             }
             BlockPos dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(
@@ -3175,21 +3229,48 @@ public final class VsPilot {
                         "离对接口太远（水平 %.1f 格 / 高度差 %d 格），开到对接口 16 格内再靠泊",
                         horizontal, Math.abs(checkCore.getY() - dockCore.getY()));
             }
-            // 吸附位移仍按“未旋转的旧核心 + 位移 = 码头核心”算：铺回的方块是
-            // 装配快照、偏航不参与，这样拆完方块才正好落在 dockCore。
-            snapX = dockCore.getX() - currentCore.getX();
-            snapY = dockCore.getY() - currentCore.getY();
-            snapZ = dockCore.getZ() - currentCore.getZ();
-            dx += snapX;
-            dy += snapY;
-            dz += snapZ;
-            LOGGER.info("[vs] 靠泊吸附：站点=({},{}) 位移=({},{},{})", dockSite.x(), dockSite.z(), dx, dy, dz);
+            berth = com.opamb.barotrauma.campaign.CampaignManager.transferDock(level, dockSite);
+            if (!berth.equals(dockSite)) {
+                if (!com.opamb.barotrauma.campaign.CampaignManager.crewAboard(level)) {
+                    return "还有船员未登艇";
+                }
+                com.opamb.barotrauma.world.MissionInstance.preloadNear(level, berth.at(0, -72, 0), 2);
+                com.opamb.barotrauma.world.DockingBay.ensureStationHatch(level, berth);
+                if (!com.opamb.barotrauma.world.DockingBay.hasBerth(level, berth)) {
+                    return "站区的对接设施未就绪";
+                }
+                dockCore = com.opamb.barotrauma.world.DockingBay.dockCore(
+                        berth, StarterSub.layout(level));
+            } else if (com.opamb.barotrauma.world.CampaignLevels.isEntrance(dockSite)) {
+                return "这个入口不属于当前航次";
+            }
+            dx = dockCore.getX() - oldCore.getX();
+            dy = dockCore.getY() - oldCore.getY();
+            dz = dockCore.getZ() - oldCore.getZ();
+
+            // 先核对完整船体的落点，发现障碍仍保持物理船和当前关卡。
+            for (BlockPos block : restore.keySet()) {
+                BlockPos target = block.offset(dx, dy, dz);
+                BlockState existing = level.getBlockState(target);
+                if (!level.isInWorldBounds(target) || !level.getWorldBorder().isWithinBounds(target)
+                        || (!existing.isAir() && !existing.canBeReplaced()
+                                && !existing.getFluidState().is(net.minecraft.tags.FluidTags.WATER)
+                                && !isOwnProxy(target, existing))) {
+                    return "泊位被挡住：" + target.toShortString() + "（" + existing.getBlock().getName().getString() + "）";
+                }
+            }
+            LOGGER.info("[vs] 靠泊吸附：入口={} 实际泊位={} 位移=({},{},{})", dockSite, berth, dx, dy, dz);
         }
 
         // 1) 先把刚体从船世界里删掉，但不碰世界方块（VS2 的 deleteShip 参数不是"铺回方块"）
         // 1b) 删船之前把船坞里方块实体的 NBT 抄下来：只铺 BlockState 会新建空实体，
         //     反应堆燃料、泵的自动/流量、储物全都会丢（用户实测"我放的燃料没了"）。
-        Map<BlockPos, net.minecraft.nbt.CompoundTag> dockedTags = new java.util.HashMap<>();
+        ensureYardOffset(level);
+        boolean transferring = berth != null && !berth.equals(dockSite);
+        if (transferring && yardOffsetX == Integer.MIN_VALUE) {
+            return "船坞数据正在同步，请稍后再对接";
+        }
+        Map<BlockPos, net.minecraft.nbt.CompoundTag> dockedTags = new java.util.HashMap<>(pendingBlockEntityTags);
         if (yardOffsetX != Integer.MIN_VALUE) {
             for (BlockPos original : restore.keySet()) {
                 BlockPos yard = original.offset(yardOffsetX, yardOffsetY, yardOffsetZ);
@@ -3200,10 +3281,27 @@ public final class VsPilot {
                 }
                 try {
                     dockedTags.put(original.immutable(), be.saveWithoutMetadata());
-                } catch (Throwable ignored) {
-                    // 单格失败不影响其它格
+                } catch (Exception error) {
+                    if (transferring) {
+                        LOGGER.warn("[vs] 靠泊前无法保存设备 {}", yard, error);
+                        return "无法保存舰载设备：" + original.toShortString();
+                    }
                 }
             }
+        }
+        double shiftX = dx - (now.x - assembledPos.x);
+        double shiftY = dy - (now.y - assembledPos.y);
+        double shiftZ = dz - (now.z - assembledPos.z);
+        Map<ServerPlayer, org.joml.Vector3d> riderDestinations = new java.util.LinkedHashMap<>();
+        Map<net.minecraft.world.entity.item.ItemEntity, org.joml.Vector3d> cargoDestinations =
+                new java.util.LinkedHashMap<>();
+        for (ServerPlayer rider : riders) {
+            riderDestinations.put(rider, dockRestorePoint(worldToShip, shipOrigin,
+                    rider.getX(), rider.getY(), rider.getZ(), dx, dy, dz, shiftX, shiftY, shiftZ));
+        }
+        for (net.minecraft.world.entity.item.ItemEntity item : pinnedCargo) {
+            cargoDestinations.put(item, dockRestorePoint(worldToShip, shipOrigin,
+                    item.getX(), item.getY(), item.getZ(), dx, dy, dz, shiftX, shiftY, shiftZ));
         }
         try {
             VsBridge.discard(level, live);
@@ -3212,7 +3310,7 @@ public final class VsPilot {
         }
         // 2) 按快照铺回世界。
         com.opamb.barotrauma.ship.water.ShipVolumeGuard.deactivate();
-                removeProxy(level);
+        removeProxy(level);
         int placed = restoreBlocks(level, restore, dx, dy, dz, dockedTags);
         pendingBlockEntityTags = java.util.Map.of();
         // 3) 拆回来时那片体积早就被海水灌满了，方块铺回会把水封在舱里——
@@ -3224,27 +3322,31 @@ public final class VsPilot {
         // 人还留在海里，散箱也会被落下导致货运结算 0 箱（用户实测）。
         // 偏航非零时，光加平移会把"船头的人"放到恢复后船体的侧舷：先按船体逆变换
         // 把位置换回快照坐标（original + 0.5），再映射到铺回后的方块布局。
-        double shiftX = dx - (now.x - assembledPos.x);
-        double shiftY = dy - (now.y - assembledPos.y);
-        double shiftZ = dz - (now.z - assembledPos.z);
-        boolean rotated = worldToShip != null && shipOrigin != null;
-        if (rotated || Math.abs(shiftX) > 1.0E-6D || Math.abs(shiftY) > 1.0E-6D
-                || Math.abs(shiftZ) > 1.0E-6D) {
-            for (ServerPlayer rider : riders) {
-                org.joml.Vector3d dest = dockRestorePoint(worldToShip, shipOrigin,
-                        rider.getX(), rider.getY(), rider.getZ(), dx, dy, dz,
-                        shiftX, shiftY, shiftZ);
-                rider.teleportTo(level, dest.x, dest.y, dest.z, rider.getYRot(), rider.getXRot());
-                rider.setDeltaMovement(Vec3.ZERO);
-                rider.fallDistance = 0.0F;
+        for (var entry : riderDestinations.entrySet()) {
+            ServerPlayer rider = entry.getKey();
+            var dest = entry.getValue();
+            rider.stopRiding();
+            VsServerDrag.detach(rider);
+            if (rider.connection != null) {
+                if (rider.containerMenu != rider.inventoryMenu) {
+                    rider.closeContainer();
+                }
+                // 在绝对坐标传送包之前，先解除客户端保留的随船位置预测。
+                com.opamb.barotrauma.network.ModNetwork.sendToPlayer(rider,
+                        new com.opamb.barotrauma.network.SwimStatePacket(false, false,
+                                com.opamb.barotrauma.network.SwimStatePacket.DETACH_FOR_DOCK));
             }
-            for (net.minecraft.world.entity.item.ItemEntity item : pinnedCargo) {
-                org.joml.Vector3d dest = dockRestorePoint(worldToShip, shipOrigin,
-                        item.getX(), item.getY(), item.getZ(), dx, dy, dz,
-                        shiftX, shiftY, shiftZ);
-                item.setPos(dest.x, dest.y, dest.z);
-                item.setDeltaMovement(Vec3.ZERO);
-            }
+            rider.teleportTo(level, dest.x, dest.y, dest.z, rider.getYRot(), rider.getXRot());
+            rider.setDeltaMovement(Vec3.ZERO);
+            rider.fallDistance = 0.0F;
+            LOGGER.info("[vs] 靠泊乘员落点 ({}, {}, {})", dest.x, dest.y, dest.z);
+        }
+        for (var entry : cargoDestinations.entrySet()) {
+            var item = entry.getKey();
+            var dest = entry.getValue();
+            VsServerDrag.detach(item);
+            item.setPos(dest.x, dest.y, dest.z);
+            item.setDeltaMovement(Vec3.ZERO);
         }
         int skipped = restore.size() - placed;
         // 4) 新的声纳台重新扫描
@@ -3314,9 +3416,9 @@ public final class VsPilot {
         com.opamb.barotrauma.network.PowerPanelState.clearPhysical();
         VsState.deactivate();
         // 5) 靠泊成功：船已经回到方块形态，再打开该站舱口并结算本轮出勤。
-        if (dockSite != null) {
-            com.opamb.barotrauma.world.DockingBay.setHatchOpen(level, dockSite, true);
-            com.opamb.barotrauma.campaign.CampaignManager.onDocked(level, dockSite);
+        if (berth != null) {
+            com.opamb.barotrauma.world.DockingBay.setHatchOpen(level, berth, true);
+            com.opamb.barotrauma.campaign.CampaignManager.onDocked(level, dockSite, berth);
         }
         String where = String.format(Locale.ROOT, "%+d,%+d,%+d", dx, dy, dz);
         return skipped == 0

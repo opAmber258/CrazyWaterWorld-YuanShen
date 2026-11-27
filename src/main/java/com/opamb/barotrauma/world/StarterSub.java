@@ -69,8 +69,8 @@ public final class StarterSub {
         SMALL(0, -4, -73, -7, 9, 5, 15, 1, -72, -3, 0.5D, -72.0D, 4.5D),
         /** 旧儒艮号：模板 5×9×17，放置时顺时针 90°，世界包围盒 17×9×5。 */
         DUGONG_V1(1, -9, -77, -2, 17, 9, 5, 6, -72, 0, -5.5D, -72.0D, 0.5D),
-        /** 新儒艮号蓝图 {@code dugong_custom_20261117}：35 长 × 14 高 × 13 宽。 */
-        DUGONG_V2(2, -18, -82, -10, 35, 14, 13, -2, -76, -8, 6.5D, -80.0D, -6.5D);
+        /** 儒艮号：35 长 × 15 高 × 13 宽，最下层为倒装炮。 */
+        DUGONG_V2(2, -18, -83, -10, 35, 15, 13, -2, -76, -8, 6.5D, -80.0D, -6.5D);
 
         public final int version;
         public final int originX;
@@ -145,9 +145,9 @@ public final class StarterSub {
         return layout(level).dugong();
     }
 
-    /** 新儒艮号（蓝图 {@code dugong_custom_20261117}）的模板名。 */
+    /** 新世界默认的儒艮号模板。 */
     public static final ResourceLocation DUGONG_V2_TEMPLATE =
-            new ResourceLocation(BarotraumaMod.MOD_ID, "dugong_custom_20261117");
+            new ResourceLocation(BarotraumaMod.MOD_ID, "dugong_starter");
 
     /**
      * 新儒艮号模板的世界包围盒（= {@link Layout#DUGONG_V2}）。
@@ -260,6 +260,13 @@ public final class StarterSub {
         var round = com.opamb.barotrauma.campaign.CampaignState.wallet(server).round();
         return round.phase() == com.opamb.barotrauma.campaign.RoundPhase.AT_NODE
                 && (!round.hasInstance() || round.endHasOutpost());
+    }
+
+    /** The campaign's round start, shared by equipment that renews its wear grace each voyage. */
+    public static long activeMaintenanceRound(ServerLevel level) {
+        if (!ModDimensions.THE_DEEP.equals(level.dimension())) return -1L;
+        var round = com.opamb.barotrauma.campaign.CampaignState.wallet(level).round();
+        return round.isDiving() ? round.startedAtGameTime() : -1L;
     }
 
     private StarterSub() {
@@ -526,9 +533,9 @@ public final class StarterSub {
     }
 
     /**
-     * 新世界：把用户搭的新儒艮号蓝图 {@code dugong_custom_20261117} 放到站正下方。
+     * 新世界：把儒艮号模板放到站正下方。
      *
-     * <p><b>不旋转</b>：模板局部 (17..19, 13, 10) 的塔顶舱口放到世界
+     * <p><b>不旋转</b>：模板局部 (17..19, 14, 10) 的塔顶舱口放到世界
      * (-1..1, -69, 0)，正好接上哨站竖井和中层舱口——气闸对接口直接对齐。
      * 模板里的 {@code PowerBox}/{@code StorageBox} 是相对原点的坐标，必须走
      * {@link ShipTemplateSpawner} 才会按生成原点重定基。</p>
@@ -541,7 +548,7 @@ public final class StarterSub {
                 level.getChunk(cx, cz);
             }
         }
-        // 先验证模板再清空：模板缺失时清掉 35×14×13 的既有方块且重试也恢复不了。
+        // 先验证模板再清空：模板缺失时保留泊位里的方块。
         if (!ShipTemplateSpawner.exists(level, DUGONG_V2_TEMPLATE)) {
             BarotraumaMod.LOGGER.error("[Barotrauma] 找不到儒艮号结构模板 {}，已取消生成（未清空区域）",
                     DUGONG_V2_TEMPLATE);
@@ -559,7 +566,7 @@ public final class StarterSub {
         convertStarterConsole(level, Layout.DUGONG_V2);
         ensureConsoleTopRow(level);
         for (int x = 17; x <= 18; x++) {
-            if (level.getBlockEntity(origin.offset(x, 2, 10))
+            if (level.getBlockEntity(origin.offset(x, 3, 10))
                     instanceof com.opamb.barotrauma.blockentity.BatteryBlockEntity battery) {
                 battery.configureDugongBattery(true);
             }

@@ -32,6 +32,28 @@ public final class RoundState {
      */
     private int levelSpacing;
     private TerrainTemplate terrain = TerrainTemplate.LEGACY;
+    private boolean connection;
+    private int stationNode = -1;
+
+    /** 独立航行关的坐标和预设按海图连线的固定顺序保存。 */
+    public boolean connection() {
+        return connection;
+    }
+
+    public int stationNode() {
+        return stationNode;
+    }
+
+    void enterStation(int node) {
+        stationNode = node;
+        connection = false;
+        setInstance(Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE);
+    }
+
+    void updateConnection(boolean value) {
+        connection = value;
+        stationNode = -1;
+    }
 
     public RoundPhase phase() {
         return phase;
@@ -183,6 +205,8 @@ public final class RoundState {
         tag.putInt("levelDistance", levelDistance);
         tag.putInt("levelSpacing", levelSpacing);
         tag.putString("terrain", terrain.id());
+        tag.putBoolean("connection", connection);
+        tag.putInt("stationNode", stationNode);
         return tag;
     }
 
@@ -216,6 +240,11 @@ public final class RoundState {
         levelDistance = hadDistance ? Math.max(0, tag.getInt("levelDistance")) : 0;
         levelSpacing = hadSpacing ? Math.max(0, tag.getInt("levelSpacing")) : 0;
         terrain = TerrainTemplate.fromId(tag.getString("terrain"));
+        connection = hasInstance() && tag.getBoolean("connection");
+        stationNode = tag.contains("stationNode") ? tag.getInt("stationNode") : -1;
+        if (!CampaignMap.isValid(stationNode) || phase != RoundPhase.AT_NODE || hasInstance()) {
+            stationNode = -1;
+        }
         if (hasInstance()) {
             // 旧存档没有字段：当时固定出发距离 192、槽位间距 1024。
             // 只迁移“字段缺失”；显式写入的 0 表示“按关卡默认值恢复”，

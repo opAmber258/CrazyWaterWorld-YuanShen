@@ -27,7 +27,7 @@ public final class UnderwaterEffects {
 
     // Barotrauma's 1920px reference view, at centered and farthest forward human camera positions.
     static final SeaView HUMAN_SEA_VIEW = new SeaView(7.4F, 18.7F);
-    static final SeaView LIT_SEA_VIEW = new SeaView(20.0F, CoilgunLightShadow.REACH);
+    static final SeaView LIT_SEA_VIEW = new SeaView(20.0F, FlashlightRenderer.COILGUN_LIGHT_RANGE);
     private static final float SCENE_FOG_NEAR = 20.0F;
     private static final float SCENE_FOG_FAR = 72.0F;
 

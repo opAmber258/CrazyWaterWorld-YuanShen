@@ -241,6 +241,16 @@ public final class ModBlocks {
                     lightProps(com.opamb.barotrauma.block.LightBlock.Kind.FLUORESCENT)));
 
     /** 旧手电筒光源的存档兼容注册。保留原亮度以便移除时触发一次光照清理。 */
+    public static final RegistryObject<Block> FLUORESCENT_LIGHT_L01 = fluorescentLight(
+            "fluorescent_light_l01", com.opamb.barotrauma.block.LightBlock.Kind.FLUORESCENT_L01);
+    public static final RegistryObject<Block> FLUORESCENT_LIGHT_L02 = fluorescentLight(
+            "fluorescent_light_l02", com.opamb.barotrauma.block.LightBlock.Kind.FLUORESCENT_L02);
+
+    private static RegistryObject<Block> fluorescentLight(
+            String id, com.opamb.barotrauma.block.LightBlock.Kind kind) {
+        return BLOCKS.register(id, () -> new com.opamb.barotrauma.block.LightBlock(kind, lightProps(kind)));
+    }
+
     public static final RegistryObject<Block> FLASHLIGHT_LIGHT = BLOCKS.register("flashlight_light",
             () -> new com.opamb.barotrauma.block.FlashlightLightBlock(
                     BlockBehaviour.Properties.of()

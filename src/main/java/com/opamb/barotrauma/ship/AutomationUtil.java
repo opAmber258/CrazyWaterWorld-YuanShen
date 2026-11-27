@@ -6,6 +6,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.phys.Vec3;
+import com.opamb.barotrauma.block.BulkheadDoorBlock;
+import com.opamb.barotrauma.block.HatchBlock;
 
 /**
  * 机器内置自动化的公共判定：附近有没有玩家、门/舱口两侧进水比例。
@@ -31,80 +35,49 @@ public final class AutomationUtil {
     }
 
     /**
-     * 玩家是否在门/舱口附近、且**和门在同一片舱室里**。
-     *
-     * <p>原作的运动探测器只是门口一小块矩形（{@code Content/Items/Assemblies/
-     * AutoClosingDoor.xml}：{@code MotionSensor RangeX=120 RangeY=100}，scale 0.5），
-     * 不会隔着船壳/隔壁舱室触发；合并进门的自动化后如果只算直线距离，玩家在
-     * 隔壁房间贴墙站着也会把门打开（用户实测：引擎室门自己开、跟着进水）。</p>
-     *
-     * <p>这里先按距离筛选，再要求玩家所在的水体和门格自身/六个邻居属于同一批
-     * 水体——门两侧的舱室都算，隔一堵墙的第三个舱室不算。物理船用实时逆变换
-     * 查玩家舱室，方块船直接用世界坐标。</p>
+     * Original assemblies sample a rectangle at the opening. Extend it to three
+     * dimensions and reject rays crossing a wall or another closed doorway.
      */
-    public static boolean playerNear(ServerLevel level, ShipState ship, BlockPos cell, double range) {
-        if (ship == null || level == null || cell == null) {
-            return false;
-        }
-        double rangeSq = range * range;
-        // 物理船的 cell 是装配坐标；先换到世界坐标再和玩家世界位置比较。
-        net.minecraft.world.phys.Vec3 center = isPhysicalShip(ship)
-                ? VsPilot.assemblyToWorld(cell)
-                : net.minecraft.world.phys.Vec3.atCenterOf(cell);
-        if (center == null) {
-            return false;
-        }
-        java.util.Set<Integer> bodies = bodiesAround(ship, cell);
-        // 站在门洞/门格里的玩家常常查不到舱室（门格是水密格，不属于任何水体），
-        // 这时只要人离门很近就直接算“在门口”，否则自动门会在人站着不动时判定
-        // “附近没人”而不开/关人（用户报“门有时候自动识别有问题不会开”）。
-        double doorwaySq = 1.5D * 1.5D;
+    public static boolean playerNear(ServerLevel level, ShipState ship, BlockPos pos, Direction facing,
+                                     boolean hatch) {
+        boolean physical = isPhysicalShip(ship);
+        BlockPos cell = physical ? VsPilot.toAssembly(pos) : pos;
+        Vec3 center = Vec3.atCenterOf(pos).add(0, 0.5, 0);
+        Vec3 worldCenter = physical ? VsPilot.assemblyToWorld(cell) : center;
+        if (worldCenter == null) return false;
+
+        Direction width = facing.getClockWise();
         for (ServerPlayer player : level.players()) {
-            if (player.isSpectator()) {
-                continue;
+            Vec3 torso = player.position().add(0, player.getBbHeight() * 0.5, 0);
+            if (!player.isAlive() || player.isSpectator() || torso.distanceToSqr(worldCenter) > 20.0D) continue;
+            if (physical) {
+                torso = VsPilot.worldToAssemblyPoint(level, torso);
+                if (torso == null) continue;
+                torso = torso.add(pos.getX() - cell.getX(), pos.getY() - cell.getY(), pos.getZ() - cell.getZ());
             }
-            double distanceSq = player.position().distanceToSqr(center);
-            if (distanceSq > rangeSq) {
-                continue;
-            }
-            int body = playerBody(level, ship, player);
-            if (body < 0) {
-                if (distanceSq <= doorwaySq) {
-                    return true;
-                }
-                continue;
-            }
-            if (!bodies.isEmpty() && !bodies.contains(body)) {
-                continue;
-            }
-            return true;
+            Vec3 offset = torso.subtract(center);
+            double along = Math.abs(offset.x * facing.getStepX() + offset.z * facing.getStepZ());
+            double across = Math.abs(offset.x * width.getStepX() + offset.z * width.getStepZ());
+            if (along > (hatch ? 0.8D : 1.8D) || across > (hatch ? 1.8D : 0.8D)
+                    || Math.abs(offset.y) > (hatch ? 2.0D : 1.0D)) continue;
+
+            // Aim into the opening rather than along the top edge of a block.
+            Vec3 opening = hatch ? center.add(0, -0.0625D, 0) : center;
+            Vec3 torsoPosition = torso;
+            boolean blocked = BlockGetter.traverseBlocks(torso, opening, level, (world, rayCell) -> {
+                if (!world.hasChunkAt(rayCell)) return true;
+                var state = world.getBlockState(rayCell);
+                if (hatch && state.getBlock() instanceof HatchBlock && rayCell.getY() == pos.getY()
+                        && (rayCell.equals(pos) || rayCell.equals(pos.relative(width))
+                        || rayCell.equals(pos.relative(width.getOpposite())))) return null;
+                if (!hatch && state.getBlock() instanceof BulkheadDoorBlock
+                        && (rayCell.equals(pos) || rayCell.equals(pos.above()))) return null;
+                return state.getCollisionShape(world, rayCell).clip(torsoPosition, opening, rayCell) == null
+                        ? null : true;
+            }, world -> false);
+            if (!blocked) return true;
         }
         return false;
-    }
-
-    /** 门格自身 + 六邻居所在的水体（密闭舱室或连海空腔）；门两侧都要算。 */
-    private static java.util.Set<Integer> bodiesAround(ShipState ship, BlockPos cell) {
-        java.util.Set<Integer> bodies = new java.util.HashSet<>();
-        int own = ship.simulation().bodyOf(cell);
-        if (own >= 0) {
-            bodies.add(own);
-        }
-        for (Direction direction : Direction.values()) {
-            int body = ship.simulation().bodyOf(cell.relative(direction));
-            if (body >= 0) {
-                bodies.add(body);
-            }
-        }
-        return bodies;
-    }
-
-    /** 玩家所在的水体下标；不在船上/没有物理船时返回 -1。 */
-    private static int playerBody(ServerLevel level, ShipState ship, ServerPlayer player) {
-        if (isPhysicalShip(ship)) {
-            Integer index = VsState.queryCompartmentIndex(level, player.position());
-            return index == null ? -1 : index;
-        }
-        return ship.compartmentAt(BlockPos.containing(player.position()));
     }
 
     /**

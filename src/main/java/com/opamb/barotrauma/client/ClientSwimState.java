@@ -26,6 +26,12 @@ public final class ClientSwimState {
         known = true;
         swimMovement = packet.swimMovement();
         dragShipId = packet.dragShipId();
+        if (dragShipId == SwimStatePacket.DETACH_FOR_DOCK) {
+            dragShipId = -1L;
+            VsClientDrag.detachForDock(net.minecraft.client.Minecraft.getInstance().player);
+        } else if (dragShipId < 0L) {
+            VsClientDrag.apply(net.minecraft.client.Minecraft.getInstance().player, -1L);
+        }
     }
 
     /** 服务端是否已经推过状态（没推过时客户端用本地判定兜底）。 */

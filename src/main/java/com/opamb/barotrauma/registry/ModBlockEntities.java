@@ -161,7 +161,8 @@ public final class ModBlockEntities {
                     .of(com.opamb.barotrauma.blockentity.LightBlockEntity::new,
                             ModBlocks.LAMP.get(),
                             ModBlocks.EMERGENCY_LIGHT.get(),
-                            ModBlocks.FLUORESCENT_LIGHT.get())
+                            ModBlocks.FLUORESCENT_LIGHT.get(), ModBlocks.FLUORESCENT_LIGHT_L01.get(),
+                            ModBlocks.FLUORESCENT_LIGHT_L02.get())
                     .build(null));
 
     /** 潜渊症容器：钢柜/带窗钢柜/货架/潜水服柜/氧气瓶架共用一套方块实体。 */

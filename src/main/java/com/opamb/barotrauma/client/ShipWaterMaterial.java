@@ -140,6 +140,7 @@ final class ShipWaterMaterial {
         try {
             if (refract && seaFog) {
                 fillSubmergedScene(2.0F);
+                FlashlightRenderer.drawOceanScatter();
                 logSeaFilter(SeaFilter.ACTIVE);
             }
             if (!hasGeometry) {

@@ -3,49 +3,38 @@
 uniform sampler2D SceneColor;
 uniform sampler2D SceneDepth;
 uniform sampler2D ShadowDepth;
-uniform sampler2D CoilgunShadowDepth;
-uniform vec3 CoilgunShadowOrigin;
-uniform vec3 CoilgunShadowForward;
-uniform vec3 CoilgunShadowRight;
-uniform vec3 CoilgunShadowUp;
 uniform mat4 SceneProjection;
 uniform mat4 InverseProjection;
 uniform vec4 BeamOrigin;
 uniform vec4 BeamDirection;
-uniform vec4 BeamTintRange;
+uniform float BeamRange;
+uniform float FilledBeam;
 uniform vec4 PlayerHalo;
 uniform float DeepScene;
 uniform float RemoveDarkFloor;
 uniform float KeepDimScene;
+uniform float ScatterPass;
 
 in vec2 uv;
 out vec4 fragColor;
-
-float coilgunProfile(vec3 offset, vec3 direction) {
-    // Revolve the soft 2D light cone around the barrel in three dimensions.
-    float along = dot(offset, direction);
-    float u = along / BeamTintRange.w;
-    if (u <= 0.0 || u >= 1.0) {
-        return 0.0;
-    }
-    float width = BeamTintRange.w * (0.02 + 0.12 * u + 0.32 * u * u);
-    float normalizedRadius = length(offset - direction * along) / width;
-    float falloff = 1.0 - smoothstep(0.55, 0.99, u);
-    return smoothstep(0.0, 0.06, u) * falloff * exp2(-normalizedRadius * normalizedRadius);
-}
 
 vec3 unproject(vec2 coord, float depth) {
     vec4 p = InverseProjection * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
     return p.xyz / p.w;
 }
 
+const float CONE_EDGE = 0.895;
+
 float coneProfile(float angle) {
     // 宽而柔和的外缘，加上中心较集中的反光杯热点。
-    return smoothstep(0.895, 0.962, angle) * (0.49 + 0.51 * smoothstep(0.964, 0.999, angle));
+    return smoothstep(CONE_EDGE, 0.962, angle) * (0.49 + 0.51 * smoothstep(0.964, 0.999, angle));
 }
 
+// Express distance on the 12-block handheld beam curve before applying falloff.
+const float HANDHELD_RANGE = 12.0;
+
 float rangeFalloff(float d) {
-    return (1.0 - smoothstep(8.0, BeamTintRange.w, d)) / (1.0 + d * d * 0.04);
+    return (1.0 - smoothstep(8.0, HANDHELD_RANGE, d)) / (1.0 + d * d * 0.04);
 }
 
 float visibility(vec3 from, vec3 to) {
@@ -82,52 +71,6 @@ float visibility(vec3 from, vec3 to) {
     return 1.0 - max(nextStrongest, strongest * 0.22);
 }
 
-float shadowDepth(ivec2 texel) {
-    vec2 encoded = texelFetch(CoilgunShadowDepth, texel, 0).rg;
-    return (encoded.r * 65280.0 + encoded.g * 255.0) * BeamTintRange.w / 65535.0;
-}
-
-float coilgunVisibility(vec3 point, vec3 surfaceNormal) {
-    vec3 ray = point - CoilgunShadowOrigin;
-    float along = dot(ray, CoilgunShadowForward);
-    if (along <= 0.0) return 0.0;
-    vec2 slope = vec2(dot(ray, CoilgunShadowRight), dot(ray, CoilgunShadowUp)) / along;
-    if (any(greaterThan(abs(slope), vec2(1.0)))) return 0.0;
-    ivec2 last = textureSize(CoilgunShadowDepth, 0) - 1;
-    vec2 grid = (slope * 0.5 + 0.5) * vec2(last);
-    ivec2 cell = min(ivec2(grid), last - 1);
-    vec2 fraction = grid - vec2(cell);
-    vec4 blockers = vec4(shadowDepth(cell), shadowDepth(cell + ivec2(1, 0)),
-            shadowDepth(cell + ivec2(0, 1)), shadowDepth(cell + ivec2(1, 1)));
-
-    // Intersect each sample ray with the receiver plane before comparing depths.
-    // Grazing rays can hit the same hull face at very different axial depths.
-    float planeDistance = dot(surfaceNormal, ray);
-    if (abs(planeDistance) < 0.005) {
-        surfaceNormal = CoilgunShadowForward;
-        planeDistance = along;
-    }
-    vec3 facingNormal = surfaceNormal * sign(planeDistance);
-    vec2 slopeStep = 2.0 / vec2(last);
-    vec2 firstSlope = vec2(cell) * slopeStep - 1.0;
-    vec2 gradient = vec2(dot(facingNormal, CoilgunShadowRight), dot(facingNormal, CoilgunShadowUp));
-    float first = dot(facingNormal, CoilgunShadowForward) + dot(gradient, firstSlope);
-    vec2 change = gradient * slopeStep;
-    vec4 denominator = first + vec4(0.0, change.x, change.y, change.x + change.y);
-    vec4 receiverDepths = abs(planeDistance) / max(denominator, vec4(0.00001));
-    float tolerance = 0.12 + along * 0.018;
-    vec4 visible = 1.0 - smoothstep(vec4(tolerance * 0.5), vec4(tolerance), receiverDepths - blockers);
-    visible = max(visible, step(vec4(BeamTintRange.w - 0.0005), blockers));
-
-    vec2 complement = 1.0 - fraction;
-    vec4 weights = vec4(complement.x * complement.y, fraction.x * complement.y,
-            complement.x * fraction.y, fraction.x * fraction.y);
-    // Rays pointing away from the plane cannot tell us whether it is in shadow.
-    weights *= step(vec4(0.00001), denominator);
-    float coverage = dot(visible, weights) / max(dot(weights, vec4(1.0)), 0.00001);
-    return smoothstep(0.5, 1.0, coverage);
-}
-
 float toLinear(float color) {
     return color <= 0.04045 ? color / 12.92 : pow((color + 0.055) / 1.055, 2.4);
 }
@@ -149,6 +92,48 @@ vec3 whiteLight(vec3 scene, float exposure) {
     return scene * max(boost - 1.0, 0.0);
 }
 
+// Clip to the light's range, forward half-space and cone sides before sampling.
+vec2 beamSegment(vec3 origin, vec3 ray, float reach) {
+    float rayStart = dot(origin, ray);
+    float sphereDiscriminant = rayStart * rayStart - dot(origin, origin) + BeamRange * BeamRange;
+    if (sphereDiscriminant <= 0.0) return vec2(0.0);
+    float halfChord = sqrt(sphereDiscriminant);
+    vec2 segment = vec2(max(0.0, -rayStart - halfChord), min(reach, -rayStart + halfChord));
+
+    float axialStart = dot(origin, BeamDirection.xyz);
+    float axialStep = dot(ray, BeamDirection.xyz);
+    if (abs(axialStep) < 0.00001) {
+        if (axialStart <= 0.0) return vec2(0.0);
+    } else if (axialStep > 0.0) {
+        segment.x = max(segment.x, -axialStart / axialStep);
+    } else {
+        segment.y = min(segment.y, -axialStart / axialStep);
+    }
+    if (segment.y <= segment.x) return vec2(0.0);
+
+    float edgeSquared = CONE_EDGE * CONE_EDGE;
+    float a = axialStep * axialStep - edgeSquared;
+    float b = axialStep * axialStart - edgeSquared * rayStart;
+    float c = axialStart * axialStart - edgeSquared * dot(origin, origin);
+    if (abs(a) < 0.00001) {
+        if (abs(b) < 0.00001) return c > 0.0 ? segment : vec2(0.0);
+        float crossing = -c / (2.0 * b);
+        return b > 0.0 ? vec2(max(segment.x, crossing), segment.y)
+                : vec2(segment.x, min(segment.y, crossing));
+    }
+
+    float discriminant = b * b - a * c;
+    if (discriminant <= 0.0) return a > 0.0 ? segment : vec2(0.0);
+    float root = sqrt(discriminant);
+    float first = (-b - root) / a;
+    float second = (-b + root) / a;
+    if (a < 0.0) return vec2(max(segment.x, second), min(segment.y, first));
+
+    // The other interval belongs to the reverse cone and is outside the forward half-space.
+    if (segment.x < first) return vec2(segment.x, min(segment.y, first));
+    return vec2(max(segment.x, second), segment.y);
+}
+
 void main() {
     float depth = texture(SceneDepth, uv).r;
     vec3 point = unproject(uv, depth < 0.999999 ? depth : 0.99);
@@ -160,44 +145,67 @@ void main() {
     float distanceToLight = length(offset);
     vec3 ray = offset / max(distanceToLight, 0.0001);
     float surface = 0.0;
-    bool coilgun = BeamDirection.w > 1.5;
-    bool scatterInWater = BeamDirection.w > 0.5 && !coilgun;
-    if (BeamOrigin.w > 0.0 && depth < 0.999999 && distanceToLight < BeamTintRange.w) {
-        float profile = coilgun ? coilgunProfile(offset, BeamDirection.xyz)
-                : coneProfile(dot(ray, BeamDirection.xyz)) * rangeFalloff(distanceToLight);
+    bool scatterInWater = BeamDirection.w > 0.5;
+    float distanceScale = HANDHELD_RANGE / BeamRange;
+    if (ScatterPass <= 0.0 && BeamOrigin.w > 0.0 && depth < 0.999999 && distanceToLight < BeamRange) {
+        float beamDistance = distanceToLight * distanceScale;
+        float profile = coneProfile(dot(ray, BeamDirection.xyz)) * rangeFalloff(beamDistance);
         if (profile > 0.0) {
             float lambert = 0.55;
-            vec3 surfaceNormal = vec3(0.0);
             if (dot(normal, normal) > 1.0e-14) {
-                surfaceNormal = normalize(normal);
                 float confidence = 1.0 - smoothstep(0.12, 0.32, max(length(dx), length(dy)));
-                lambert = mix(lambert, max(0.0, dot(surfaceNormal, -ray)), confidence);
+                lambert = mix(lambert, max(0.0, dot(normalize(normal), -ray)), confidence);
             }
-            surface = profile * mix(0.12, 1.0, lambert)
-                    * (coilgun ? coilgunVisibility(point, surfaceNormal) : visibility(BeamOrigin.xyz, point));
+            surface = profile * mix(0.12, 1.0, lambert) * visibility(BeamOrigin.xyz, point);
             if (scatterInWater) {
-                surface *= exp(-0.075 * distanceToLight);
+                surface *= exp(-0.075 * beamDistance);
             }
         }
     }
 
     float scatter = 0.0;
-    if (scatterInWater) {
+    vec3 hazeColor = vec3(0.28, 0.54, 0.64);
+    if (FilledBeam > 0.5 && BeamOrigin.w > 0.0 && ScatterPass >= 0.0) {
+        // 近裁剪面到第一层不透明表面的光路。即使中央没有能反光的墙，也有微弱的光。
+        vec3 start = unproject(uv, 0.0);
+        vec3 viewRay = normalize(point - start);
+        float reach = depth >= 0.999999 ? length(start - BeamOrigin.xyz) + BeamRange : length(point - start);
+        vec2 segment = beamSegment(start - BeamOrigin.xyz, viewRay, reach);
+        float span = segment.y - segment.x;
+        if (span > 0.0) {
+            // Only integrate the part of the view ray inside the cone, from any camera angle.
+            for (int step = 0; step < 8; ++step) {
+                float t = segment.x + span * (float(step) + 0.5) / 8.0;
+                vec3 delta = start + viewRay * t - BeamOrigin.xyz;
+                float d = length(delta);
+                float profile = coneProfile(dot(delta / max(d, 0.0001), BeamDirection.xyz));
+                scatter += profile * rangeFalloff(d) * exp(-(scatterInWater ? 0.25 : 0.09) * d);
+            }
+            scatter *= span * (scatterInWater ? 0.039 : 0.029) / 8.0;
+        }
+        hazeColor = scatterInWater ? vec3(0.48, 0.65, 0.72) : vec3(1.0);
+    } else if (scatterInWater && ScatterPass >= 0.0) {
         // 沿着眼睛到第一层不透明表面只积少量水中反向散射。
         vec3 start = unproject(uv, 0.0);
         vec3 viewRay = normalize(point - start);
         if (dot(viewRay, BeamDirection.xyz) > 0.80) {
-            float lengthInView = depth >= 0.999999 ? BeamTintRange.w
-                    : min(BeamTintRange.w, length(point - start));
+            float lengthInView = depth >= 0.999999 ? BeamRange : min(BeamRange, length(point - start));
             for (int step = 0; step < 5; ++step) {
                 float t = (float(step) + 0.5) * (lengthInView / 5.0);
                 vec3 delta = start + viewRay * t - BeamOrigin.xyz;
                 float d = length(delta);
                 float profile = coneProfile(dot(delta / max(d, 0.0001), BeamDirection.xyz));
-                scatter += profile * rangeFalloff(d) * exp(-0.25 * t);
+                scatter += profile * rangeFalloff(d * distanceScale) * exp(-0.25 * t * distanceScale);
             }
-            scatter *= lengthInView * 0.012;
+            scatter *= lengthInView * distanceScale * 0.012;
         }
+    }
+    if (ScatterPass > 0.0) {
+        if (scatter <= 0.0) discard;
+        // The water before a far rock is lit just like the water on adjacent empty rays.
+        fragColor = vec4(hazeColor * scatter * BeamOrigin.w
+                * vec3(0.6875, 0.7, 0.725), 0.0);
+        return;
     }
     float halo = 0.0;
     if (PlayerHalo.w > 0.0 && depth < 0.999999) {
@@ -208,15 +216,17 @@ void main() {
     }
     vec3 scene = texture(SceneColor, uv).rgb;
     float beamExposure = surface * BeamOrigin.w * 88.0;
-    if (DeepScene > 0.5) beamExposure *= mix(5.0, 1.4, KeepDimScene);
+    if (DeepScene > 0.5) {
+        beamExposure *= mix(5.0, 1.4, KeepDimScene);
+    }
     // The gain depends on distance only, so bright and dark texels keep their order.
     float nearExposure = halo * mix(4.0, 1.7, KeepDimScene);
     float scenePeak = max(scene.r, max(scene.g, scene.b));
     // Colorful Lighting 混合天空和方块项，未照亮的表面最多得到两个 8 位光图码值。
     float existingLight = smoothstep(2.0 / 255.0, 3.0 / 255.0, scenePeak);
     float exposure = max(beamExposure, nearExposure);
-    vec3 reflected = whiteLight(scene, exposure) * BeamTintRange.rgb;
+    vec3 reflected = whiteLight(scene, exposure);
     vec3 base = RemoveDarkFloor > 0.5 ? scene * max(existingLight, KeepDimScene) : vec3(0.0);
-    vec3 haze = vec3(0.28, 0.54, 0.64) * scatter;
+    vec3 haze = hazeColor * scatter;
     fragColor = vec4(base + reflected + haze * BeamOrigin.w, RemoveDarkFloor);
 }

@@ -24,6 +24,7 @@ import com.opamb.barotrauma.network.TurretHitPacket;
 import com.opamb.barotrauma.network.TurretStatePacket;
 import com.opamb.barotrauma.registry.ModBlockEntities;
 import com.opamb.barotrauma.ship.CoilgunPower;
+import com.opamb.barotrauma.ship.CoilgunTrigger;
 import com.opamb.barotrauma.ship.PowerStorage;
 import com.opamb.barotrauma.ship.vs.VsState;
 import net.minecraft.core.BlockPos;
@@ -101,6 +102,7 @@ public class TurretBlockEntity extends BlockEntity implements GeoBlockEntity {
     private float prevYaw;
     private float prevPitch;
     private int cooldown;
+    private final CoilgunTrigger coilgunTrigger = new CoilgunTrigger();
     /** true = 全自动（按住左键每 4 tick 连发）；false = 单发。 */
     private boolean autoFire;
     /** 客户端最近一次请求的目标角：服务端每 tick 朝它转，丢包不会丢掉剩余角度。 */
@@ -433,6 +435,7 @@ public class TurretBlockEntity extends BlockEntity implements GeoBlockEntity {
         operatorAnchor = null;
         controllerPos = null;
         aimTargetSet = false;
+        coilgunTrigger.release();
         // 冷却跨占用者保留：退出再进入不能立刻连发。
         if (old != null) {
             ACTIVE.remove(old, getBlockPos());
@@ -468,7 +471,9 @@ public class TurretBlockEntity extends BlockEntity implements GeoBlockEntity {
             turret.updateInteractionEntity(server);
             if (turret.operator != null) turret.updateSupplies(server);
         }
-        if (turret.cooldown > 0) {
+        if (state.getBlock() instanceof CoilgunBlock) {
+            turret.cooldown = turret.coilgunTrigger.cooldown(server.getGameTime());
+        } else if (turret.cooldown > 0) {
             turret.cooldown--;
         }
         if (turret.operator != null) {
@@ -496,6 +501,9 @@ public class TurretBlockEntity extends BlockEntity implements GeoBlockEntity {
             } else {
                 if (turret.aimTargetSet) {
                     turret.stepAim();
+                }
+                if (turret.coilgunTrigger.held(server.getGameTime())) {
+                    turret.fire(player);
                 }
                 // 同步冷却和已随船变换的炮塔镜头位置。
                 turret.broadcastState();
@@ -545,9 +553,24 @@ public class TurretBlockEntity extends BlockEntity implements GeoBlockEntity {
         // 状态包由 serverTick 每 tick 统一发（镜头锚点也要跟着船走）。
     }
 
+    public void fireInput(ServerPlayer player, boolean held) {
+        if (!isOperator(player)) return;
+        if (!weaponKind().usesAmmo()) {
+            if (held) fire(player);
+            return;
+        }
+        if (!held) {
+            coilgunTrigger.release();
+        } else if (level == player.level() && player.isAlive() && !player.isSpectator() && withinReach(player)
+                && coilgunTrigger.press(level.getGameTime())) {
+            fire(player);
+        }
+    }
+
     public void fire(ServerPlayer player) {
         TurretWeaponKind kind = weaponKind();
-        if (!isOperator(player) || !withinReach(player) || cooldown > 0) {
+        if (!isOperator(player) || !withinReach(player)
+                || (kind.usesAmmo() && level != null ? coilgunTrigger.cooldown(level.getGameTime()) : cooldown) > 0) {
             return;
         }
         Vec3 muzzle = muzzlePosition();
@@ -615,6 +638,7 @@ public class TurretBlockEntity extends BlockEntity implements GeoBlockEntity {
         }
         loader.feedRound();
         recoilStart = server.getGameTime();
+        coilgunTrigger.shot(recoilStart);
         cooldown = weaponKind().cooldownTicks();
         updateSupplies(server);
         server.playSound(null, origin.x, origin.y, origin.z,
@@ -627,8 +651,14 @@ public class TurretBlockEntity extends BlockEntity implements GeoBlockEntity {
 
     // Kept for saved boxes from the prototype; transfer the box when its loader is first connected.
     public void dropAmmo() {
-        if (!ammo.isEmpty() && level != null) Block.popResource(level, getBlockPos(), ammo);
+        ItemStack stack = takeAmmo();
+        if (!stack.isEmpty() && level != null) Block.popResource(level, getBlockPos(), stack);
+    }
+
+    public ItemStack takeAmmo() {
+        ItemStack stack = ammo;
         ammo = ItemStack.EMPTY;
+        return stack;
     }
 
     @Nullable
@@ -938,6 +968,7 @@ public class TurretBlockEntity extends BlockEntity implements GeoBlockEntity {
 
     @Override
     public void setRemoved() {
+        coilgunTrigger.release();
         if (level != null && level.isClientSide && weaponKind().usesAmmo()) {
             FlashlightRenderer.removeCoilgunLight(this);
         }

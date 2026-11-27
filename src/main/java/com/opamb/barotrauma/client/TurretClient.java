@@ -15,6 +15,7 @@ import com.opamb.barotrauma.network.TurretExitPacket;
 import com.opamb.barotrauma.network.TurretFirePacket;
 import com.opamb.barotrauma.network.TurretModePacket;
 import com.opamb.barotrauma.network.CoilgunShotPacket;
+import com.opamb.barotrauma.ship.CoilgunTrigger;
 import com.opamb.barotrauma.network.TurretStatePacket;
 import com.opamb.barotrauma.registry.ModParticles;
 import com.opamb.barotrauma.registry.ModShipBlocks;
@@ -50,7 +51,9 @@ import net.minecraftforge.fml.common.Mod;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -119,6 +122,8 @@ public final class TurretClient {
     private static boolean active;
     @Nullable
     private static BlockPos activePos;
+    private static final Set<BlockPos> awaitingExit = new HashSet<>();
+    private static boolean blockHeldUse;
     /** 通过潜望镜进入时的镜头锚点；直接操作炮塔时为 null（镜头在炮塔枢轴）。 */
     @Nullable
     private static BlockPos activeAnchor;
@@ -202,6 +207,8 @@ public final class TurretClient {
     private static boolean autoFire;
     /** 上一次真正发出开火包的客户端 tick：全自动下 startAttack 与轮询可能同 tick 双触发。 */
     private static long lastFireTick = Long.MIN_VALUE;
+    private static boolean coilgunHeld;
+    private static long nextCoilgunRefresh;
     /** 右键瞄准：按住生效；进入炮塔的那次右键要先松开，避免一进来就缩放。 */
     private static boolean aiming;
     private static boolean aimArmed;
@@ -244,6 +251,10 @@ public final class TurretClient {
 
     public static boolean isActive() {
         return active;
+    }
+
+    public static boolean blocksUse() {
+        return active || blockHeldUse;
     }
 
     public static boolean isFreeAim() {
@@ -444,7 +455,12 @@ public final class TurretClient {
             return;
         }
         boolean mine = state.operatorEntityId() == minecraft.player.getId();
-        if (mine) {
+        // Server broadcasts in flight before the exit must not reactivate the camera.
+        if (awaitingExit.contains(state.pos())) {
+            if (!mine) awaitingExit.remove(state.pos());
+            return;
+        }
+        if (mine && !minecraft.player.isSpectator() && !minecraft.player.isDeadOrDying()) {
             syncedUsesAmmo = state.usesAmmo();
             syncedAmmoShots = state.ammoShots();
             syncedPowered = state.powered();
@@ -482,6 +498,7 @@ public final class TurretClient {
                         : state.controllerPos().immutable();
                 activeCamera = state.cameraAnchor();
             }
+            if (syncedUsesAmmo) cooldown = state.cooldown();
         } else if (active && state.pos().equals(activePos)) {
             deactivate(true);
         }
@@ -500,6 +517,7 @@ public final class TurretClient {
         lastSentYaw = yaw;
         lastSentPitch = pitch;
         cooldown = 0;
+        coilgunHeld = false;
         autoFire = false;
         hitIndicatorTicks = 0;
         hitChainCount = 0;
@@ -558,6 +576,7 @@ public final class TurretClient {
         activeAnchor = null;
         activeCamera = null;
         cooldown = 0;
+        coilgunHeld = false;
         aiming = false;
         aimArmed = false;
         aimBlend = 0.0F;
@@ -585,37 +604,46 @@ public final class TurretClient {
         if (!active || activePos == null) {
             return;
         }
+        awaitingExit.add(activePos);
+        blockHeldUse = Minecraft.getInstance().options.keyUse.isDown();
         ModNetwork.sendToServer(new TurretExitPacket(activePos));
         deactivate(true);
     }
 
     /** 由 {@code Minecraft#startAttack} 的 mixin 调用（左键开火）。 */
     public static void requestFire() {
-        if (!active || activePos == null || cooldown > 0) {
-            return;
-        }
-        if (syncedUsesAmmo && (!syncedPowered || syncedAmmoShots <= 0 || loaderBroken)) {
-            if (!syncedPowered && noPowerFlash == 0) noPowerFlash = 20;
-            else if (syncedPowered && loaderFlash == 0) loaderFlash = 20;
+        if (!active || activePos == null) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
+        if (syncedUsesAmmo) {
+            if (minecraft.level != null) syncCoilgunTrigger(true, minecraft.level.getGameTime());
+            return;
+        }
+        if (cooldown > 0) return;
         long tick = minecraft.level != null ? minecraft.level.getGameTime() : 0L;
         // startAttack 与全自动轮询可能在同一 tick 各调一次；只允许真正发出一包。
-        if ((autoFire || syncedUsesAmmo) && tick == lastFireTick) {
+        if (autoFire && tick == lastFireTick) {
             return;
         }
         lastFireTick = tick;
-        if (syncedUsesAmmo) sendAimIfChanged();
-        ModNetwork.sendToServer(new TurretFirePacket(activePos));
-        // 全自动按服务端同款 4 tick 本地门控，避免状态包到达前每 tick 都发包/画曳光；
-        // onState 里的 Math.max 再按服务端剩余冷却校正相位。
-        if (syncedUsesAmmo) {
-            cooldown = com.opamb.barotrauma.block.TurretWeaponKind.COILGUN.cooldownTicks();
-        } else {
-            cooldown = autoFire ? TurretBlockEntity.AUTO_FIRE_COOLDOWN_TICKS : LOCAL_COOLDOWN;
-            startBeam();
+        ModNetwork.sendToServer(new TurretFirePacket(activePos, true));
+        cooldown = autoFire ? TurretBlockEntity.AUTO_FIRE_COOLDOWN_TICKS : LOCAL_COOLDOWN;
+        startBeam();
+    }
+
+    private static void syncCoilgunTrigger(boolean held, long tick) {
+        if (held) {
+            if (!syncedPowered && noPowerFlash == 0) noPowerFlash = 20;
+            else if (syncedPowered && (syncedAmmoShots <= 0 || loaderBroken) && loaderFlash == 0) loaderFlash = 20;
+            if (coilgunHeld && tick < nextCoilgunRefresh) return;
+            sendAimIfChanged();
+            nextCoilgunRefresh = tick + CoilgunTrigger.REFRESH_TICKS;
+        } else if (!coilgunHeld) {
+            return;
         }
+        coilgunHeld = held;
+        ModNetwork.sendToServer(new TurretFirePacket(activePos, held));
     }
 
     /** 由 {@code MouseHandler#turnPlayer} 的 mixin 调用。 */
@@ -1333,6 +1361,13 @@ public final class TurretClient {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!minecraft.options.keyUse.isDown()) blockHeldUse = false;
+        if (minecraft.level == null) {
+            awaitingExit.clear();
+        } else {
+            awaitingExit.removeIf(pos -> !minecraft.level.hasChunkAt(pos));
+        }
         // 即使不在炮塔里也要清空按键队列，避免进入炮塔后补触发一次切换。
         while (TOGGLE_FIRE_MODE.consumeClick()) {
             if (active && activePos != null && !syncedUsesAmmo) {
@@ -1355,7 +1390,6 @@ public final class TurretClient {
             hasHitConfirm = false;
             lastHitConfirmNanos = 0L;
         }
-        Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null || activePos == null) {
             deactivate(false);
             return;
@@ -1365,17 +1399,16 @@ public final class TurretClient {
             return;
         }
         if (!(minecraft.level.getBlockEntity(activePos) instanceof TurretBlockEntity)) {
-            deactivate(true);
-            return;
-        }
-        if (activeAnchor != null
-                && minecraft.level.hasChunkAt(activeAnchor)
-                && !(minecraft.level.getBlockState(activeAnchor).getBlock()
-                instanceof com.opamb.barotrauma.block.PeriscopeBlock)) {
             requestExit();
             return;
         }
-        if (minecraft.player.isDeadOrDying()) {
+        if (activeAnchor != null && (!minecraft.level.hasChunkAt(activeAnchor)
+                || !(minecraft.level.getBlockState(activeAnchor).getBlock()
+                instanceof com.opamb.barotrauma.block.PeriscopeBlock))) {
+            requestExit();
+            return;
+        }
+        if (minecraft.player.isDeadOrDying() || minecraft.player.isSpectator()) {
             requestExit();
             return;
         }
@@ -1396,11 +1429,13 @@ public final class TurretClient {
         aiming = !syncedUsesAmmo && aimArmed && useDown;
         if (noPowerFlash > 0) noPowerFlash--;
         if (loaderFlash > 0) loaderFlash--;
-        if (cooldown > 0) {
+        if (!syncedUsesAmmo && cooldown > 0) {
             cooldown--;
         }
         // 全自动：按住左键，冷却归零就补一发；单发只走 startAttack。
-        if ((autoFire || syncedUsesAmmo) && minecraft.options.keyAttack.isDown()) {
+        if (syncedUsesAmmo) {
+            syncCoilgunTrigger(minecraft.options.keyAttack.isDown(), minecraft.level.getGameTime());
+        } else if (autoFire && minecraft.options.keyAttack.isDown()) {
             requestFire();
         }
         // F5 不能切回第一人称：否则本机模型被剔除，玩家会以为人消失了。
@@ -1443,6 +1478,9 @@ public final class TurretClient {
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         // 客户端不再渲染旧世界，地波不会自己 tick 到清理；这里显式释放引用。
         TurretGroundWave.clear();
+        deactivate(false);
+        awaitingExit.clear();
+        blockHeldUse = false;
     }
 
     /** 瞄准缩放：FOV 按 aimBlend 平滑收拢，松开右键再平滑恢复。 */
@@ -1546,6 +1584,7 @@ public final class TurretClient {
             return;
         }
         if (event.getOverlay() == VanillaGuiOverlay.CROSSHAIR.type()
+                || event.getOverlay() == VanillaGuiOverlay.VIGNETTE.type()
                 || event.getOverlay() == VanillaGuiOverlay.HOTBAR.type()
                 || event.getOverlay() == VanillaGuiOverlay.EXPERIENCE_BAR.type()) {
             event.setCanceled(true);

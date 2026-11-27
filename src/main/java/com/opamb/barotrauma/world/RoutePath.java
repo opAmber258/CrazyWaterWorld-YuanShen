@@ -292,15 +292,21 @@ public final class RoutePath {
             return 0.0D;
         }
         Point[] points = main.points();
-        double distance = from.distanceTo(new Vec3(start.x(), start.y(), start.z()));
-        int next = (int) (closest.along() * (points.length - 1)) + 1;
-        for (int i = next; i < points.length; i++) {
-            Point point = points[i];
-            double dx = point.x() - start.x(), dy = point.y() - start.y(), dz = point.z() - start.z();
-            distance += Math.sqrt(dx * dx + dy * dy + dz * dz);
-            start = point;
+        double goal = nearest(destination.x, destination.z).along();
+        double lower = Math.min(closest.along(), goal);
+        double upper = Math.max(closest.along(), goal);
+        Vec3 previous = positionOf(pointAt(lower));
+        double distance = from.distanceTo(positionOf(start)) + destination.distanceTo(positionOf(pointAt(goal)));
+        for (int i = (int) (lower * (points.length - 1)) + 1; i < upper * (points.length - 1); i++) {
+            Vec3 next = positionOf(points[i]);
+            distance += previous.distanceTo(next);
+            previous = next;
         }
-        return distance + destination.distanceTo(new Vec3(start.x(), start.y(), start.z()));
+        return distance + previous.distanceTo(positionOf(pointAt(upper)));
+    }
+
+    private static Vec3 positionOf(Point point) {
+        return new Vec3(point.x(), point.y(), point.z());
     }
 
     /** 到主航道中心线的水平距离（任务进度/矿脉用）。 */

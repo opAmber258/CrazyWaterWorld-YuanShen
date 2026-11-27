@@ -1,0 +1,15 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "minecraft:block/iron_block",
+    "metal": "minecraft:block/iron_block",
+    "face": "minecraft:block/gray_concrete",
+    "tank": "minecraft:block/light_blue_concrete"
+  },
+  "elements": [
+    {"from": [2, 0, 5], "to": [14, 16, 11], "faces": {"up":{"texture":"#metal"},"down":{"texture":"#metal"},"north":{"texture":"#metal"},"south":{"texture":"#face"},"west":{"texture":"#metal"},"east":{"texture":"#metal"}}},
+    {"from": [3, 1, 11], "to": [5, 5, 12], "faces": {"up":{"texture":"#tank"},"down":{"texture":"#tank"},"north":{"texture":"#tank"},"south":{"texture":"#tank"},"west":{"texture":"#tank"},"east":{"texture":"#tank"}}},
+    {"from": [7, 1, 11], "to": [9, 5, 12], "faces": {"up":{"texture":"#tank"},"down":{"texture":"#tank"},"north":{"texture":"#tank"},"south":{"texture":"#tank"},"west":{"texture":"#tank"},"east":{"texture":"#tank"}}},
+    {"from": [11, 1, 11], "to": [13, 5, 12], "faces": {"up":{"texture":"#tank"},"down":{"texture":"#tank"},"north":{"texture":"#tank"},"south":{"texture":"#tank"},"west":{"texture":"#tank"},"east":{"texture":"#tank"}}}
+  ]
+}

@@ -101,6 +101,10 @@ public class CoilgunBlock extends TurretBlock {
         return pos.subtract(offset(state, state.getValue(PART)));
     }
 
+    public static BlockPos partPos(BlockPos master, BlockState state, int part) {
+        return master.offset(offset(state, part));
+    }
+
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         if (context.getClickedFace().getAxis().isHorizontal()) return null;

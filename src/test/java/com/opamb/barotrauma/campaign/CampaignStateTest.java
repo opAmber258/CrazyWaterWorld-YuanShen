@@ -86,6 +86,24 @@ class CampaignStateTest {
     }
 
     @Test
+    void connectionAndStationPersistSeparately() {
+        CampaignState state = new CampaignState();
+        state.beginTravel(1, 42L);
+        state.setInstance(-32768, -152, 0);
+        state.round().updateConnection(true);
+        state = CampaignState.load(state.save(new CompoundTag()));
+        assertTrue(state.round().connection());
+        assertEquals(-32768, state.round().instanceX());
+
+        state.finishTravel(1, true);
+        state = CampaignState.load(state.save(new CompoundTag()));
+        assertEquals(1, state.round().stationNode());
+        assertFalse(state.round().connection());
+        assertFalse(state.round().hasInstance());
+        assertEquals(RoundPhase.AT_NODE, state.round().phase());
+    }
+
+    @Test
     @DisplayName("NBT 往返保留快照：重进后仍能回档")
     void snapshotSurvivesNbt() {
         CampaignState state = new CampaignState();

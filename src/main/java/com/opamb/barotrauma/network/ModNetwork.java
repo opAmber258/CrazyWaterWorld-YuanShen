@@ -41,7 +41,8 @@ public final class ModNetwork {
     // 41：TurretStatePacket 增加储能总容量/最低门槛/装弹器状态/是否装弹箱/船艏方向（潜望镜 HUD）。
     // 42：ShipUseBlockPacket 支持手持炮台绑定器直接命中；PumpActionPacket 增加 TOGGLE_POWER。
     // 43：新增 CoilgunShotPacket（服务端确认单发，客户端据此播后坐与枪口特效）。
-    private static final String PROTOCOL = "43";
+    // 44：TurretFirePacket 同步电磁炮的扳机按下与松开。
+    private static final String PROTOCOL = "46";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);

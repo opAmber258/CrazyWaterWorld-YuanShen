@@ -8,8 +8,11 @@ import com.opamb.barotrauma.medical.affliction.Limb;
 import com.opamb.barotrauma.reactor.ReactorFuel;
 import com.opamb.barotrauma.reactor.ReactorState;
 import com.opamb.barotrauma.registry.ModBlockEntities;
+import com.opamb.barotrauma.ship.PowerConnection;
 import com.opamb.barotrauma.registry.ModSounds;
 import com.opamb.barotrauma.ship.ConditionComponent;
+import com.opamb.barotrauma.ship.PowerGrid;
+import com.opamb.barotrauma.world.StarterOutpost;
 import com.opamb.barotrauma.ship.RepairTarget;
 import com.opamb.barotrauma.ship.ShipState;
 import com.opamb.barotrauma.ship.vs.VsPilot;
@@ -56,7 +59,9 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * <p>供电是"硬核"的：船上没有反应堆或反应堆没开机，ShipSimulation 的
  * powerRatio 就是 0，推进器和泵都不会动。</p>
  */
-public class ReactorBlockEntity extends BlockEntity implements Container, RepairTarget, GeoBlockEntity {
+public class ReactorBlockEntity extends BlockEntity implements Container, RepairTarget, GeoBlockEntity, PowerConnection {
+
+    private BlockPos boundBox;
 
     public static final int FUEL_SLOTS = 4;
     private static final double SECONDS_PER_TICK = 1.0D / 20.0D;
@@ -130,11 +135,13 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         ShipState ship = DrainPumpBlockEntity.resolveShip(server, pos);
         BlockPos cell = null;
         double load = 0.0D;
+        boolean connected = false;
         if (ship != null) {
             BlockPos assembly = VsState.isPhysical(server, pos) ? VsPilot.toAssembly(pos) : pos;
             if (ship.tracksHullBlock(assembly)) {
                 cell = assembly;
-                load = ship.simulation().report().powerDemand();
+                connected = ship.simulation().boxConnected(be.boundBox);
+                if (connected) load = ship.simulation().report().powerDemand();
                 if (!be.dugongStock && com.opamb.barotrauma.world.StarterSub.stockEquipment(
                         server, cell, VsState.isPhysical(server, pos), -3, -4, 1)) {
                     be.dugongStock = true;
@@ -143,12 +150,15 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
                 }
             }
         }
+        var station = cell == null ? StarterOutpost.reactorSite(server, pos) : null;
+        be.state.setOutpost(station != null);
+        if (station != null) load = StarterOutpost.powerDemand(server, station);
         be.lastLoadKw = load;
 
         // 耐久：反应堆开机时自然劣化（最低 10%，见 ConditionComponent）；
         // 泡水时按原作 reactor.xml 的 InWater 效果再掉 0.5/s，同样止于 10%。
         if (be.condition.tick(server, be.state.temperature() > 0.1D
-                && !com.opamb.barotrauma.world.StarterSub.atFriendlyOutpost(server), SECONDS_PER_TICK,
+                && station == null && !com.opamb.barotrauma.world.StarterSub.atFriendlyOutpost(server), SECONDS_PER_TICK,
                 (be.state.fission() + be.state.turbine()) / 200.0D)) {
             be.setChanged();
         }
@@ -189,15 +199,16 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
         int events = be.state.tick(SECONDS_PER_TICK, available, load,
                 be.condition.fraction());
         be.burnFuel(SECONDS_PER_TICK);
-        be.generatedKw = Mth.clamp(load, be.state.minOutputKw(), be.state.maxOutputKw());
+        be.generatedKw = cell == null || connected
+                ? Mth.clamp(load, be.state.minOutputKw(), be.state.maxOutputKw()) : 0.0D;
 
         if (ship != null && cell != null) {
-            ship.simulation().reportReactor(cell, be.state.minOutputKw(),
-                    be.state.maxOutputKw(), be.state.capacityKw(),
+            ship.simulation().reportReactor(cell, connected ? be.state.minOutputKw() : 0.0D,
+                    connected ? be.state.maxOutputKw() : 0.0D, connected ? be.state.capacityKw() : 0.0D,
                     be.state.temperature(), be.state.overheated(), be.state.meltedDown());
-            be.lastRatio = ship.simulation().powerRatio();
+            be.lastRatio = connected ? ship.simulation().powerRatio() : 0.0D;
         } else {
-            be.lastRatio = 0.0D;
+            be.lastRatio = station == null ? 0.0D : PowerGrid.voltage(be.generatedKw, load);
         }
 
         if ((events & ReactorState.EVENT_FIRE) != 0) {
@@ -548,8 +559,20 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
     // ------------------------------------------------------------------ 存档
 
     @Override
+    public BlockPos powerBox() {
+        return boundBox;
+    }
+
+    @Override
+    public void setPowerBox(BlockPos box) {
+        boundBox = box == null ? null : box.immutable();
+        setChanged();
+    }
+
+    @Override
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
+        if (boundBox != null) tag.putLong("PowerBox", boundBox.asLong());
         tag.put("ReactorState", doubleList(state.snapshot()));
         tag.put("ReactorBurn", doubleList(burnCarry));
         tag.putBoolean("MeltdownDone", meltdownDone);
@@ -561,6 +584,7 @@ public class ReactorBlockEntity extends BlockEntity implements Container, Repair
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
+        boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
         state.restore(doubleArray(tag.getList("ReactorState", Tag.TAG_DOUBLE)));
         double[] burn = doubleArray(tag.getList("ReactorBurn", Tag.TAG_DOUBLE));
         for (int i = 0; i < Math.min(FUEL_SLOTS, burn.length); i++) {

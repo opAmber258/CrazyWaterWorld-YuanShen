@@ -230,7 +230,7 @@ public final class ShipSimulation {
                                   net.minecraft.core.BlockPos box, long lastSeen) {
     }
 
-    private record BoxReport(double condition, long lastSeen) {
+    private record BoxReport(double condition, net.minecraft.core.BlockPos upstream, long lastSeen) {
     }
 
     /**
@@ -479,6 +479,41 @@ public final class ShipSimulation {
         this.airlockPhase = old.airlockPhase;
         this.airlockWater = old.airlockWater;
         this.airlockCycles = old.airlockCycles;
+
+        // A compartment rescan is not a power-grid restart. Retain reports only for devices still aboard.
+        reactors.putAll(old.reactors);
+        reactors.keySet().removeIf(cell -> !geometry.owns(cell));
+        engines.putAll(old.engines);
+        engines.keySet().removeIf(cell -> !geometry.owns(cell));
+        consumers.putAll(old.consumers);
+        consumers.keySet().removeIf(cell -> !geometry.owns(cell));
+        boxes.putAll(old.boxes);
+        boxes.keySet().removeIf(cell -> !geometry.owns(cell));
+        storages.putAll(old.storages);
+        storages.keySet().removeIf(cell -> !geometry.owns(cell));
+        storageFlowKw.putAll(old.storageFlowKw);
+        storageFlowKw.keySet().retainAll(storages.keySet());
+        reactorTick = old.reactorTick;
+        engineTick = old.engineTick;
+        consumerTick = old.consumerTick;
+        boxTick = old.boxTick;
+        storageTick = old.storageTick;
+        lastTerminalTick = old.lastTerminalTick;
+        lastVoltage = old.lastVoltage;
+        lastSupply = old.lastSupply;
+        lastOutput = old.lastOutput;
+        lastDemand = old.lastDemand;
+        lastRatio = old.lastRatio;
+        lastBatteryOutput = old.lastBatteryOutput;
+        lastBatteryCharge = old.lastBatteryCharge;
+        lastStoredKwm = old.lastStoredKwm;
+        lastStorageCapacityKwm = old.lastStorageCapacityKwm;
+        lastEngineCount = old.lastEngineCount;
+        lastEngineDemand = old.lastEngineDemand;
+        lastEngineMaxForce = old.lastEngineMaxForce;
+        availableDrivePowerKw = old.availableDrivePowerKw;
+        nonEngineDemandKw = old.nonEngineDemandKw;
+        primedBallastCapacity = old.primedBallastCapacity;
     }
 
     /**
@@ -642,11 +677,8 @@ public final class ShipSimulation {
             }
             // 支路断开（接线盒拆掉/耐久 0）的设备不再吃全船供电：
             // 把它的需求算进来会把正常支路也拖到欠压停机。
-            if (report.box() != null) {
-                BoxReport box = boxes.get(report.box());
-                if (box == null || box.condition() <= 0.0D) {
-                    continue;
-                }
+            if (!boxConnected(report.box())) {
+                continue;
             }
             consumerDemand += report.demandKw();
             if (engines.containsKey(entry.getKey())) {
@@ -1079,7 +1111,11 @@ public final class ShipSimulation {
                 new java.util.HashMap<>();
         for (java.util.Map.Entry<net.minecraft.core.BlockPos, BoxReport> entry
                 : boxes.entrySet()) {
-            movedBoxes.put(entry.getKey().offset(dx, dy, dz), entry.getValue());
+            BoxReport report = entry.getValue();
+            net.minecraft.core.BlockPos upstream = report.upstream();
+            movedBoxes.put(entry.getKey().offset(dx, dy, dz),
+                    new BoxReport(report.condition(), upstream == null ? null : upstream.offset(dx, dy, dz),
+                            report.lastSeen()));
         }
         boxes.clear();
         boxes.putAll(movedBoxes);
@@ -1686,11 +1722,17 @@ public final class ShipSimulation {
 
     /** 接线盒每 tick 上报耐久。 */
     public void reportJunctionBox(net.minecraft.core.BlockPos cell, double condition) {
+        reportJunctionBox(cell, condition, null);
+    }
+
+    public void reportJunctionBox(net.minecraft.core.BlockPos cell, double condition,
+                                  net.minecraft.core.BlockPos upstream) {
         if (cell == null) {
             return;
         }
         boxes.put(cell.immutable(), new BoxReport(
-                Math.max(0.0D, Math.min(100.0D, condition)), boxTick));
+                Math.max(0.0D, Math.min(100.0D, condition)),
+                upstream == null ? null : upstream.immutable(), boxTick));
     }
 
     /**
@@ -1745,16 +1787,21 @@ public final class ShipSimulation {
 
     /** 电池是否在电网里可用：耐久 > 0 且绑定的接线盒没坏。 */
     private boolean storageUsable(StorageReport report) {
-        return report.condition() > 0.0D && boxHealthy(report.box());
+        return report.condition() > 0.0D && boxConnected(report.box());
     }
 
-    /** 接线盒是否有效；null 表示默认总线，视为有效。 */
-    private boolean boxHealthy(net.minecraft.core.BlockPos box) {
-        if (box == null) {
-            return true;
+    /** A healthy branch reaches the common bus through all of its upstream boxes. */
+    public boolean boxConnected(net.minecraft.core.BlockPos box) {
+        // A chain has at most boxes.size() nodes. Anything longer contains a cycle.
+        for (int remaining = boxes.size(); box != null; remaining--) {
+            BoxReport report = boxes.get(box);
+            if (remaining == 0 || report == null || report.condition() <= 0.0D
+                    || boxTick - report.lastSeen() > BOX_STALE_TICKS) {
+                return false;
+            }
+            box = report.upstream();
         }
-        BoxReport report = boxes.get(box);
-        return report != null && report.condition() > 0.0D;
+        return true;
     }
 
     /* ------------------------------------------------------- 制氧 / 通风 */
@@ -1858,11 +1905,7 @@ public final class ShipSimulation {
 
     private boolean consumerConnected(net.minecraft.core.BlockPos cell) {
         ConsumerReport report = cell == null ? null : consumers.get(cell);
-        if (report != null && report.box() != null) {
-            BoxReport box = boxes.get(report.box());
-            return box != null && box.condition() > 0.0D;
-        }
-        return true;
+        return report == null || boxConnected(report.box());
     }
 
     /** 某个接线盒上绑定的设备总负载（kW）。 */

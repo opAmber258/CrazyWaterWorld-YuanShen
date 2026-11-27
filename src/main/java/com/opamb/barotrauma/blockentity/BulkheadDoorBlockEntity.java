@@ -41,6 +41,7 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
      * 最近一次手动右键的 tick。按住右键时客户端每 4 tick 触发一次 use，
      * 门会每 0.2 秒开/关一次，看起来像“打不开”。10 tick 内的重复触发直接忽略。
      */
+    private boolean manuallyClosed;
     private long lastManualUseTick = -100L;
     /** 门不自然劣化（原作 Repairable 默认 0/s），只被外力打坏后修理。 */
     private final ConditionComponent condition =
@@ -71,13 +72,19 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
             return;
         }
         boolean open = state.getValue(BulkheadDoorBlock.OPEN);
+        boolean near = AutomationUtil.playerNear(server, ship, pos, state.getValue(BulkheadDoorBlock.FACING), false);
+        if (be.manuallyClosed) {
+            if (near) return;
+            be.manuallyClosed = false;
+        }
+        // The manual command takes precedence over the automatic mode for the hold interval.
+        if (open && level.getGameTime() - be.lastManualUseTick < AutomationUtil.MOTION_HOLD_TICKS) return;
         boolean want = open;
         if (be.automation == AutomationMode.MOTION) {
             // 原作自动关门：运动探测器 + OrComponent TimeFrame=4
             // （Content/Items/Assemblies/AutoClosingDoor.xml，说明是
             // "closes automatically if nobody is around for 4 seconds"）。
             // 没人后保持 4 秒再关，对应 80 tick。
-            boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
             if (near) {
                 be.motionHold = AutomationUtil.MOTION_HOLD_TICKS;
             } else if (be.motionHold > 0) {
@@ -88,7 +95,6 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
             // 原作没有单独的“水密门”：自动关门装配用运动探测器（开门 + 延时关门），
             // 气闸装配用水探测器 + NOT/AND（只管有水时的时序）。合并到一扇门里就是
             // 运动负责开、水只负责关——水永远不触发“开”（用户要求：有水不自动开门）。
-            boolean near = AutomationUtil.playerNear(server, ship, cell, 3.0D);
             if (near) {
                 be.motionHold = AutomationUtil.MOTION_HOLD_TICKS;
             } else if (be.motionHold > 0) {
@@ -137,6 +143,7 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
     }
 
     public void holdAfterManualOpen() {
+        manuallyClosed = false;
         if (automation == AutomationMode.MOTION || automation == AutomationMode.WATERTIGHT) {
             motionHold = AutomationUtil.MOTION_HOLD_TICKS;
         }
@@ -144,11 +151,14 @@ public class BulkheadDoorBlockEntity extends BlockEntity implements GeoBlockEnti
 
     /** 手动关门：清掉运动保持计时，否则自动模式会在同一 tick 把门重新打开。 */
     public void releaseManualHold() {
+        manuallyClosed = true;
         motionHold = 0;
     }
 
     public void cycleAutomation() {
         automation = automation.next();
+        manuallyClosed = false;
+        lastManualUseTick = -100L;
         motionHold = 0;
         setChanged();
     }

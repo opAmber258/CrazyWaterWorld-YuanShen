@@ -45,6 +45,8 @@ public class LightBlockEntity extends BlockEntity implements PowerConsumer {
     private boolean lit = true;
     /** 当前电压决定的亮度系数 0..1（原作 lightBrightness）。 */
     private float brightness = 1.0F;
+    private int pendingLightLevel = -1;
+    private int pendingLightTicks;
     /** 是否还有光（供电不足时仍是 true，只是更暗）。 */
     private boolean powered = true;
     private boolean onShip;
@@ -116,9 +118,9 @@ public class LightBlockEntity extends BlockEntity implements PowerConsumer {
         }
         ShipState ship = be.resolveShip(server, pos);
         boolean nextOnShip = false;
-        double nextBrightness = 1.0D;
+        double nextBrightness = be.kind().powerKw() > 0.0D && be.boundBox != null ? 0.0D : 1.0D;
         if (ship != null) {
-            BlockPos cell = assemblyPos(pos);
+            BlockPos cell = assemblyPos(server, pos);
             if (ship.tracksHullBlock(cell)) {
                 nextOnShip = true;
                 ShipSimulation simulation = ship.simulation();
@@ -131,13 +133,25 @@ public class LightBlockEntity extends BlockEntity implements PowerConsumer {
                 }
             }
         }
-        boolean nextPowered = be.kind().powerKw() <= 0.0D || !nextOnShip
-                || nextBrightness > 0.0D;
+        boolean nextPowered = be.kind().powerKw() <= 0.0D || nextBrightness > 0.0D;
         be.onShip = nextOnShip;
         be.powered = nextPowered;
         be.brightness = (float) nextBrightness;
         int emitted = be.emittedLevel();
-        if (state.getValue(LightBlock.LIGHT) != emitted) {
+        int current = state.getValue(LightBlock.LIGHT);
+        if (current == emitted) {
+            be.pendingLightTicks = 0;
+            return;
+        }
+        if (be.pendingLightLevel != emitted) {
+            be.pendingLightLevel = emitted;
+            be.pendingLightTicks = 0;
+        }
+        // Crossing a light-level boundary every tick makes the colored light engine
+        // repeatedly remove and repropagate overlapping fixtures. Real on/off stays immediate.
+        if (current == 0 || emitted == 0 || Math.abs(current - emitted) >= 2
+                || ++be.pendingLightTicks >= 4) {
+            be.pendingLightTicks = 0;
             level.setBlock(pos, state.setValue(LightBlock.LIGHT, emitted), Block.UPDATE_ALL);
         }
     }
@@ -169,19 +183,19 @@ public class LightBlockEntity extends BlockEntity implements PowerConsumer {
                 ? light.kind() : LightBlock.Kind.LAMP;
     }
 
-    private static BlockPos assemblyPos(BlockPos pos) {
-        return VsState.active() && VsPilot.isYardBlock(pos) ? VsPilot.toAssembly(pos) : pos;
+    private static BlockPos assemblyPos(ServerLevel level, BlockPos pos) {
+        return VsState.isPhysical(level, pos) ? VsPilot.toAssembly(pos) : pos;
     }
 
     /** 和电池/制氧机同一套：缓存核心位置，船状态不存档时自己补扫；找不到船冷却 1 秒。 */
     private ShipState resolveShip(ServerLevel level, BlockPos pos) {
-        if (VsState.active() && VsPilot.isYardBlock(pos)) {
+        if (VsState.isPhysical(level, pos)) {
             return VsState.activeState();
         }
         if (cachedCorePos != null && level.hasChunkAt(cachedCorePos)
                 && level.getBlockEntity(cachedCorePos) instanceof ShipCoreBlockEntity core) {
             ShipState state = core.state() != null ? core.state() : core.rescan(level);
-            if (state != null && state.tracksHullBlock(assemblyPos(pos))) {
+            if (state != null && state.tracksHullBlock(pos)) {
                 return state;
             }
         }
@@ -190,7 +204,7 @@ public class LightBlockEntity extends BlockEntity implements PowerConsumer {
             return null;
         }
         coreRetryTicks = 20;
-        ShipCoreBlockEntity core = ShipCores.coreOwning(level, assemblyPos(pos), 48.0D);
+        ShipCoreBlockEntity core = ShipCores.coreOwning(level, pos, 48.0D);
         cachedCorePos = core == null ? null : core.getBlockPos().immutable();
         return core == null ? null : core.state();
     }

@@ -23,6 +23,8 @@ import java.util.UUID;
  * 一艘船的运行时状态：几何（舱室）+ 机器统计 + 数值模拟。
  */
 public final class ShipState {
+    // Original Steering blends by 0.1 every 1/60 s. One Minecraft tick is three updates.
+    private static final double AUTOPILOT_BALLAST_BLEND = 1.0D - 0.9D * 0.9D * 0.9D;
 
     private ShipGeometry.Result geometry;
     private final MachineCount machines;
@@ -776,7 +778,8 @@ public final class ShipState {
                 && Math.abs(yawRate) < 0.05D, 10);
         helmForward = (int) Math.signum(command.forward());
         forwardScale = Math.abs(command.forward()) * commandLimit;
-        verticalInput = command.vertical();
+        verticalInput = command.stopped() ? 0.0D
+                : verticalInput + (command.vertical() - verticalInput) * AUTOPILOT_BALLAST_BLEND;
         throttleY = (int) Math.signum(verticalInput);
         applyAutopilotYaw(command.yawError());
     }
