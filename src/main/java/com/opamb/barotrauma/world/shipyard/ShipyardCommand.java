@@ -81,21 +81,7 @@ public final class ShipyardCommand {
         if (plot == null) {
             return 0;
         }
-        String safeName = ShipLibrary.clip(name == null || name.isBlank()
-                ? "ship_" + plot.index : name);
-        String id = ShipyardLibraryServer.uniqueId(
-                ShipyardLibraryServer.slug(safeName), safeName, plot.shipId);
-        boolean ok = ShipyardStructureIO.save(level, plot, id, safeName);
-        if (ok) {
-            data.setShipId(player.getUUID(), id);
-            data.setDirty(player.getUUID(), false);
-            data.setDirty();
-            com.opamb.barotrauma.network.ModNetwork.sendToPlayer(player,
-                    com.opamb.barotrauma.network.ShipyardStatePacket.of(plot));
-        }
-        player.displayClientMessage(Component.translatable(ok ? "shipyard.library.saved"
-                : "shipyard.library.save_failed", id), ok);
-        return ok ? 1 : 0;
+        return ShipyardLibraryServer.save(player, name) ? 1 : 0;
     }
 
     private static int load(ServerPlayer player, String id) {

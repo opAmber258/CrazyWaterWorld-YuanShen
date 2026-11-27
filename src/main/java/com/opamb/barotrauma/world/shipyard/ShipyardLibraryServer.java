@@ -36,24 +36,7 @@ public final class ShipyardLibraryServer {
         switch (action) {
             case 1 -> sendList(player);
             case 2 -> {
-                String shipName = ShipLibrary.clip(name == null || name.isBlank()
-                        ? "ship_" + plot.index : name);
-                String shipId = uniqueId(slug(shipName), shipName, plot.shipId);
-                boolean ok = false;
-                if (canModify(player, shipId)) {
-                    ShipyardValidator.Report report = ShipyardValidator.validate(level, plot);
-                    boolean verified = report.connected() && report.sealed();
-                    ok = ShipyardStructureIO.save(level, plot, shipId, shipName,
-                            player.getUUID().toString(), player.getGameProfile().getName(), verified);
-                }
-                if (ok) {
-                    data.setShipId(player.getUUID(), shipId);
-                    data.setDirty(player.getUUID(), false);
-                    data.setDirty();
-                    ModNetwork.sendToPlayer(player, ShipyardStatePacket.of(plot));
-                }
-                player.displayClientMessage(Component.translatable(ok
-                        ? "shipyard.library.saved" : "shipyard.library.save_failed", shipId), false);
+                save(player, name);
                 sendList(player);
             }
             case 3 -> {
@@ -84,6 +67,37 @@ public final class ShipyardLibraryServer {
             default -> {
             }
         }
+    }
+
+    public static boolean save(ServerPlayer player, String name) {
+        if (!(player.level() instanceof ServerLevel level)
+                || !level.dimension().equals(ModDimensions.SHIPYARD)) {
+            return false;
+        }
+        ShipyardSavedData data = ShipyardSavedData.get(level);
+        ShipyardSavedData.Plot plot = data.plot(player.getUUID());
+        if (plot == null) {
+            return false;
+        }
+        String shipName = ShipLibrary.clip(name == null || name.isBlank()
+                ? "ship_" + plot.index : name);
+        String shipId = uniqueId(slug(shipName), shipName, plot.shipId);
+        boolean ok = false;
+        if (canModify(player, shipId)) {
+            ShipyardValidator.Report report = ShipyardValidator.validate(level, plot);
+            boolean verified = report.connected() && report.sealed();
+            ok = ShipyardStructureIO.save(level, plot, shipId, shipName,
+                    player.getUUID().toString(), player.getGameProfile().getName(), verified);
+        }
+        if (ok) {
+            data.setShipId(player.getUUID(), shipId);
+            data.setDirty(player.getUUID(), false);
+            data.setDirty();
+            ModNetwork.sendToPlayer(player, ShipyardStatePacket.of(plot));
+        }
+        player.displayClientMessage(Component.translatable(ok
+                ? "shipyard.library.saved" : "shipyard.library.save_failed", shipId), false);
+        return ok;
     }
 
     private static void sendList(ServerPlayer player) {

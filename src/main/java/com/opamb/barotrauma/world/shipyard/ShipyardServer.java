@@ -655,7 +655,7 @@ public final class ShipyardServer {
         }
         Deque<Batch> undo = UNDO.computeIfAbsent(player.getUUID(), key -> new ArrayDeque<>());
         undo.addFirst(new Batch(List.copyOf(changes)));
-        while (undo.size() > UNDO_LIMIT || cellCount(undo) > UNDO_CELL_LIMIT) {
+        while (undo.size() > 1 && (undo.size() > UNDO_LIMIT || cellCount(undo) > UNDO_CELL_LIMIT)) {
             undo.removeLast();
         }
         REDO.remove(player.getUUID());
@@ -697,7 +697,7 @@ public final class ShipyardServer {
         }
         Deque<Batch> undo = UNDO.computeIfAbsent(player.getUUID(), key -> new ArrayDeque<>());
         undo.addFirst(batch);
-        while (undo.size() > UNDO_LIMIT || cellCount(undo) > UNDO_CELL_LIMIT) {
+        while (undo.size() > 1 && (undo.size() > UNDO_LIMIT || cellCount(undo) > UNDO_CELL_LIMIT)) {
             undo.removeLast();
         }
         refresh(player, level, changes);

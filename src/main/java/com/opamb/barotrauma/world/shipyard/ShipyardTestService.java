@@ -129,6 +129,10 @@ public final class ShipyardTestService {
             if (VsPilot.hasShip()) {
                 VsPilot.dock(test, true);
             }
+            if (VsPilot.hasShip()) {
+                data.beginTest(player.getUUID(), origin.getX(), origin.getY(), origin.getZ(),
+                        origin.getX() + sizeX - 1, origin.getY() + sizeY - 1, origin.getZ() + sizeZ - 1);
+            }
             clear(test, new ShipGeometry.Bounds(origin.getX() - 2, origin.getY() - 4, origin.getZ() - 2,
                     origin.getX() + sizeX + 1, origin.getY() + sizeY + 1, origin.getZ() + sizeZ + 1));
             player.displayClientMessage(Component.translatable("shipyard.test.failed", e.getMessage())

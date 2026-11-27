@@ -999,7 +999,10 @@ public final class ShipyardClient {
             dir = forward.add(right.scale(ndcX * tan * aspect))
                     .add(up.scale(ndcY * tan)).normalize();
         }
-        BlockHitResult hit = mc.level.clip(new ClipContext(eye, eye.add(dir.scale(512.0D)),
+        Vec3 reachEnd = eye.add(dir.scale(512.0D));
+        BlockHitResult hit = sliceEnabled
+                ? clipSkippingSliced(mc.level, eye, reachEnd)
+                : mc.level.clip(new ClipContext(eye, reachEnd,
                 ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
         if (hit.getType() == HitResult.Type.BLOCK) {
             target = hit.getBlockPos();
@@ -1017,6 +1020,20 @@ public final class ShipyardClient {
         } else {
             clearTarget();
         }
+    }
+
+    private static BlockHitResult clipSkippingSliced(net.minecraft.world.level.Level level, Vec3 start, Vec3 end) {
+        return net.minecraft.world.level.BlockGetter.traverseBlocks(start, end, null, (ignored, pos) -> {
+            if (isSlicedOut(pos)) {
+                return null;
+            }
+            BlockState blockState = level.getBlockState(pos);
+            if (blockState.isAir()) {
+                return null;
+            }
+            BlockHitResult hit = blockState.getShape(level, pos).clip(start, end, pos);
+            return hit != null && hit.getType() == HitResult.Type.BLOCK ? hit : null;
+        }, ignored -> BlockHitResult.miss(end, Direction.UP, BlockPos.containing(end)));
     }
 
     private static BlockPos fallbackPlaneHit(Vec3 eye, Vec3 dir) {
@@ -1098,6 +1115,17 @@ public final class ShipyardClient {
         }
         Minecraft mc = Minecraft.getInstance();
         if (inTest()) {
+            if (editorOpen) {
+                editorOpen = false;
+                ghostState = null;
+                cancelDrag();
+                pointerOverUi = false;
+                mc.options.hideGui = hideGuiPrevious;
+            }
+            if (mc.screen instanceof ShipyardEditorScreen
+                    || mc.screen instanceof ShipyardLibraryScreen) {
+                mc.setScreen(null);
+            }
             // 试航维度没有编辑器；Tab 直接请求返回船厂，避免只能手打命令。
             while (TOGGLE_EDITOR.consumeClick()) {
                 ModNetwork.sendToServer(new com.opamb.barotrauma.network.ShipyardTestPacket(false));

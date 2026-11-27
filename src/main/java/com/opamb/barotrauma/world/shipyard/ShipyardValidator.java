@@ -126,36 +126,40 @@ public final class ShipyardValidator {
 
         for (BlockPos immutable : shipBlocks) {
             BlockState state = level.getBlockState(immutable);
-            if (state.is(ModBlocks.REACTOR.get())) {
+            BlockEntity be = level.getBlockEntity(immutable);
+            if (state.is(ModBlocks.REACTOR.get()) && be instanceof ReactorBlockEntity reactorBe) {
                 reactor++;
                 firstReactor = firstReactor == null ? immutable : firstReactor;
-                if (level.getBlockEntity(immutable) instanceof ReactorBlockEntity reactorBe
-                        && reactorBe.availableFuel() > 1.0D) {
+                if (reactorBe.availableFuel() > 1.0D) {
                     reactorFuel++;
                 }
-            } else if (state.is(ModBlocks.ENGINE.get())) {
+            } else if (state.is(ModBlocks.ENGINE.get()) && be != null) {
                 engine++;
                 firstEngine = firstEngine == null ? immutable : firstEngine;
-            } else if (state.is(ModBlocks.DRAIN_PUMP.get()) || state.is(ModBlocks.SMALL_PUMP.get())) {
+            } else if ((state.is(ModBlocks.DRAIN_PUMP.get()) || state.is(ModBlocks.SMALL_PUMP.get()))
+                    && be != null) {
                 pump++;
                 firstPump = firstPump == null ? immutable : firstPump;
             } else if (state.is(ModBlocks.BALLAST_PUMP.get())) {
-                ballast++;
+                if (be != null) {
+                    ballast++;
+                }
                 ballastBlocks.add(immutable);
-            } else if (state.is(ModBlocks.OXYGEN_GENERATOR.get())) {
+            } else if (state.is(ModBlocks.OXYGEN_GENERATOR.get()) && be != null) {
                 oxygen++;
                 firstOxygen = firstOxygen == null ? immutable : firstOxygen;
             } else if (state.is(ModBlocks.VENT.get())) {
                 vent++;
-            } else if (state.is(ModShipBlocks.BULKHEAD_DOOR.get())
+            } else if ((state.is(ModShipBlocks.BULKHEAD_DOOR.get())
                     || state.is(ModShipBlocks.HATCH.get())
-                    || state.is(ModShipBlocks.HATCH_LADDER.get())) {
+                    || state.is(ModShipBlocks.HATCH_LADDER.get()))
+                    && isMainDoorPart(state)) {
                 doors++;
                 firstDoor = firstDoor == null ? immutable : firstDoor;
-            } else if (state.is(ModBlocks.BATTERY.get()) || state.is(ModBlocks.SUPERCAPACITOR.get())) {
+            } else if ((state.is(ModBlocks.BATTERY.get()) || state.is(ModBlocks.SUPERCAPACITOR.get()))
+                    && be != null) {
                 battery++;
             }
-            BlockEntity be = level.getBlockEntity(immutable);
             if (be instanceof PowerConsumer consumer) {
                 powerLoadSum += Math.max(0.0D, consumer.powerDemandKw());
                 if (consumer.powerBox() != null && wireLinks.size() < MAX_WIRE_LINKS) {
@@ -263,6 +267,12 @@ public final class ShipyardValidator {
                 cappedDisconnected, List.copyOf(leakPos), minPos, maxPos,
                 totalInteriorVolume, ballastVolume, powerGenKw, powerLoadKw, engine,
                 List.copyOf(ballastFloorCells), List.copyOf(dryFloorCells), List.copyOf(wireLinks));
+    }
+
+    private static boolean isMainDoorPart(BlockState state) {
+        return !state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)
+                || state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)
+                == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER;
     }
 
     private static boolean isBallastCompartment(ShipGeometry.Compartment comp, Set<BlockPos> ballastBlocks) {
