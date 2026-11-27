@@ -48,7 +48,7 @@ public final class UnderwaterEffects {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level != null && mc.level.dimension().equals(ModDimensions.THE_DEEP)) {
+        if (OceanEnvironment.isOceanDimension(mc.level)) {
             event.setRed(0.0F);
             event.setGreen(0.0F);
             event.setBlue(0.0F);
@@ -129,7 +129,7 @@ public final class UnderwaterEffects {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level != null && mc.level.dimension().equals(ModDimensions.THE_DEEP)) {
+        if (OceanEnvironment.isOceanDimension(mc.level)) {
             RenderSystem.clearColor(0.0F, 0.0F, 0.0F, 0.0F);
             RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT, Minecraft.ON_OSX);
         }

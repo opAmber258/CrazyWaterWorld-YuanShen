@@ -38,7 +38,15 @@ public final class ModNetwork {
     // 38：ShipActionPacket 增加驾驶状态/定点目标与舵令确认，功率拒绝回显。
     // 39：RepairActionPacket 与设备修理/接线盒菜单改版。
     // 40：新增 NightVisionPacket（亮度调节器面板的无限夜视开关）。
-    private static final String PROTOCOL = "40";
+    // 41：新增船厂状态/编辑/校验/试航/填充包（ShipyardState/Request/Edit/Status/Test/Fill）。
+    // 42：新增 ShipyardTeleportPacket（退出编辑器回到焦点）。
+    // 43：新增船库列表/动作包（ShipyardLibraryList/Action）。
+    // 44：ShipyardStatePacket 增加 dirty 标记。
+    // 45：船厂编辑/填充包支持镜像对称与多模式（实心/空心船壳/舱壁/直线/框选拆除）。
+    // 46：ShipyardStatusPacket 增加未连通/破口三维诊断坐标，新增 ShipyardPastePacket 选区粘贴。
+    // 47：支持椭球艇壳/材质替换刷（ShipyardFillPacket 过滤状态）及船体包围盒标尺坐标。
+    // 48：ShipyardStatusPacket 增加舱室着色/潜艇压载与供电预算/连线拓扑，新增 ShipyardWirePacket。
+    private static final String PROTOCOL = "48";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -174,6 +182,39 @@ CHANNEL.messageBuilder(LightColorPacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(NightVisionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
                 .encoder(NightVisionPacket::encode).decoder(NightVisionPacket::decode)
                 .consumerNetworkThread(NightVisionPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ShipyardStatePacket::encode).decoder(ShipyardStatePacket::decode)
+                .consumerNetworkThread(ShipyardStatePacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardRequestPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipyardRequestPacket::encode).decoder(ShipyardRequestPacket::decode)
+                .consumerNetworkThread(ShipyardRequestPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardEditPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipyardEditPacket::encode).decoder(ShipyardEditPacket::decode)
+                .consumerNetworkThread(ShipyardEditPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardStatusPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ShipyardStatusPacket::encode).decoder(ShipyardStatusPacket::decode)
+                .consumerNetworkThread(ShipyardStatusPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardTestPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipyardTestPacket::encode).decoder(ShipyardTestPacket::decode)
+                .consumerNetworkThread(ShipyardTestPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardFillPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipyardFillPacket::encode).decoder(ShipyardFillPacket::decode)
+                .consumerNetworkThread(ShipyardFillPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardTeleportPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipyardTeleportPacket::encode).decoder(ShipyardTeleportPacket::decode)
+                .consumerNetworkThread(ShipyardTeleportPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardLibraryListPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ShipyardLibraryListPacket::encode).decoder(ShipyardLibraryListPacket::decode)
+                .consumerNetworkThread(ShipyardLibraryListPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardLibraryActionPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipyardLibraryActionPacket::encode).decoder(ShipyardLibraryActionPacket::decode)
+                .consumerNetworkThread(ShipyardLibraryActionPacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardPastePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipyardPastePacket::encode).decoder(ShipyardPastePacket::decode)
+                .consumerNetworkThread(ShipyardPastePacket::handle).add();
+        CHANNEL.messageBuilder(ShipyardWirePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShipyardWirePacket::encode).decoder(ShipyardWirePacket::decode)
+                .consumerNetworkThread(ShipyardWirePacket::handle).add();
     }
 
     public static <MSG> void sendToAll(MSG message) {

@@ -374,6 +374,7 @@ public final class DeepSeaEvents {
                                                         IntegerArgumentType.getInteger(ctx, "width"),
                                                         IntegerArgumentType.getInteger(ctx, "length"),
                                                         IntegerArgumentType.getInteger(ctx, "height")))))))
+                .then(com.opamb.barotrauma.world.shipyard.ShipyardCommand.node())
                 .then(Commands.literal("depth").executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
                     int meters = ModDimensions.toMeters(player.blockPosition().getY());

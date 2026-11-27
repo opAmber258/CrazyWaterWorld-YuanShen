@@ -40,7 +40,7 @@ edges:
     condition: when publishing changes (走流程 / /publish) — art-only checks and direct main push, or general MEX bookkeeping and PR
   - target: patterns/vs2-physical-ship.md
     condition: when launching, docking, or debugging a VS2 physical ship
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 ---
 
 # Session Bootstrap
@@ -71,6 +71,8 @@ General code/shared-tool tasks read this file fully. Art-only tasks use the entr
 
 ## Current Project State
 
+- **独立造船厂系统（2026-11-27，任务分支 `feat/shipyard-20261126`）**：
+  新增独立编辑维度 `barotrauma:shipyard` 与试航海水维度 `barotrauma:shipyard_test`（`ModDimensions`、`ShipyardChunkGenerator`），每玩家独立地块（`ShipyardSavedData`、`ShipyardPlot`、`ShipyardManager`、`ShipyardCommand`）。客户端编辑器 `ShipyardEditorScreen`（`640×360` `ScaledScreen` 悬浮 HUD）提供 12 种建模/连线工具（单块/`Alt` 连绘、填充、方壳、椭球艇壳、舱壁、直线、替换、框删、复制、剪切、旋转翻转微调粘贴、编辑器内连线绑定）、舱室预制件、分类方块库、Y 轴剖面（`ShipyardSliceMixin`）、舱室分区 3D 着色、多方块虚影与朝向箭头、问题优先校验卡（含压载%/发电负载/引擎预算与点击定位）、Gizmo 轴向视角。服务端支持原子撤销/重做、镜像对称、大船防抖校验（16 tick）、跨存档船库 `ShipLibrary`（`SCHEMA=2` 记录 `ownerUuid`/`ownerName`/`verified`）及试航分批清场（`>16384` 格每 tick 8192 格），`ModNetwork.PROTOCOL` 升至 **48**。详情见 `docs/SHIPYARD.md`。
 - **深海亮度面板 + 无限夜视 + 训练设施图标（2026-11-26，任务分支 `feat/vanilla-lighting-toggle-20261126`）**：
   F7 与原亮度调试器合并为右键面板：模组/原版光照模式、模组环境底光 0..100%、原版环境底光 0.00..0.20、
   原版模式是否还原雾与水体、单独关闭海雾、一键无限夜视（`NightVisionPacket`，协议 40，服务端只认创造/权限 ≥ 2）。

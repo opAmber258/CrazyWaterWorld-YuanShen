@@ -160,7 +160,9 @@ public final class ShipGeometry {
         }
 
         public boolean sealed() {
-            return openPockets.isEmpty();
+            // 包围盒四角/桅杆外的空气会是 interiorVolume=0 的“连海空腔”，
+            // 它们不代表船体破口，不能把整艘船判成不水密。
+            return openPockets.stream().noneMatch(pocket -> pocket.interiorVolume() > 0);
         }
 
         /**
@@ -228,7 +230,60 @@ public final class ShipGeometry {
     /** 单次分舱 BFS 的格子上限。 */
     private static final int MAX_CELLS_PER_FILL = 30_000;
 
+    /**
+     * 显式扫描范围的单轴 / 总格数上限。
+     *
+     * <p>{@code collectHullWithEquipment}、分舱和 exteriorCells 都会逐格遍历整个
+     * 包围盒；损坏的 NBT（比如 min=Integer.MIN_VALUE / max=Integer.MAX_VALUE）会让
+     * {@code for (int x = min; x <= max; x++)} 溢出成死循环。所有外部传入的 bounds
+     * 都必须先过 {@link #validBounds(Bounds)} / {@link #validScanArea(Bounds, BlockPos)}。</p>
+     */
+    public static final int MAX_SCAN_BOUNDS_SPAN = 512;
+    public static final long MAX_SCAN_BOUNDS_CELLS = 16_000_000L;
+
     private ShipGeometry() {
+    }
+
+    /** 包围盒是否合法且有界：先挡住 min>max 和溢出，再限制逐格循环的规模。 */
+    public static boolean validBounds(@Nullable Bounds bounds) {
+        if (bounds == null) {
+            return false;
+        }
+        long sx = (long) bounds.maxX() - bounds.minX() + 1L;
+        long sy = (long) bounds.maxY() - bounds.minY() + 1L;
+        long sz = (long) bounds.maxZ() - bounds.minZ() + 1L;
+        if (sx < 1 || sy < 1 || sz < 1
+                || sx > MAX_SCAN_BOUNDS_SPAN || sy > MAX_SCAN_BOUNDS_SPAN
+                || sz > MAX_SCAN_BOUNDS_SPAN) {
+            return false;
+        }
+        return sx * sy * sz <= MAX_SCAN_BOUNDS_CELLS;
+    }
+
+    /**
+     * bounds 与核心取并集后是否仍有界。
+     *
+     * <p>船被搬走 / 跨维度还原后，旧的绝对坐标 bounds 和新核心可能相隔一百万格；
+     * 即使 bounds 本身合法，取并集后也会变成一张上百万格跨度的扫描区。这里把它
+     * 当成陈旧数据拒绝掉，调用方应回退到核心 ±radius。</p>
+     */
+    public static boolean validScanArea(@Nullable Bounds bounds, BlockPos core) {
+        if (!validBounds(bounds)) {
+            return false;
+        }
+        return validBounds(new Bounds(
+                Math.min(bounds.minX(), core.getX()), Math.min(bounds.minY(), core.getY()),
+                Math.min(bounds.minZ(), core.getZ()),
+                Math.max(bounds.maxX(), core.getX()), Math.max(bounds.maxY(), core.getY()),
+                Math.max(bounds.maxZ(), core.getZ())));
+    }
+
+    /** 空结果（扫描范围非法 / 没扫到船壳时用），避免把巨型 bounds 交给逐格循环。 */
+    private static Result emptyAt(BlockPos core) {
+        return new Result(List.of(), List.of(), 0, 0,
+                new Bounds(core.getX(), core.getY(), core.getZ(),
+                        core.getX(), core.getY(), core.getZ()),
+                Set.of(), List.of(), Set.of());
     }
 
     /**
@@ -267,11 +322,33 @@ public final class ShipGeometry {
     public static Result scanShip(BlockPos core, int radius, Predicate<BlockPos> isShipBlock,
                                   Probe probe, int padUp, @Nullable Predicate<BlockPos> isShell,
                                   Predicate<BlockPos> isEquipment) {
-        HullPick pick = collectHullWithEquipment(core, radius, isShipBlock, isEquipment);
+        return scanShip(new Bounds(core.getX() - radius, core.getY() - radius, core.getZ() - radius,
+                        core.getX() + radius, core.getY() + radius, core.getZ() + radius),
+                core, isShipBlock, probe, padUp, isShell, isEquipment);
+    }
+
+    /**
+     * 显式 bounds 版本：船厂/加载蓝图时船体可以超出核心 ±24。
+     *
+     * <p>bounds 会先与核心位置取并集，防止核心被放在边界外导致 hull 为空。</p>
+     */
+    public static Result scanShip(Bounds scanBounds, BlockPos core, Predicate<BlockPos> isShipBlock,
+                                  Probe probe, int padUp, @Nullable Predicate<BlockPos> isShell,
+                                  Predicate<BlockPos> isEquipment) {
+        // 损坏 NBT / 船搬走后留下的旧绝对坐标都在这里挡掉：绝不能把上百万格的
+        // 包围盒交给下面三段逐格循环（freeze / OOM）。
+        if (!validScanArea(scanBounds, core)) {
+            return emptyAt(core);
+        }
+        Bounds boundsWithCore = new Bounds(
+                Math.min(scanBounds.minX(), core.getX()), Math.min(scanBounds.minY(), core.getY()),
+                Math.min(scanBounds.minZ(), core.getZ()),
+                Math.max(scanBounds.maxX(), core.getX()), Math.max(scanBounds.maxY(), core.getY()),
+                Math.max(scanBounds.maxZ(), core.getZ()));
+        HullPick pick = collectHullWithEquipment(core, boundsWithCore, isShipBlock, isEquipment);
         Set<BlockPos> hull = pick.hull();
         if (hull.isEmpty()) {
-            return new Result(List.of(), List.of(), 0, 0, new Bounds(core.getX(), core.getY(), core.getZ(),
-                    core.getX(), core.getY(), core.getZ()), Set.of(), List.of(), Set.of());
+            return emptyAt(core);
         }
 
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
@@ -464,7 +541,10 @@ public final class ShipGeometry {
     public static Set<BlockPos> collectHull(BlockPos core, int radius,
                                             Predicate<BlockPos> isShipBlock,
                                             Predicate<BlockPos> isEquipment) {
-        return collectHullWithEquipment(core, radius, isShipBlock, isEquipment).hull();
+        return collectHullWithEquipment(core, new Bounds(
+                core.getX() - radius, core.getY() - radius, core.getZ() - radius,
+                core.getX() + radius, core.getY() + radius, core.getZ() + radius),
+                isShipBlock, isEquipment).hull();
     }
 
     /** 船壳连通块 + 船内独立设备格（见 {@link Result#owns(BlockPos)}）。 */
@@ -479,14 +559,14 @@ public final class ShipGeometry {
      * 落在船壳包围盒内的设备连通块记进 {@code equipment}。只认包围盒内是为了
      * 排除 24 格扫描半径扫到的站上设备。</p>
      */
-    private static HullPick collectHullWithEquipment(BlockPos core, int radius,
+    private static HullPick collectHullWithEquipment(BlockPos core, Bounds scanBounds,
                                                      Predicate<BlockPos> isShipBlock,
                                                      Predicate<BlockPos> isEquipment) {
         Set<BlockPos> shipBlocks = new HashSet<>();
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int x = core.getX() - radius; x <= core.getX() + radius; x++) {
-            for (int y = core.getY() - radius; y <= core.getY() + radius; y++) {
-                for (int z = core.getZ() - radius; z <= core.getZ() + radius; z++) {
+        for (int x = scanBounds.minX(); x <= scanBounds.maxX(); x++) {
+            for (int y = scanBounds.minY(); y <= scanBounds.maxY(); y++) {
+                for (int z = scanBounds.minZ(); z <= scanBounds.maxZ(); z++) {
                     cursor.set(x, y, z);
                     BlockPos pos = cursor.immutable();
                     if (pos.equals(core)) {

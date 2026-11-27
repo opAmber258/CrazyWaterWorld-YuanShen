@@ -1,0 +1,7 @@
+{
+  "dimensionId": "minecraft:dimension:barotrauma:shipyard",
+  "maxYPos": 255,
+  "seaLevel": 64,
+  "gravity": [0.0, -10.0, 0.0],
+  "priority": -1
+}

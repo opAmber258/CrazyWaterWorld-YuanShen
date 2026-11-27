@@ -1,0 +1,14 @@
+{
+  "type": "barotrauma:shipyard_test",
+  "generator": {
+    "type": "barotrauma:shipyard_void",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "barotrauma:abyss"
+    },
+    "min_y": -128,
+    "height": 384,
+    "floor_y": -128,
+    "water_top_y": -1
+  }
+}

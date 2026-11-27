@@ -41,6 +41,8 @@
     "PlayerSwimRotationMixin",
     "RenderTargetMixin",
     "ShaderUniformMixin",
+    "ShipyardCameraMixin",
+    "ShipyardSliceMixin",
     "TurretCameraMixin",
     "TurretInteractionMixin",
     "TurretMouseMixin"

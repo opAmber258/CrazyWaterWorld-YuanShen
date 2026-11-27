@@ -33,6 +33,7 @@ public final class ClientSetup {
         event.register(PowerClient.OPEN_POWER);
         event.register(TurretClient.TOGGLE_FIRE_MODE);
         event.register(VanillaLightingClient.TOGGLE);
+        event.register(ShipyardClient.TOGGLE_EDITOR);
     }
 
     /** 客户端初始化：干燥区回调、渲染层与菜单界面注册。 */

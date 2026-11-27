@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,6 +27,14 @@ public final class ShipState {
 
     private ShipGeometry.Result geometry;
     private final MachineCount machines;
+    /**
+     * 核心保存的显式扫描范围（世界坐标）；null = 用几何包围盒。
+     *
+     * <p>船厂/蓝图船的散落船方块可能在船壳包围盒之外，搬船时必须按这份范围收，
+     * 否则发射后它们会留在原地。</p>
+     */
+    @Nullable
+    private ShipGeometry.Bounds scanBounds;
     /** 一个破口：位置 + 朝船体内部（密封舱室质心）的水平单位方向。 */
     public record Breach(BlockPos pos, float dirX, float dirZ) {
     }
@@ -198,6 +207,16 @@ public final class ShipState {
 
     public ShipGeometry.Result geometry() {
         return geometry;
+    }
+
+    /** 核心给这份状态指定的显式扫描范围（可能为 null）。 */
+    @Nullable
+    public ShipGeometry.Bounds scanBounds() {
+        return scanBounds;
+    }
+
+    public void setScanBounds(@Nullable ShipGeometry.Bounds bounds) {
+        this.scanBounds = bounds != null && !ShipGeometry.validBounds(bounds) ? null : bounds;
     }
 
     public HullDamage hullDamage() {
@@ -539,11 +558,42 @@ public final class ShipState {
      */
     public java.util.Set<net.minecraft.core.BlockPos> collectBlocks(
             net.minecraft.world.level.Level level, net.minecraft.core.BlockPos translate) {
+        return collectBlocks(level, translate, collectBounds());
+    }
+
+    /**
+     * 两参 {@code collectBlocks} 实际使用的范围：显式 scan bounds 优先，
+     * 没指定时才是几何包围盒。拆出来供纯逻辑单测核对，避免这条路径变成死代码。
+     */
+    ShipGeometry.Bounds collectBounds() {
+        return scanBounds != null ? scanBounds : geometry.bounds();
+    }
+
+    /** 逐格收集的真实迭代范围（bounds 四周各扩 1 格）；非法范围返回 null。 */
+    @Nullable
+    static ShipGeometry.Bounds collectionArea(@Nullable ShipGeometry.Bounds bounds) {
+        if (!ShipGeometry.validBounds(bounds)) {
+            return null;
+        }
+        return new ShipGeometry.Bounds(bounds.minX() - 1, bounds.minY() - 1, bounds.minZ() - 1,
+                bounds.maxX() + 1, bounds.maxY() + 1, bounds.maxZ() + 1);
+    }
+
+    /**
+     * 显式 bounds 版本：船厂/蓝图船可以超出核心 ±24，收集范围以传入的
+     * scan bounds 为准，而不是旧的几何包围盒。
+     */
+    public java.util.Set<net.minecraft.core.BlockPos> collectBlocks(
+            net.minecraft.world.level.Level level, net.minecraft.core.BlockPos translate,
+            ShipGeometry.Bounds bounds) {
         java.util.Set<net.minecraft.core.BlockPos> out = new java.util.HashSet<>();
-        ShipGeometry.Bounds b = geometry.bounds();
+        ShipGeometry.Bounds area = collectionArea(bounds);
+        if (area == null) {
+            return out;
+        }
         for (net.minecraft.core.BlockPos raw : net.minecraft.core.BlockPos.betweenClosed(
-                b.minX() - 1, b.minY() - 1, b.minZ() - 1,
-                b.maxX() + 1, b.maxY() + 1, b.maxZ() + 1)) {
+                area.minX(), area.minY(), area.minZ(),
+                area.maxX(), area.maxY(), area.maxZ())) {
             net.minecraft.core.BlockPos pos = raw.offset(translate);
             if (com.opamb.barotrauma.registry.ModShipBlocks.isShipBlock(level.getBlockState(pos))
                     && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(raw)
@@ -1102,6 +1152,8 @@ public final class ShipState {
      */
     public ShipState shifted(int dx, int dy, int dz) {
         ShipState next = new ShipState(geometry.shifted(dx, dy, dz), machines);
+        // 显式扫描范围同样跟着船走，否则平移后 collectBlocks 会去旧位置收方块。
+        next.scanBounds = this.scanBounds == null ? null : this.scanBounds.shifted(dx, dy, dz);
         next.simulation = this.simulation;
         if (next.simulation != null) {
             // 模拟实例原样带过去，但几何/上报表的键还是平移前的坐标：
