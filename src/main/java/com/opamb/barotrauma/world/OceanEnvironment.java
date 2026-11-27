@@ -43,12 +43,28 @@ public final class OceanEnvironment {
         clientDryZone = zone;
     }
 
-    /** 这个位置是否位于深海的水柱体积内（不代表一定浸没，还要排除干燥区）。 */
+    /** 这个维度是否使用模组海域（深海或试航维度）。 */
+    public static boolean isOceanDimension(Level level) {
+        return level != null && (level.dimension().equals(ModDimensions.THE_DEEP)
+                || level.dimension().equals(ModDimensions.SHIPYARD_TEST));
+    }
+
+    public static int waterTopY(Level level) {
+        return level != null && level.dimension().equals(ModDimensions.SHIPYARD_TEST)
+                ? ModDimensions.SHIPYARD_TEST_WATER_TOP_Y : ModDimensions.WATER_TOP_Y;
+    }
+
+    public static int waterBottomY(Level level) {
+        return level != null && level.dimension().equals(ModDimensions.SHIPYARD_TEST)
+                ? ModDimensions.SHIPYARD_TEST_WATER_BOTTOM_Y : ModDimensions.WATER_BOTTOM_Y;
+    }
+
+    /** 这个位置是否位于海域水柱体积内（不代表一定浸没，还要排除干燥区）。 */
     public static boolean isInOcean(Level level, Vec3 pos) {
         return level != null && pos != null
-                && level.dimension().equals(ModDimensions.THE_DEEP)
-                && pos.y <= ModDimensions.WATER_TOP_Y
-                && pos.y >= ModDimensions.WATER_BOTTOM_Y;
+                && isOceanDimension(level)
+                && pos.y <= waterTopY(level)
+                && pos.y >= waterBottomY(level);
     }
 
     /** 哨站内部固定是干燥的；门外平台不算。主站和每个副本顶部的站都一样。 */

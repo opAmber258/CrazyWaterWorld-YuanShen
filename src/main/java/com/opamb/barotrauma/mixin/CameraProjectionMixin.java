@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.mixin;
 
 import com.opamb.barotrauma.client.CthulhuGazeClient;
+import com.opamb.barotrauma.client.ShipyardClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
@@ -27,6 +28,19 @@ public abstract class CameraProjectionMixin {
 
     @Inject(method = "getProjectionMatrix(D)Lorg/joml/Matrix4f;", at = @At("RETURN"), cancellable = true)
     private void barotrauma$blendToOrtho(double fov, CallbackInfoReturnable<Matrix4f> cir) {
+        if (ShipyardClient.editorActive() && ShipyardClient.orthographic()) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.getWindow() != null) {
+                float aspect = (float) mc.getWindow().getWidth()
+                        / Math.max(1, mc.getWindow().getHeight());
+                float halfHeight = ShipyardClient.orthoHalfHeight();
+                float halfWidth = halfHeight * aspect;
+                cir.setReturnValue(new Matrix4f().setOrtho(
+                        -halfWidth, halfWidth, -halfHeight, halfHeight,
+                        0.05F, mc.gameRenderer.getDepthFar()));
+                return;
+            }
+        }
         float blend = CthulhuGazeClient.projectionBlend();
         if (blend <= 0.001F) {
             return;

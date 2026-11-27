@@ -26,7 +26,7 @@ public final class DepthOverlay {
         if (minecraft.player == null || minecraft.level == null) {
             return;
         }
-        if (!minecraft.level.dimension().equals(ModDimensions.THE_DEEP)) {
+        if (!com.opamb.barotrauma.world.OceanEnvironment.isOceanDimension(minecraft.level)) {
             return;
         }
         int meters = ModDimensions.toMeters(minecraft.player.blockPosition().getY());

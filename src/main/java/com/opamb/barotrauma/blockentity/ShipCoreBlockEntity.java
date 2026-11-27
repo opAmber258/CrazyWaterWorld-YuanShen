@@ -68,6 +68,9 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     /** 绑定的接线盒；null = 默认总线。 */
     @Nullable
     private BlockPos boundBox;
+    /** 船厂/蓝图使用的显式扫描范围；null = 旧版核心 ±24。 */
+    @Nullable
+    private ShipGeometry.Bounds scanBounds;
     /** 世界加载时从 NBT 恢复的耐久；重扫时并入（previous 为空的那条路径）。 */
     @Nullable
     private HullDamage pendingDamage;
@@ -508,10 +511,109 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     /** 直接接管一份船状态（推进时用平移后的状态，免重扫）。 */
     public void setState(ShipState state) {
         this.state = state;
+        // 新核心接管平移后的状态时也要接管扫描范围：否则下次 rescan/save 会
+        // 用旧坐标（或 null）而不是这份状态实际使用的范围。
+        this.scanBounds = state == null ? null : state.scanBounds();
+    }
+
+    /** 设置显式扫描范围；船厂/蓝图加载用它突破核心 ±24。 */
+    public void setScanBounds(@Nullable ShipGeometry.Bounds bounds) {
+        // 损坏的坐标 / 离核心太远的范围一律不接受：否则 rescan 取并集会扫出
+        // 上百万格的包围盒（freeze/OOM），或扫到船搬走前的旧区域。
+        if (bounds != null && !ShipGeometry.validScanArea(bounds, worldPosition)) {
+            bounds = null;
+        }
+        this.scanBounds = bounds;
+        setChanged();
+    }
+
+    @Nullable
+    public ShipGeometry.Bounds scanBounds() {
+        return scanBounds;
+    }
+
+    /** NBT 用的相对坐标标记：旧档没有这个标记，仍按绝对坐标读。 */
+    private static final String SCAN_RELATIVE_KEY = "ScanBoundsRelative";
+    private static final String[] SCAN_KEYS = {"ScanMinX", "ScanMinY", "ScanMinZ",
+            "ScanMaxX", "ScanMaxY", "ScanMaxZ"};
+
+    /**
+     * 把 bounds 存成<b>相对核心</b>的偏移。
+     *
+     * <p>船体被 VS2 搬走 / 跨维度还原时方块实体 NBT 会被整份带到新位置：绝对坐标
+     * 会指向旧世界，和核心取并集后就是一张上百万格的扫描区；相对偏移无论怎么搬
+     * 都还指着同一艘船。</p>
+     */
+    static void saveScanBounds(CompoundTag tag, BlockPos corePos,
+                               @Nullable ShipGeometry.Bounds bounds) {
+        for (String key : SCAN_KEYS) {
+            tag.remove(key);
+        }
+        tag.remove(SCAN_RELATIVE_KEY);
+        if (!ShipGeometry.validBounds(bounds)) {
+            return;
+        }
+        tag.putBoolean(SCAN_RELATIVE_KEY, true);
+        tag.putInt(SCAN_KEYS[0], bounds.minX() - corePos.getX());
+        tag.putInt(SCAN_KEYS[1], bounds.minY() - corePos.getY());
+        tag.putInt(SCAN_KEYS[2], bounds.minZ() - corePos.getZ());
+        tag.putInt(SCAN_KEYS[3], bounds.maxX() - corePos.getX());
+        tag.putInt(SCAN_KEYS[4], bounds.maxY() - corePos.getY());
+        tag.putInt(SCAN_KEYS[5], bounds.maxZ() - corePos.getZ());
+    }
+
+    /** 读回扫描范围；新格式按当前核心位置还原，旧档绝对坐标仅在与核心相邻时保留。 */
+    @Nullable
+    static ShipGeometry.Bounds loadScanBounds(CompoundTag tag, BlockPos corePos) {
+        for (String key : SCAN_KEYS) {
+            if (!tag.contains(key, Tag.TAG_INT)) {
+                return null;
+            }
+        }
+        long[] values = new long[SCAN_KEYS.length];
+        for (int i = 0; i < SCAN_KEYS.length; i++) {
+            values[i] = tag.getInt(SCAN_KEYS[i]);
+        }
+        if (tag.getBoolean(SCAN_RELATIVE_KEY)) {
+            int[] origin = {corePos.getX(), corePos.getY(), corePos.getZ()};
+            for (int i = 0; i < values.length; i++) {
+                values[i] += origin[i % 3];
+            }
+        }
+        for (long value : values) {
+            if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+                return null;
+            }
+        }
+        ShipGeometry.Bounds bounds = new ShipGeometry.Bounds(
+                (int) values[0], (int) values[1], (int) values[2],
+                (int) values[3], (int) values[4], (int) values[5]);
+        return ShipGeometry.validScanArea(bounds, corePos) ? bounds : null;
+    }
+
+    /**
+     * rescan 统一走这里选扫描范围：显式 bounds 非法时忽略它、回退核心 ±RADIUS。
+     * 抽成静态方法便于纯逻辑单测（真正的 rescan 需要 ServerLevel）。
+     */
+    public static ShipGeometry.Result scanGeometry(@Nullable ShipGeometry.Bounds scanBounds, BlockPos core,
+                                                   Predicate<BlockPos> isShipBlock, ShipGeometry.Probe probe,
+                                                   int padUp, @Nullable Predicate<BlockPos> isShell,
+                                                   Predicate<BlockPos> isEquipment) {
+        if (!ShipGeometry.validScanArea(scanBounds, core)) {
+            scanBounds = null;
+        }
+        return scanBounds != null
+                ? ShipGeometry.scanShip(scanBounds, core, isShipBlock, probe, padUp, isShell, isEquipment)
+                : ShipGeometry.scanShip(core, RADIUS, isShipBlock, probe, padUp, isShell, isEquipment);
     }
 
     /** 重新扫描船体几何与机器，返回最新的船状态。 */
     public ShipState rescan(Level level) {
+        // 世界重开 / 船被搬走后，NBT 里可能还是旧绝对坐标：先丢掉失效的范围，
+        // 否则下面的并集会把扫描区拉到上百万格。
+        if (scanBounds != null && !ShipGeometry.validScanArea(scanBounds, worldPosition)) {
+            setScanBounds(null);
+        }
         // 这艘船的方块已经进了 VS2 刚体：按船坞坐标扫出来的是船坞里的几何，全是垃圾。
         // 直接代理到装配时那份船状态（同一个对象），声纳面板 / 操舵就都还是对的。
         if (level instanceof net.minecraft.server.level.ServerLevel server
@@ -578,23 +680,25 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                 return ModShipBlocks.doorwayAxis(level.getBlockState(pos));
             }
         };
-        ShipGeometry.Result geometry = ShipGeometry.scanShip(corePos, RADIUS,
-                pos -> ModShipBlocks.isShipBlock(level.getBlockState(pos))
+        java.util.function.Predicate<BlockPos> isShipBlock = pos ->
+                ModShipBlocks.isShipBlock(level.getBlockState(pos))
                         && !com.opamb.barotrauma.world.DockingBay.isStationSideDoor(pos)
-                        && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos),
-                probe, docked ? 1 : 0,
-                // 船壳当墙：区分舱内空气和包围盒四角的船外海水（圆角船体）。
-                pos -> {
-                    if (pos.equals(corePos)) {
-                        return false;
-                    }
-                    if (dockCap.test(pos)) {
-                        return true;
-                    }
-                    BlockState shell = level.getBlockState(pos);
-                    return ModShipBlocks.sealsHull(shell);
-                },
-                pos -> ModShipBlocks.isEquipment(level.getBlockState(pos)));
+                        && !com.opamb.barotrauma.world.DockingBay.isStationDockHatch(pos);
+        // 船壳当墙：区分舱内空气和包围盒四角的船外海水（圆角船体）。
+        java.util.function.Predicate<BlockPos> isShell = pos -> {
+            if (pos.equals(corePos)) {
+                return false;
+            }
+            if (dockCap.test(pos)) {
+                return true;
+            }
+            BlockState shell = level.getBlockState(pos);
+            return ModShipBlocks.sealsHull(shell);
+        };
+        java.util.function.Predicate<BlockPos> isEquipment = pos ->
+                ModShipBlocks.isEquipment(level.getBlockState(pos));
+        ShipGeometry.Result geometry = scanGeometry(scanBounds, corePos, isShipBlock, probe,
+                docked ? 1 : 0, isShell, isEquipment);
 
         int sonar = 0;
         if (geometry.hullBlocks() > 0) {
@@ -609,6 +713,9 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
 
         // 机器方块已全部删除，MachineCount 里只有声纳还有意义（保持信号接口不变）
         state = new ShipState(geometry, new MachineCount(0, 0, 0, 0, 0, 0, sonar));
+        // 让 collectBlocks() 也按这份显式范围收方块：船壳包围盒外的散落船方块
+        // 否则不会被搬走，发射后会留在原地。
+        state.setScanBounds(scanBounds);
         // 船壳耐久是逐格记录：重扫换了 ShipState 对象，必须把旧记录迁过来，
         // 再把已经打没/拆掉的格子清掉，否则修船进度会凭空重置。
         if (previous != null) {
@@ -752,6 +859,7 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
         if (boundBox != null) {
             tag.putLong("PowerBox", boundBox.asLong());
         }
+        saveScanBounds(tag, worldPosition, scanBounds);
     }
 
     @Override
@@ -779,5 +887,6 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
                 ? tag.getFloat("BarotraumaBallastMax") : null;
         condition.load(tag, "Condition");
         boundBox = tag.contains("PowerBox") ? BlockPos.of(tag.getLong("PowerBox")) : null;
+        scanBounds = loadScanBounds(tag, worldPosition);
     }
 }

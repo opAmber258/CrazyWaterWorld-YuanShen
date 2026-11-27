@@ -230,7 +230,9 @@ public final class ShipWaterRenderer {
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || (!mc.level.dimension().equals(ModDimensions.THE_DEEP)
+        boolean ocean = mc.level != null
+                && OceanEnvironment.isOceanDimension(mc.level);
+        if (mc.level == null || (!ocean
                 && (!RENDER_WATER || state.boxes().length < BOX_STRIDE))) {
             return;
         }

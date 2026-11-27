@@ -1,0 +1,12 @@
+{
+  "type": "barotrauma:shipyard",
+  "generator": {
+    "type": "barotrauma:shipyard_void",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "minecraft:plains"
+    },
+    "min_y": -64,
+    "height": 384
+  }
+}
