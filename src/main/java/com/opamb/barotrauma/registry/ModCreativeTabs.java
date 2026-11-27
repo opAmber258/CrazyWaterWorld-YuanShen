@@ -83,6 +83,10 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.FULGURIUM_FUEL_ROD.get());
                         output.accept(ModItems.DRAIN_OUTLET.get());
                         output.accept(ModItems.IRON_LADDER.get());
+                        output.accept(ModItems.COILGUN.get());
+                        output.accept(ModItems.COILGUN_LOADER.get());
+                        output.accept(ModItems.COILGUN_AMMO_BOX.get());
+                        output.accept(ModItems.TURRET_BINDER.get());
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.BANDAGE.get());
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.ANTIBIOTIC_GLUE.get());
                         output.accept(com.opamb.barotrauma.medical.ModMedicalItems.MORPHINE.get());
@@ -126,12 +130,8 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.FREE_AIM_TURRET.get());
                         // 跟随炮塔原型：视角自由，炮塔准心追视角
                         output.accept(ModItems.TRACKING_TURRET.get());
-                        // 电磁炮 + 弹箱：炮塔瞄准，装填后消耗船电
-                        output.accept(ModItems.COILGUN.get());
-                        output.accept(ModItems.COILGUN_AMMO_BOX.get());
-                        // 瞄准站 + 绑定器：把站台绑到炮塔，右键站台远程接管瞄准
+                        // 原型炮塔的可选遥控站。
                         output.accept(ModItems.TURRET_STATION.get());
-                        output.accept(ModItems.TURRET_BINDER.get());
                         // 耐久调节器：直接推设备耐久，验收修理窗口/损坏状态用
                         output.accept(ModItems.CONDITION_TOOL.get());
                         // 训练人偶充气台：炮塔/近战命中测试设施（临时模型与贴图）

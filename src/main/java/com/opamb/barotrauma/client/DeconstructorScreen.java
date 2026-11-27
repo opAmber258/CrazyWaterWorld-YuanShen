@@ -19,11 +19,10 @@ import net.minecraft.world.entity.player.Inventory;
  */
 public class DeconstructorScreen extends ScaledContainerScreen<DeconstructorMenu> {
 
-    private static final int W = 254;
+    private static final int W = 268;
     private static final int H = 216;
 
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int PANEL = PanelStyle.RECESS;
     private static final int TEXT = PanelStyle.TEXT;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.AMBER;
@@ -56,7 +55,7 @@ public class DeconstructorScreen extends ScaledContainerScreen<DeconstructorMenu
                                 : "gui.barotrauma.deconstructor.no_power").getString()
                         : Component.translatable("gui.barotrauma.deconstructor.ready").getString();
         int color = condition <= 0 ? RED : power == 0 ? 0xFFD8B44A : DIM;
-        graphics.drawString(font, status, 150, 100, color, false);
+        graphics.drawString(font, font.plainSubstrByWidth(status, 100), 151, 100, color, false);
 
 
     }
@@ -66,6 +65,10 @@ public class DeconstructorScreen extends ScaledContainerScreen<DeconstructorMenu
         int x = leftPos;
         int y = topPos;
         PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
+
+        PanelStyle.well(graphics, x + 10, y + 26, 119, 83);
+        PanelStyle.well(graphics, x + 140, y + 26, W - 150, 89);
+        PanelStyle.divider(graphics, x + 10, y + 121, W - 20);
 
         // 8 进 5 出的格子底
         for (int i = 0; i < DeconstructorMenu.INPUT_SLOTS; i++) {
@@ -115,16 +118,13 @@ public class DeconstructorScreen extends ScaledContainerScreen<DeconstructorMenu
     private void drawButton(GuiGraphics graphics, int x, int y, int w, int h, String label,
                             boolean active, int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
-        graphics.fill(x, y, x + w, y + h, active ? (hovered ? 0xFF2C4034 : PANEL) : 0xFF171F1A);
-        graphics.fill(x, y, x + w, y + 1, EDGE);
-        graphics.fill(x, y + h - 1, x + w, y + h, EDGE);
+        PanelStyle.control(graphics, x, y, w, h, active, hovered && active);
         graphics.drawString(font, label, x + (w - font.width(label)) / 2, y + 5,
                 active ? TEXT : DIM, false);
     }
 
     private void slotBg(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 18, y + 18, 0xFF8B8B8B);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF373737);
+        PanelStyle.slot(graphics, x, y);
     }
 
     @Override

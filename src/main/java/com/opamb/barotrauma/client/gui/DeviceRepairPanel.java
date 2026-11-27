@@ -39,8 +39,9 @@ final class DeviceRepairPanel {
         updateAnimation(data, active);
 
         PanelStyle.frame(g, x, y, right - x, HEIGHT, PanelStyle.AMBER);
-        g.drawCenteredString(font, text(wrench ? "mechanical" : "electrical"), (x + right) / 2, y + 9,
-                PanelStyle.TEXT);
+        g.drawString(font, text(wrench ? "mechanical" : "electrical"), inner, y + 9,
+                PanelStyle.TEXT, false);
+        PanelStyle.divider(g, inner, y + 20, right - inner - 9);
         Component tool = text(wrench ? "need_wrench" : "need_screwdriver");
         Component skill = Component.translatable("gui.barotrauma.repair.skill",
                 data.get(RepairSession.SKILL), RepairSession.FIXED_SKILL);
@@ -52,12 +53,10 @@ final class DeviceRepairPanel {
             g.drawCenteredString(font, text("failed"), buttonStart + 44, y + 32, 0xFFE69378);
         }
         int barWidth = buttonStart - inner - 7;
-        g.fill(inner, y + 48, inner + barWidth, y + 59, 0xFF0C120F);
-        int fill = Mth.floor((barWidth - 2) * condition);
-        int color = result > 0 ? 0xFFBCE391 : result < 0 ? 0xFFAA5645 : 0xFF629253;
-        if (fill > 0) g.fill(inner + 1, y + 49, inner + 1 + fill, y + 58, color);
+        int color = result > 0 ? 0xFFBCE391 : result < 0 ? 0xFFAA5645 : 0xFF55917B;
+        PanelStyle.meter(g, inner, y + 46, barWidth, 15, condition, color, 0);
         if (active) {
-            int marker = inner + 1 + Mth.floor((barWidth - 2) * pointer);
+            int marker = inner + 2 + Mth.floor((barWidth - 4) * pointer);
             g.fill(marker, y + 46, marker + 1, y + 61, 0xFFF2EAD5);
         }
         g.drawCenteredString(font, Math.round(data.get(RepairSession.CONDITION) / 10.0F) + "%",

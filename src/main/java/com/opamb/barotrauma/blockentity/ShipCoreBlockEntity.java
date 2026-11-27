@@ -55,8 +55,8 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
     /** 扫描半径（格）。 */
     public static final int RADIUS = 24;
 
-    /** 原作 command.xml：Steering 10 kW + Sonar 100 kW（两颗指示灯各 5 kW 没算）。 */
-    public static final double TERMINAL_POWER_KW = 110.0D;
+    private static final double STEERING_POWER_KW = 10.0D;
+    private static final double NAV_TERMINAL_LIGHTS_KW = 10.0D;
     /** 原作 Powered 默认 MinVoltage（导航台低于它就完全不能用）。 */
     public static final double TERMINAL_MIN_VOLTAGE = 0.5D;
 
@@ -156,8 +156,9 @@ public class ShipCoreBlockEntity extends BlockEntity implements RepairTarget,
 
     @Override
     public double powerDemandKw() {
-        return condition.broken() ? 0.0D : (TERMINAL_POWER_KW - 100.0D + sonarCycle.sonarPowerKw())
-                * condition.powerPenalty();
+        if (condition.broken()) return 0.0D;
+        double backlight = getBlockState().is(ModShipBlocks.NAVIGATION_TERMINAL.get()) ? NAV_TERMINAL_LIGHTS_KW : 0.0D;
+        return STEERING_POWER_KW + backlight + sonarCycle.sonarPowerKw();
     }
 
     @Override

@@ -1,127 +1,122 @@
 package com.opamb.barotrauma.client;
 
-import com.opamb.barotrauma.menu.EngineMenu;
+import com.opamb.barotrauma.blockentity.EngineBlockEntity.Control;
 import com.opamb.barotrauma.client.gui.PanelStyle;
-import net.minecraft.client.gui.GuiGraphics;
 import com.opamb.barotrauma.client.gui.ScaledContainerScreen;
+import com.opamb.barotrauma.menu.EngineMenu;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 
-/**
- * 引擎只读面板：带方向的目标与当前推力、供电、耗电和运行状态。
- * 控制全在声纳台，这里只显示引擎收到了什么。
- */
 public class EngineScreen extends ScaledContainerScreen<EngineMenu> {
 
-    private static final int W = 220;
-    private static final int H = 176;
+    private static final int W = 250;
+    private static final int H = 132;
+    private static final int SLIDER_X = 15;
+    private static final int SLIDER_Y = 64;
+    private static final int SLIDER_W = W - 2 * SLIDER_X;
 
-    private static final int EDGE = PanelStyle.EDGE;
-    private static final int PANEL = PanelStyle.RECESS;
-    private static final int TEXT = PanelStyle.TEXT;
-    private static final int DIM = PanelStyle.DIM;
-    private static final int ACCENT = PanelStyle.AMBER;
-    private static final int GREEN = 0xFF6FD07A;
-    private static final int RED = 0xFFC8483C;
-    private static final int YELLOW = 0xFFD8B44A;
-    private static final int TRACK = PanelStyle.RECESS;
+    private boolean dragging;
+    private int localStep;
 
     public EngineScreen(EngineMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
-        this.imageWidth = W;
-        this.imageHeight = H;
+        imageWidth = W;
+        imageHeight = H;
     }
 
     private int data(int index) {
         return menu.data().get(index);
     }
 
-
     @Override
-    protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, 9, 7, ACCENT, false);
+    protected void renderLabels(GuiGraphics g, int x, int y) {
+        g.drawString(font, title, 12, 9, PanelStyle.TEXT, false);
     }
 
     @Override
-    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        int x = leftPos;
-        int y = topPos;
-        PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
+    protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
+        PanelStyle.frame(g, 0, 0, W, H, PanelStyle.AMBER);
+        PanelStyle.divider(g, 12, 23, W - 24);
 
         int force = data(EngineMenu.DATA_FORCE);
-        int target = data(EngineMenu.DATA_TARGET_FORCE);
-        double supply = data(EngineMenu.DATA_SUPPLY) / 1000.0D;
-        int demand = data(EngineMenu.DATA_DEMAND);
-        int count = data(EngineMenu.DATA_COUNT);
-        int maxForce = data(EngineMenu.DATA_MAX_FORCE);
+        double voltage = data(EngineMenu.DATA_SUPPLY) / 1000.0D;
+        boolean local = data(EngineMenu.DATA_CONTROL) == Control.LOCAL.ordinal();
+        int target = dragging && local ? localStep * 10 - 100 : data(EngineMenu.DATA_TARGET_FORCE);
+        boolean broken = data(EngineMenu.DATA_CONDITION) <= 0;
+        boolean powered = voltage >= 0.5D && !broken;
 
-        paintIndicator(graphics, x + 10, y + 27, supply >= 0.5D, GREEN,
-                Component.translatable("power.indicator.powered"));
-        paintIndicator(graphics, x + 110, y + 27, count > 0, ACCENT,
-                Component.translatable("gui.barotrauma.engine.helm_input"));
-        graphics.drawString(font, "目标 " + signedPercent(target) + "   当前 " + signedPercent(force),
-                x + 10, y + 45, TEXT, false);
-        int barX = x + 10;
-        int barY = y + 58;
-        int barW = W - 20;
-        graphics.fill(barX, barY, barX + barW, barY + 8, TRACK);
-        graphics.fill(barX, barY, barX + barW, barY + 1, EDGE);
-        int center = barX + barW / 2;
-        int end = center + Math.round(barW * 0.5F * Mth.clamp(force / 100.0F, -1.0F, 1.0F));
-        if (end != center) {
-            graphics.fill(Math.min(center, end), barY + 1, Math.max(center, end), barY + 8, ACCENT);
-        }
-        graphics.fill(center, barY, center + 1, barY + 8, EDGE);
-        int targetX = center + Math.round((barW / 2.0F - 3) * Mth.clamp(target / 100.0F, -1.0F, 1.0F));
-        graphics.fill(targetX - 2, barY - 2, targetX + 3, barY + 10, TEXT);
-        graphics.drawString(font, Component.translatable("gui.barotrauma.engine.reverse"),
-                barX, y + 71, DIM, false);
+        PanelStyle.lamp(g, 20, 38, powered, 0xFF72AD93);
+        g.drawString(font, Component.translatable("power.indicator.powered"), 32, 34,
+                powered ? PanelStyle.TEXT : PanelStyle.DIM, false);
+        boolean helm = data(EngineMenu.DATA_CONTROL) == Control.HELM.ordinal();
+        PanelStyle.lamp(g, 140, 38, helm, PanelStyle.AMBER);
+        g.drawString(font, Component.translatable("gui.barotrauma.engine.helm_input"), 152, 34,
+                helm ? PanelStyle.TEXT : PanelStyle.DIM, false);
+
+        g.drawCenteredString(font, "目标推力  " + signed(target), W / 2, 50, PanelStyle.TEXT);
+        PanelStyle.slider(g, SLIDER_X, SLIDER_Y, SLIDER_W, (target + 100.0D) / 200.0D, local, dragging);
+        int marker = SLIDER_X + 4 + (int) Math.round((SLIDER_W - 8) * (force + 100.0D) / 200.0D);
+        g.fill(marker - 1, 75, marker + 2, 77, 0xFF6CB7AD);
+        g.drawString(font, Component.translatable("gui.barotrauma.engine.reverse"), SLIDER_X, 80, PanelStyle.DIM, false);
         Component ahead = Component.translatable("gui.barotrauma.engine.ahead");
-        graphics.drawString(font, ahead, barX + barW - font.width(ahead), y + 71, DIM, false);
+        g.drawString(font, ahead, W - SLIDER_X - font.width(ahead), 80, PanelStyle.DIM, false);
+        g.drawCenteredString(font, "实际  " + signed(force), W / 2, 80, 0xFF8EC6C1);
 
-        // 供电 / 耗电
-        int supplyPercent = (int) Math.round(supply * 100.0D);
-        int supplyColor = supply <= 0.02D ? RED : supply < 0.5D ? YELLOW : GREEN;
-        graphics.drawString(font, "供电: " + supplyPercent + "%", x + 10, y + 88, supplyColor, false);
-        graphics.drawString(font, "耗电: " + demand + " 千瓦", x + 10, y + 102, TEXT, false);
-        graphics.drawString(font, "船上引擎: " + count + " 台  ·  单台最大推力 " + maxForce,
-                x + 10, y + 116, DIM, false);
+        PanelStyle.well(g, 12, 96, W - 24, 24);
+        String power = "电压  " + Math.round(voltage * 100) + "%";
+        String draw = "负载请求  " + data(EngineMenu.DATA_DEMAND) + " kW";
+        if (!local && !helm && !broken) draw = "装配后可调本机推力";
+        g.drawString(font, power, 19, 104, powered ? PanelStyle.TEXT : 0xFFD47766, false);
+        g.drawString(font, draw, W - 19 - font.width(draw), 104, PanelStyle.DIM, false);
+    }
 
-        String state;
-        int stateColor;
-        if (menu.data().get(EngineMenu.DATA_CONDITION) <= 0) {
-            state = "引擎已损坏，需要扳手修理";
-            stateColor = RED;
-        } else if (count <= 0) {
-            state = "船上没有引擎，无法推进";
-            stateColor = RED;
-        } else if (supply <= 0.02D) {
-            state = "无电力，推力归零";
-            stateColor = RED;
-        } else if (target == 0 && force == 0) {
-            state = "待命";
-            stateColor = DIM;
-        } else if (supply < 0.5D) {
-            state = "欠压（<50%），推力衰减";
-            stateColor = RED;
-        } else if (supply < 1.0D) {
-            state = "欠压运行，推力按电压衰减";
-            stateColor = YELLOW;
-        } else {
-            state = "运行";
-            stateColor = GREEN;
+    @Override
+    public boolean mouseClicked(double x, double y, int button) {
+        double dx = designX(x);
+        double dy = designY(y);
+        if (button == 0 && data(EngineMenu.DATA_CONTROL) == Control.LOCAL.ordinal()
+                && dx >= SLIDER_X && dx < SLIDER_X + SLIDER_W && dy >= SLIDER_Y - 3 && dy < SLIDER_Y + 13) {
+            dragging = true;
+            localStep = -1;
+            setThrust(dx);
+            return true;
         }
-        graphics.drawString(font, state, x + 10, y + 134, stateColor, false);
+        return super.mouseClicked(x, y, button);
     }
 
-    private void paintIndicator(GuiGraphics g, int x, int y, boolean on, int color, Component label) {
-        g.fill(x, y, x + 10, y + 10, TRACK);
-        g.fill(x + 2, y + 2, x + 8, y + 8, on ? color : EDGE);
-        g.drawString(font, label, x + 14, y + 1, TEXT, false);
+    @Override
+    public boolean mouseDragged(double x, double y, int button, double dragX, double dragY) {
+        if (button == 0 && dragging) {
+            if (data(EngineMenu.DATA_CONTROL) == Control.LOCAL.ordinal()) {
+                setThrust(designX(x));
+            } else {
+                dragging = false;
+            }
+            return true;
+        }
+        return super.mouseDragged(x, y, button, dragX, dragY);
     }
 
-    private static String signedPercent(int force) {
+    @Override
+    public boolean mouseReleased(double x, double y, int button) {
+        if (button == 0 && dragging) {
+            dragging = false;
+            return true;
+        }
+        return super.mouseReleased(x, y, button);
+    }
+
+    private void setThrust(double x) {
+        int step = Mth.clamp((int) Math.round((x - SLIDER_X - 4) * 20 / (SLIDER_W - 8)), 0, 20);
+        if (step != localStep && minecraft != null && minecraft.gameMode != null) {
+            localStep = step;
+            minecraft.gameMode.handleInventoryButtonClick(menu.containerId, step);
+        }
+    }
+
+    private static String signed(int force) {
         return (force > 0 ? "+" : "") + force + "%";
     }
 }

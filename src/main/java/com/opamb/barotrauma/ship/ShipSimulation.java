@@ -214,6 +214,8 @@ public final class ShipSimulation {
 
     /** 上一次 tick 的全船电压（供电/负载，不封顶）。 */
     private double lastVoltage;
+    /** Positive while charging, negative while supplying the bus. */
+    private final java.util.Map<net.minecraft.core.BlockPos, Double> storageFlowKw = new java.util.HashMap<>();
     /** 上一次 tick 的全船供电（kW）。 */
     private double lastSupply;
     /** 上一次 tick 电池总共放出的功率（kW）。 */
@@ -694,7 +696,7 @@ public final class ShipSimulation {
                     continue;
                 }
                 // room 是 kW·min，换成本步充满所需的平均功率，再和额定充电功率取小。
-                double demand = Math.min(report.maxRechargeKw(), room * 60.0D / step);
+                double demand = Math.min(report.maxRechargeKw() * Math.min(1.0D, room), room * 60.0D / step);
                 rechargeDemand.put(entry.getKey(), demand);
                 rechargeRequest += demand;
             }
@@ -714,65 +716,44 @@ public final class ShipSimulation {
             remainingDemand = Math.max(0.0D, remainingDemand - out);
         }
 
-        // 供电不足时电池补差。每块电池的可用输出按原版 PowerContainer 算
-        // （低于 10% 时线性降额，并受本步可用能量限制）。
+        // PowerContainer: parallel supplies share the deficit in proportion to available output.
+        storageFlowKw.clear();
         double batteryOutput = 0.0D;
-        java.util.Map<net.minecraft.core.BlockPos, Double> storageOut = java.util.Map.of();
-        if (deviceDemand > reactorOutput + 1.0E-9D && !storages.isEmpty()) {
-            storageOut = new java.util.HashMap<>();
-            double deficit = deviceDemand - reactorOutput;
+        if (deviceDemand > reactorOutput + 1.0E-9D) {
+            double batteryCapacity = 0.0D;
             for (var entry : storages.entrySet()) {
                 StorageReport report = entry.getValue();
-                if (!storageUsable(report)) {
-                    continue;
-                }
+                if (!storageUsable(report)) continue;
                 double available = PowerGrid.batteryOutputAvailable(
                         report.chargeKwm(), report.capacityKwm(), report.maxOutputKw(), dt);
-                double take = Math.min(deficit, available);
-                if (take > 1.0E-9D) {
-                    storageOut.put(entry.getKey(), take);
-                    batteryOutput += take;
-                    deficit -= take;
-                    if (deficit <= 1.0E-9D) {
-                        break;
-                    }
-                }
+                if (available <= 0.0D) continue;
+                storageFlowKw.put(entry.getKey(), -available);
+                batteryCapacity += available;
+            }
+            if (batteryCapacity > 0.0D) {
+                batteryOutput = Math.min(deviceDemand - reactorOutput, batteryCapacity);
+                double share = batteryOutput / batteryCapacity;
+                storageFlowKw.replaceAll((cell, available) -> available * share);
             }
         }
 
-        // 供电富余时按最大充电功率吸收。只有电池没在放电时才充，避免自充自放。
+        // Model the battery charge side with the reactor surplus on our shared bus.
         double rechargeInput = 0.0D;
-        java.util.Map<net.minecraft.core.BlockPos, Double> storageIn = java.util.Map.of();
-        if (batteryOutput <= 1.0E-9D && !rechargeDemand.isEmpty()) {
+        if (reactorOutput > deviceDemand && rechargeRequest > 0.0D) {
+            rechargeInput = Math.min(reactorOutput - deviceDemand, rechargeRequest);
+            double share = rechargeInput / rechargeRequest;
             for (var entry : rechargeDemand.entrySet()) {
-                double demand = entry.getValue();
-                if (reactorOutput > deviceDemand + 1.0E-9D) {
-                    if (storageIn.isEmpty()) {
-                        storageIn = new java.util.HashMap<>();
-                    }
-                    double surplus = reactorOutput - deviceDemand - rechargeInput;
-                    double take = Math.min(surplus, demand);
-                    if (take > 1.0E-9D) {
-                        storageIn.put(entry.getKey(), take);
-                        rechargeInput += take;
-                    }
-                }
+                storageFlowKw.put(entry.getKey(), entry.getValue() * share);
             }
         }
 
         // 结算电池电量（正=充，负=放）；充电乘效率。
-        if (!storageOut.isEmpty() || !storageIn.isEmpty()) {
+        if (!storageFlowKw.isEmpty()) {
             for (var entry : storages.entrySet()) {
-                double delta = 0.0D;
-                Double out = storageOut.get(entry.getKey());
-                if (out != null) {
-                    delta -= PowerGrid.batteryChargeDeltaKwm(out, dt, 1.0D);
-                }
-                Double in = storageIn.get(entry.getKey());
-                if (in != null) {
-                    StorageReport report = entry.getValue();
-                    delta += PowerGrid.batteryChargeDeltaKwm(in, dt, report.efficiency());
-                }
+                double flow = storageFlowKw.getOrDefault(entry.getKey(), 0.0D);
+                double delta = flow >= 0.0D
+                        ? PowerGrid.batteryChargeDeltaKwm(flow, dt, entry.getValue().efficiency())
+                        : -PowerGrid.batteryChargeDeltaKwm(-flow, dt, 1.0D);
                 if (Math.abs(delta) <= 1.0E-9D) {
                     continue;
                 }
@@ -1145,6 +1126,7 @@ public final class ShipSimulation {
         }
         storages.clear();
         storages.putAll(movedStorages);
+        storageFlowKw.clear();
         // 制氧机/通风口上报表也要平移：旧坐标的报告会和同一台设备的新坐标报告
         // 同时计入，产氧量和通风口数量会翻倍，直到旧报告 40 tick 后过期。
         java.util.Map<net.minecraft.core.BlockPos, OxygenSourceReport> movedOxygen =
@@ -1750,6 +1732,15 @@ public final class ShipSimulation {
     public Double storageCharge(net.minecraft.core.BlockPos cell) {
         StorageReport report = cell == null ? null : storages.get(cell);
         return report == null ? null : report.chargeKwm();
+    }
+
+    public double storageFlowKw(net.minecraft.core.BlockPos cell) {
+        return storageFlowKw.getOrDefault(cell, 0.0D);
+    }
+
+    public boolean storageConnected(net.minecraft.core.BlockPos cell) {
+        StorageReport report = storages.get(cell);
+        return report != null && storageUsable(report);
     }
 
     /** 电池是否在电网里可用：耐久 > 0 且绑定的接线盒没坏。 */

@@ -13,8 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * 炮塔视角的相机位置/朝向：在 {@code Camera#setup} 末尾覆盖为炮塔视点。
- *
- * <p>视点和射线起点是同一个点，所以画面中心准星和实际弹道重合。</p>
+
  */
 @Mixin(Camera.class)
 public abstract class TurretCameraMixin {
@@ -36,7 +35,8 @@ public abstract class TurretCameraMixin {
         // 跟随型炮塔的视角由玩家自己的鼠标控制，不覆盖旋转。
         // 其他模式直接用炮塔瞄准角，三种挂载操作一致。
         if (!TurretClient.isTracking()) {
-            setRotation(TurretClient.cameraYaw(), TurretClient.cameraPitch());
+            var angles = TurretClient.cameraAngles();
+            setRotation(angles.yaw(), angles.pitch());
         }
     }
 }

@@ -9,8 +9,11 @@ import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.opamb.barotrauma.BarotraumaMod;
+import com.opamb.barotrauma.block.CoilgunBlock;
+import com.opamb.barotrauma.blockentity.TurretBlockEntity;
 import com.opamb.barotrauma.item.FlashlightItem;
 import com.opamb.barotrauma.item.FlashlightState;
+import com.opamb.barotrauma.ship.vs.VsClientTurret;
 import com.opamb.barotrauma.world.ModDimensions;
 import com.opamb.barotrauma.world.OceanEnvironment;
 import net.minecraft.client.Camera;
@@ -18,13 +21,19 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RegisterShadersEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.client.event.RenderLivingEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -34,11 +43,20 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 /** 在水体合成前照亮实际世界画面，捕获的深度同时包括普通方块和 VS2 船。 */
 @Mod.EventBusSubscriber(modid = BarotraumaMod.MOD_ID, value = Dist.CLIENT)
 public final class FlashlightRenderer {
     private static final double OTHER_PLAYER_RANGE_SQUARED = 16.0D * 16.0D;
+    private static final CoilgunLightShadow NEAR_SHADOW = new CoilgunLightShadow();
+    private static final CoilgunLightShadow FAR_SHADOW = new CoilgunLightShadow();
+    private static final double COILGUN_VIEW_DISTANCE_SQUARED = 64.0 * 64.0;
+    private static final Set<TurretBlockEntity> COILGUN_LIGHTS = new HashSet<>();
+    private static ClientLevel coilgunLevel;
+    private static Beam nearCoilgun;
+    private static Beam farCoilgun;
     private static final BufferBuilder BUFFER = new BufferBuilder(128);
     private static final Matrix4f VIEW = new Matrix4f();
     private static final Matrix4f PROJECTION = new Matrix4f();
@@ -52,12 +70,57 @@ public final class FlashlightRenderer {
     private static Camera capturedCamera;
     private static boolean terrainReady;
     private static boolean terrainFailed;
+    private static boolean coilgunShadowFailed;
     private static boolean failed;
 
     private FlashlightRenderer() {
     }
 
-    private record Beam(Vec3 origin, Vec3 direction, float brightness, boolean scatter, boolean externalView) {
+    private record Beam(Vec3 origin, Vec3 direction, float brightness, boolean scatter, boolean externalView,
+                        TurretBlockEntity turret) {
+    }
+
+    public static void addCoilgunLight(ClientLevel level, TurretBlockEntity turret) {
+        if (coilgunLevel != level) {
+            COILGUN_LIGHTS.clear();
+            coilgunLevel = level;
+        }
+        COILGUN_LIGHTS.add(turret);
+    }
+
+    public static void removeCoilgunLight(TurretBlockEntity turret) {
+        COILGUN_LIGHTS.remove(turret);
+    }
+
+    private static void findCoilgunBeams(ClientLevel level, Camera camera, float partialTick) {
+        nearCoilgun = null;
+        farCoilgun = null;
+        if (level != coilgunLevel) return;
+        double nearDistance = COILGUN_VIEW_DISTANCE_SQUARED;
+        double farDistance = COILGUN_VIEW_DISTANCE_SQUARED;
+        for (TurretBlockEntity turret : COILGUN_LIGHTS) {
+            if (turret.isRemoved()) continue;
+            var pos = turret.getBlockPos();
+            var state = turret.getBlockState();
+            float yaw = Mth.rotLerp(partialTick, turret.prevYaw(), turret.yaw());
+            Vec3 pivot = CoilgunBlock.barrelPivot(state, pos, yaw);
+            Vec3 offset = VsClientTurret.toWorld(level, pos, pivot).subtract(camera.getPosition());
+            boolean operated = TurretClient.isOperating(pos);
+            double distance = operated ? -1.0 : offset.lengthSqr();
+            if (distance >= farDistance) continue;
+            float pitch = Mth.lerp(partialTick, turret.prevPitch(), turret.pitch());
+            Vec3 direction = VsClientTurret.directionToWorld(level, pos, TurretBlockEntity.localLookVector(yaw, pitch));
+            Beam beam = new Beam(offset, direction, 1.0F, false, true, turret);
+            if (distance < nearDistance) {
+                farCoilgun = nearCoilgun;
+                farDistance = nearDistance;
+                nearCoilgun = beam;
+                nearDistance = distance;
+            } else {
+                farCoilgun = beam;
+                farDistance = distance;
+            }
+        }
     }
 
     /** 颜色副本与主画面采用同一精度。只用于手电与近身微光。 */
@@ -71,6 +134,7 @@ public final class FlashlightRenderer {
         shader = null;
         failed = false;
         terrainFailed = false;
+        coilgunShadowFailed = false;
         try {
             event.registerShader(new ShaderInstance(event.getResourceProvider(),
                     new ResourceLocation(BarotraumaMod.MOD_ID, "flashlight"), DefaultVertexFormat.POSITION),
@@ -99,6 +163,7 @@ public final class FlashlightRenderer {
         Camera camera = event.getCamera();
         if (stage == RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) {
             terrainReady = false;
+            prepareCoilgunLights(mc, camera, event.getPartialTick());
             if (!terrainFailed && needsTerrainDepth(mc, camera)) {
                 captureTerrain(mc.getMainRenderTarget());
             }
@@ -128,7 +193,7 @@ public final class FlashlightRenderer {
         Beam own = localEmitter == null ? null : beam(mc.player, localEmitter.state(), camera, partialTick);
         boolean deep = mc.level.dimension().equals(ModDimensions.THE_DEEP);
         Vec3 halo = null;
-        if (deep && own == null && camera.getEntity() == mc.player
+        if (deep && own == null && !TurretClient.isActive() && camera.getEntity() == mc.player
                 && mc.player.isAlive() && !mc.player.isSpectator()) {
             halo = mc.player.getEyePosition(partialTick).add(0.0, -mc.player.getEyeHeight() * 0.25, 0.0)
                     .subtract(camera.getPosition());
@@ -153,7 +218,7 @@ public final class FlashlightRenderer {
                 secondDistance = distance;
             }
         }
-        if (!deep && own == null && nearest == null) {
+        if (!deep && own == null && nearest == null && nearCoilgun == null) {
             return;
         }
         RenderTarget target = mc.getMainRenderTarget();
@@ -164,13 +229,66 @@ public final class FlashlightRenderer {
             scene = prepareCapture(target, scene, true);
             copyBuffers(target, scene, GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             draw(own, halo, remoteBeam(nearest, camera, partialTick), remoteBeam(second, camera, partialTick),
-                    hasTerrainDepth, deep, dimCabin(mc, camera));
+                    hasTerrainDepth, deep, dimCabin(mc, camera), camera.getPosition());
         } catch (RuntimeException error) {
             failed = true;
             release();
             target.bindWrite(false);
             BarotraumaMod.LOGGER.warn("[light] 无法合成手电筒光照", error);
         }
+    }
+
+    private static void prepareCoilgunLights(Minecraft mc, Camera camera, float partialTick) {
+        if (coilgunShadowFailed) return;
+        findCoilgunBeams(mc.level, camera, partialTick);
+        try {
+            updateShadow(NEAR_SHADOW, nearCoilgun, mc, camera);
+            updateShadow(FAR_SHADOW, farCoilgun, mc, camera);
+        } catch (RuntimeException failure) {
+            coilgunShadowFailed = true;
+            nearCoilgun = farCoilgun = null;
+            NEAR_SHADOW.close();
+            FAR_SHADOW.close();
+            BarotraumaMod.LOGGER.warn("[light] 炮灯遮挡图获取失败，停用炮灯", failure);
+        }
+    }
+
+    private static void updateShadow(CoilgunLightShadow shadow, Beam beam, Minecraft mc, Camera camera) {
+        if (beam != null) {
+            shadow.update(mc.level, mc.player, beam.turret(), beam.origin().add(camera.getPosition()), beam.direction());
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRenderSeaMonster(RenderLivingEvent.Pre<?, ?> event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!TurretClient.isActive() || mc.level == null || mc.player == null
+                || DeepBrightnessDebug.seaFogDisabled() || !(event.getEntity() instanceof Enemy)) return;
+        var entity = event.getEntity();
+        Vec3 eye = mc.gameRenderer.getMainCamera().getPosition();
+        if (!UnderwaterEffects.isOpenOcean(mc.level, eye)) return;
+        Vec3 target = entity.getPosition(event.getPartialTick()).add(0, entity.getBbHeight() * 0.5, 0);
+        if (!UnderwaterEffects.isOpenOcean(mc.level, target)
+                || mc.level.getBrightness(LightLayer.BLOCK, entity.blockPosition()) >= 2) return;
+        if (!illuminates(nearCoilgun, mc, eye, target) && !illuminates(farCoilgun, mc, eye, target)) {
+            event.setCanceled(true);
+        }
+    }
+
+    private static boolean illuminates(Beam lamp, Minecraft mc, Vec3 camera, Vec3 target) {
+        if (lamp == null) return false;
+        Vec3 origin = lamp.origin().add(camera);
+        Vec3 offset = target.subtract(origin);
+        float range = CoilgunLightShadow.REACH;
+        if (offset.lengthSqr() >= range * range) return false;
+        double along = offset.dot(lamp.direction());
+        double u = along / range;
+        if (u <= 0 || u >= 0.98) return false;
+        double width = range * (0.02 + 0.12 * u + 0.32 * u * u);
+        double radius = offset.subtract(lamp.direction().scale(along)).length();
+        if (radius > width * 1.6) return false;
+        return mc.level.clip(new ClipContext(origin, target, ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE, mc.player)).getType() == HitResult.Type.MISS;
     }
 
     public static boolean dimCabin(Minecraft mc, Camera camera) {
@@ -225,10 +343,11 @@ public final class FlashlightRenderer {
         float brightness = low ? (float) (0.85 + 0.15 * Math.cos(phase * Math.PI * 2.0)) : 1.0F;
         boolean scatter = firstPerson && (player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
                 || OceanEnvironment.isSubmerged(player.level(), eye));
-        return new Beam(origin.subtract(camera.getPosition()), direction, brightness, scatter, !firstPerson);
+        return new Beam(origin.subtract(camera.getPosition()), direction, brightness, scatter, !firstPerson, null);
     }
 
-    private static void draw(Beam first, Vec3 halo, Beam second, Beam third, boolean hasTerrainDepth, boolean deep, boolean cabin) {
+    private static void draw(Beam first, Vec3 halo, Beam second, Beam third, boolean hasTerrainDepth,
+                             boolean deep, boolean cabin, Vec3 camera) {
         ShaderInstance previousShader = RenderSystem.getShader();
         INVERSE_PROJECTION.set(PROJECTION).invert();
         shader.safeGetUniform("InverseProjection").set(INVERSE_PROJECTION);
@@ -246,9 +365,11 @@ public final class FlashlightRenderer {
                 GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
                 GlStateManager.SourceFactor.ZERO, GlStateManager.DestFactor.ONE);
         try {
-            drawLighting(first, halo, hasTerrainDepth, deep);
-            drawLighting(second, null, hasTerrainDepth, false);
-            drawLighting(third, null, hasTerrainDepth, false);
+            drawLighting(first, halo, hasTerrainDepth, deep, null, camera);
+            drawLighting(second, null, hasTerrainDepth, false, null, camera);
+            drawLighting(third, null, hasTerrainDepth, false, null, camera);
+            drawLighting(nearCoilgun, null, false, false, NEAR_SHADOW, camera);
+            drawLighting(farCoilgun, null, false, false, FAR_SHADOW, camera);
         } finally {
             if (BUFFER.building()) {
                 BUFFER.end().release();
@@ -262,7 +383,8 @@ public final class FlashlightRenderer {
         }
     }
 
-    private static void drawLighting(Beam beam, Vec3 halo, boolean hasTerrainDepth, boolean removeDarkFloor) {
+    private static void drawLighting(Beam beam, Vec3 halo, boolean hasTerrainDepth, boolean removeDarkFloor,
+                                     CoilgunLightShadow shadow, Vec3 camera) {
         if (beam == null && halo == null && !removeDarkFloor) {
             return;
         }
@@ -276,6 +398,20 @@ public final class FlashlightRenderer {
         // 第三人称仍照亮最终画面中的人物和场景，但人物深度不参与该光束的投影。
         shader.setSampler("ShadowDepth", (hasTerrainDepth && beam != null && beam.externalView()
                 ? terrain : scene).getDepthTextureId());
+        boolean coilgun = shadow != null;
+        if (coilgun) {
+            shader.setSampler("CoilgunShadowDepth", shadow.texture());
+            Vec3 relative = shadow.origin().subtract(camera);
+            Vector3f origin = VIEW.transformPosition((float) relative.x, (float) relative.y, (float) relative.z, new Vector3f());
+            shader.safeGetUniform("CoilgunShadowOrigin").set(origin.x, origin.y, origin.z);
+            setShadowAxis("CoilgunShadowForward", shadow.forward());
+            setShadowAxis("CoilgunShadowRight", shadow.right());
+            setShadowAxis("CoilgunShadowUp", shadow.up());
+            shader.safeGetUniform("BeamTintRange").set(1.0F, 0.8F, 0.8F, CoilgunLightShadow.REACH);
+        } else {
+            shader.setSampler("CoilgunShadowDepth", scene.getDepthTextureId());
+            shader.safeGetUniform("BeamTintRange").set(1.0F, 1.0F, 1.0F, 12.0F);
+        }
         if (beam == null) {
             shader.safeGetUniform("BeamOrigin").set(0.0F, 0.0F, 0.0F, 0.0F);
             shader.safeGetUniform("BeamDirection").set(0.0F, 0.0F, 0.0F, 0.0F);
@@ -285,13 +421,19 @@ public final class FlashlightRenderer {
             Vector3f origin = VIEW.transformPosition((float) p.x, (float) p.y, (float) p.z, new Vector3f());
             Vector3f direction = VIEW.transformDirection((float) d.x, (float) d.y, (float) d.z, new Vector3f()).normalize();
             shader.safeGetUniform("BeamOrigin").set(origin.x, origin.y, origin.z, beam.brightness());
-            shader.safeGetUniform("BeamDirection").set(direction.x, direction.y, direction.z, beam.scatter() ? 1.0F : 0.0F);
+            float mode = coilgun ? 2.0F : (beam.scatter() ? 1.0F : 0.0F);
+            shader.safeGetUniform("BeamDirection").set(direction.x, direction.y, direction.z, mode);
         }
         BUFFER.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION);
         BUFFER.vertex(-1.0, -1.0, 0.0).endVertex();
         BUFFER.vertex(3.0, -1.0, 0.0).endVertex();
         BUFFER.vertex(-1.0, 3.0, 0.0).endVertex();
         BufferUploader.drawWithShader(BUFFER.end());
+    }
+
+    private static void setShadowAxis(String uniform, Vec3 axis) {
+        Vector3f view = VIEW.transformDirection((float) axis.x, (float) axis.y, (float) axis.z, new Vector3f()).normalize();
+        shader.safeGetUniform(uniform).set(view.x, view.y, view.z);
     }
 
     private static boolean canCapture(RenderTarget target) {
@@ -362,6 +504,10 @@ public final class FlashlightRenderer {
         capturedCamera = null;
         terrainReady = false;
         terrainFailed = false;
+        coilgunShadowFailed = false;
+        COILGUN_LIGHTS.clear();
+        coilgunLevel = null;
+        nearCoilgun = farCoilgun = null;
         failed = false;
         if (RenderSystem.isOnRenderThread()) {
             release();
@@ -371,6 +517,8 @@ public final class FlashlightRenderer {
     }
 
     private static void release() {
+        NEAR_SHADOW.close();
+        FAR_SHADOW.close();
         if (scene != null) {
             scene.destroyBuffers();
             scene = null;

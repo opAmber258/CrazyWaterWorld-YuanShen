@@ -34,12 +34,18 @@ public final class TurretRenderer implements BlockEntityRenderer<TurretBlockEnti
     /** 模型单位 → 格。模型数据/图集/UV 布局在 {@link TurretModels}。 */
     private static final float PX = 1.0F / 16.0F;
 
+    private final CoilgunRenderer coilgun = new CoilgunRenderer();
+
     public TurretRenderer(BlockEntityRendererProvider.Context context) {
     }
 
     @Override
     public void render(TurretBlockEntity turret, float partialTick, PoseStack pose,
                        MultiBufferSource buffer, int light, int overlay) {
+        if (turret.weaponKind().usesAmmo()) {
+            coilgun.draw(turret, partialTick, pose, buffer, light, overlay);
+            return;
+        }
         float yaw;
         float pitch;
         if (TurretClient.isOperating(turret.getBlockPos())) {

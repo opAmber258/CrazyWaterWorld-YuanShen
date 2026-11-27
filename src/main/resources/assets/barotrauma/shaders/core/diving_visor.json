@@ -1,0 +1,10 @@
+{
+    "blend": {"func": "add", "srcrgb": "srcalpha", "dstrgb": "1-srcalpha"},
+    "vertex": "barotrauma:flashlight",
+    "fragment": "barotrauma:diving_visor",
+    "attributes": ["Position"],
+    "uniforms": [
+        {"name": "AspectRatio", "type": "float", "count": 1, "values": [1.777778]},
+        {"name": "GlassVisor", "type": "float", "count": 1, "values": [0]}
+    ]
+}

@@ -102,11 +102,13 @@ public class LightScreen extends ScaledContainerScreen<LightMenu> {
         PanelStyle.frame(graphics, x, y, imageWidth, imageHeight, PanelStyle.AMBER);
 
         // 右上角预览：照原作 A=强度，按强度压暗。
-        int previewX = x + 178;
-        int previewY = y + 4;
-        graphics.fill(previewX, previewY, previewX + 24, previewY + 24, 0xFF000000);
-        graphics.fill(previewX + 1, previewY + 1, previewX + 23, previewY + 23,
-                lit ? 0xFF000000 | dimmedColor() : 0xFF23262B);
+        int previewX = x + 100;
+        int previewY = y + 58;
+        PanelStyle.divider(graphics, 8, 24, imageWidth - 16);
+        PanelStyle.well(graphics, previewX, previewY, 99, 73);
+        graphics.fillGradient(previewX + 2, previewY + 2, previewX + 97, previewY + 71,
+                lit ? 0xFF000000 | dimmedColor() : PanelStyle.RECESS, PanelStyle.RECESS);
+        PanelStyle.lamp(graphics, 109, 39, lit && powered, 0xFF77AFA2);
 
         for (int i = 0; i < 4; i++) {
             graphics.drawString(font, channelLabel(i), x + 8, y + 59 + i * 22,
@@ -118,13 +120,13 @@ public class LightScreen extends ScaledContainerScreen<LightMenu> {
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, title, 8, 10, 0xFFDDE6EF, false);
         graphics.drawString(font, String.format("#%06X", currentColor()),
-                78, 36, 0xFF9FB0C0, false);
+                123, 36, PanelStyle.TEXT, false);
         if (lit && !powered) {
             graphics.drawString(font, Component.translatable("gui.barotrauma.light.unpowered"),
-                    134, 36, 0xFFFF5A4A, false);
+                    100, 140, 0xFFFF8A78, false);
         }
         graphics.drawString(font, Component.translatable("gui.barotrauma.light.alpha_hint"),
-                8, 148, 0xFF9FB0C0, false);
+                8, 155, PanelStyle.DIM, false);
     }
 
     @Override

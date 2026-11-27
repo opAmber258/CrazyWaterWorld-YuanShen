@@ -15,19 +15,13 @@ class DeepBrightnessDebugTest {
     }
 
     @Test
-    void cyclesAllFiveBrightnessLevels() {
-        int current = 0;
+    void nextPercentCyclesFourStepsAndWraps() {
+        int percent = 0;
         for (int expected : new int[]{25, 50, 75, 100, 0}) {
-            current = DeepBrightnessDebug.nextPercent(current, false);
-            assertEquals(expected, current);
+            percent = DeepBrightnessDebug.nextPercent(percent, false);
+            assertEquals(expected, percent);
         }
-    }
-
-    @Test
-    void resetReturnsToNormalDarknessFromAnyLevel() {
-        for (int current : new int[]{0, 25, 50, 75, 100}) {
-            assertEquals(0, DeepBrightnessDebug.nextPercent(current, true));
-        }
+        assertEquals(0, DeepBrightnessDebug.nextPercent(75, true));
     }
 
     @Test

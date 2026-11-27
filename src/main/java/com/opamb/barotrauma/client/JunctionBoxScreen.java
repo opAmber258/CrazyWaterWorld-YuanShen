@@ -25,7 +25,7 @@ import java.util.Locale;
 public class JunctionBoxScreen extends ScaledContainerScreen<JunctionBoxMenu> {
 
     private static final int W = 440;
-    private static final int H = 340;
+    private static final int H = 356;
     private static final int ROW = 22;
     private static final int MAX_ROWS = 7;
 
@@ -104,7 +104,7 @@ public class JunctionBoxScreen extends ScaledContainerScreen<JunctionBoxMenu> {
             PowerStatePacket.Device device = devices.get(scroll + i);
             boolean boundHere = state.boxPos().equals(device.box());
             Component label = Component.translatable(boundHere ? "power.unbind" : "power.bind");
-            int y = top + 140 + i * ROW;
+            int y = top + 160 + i * ROW;
             addRenderableWidget(PanelStyle.button(label, b -> {
                 ModNetwork.sendToServer(new PowerBindPacket(state.boxPos(), device.pos(), !boundHere));
                 b.active = false;
@@ -125,21 +125,24 @@ public class JunctionBoxScreen extends ScaledContainerScreen<JunctionBoxMenu> {
         int left = 0;
         int top = 0;
         PanelStyle.frame(g, left, top, W, H, PanelStyle.AMBER);
-        g.drawCenteredString(font, Component.translatable("block.barotrauma.junction_box"),
-                left + panelWidth() / 2, top + 10, 0xFFFFFFFF);
+        g.drawString(font, Component.translatable("block.barotrauma.junction_box"), 12, 9, PanelStyle.TEXT, false);
+        PanelStyle.divider(g, 12, 23, W - 24);
+        PanelStyle.well(g, 12, 28, 174, 88);
+        PanelStyle.well(g, 197, 28, 231, 88);
 
         int x = left + 18;
         int y = top + 34;
         List<PowerStatePacket.Device> devices = state.devices();
-        double voltage = state.voltage();
+        double displayCondition = menu.repair().data().get(com.opamb.barotrauma.menu.RepairSession.CONDITION) / 10.0D;
+        double voltage = displayCondition > 0.0D ? state.voltage() : 0.0D;
         boolean pulse = net.minecraft.Util.getMillis() % 500L < 250L;
         indicator(g, x, y, "power.indicator.powered", voltage > 0.0D, 0xFF79C172);
         indicator(g, x, y + 16, "power.indicator.high", pulse && voltage > 1.2D, 0xFFD66651);
         indicator(g, x, y + 32, "power.indicator.low", pulse && voltage > 0.0D && voltage < 0.8D, 0xFFD66651);
         display(g, x + 188, y - 2, "power.supply", state.supplyKw());
         display(g, x + 188, y + 18, "power.load", state.demandKw());
-        int voltageColor = state.voltage() > 1.7D ? 0xFFFF5555
-                : state.voltage() < 0.8D ? 0xFFFFC857 : 0xFF77DD77;
+        int voltageColor = voltage <= 0.0D || voltage > 1.7D ? 0xFFFF7970
+                : voltage < 0.8D ? 0xFFFFC857 : 0xFF77DD77;
         g.drawString(font, line("power.voltage", voltage * 100.0D), x + 188, y + 42, voltageColor);
         g.drawString(font, line("power.box_load", state.boxLoadKw()), x + 188, y + 56, PanelStyle.TEXT);
         g.drawString(font, line("power.range", devices.size()), x + 188, y + 70, PanelStyle.DIM);
@@ -150,27 +153,28 @@ public class JunctionBoxScreen extends ScaledContainerScreen<JunctionBoxMenu> {
                         fmt(state.storedKwm()), fmt(state.storageCapacityKwm()),
                         fmt(state.batteryOutputKw()));
         int batteryColor = state.batteryOutputKw() > 0.5D ? 0xFFFFC857 : 0xFF77DD77;
-        g.drawString(font, font.plainSubstrByWidth(batteryText.getString(), W - 36), x, y + 86, batteryColor, false);
+        PanelStyle.well(g, 12, 121, W - 24, 18);
+        g.drawString(font, font.plainSubstrByWidth(batteryText.getString(), W - 36), x, 126, batteryColor, false);
 
-        // 耐久只在独立修理窗口里画；这里给一行状态文字。
-        double displayCondition = menu.repair().data().get(com.opamb.barotrauma.menu.RepairSession.CONDITION) / 10.0D;
+        // The box voltage above is local. The supply and load instruments show the full bus.
         Component conditionText = displayCondition <= 0.0D
                 ? Component.translatable("power.broken_hint")
                 : Component.translatable("power.condition_line", Math.round(displayCondition));
         g.drawString(font, conditionText, x, y + 50, displayCondition <= 0.0D
                 ? 0xFFFF5555 : 0xFF9AA6B2);
 
-        g.fill(left + 16, top + 120, left + W - 16, top + 122, 0xFF3A444E);
-        g.drawString(font, Component.translatable("power.devices"), left + 18, top + 126, 0xFFB8C4D0);
+        g.drawString(font, Component.translatable("power.devices"), left + 18, top + 146, PanelStyle.TEXT, false);
 
         if (devices.isEmpty()) {
-            g.drawString(font, Component.translatable("power.no_devices"), left + 18, top + 146, 0xFF8A96A2);
+            g.drawString(font, Component.translatable("power.no_devices"), left + 18, top + 168, PanelStyle.DIM);
         }
         scroll = Mth.clamp(scroll, 0, maxScroll());
         int rows = Math.min(visibleRows(), Math.max(0, devices.size() - scroll));
         for (int i = 0; i < rows; i++) {
             PowerStatePacket.Device device = devices.get(scroll + i);
-            int rowY = top + 140 + i * ROW;
+            int rowY = top + 160 + i * ROW;
+            PanelStyle.divider(g, 16, rowY - 2, W - 32);
+            PanelStyle.divider(g, 16, rowY - 2, W - 32);
             boolean boundHere = state.boxPos().equals(device.box());
             String name = Component.translatable(device.nameKey()).getString();
             String pos = Component.translatable("power.device_pos",
@@ -180,7 +184,7 @@ public class JunctionBoxScreen extends ScaledContainerScreen<JunctionBoxMenu> {
                             + fmt(device.storedKwm()) + "/" + fmt(device.capacityKwm()) + " kW·min"
                     : name + "  " + fmt(device.demandKw()) + " kW  ≥"
                             + fmt(device.minVoltage() * 100.0D) + "%";
-            int color = boundHere ? 0xFF77DD77 : 0xFFE8EDF2;
+            int color = boundHere ? (displayCondition > 0.0D ? 0xFF80BBA6 : 0xFFE28778) : PanelStyle.TEXT;
             g.drawString(font, text, left + 18, rowY, color);
             // 坐标单独一行：窄窗口/同型号设备也能区分，不会和绑定按钮抢宽度。
             String sub = device.box() != null && !boundHere
@@ -191,7 +195,7 @@ public class JunctionBoxScreen extends ScaledContainerScreen<JunctionBoxMenu> {
         if (maxScroll() > 0) {
             Component hint = Component.translatable("power.scroll_hint",
                     scroll + 1, scroll + rows, devices.size());
-            g.drawString(font, hint, left + 18, top + 140 + MAX_ROWS * ROW, 0xFF8A96A2);
+            g.drawString(font, hint, left + 18, top + 160 + MAX_ROWS * ROW, 0xFF8A96A2);
         }
     }
 
@@ -211,13 +215,12 @@ public class JunctionBoxScreen extends ScaledContainerScreen<JunctionBoxMenu> {
     }
 
     private void indicator(GuiGraphics g, int x, int y, String label, boolean active, int color) {
-        g.fill(x, y, x + 10, y + 10, 0xFF101711);
-        g.fill(x + 2, y + 2, x + 8, y + 8, active ? color : 0xFF41473B);
+        PanelStyle.lamp(g, x + 5, y + 5, active, color);
         g.drawString(font, Component.translatable(label), x + 15, y + 1, PanelStyle.TEXT, false);
     }
 
     private void display(GuiGraphics g, int x, int y, String label, double kw) {
-        g.fill(x, y, x + 212, y + 17, 0xFF101A14);
+        PanelStyle.well(g, x, y, 212, 17);
         g.drawString(font, Component.translatable(label), x + 5, y + 4, PanelStyle.DIM, false);
         String reading = fmt(kw) + " kW";
         g.drawString(font, reading, x + 206 - font.width(reading), y + 4, 0xFFAADB89, false);

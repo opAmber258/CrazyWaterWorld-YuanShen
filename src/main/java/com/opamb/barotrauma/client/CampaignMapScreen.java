@@ -133,11 +133,11 @@ public final class CampaignMapScreen extends ScaledScreen {
 
     @Override protected void renderDesign(GuiGraphics g, int mx, int my, float partialTick) {
         PanelStyle.frame(g, 0, 0, MAP_W, MAP_H, PanelStyle.SERVICE);
-        g.drawString(font, title, 12, 12, 0xFFC1E8D9);
+        g.drawString(font, title, 12, 10, PanelStyle.TEXT, false);
+        PanelStyle.divider(g, 12, 23, MAP_W - 24);
         g.drawString(font, tr("biome"), 12, 28, 0xFF80CEAF);
         g.drawString(font, tr("wallet", CampaignClient.state() == null ? 0 : CampaignClient.state().credits()), panelX, 28, 0xFFE3D78D);
-        g.drawCenteredString(font, tr("biome"), mapX + mapW / 2, Math.max(46, mapY - 12), 0xAA9FBDB4);
-        g.fill(mapX - 2, mapY - 2, mapX + mapW + 2, mapY + mapH + 2, 0xFF02070A);
+        PanelStyle.well(g, mapX - 2, mapY - 2, mapW + 4, mapH + 4);
 
         enableDesignScissor(g, mapX, mapY, mapX + mapW, mapY + mapH);
         drawBackground(g);
@@ -179,9 +179,20 @@ public final class CampaignMapScreen extends ScaledScreen {
                 g.blit(MAP_ICONS, cx + 9, cy - 19, 12, 12, ICON_MISSION_U, 128, 30, 30, 512, 512);
             }
         }
+        for (MapNode n : CampaignMap.nodes()) {
+            if (n.type() != NodeType.OUTPOST && n.id() != selected && n.id() != origin) continue;
+            String name = font.plainSubstrByWidth(nodeName(n).getString(), mapW - 8);
+            int width = font.width(name);
+            int lx = Math.max(mapX + 3, Math.min(mapX + mapW - width - 3, x(n) - width / 2));
+            int ly = y(n) + 17;
+            if (ly + 10 >= mapY + mapH) ly = y(n) - 26;
+            ly = Math.max(mapY + 3, ly);
+            g.fill(lx - 2, ly - 2, lx + width + 2, ly + 9, 0xD5090F13);
+            g.drawString(font, name, lx, ly, n.id() == selected ? PanelStyle.AMBER : PanelStyle.TEXT, false);
+        }
         g.disableScissor();
 
-        g.fill(panelX, 44, MAP_W - 10, MAP_H - 49, 0xFF172B35);
+        PanelStyle.well(g, panelX, 43, panelW, MAP_H - 94);
         enableDesignScissor(g, panelX + 4, bodyY, MAP_W - 14, bodyBottom);
         if (!CampaignMap.isValid(selected)) {
             wrapped(g, tr("choose"), panelX + 8, bodyY + 6 - scroll, panelW - 16, 0xFFB6CEC8);

@@ -38,15 +38,15 @@ public final class ModNetwork {
     // 38：ShipActionPacket 增加驾驶状态/定点目标与舵令确认，功率拒绝回显。
     // 39：RepairActionPacket 与设备修理/接线盒菜单改版。
     // 40：新增 NightVisionPacket（亮度调节器面板的无限夜视开关）。
-    // 41：新增船厂状态/编辑/校验/试航/填充包（ShipyardState/Request/Edit/Status/Test/Fill）。
-    // 42：新增 ShipyardTeleportPacket（退出编辑器回到焦点）。
-    // 43：新增船库列表/动作包（ShipyardLibraryList/Action）。
-    // 44：ShipyardStatePacket 增加 dirty 标记。
+    // 41：TurretStatePacket 增加储能总容量/最低门槛/装弹器状态/是否装弹箱/船艏方向（潜望镜 HUD）。
+    // 42：ShipUseBlockPacket 支持手持炮台绑定器直接命中；PumpActionPacket 增加 TOGGLE_POWER。
+    // 43：新增 CoilgunShotPacket（服务端确认单发，客户端据此播后坐与枪口特效）。
+    // 44：新增船厂状态/编辑/校验/试航/填充/传送/船库包（ShipyardState/Request/Edit/Status/Test/Fill/Teleport/LibraryList/Action）。
     // 45：船厂编辑/填充包支持镜像对称与多模式（实心/空心船壳/舱壁/直线/框选拆除）。
     // 46：ShipyardStatusPacket 增加未连通/破口三维诊断坐标，新增 ShipyardPastePacket 选区粘贴。
     // 47：支持椭球艇壳/材质替换刷（ShipyardFillPacket 过滤状态）及船体包围盒标尺坐标。
-    // 48：ShipyardStatusPacket 增加舱室着色/潜艇压载与供电预算/连线拓扑，新增 ShipyardWirePacket。
-    private static final String PROTOCOL = "48";
+    // 48-49：ShipyardStatusPacket 增加舱室着色/潜艇压载与供电预算/连线拓扑，新增 ShipyardWirePacket。
+    private static final String PROTOCOL = "49";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(BarotraumaMod.MOD_ID, "main"),
             () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
@@ -164,6 +164,9 @@ CHANNEL.messageBuilder(PowerStatePacket.class, nextId++, net.minecraftforge.netw
         CHANNEL.messageBuilder(TurretStatePacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretStatePacket::encode).decoder(TurretStatePacket::decode)
                 .consumerNetworkThread(TurretStatePacket::handle).add();
+        CHANNEL.messageBuilder(CoilgunShotPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(CoilgunShotPacket::encode).decoder(CoilgunShotPacket::decode)
+                .consumerNetworkThread(CoilgunShotPacket::handle).add();
         CHANNEL.messageBuilder(TurretHitPacket.class, nextId++, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(TurretHitPacket::encode).decoder(TurretHitPacket::decode)
                 .consumerNetworkThread(TurretHitPacket::handle).add();

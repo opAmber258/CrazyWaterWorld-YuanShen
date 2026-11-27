@@ -26,11 +26,10 @@ public final class NpcDialogueScreen extends ScaledScreen {
     private static final int PANEL_H = 150;
 
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int TITLE = 0xFFE0762F;
+    private static final int TITLE = PanelStyle.TEXT;
     private static final int TEXT = PanelStyle.TEXT;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.SERVICE;
-    private static final int BOX = 0xFF232B25;
 
     private NpcDialoguePacket packet;
     private Button primary;
@@ -95,11 +94,11 @@ public final class NpcDialogueScreen extends ScaledScreen {
         int left = 0;
         int top = 0;
         PanelStyle.frame(graphics, left, top, PANEL_W, PANEL_H, PanelStyle.SERVICE);
-        graphics.fill(left + 1, top + 1, left + PANEL_W - 1, top + 18, 0xFF23282D);
-        graphics.drawString(font, title, left + 8, top + 5, TITLE, false);
+        PanelStyle.divider(graphics, 10, 23, PANEL_W - 20);
+        graphics.drawString(font, title, 12, 9, TITLE, false);
 
         int x = left + 12;
-        int y = top + 26;
+        int y = top + 31;
         int maxWidth = PANEL_W - 24;
         String line = switch (packet.phase()) {
             case NpcDialoguePacket.GRANTED -> tr("granted").getString();

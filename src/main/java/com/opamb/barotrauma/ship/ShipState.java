@@ -114,6 +114,7 @@ public final class ShipState {
     private double verticalInput;
     private static final int MANUAL_LEASE_TICKS = 20;
     private UUID manualPilot;
+    private final Map<BlockPos, Integer> localEngines = new HashMap<>();
     private long lastManualInput;
     /** 自动驾驶目标（世界坐标）；null = 还没标记。 */
     private net.minecraft.core.BlockPos autopilotTarget;
@@ -622,6 +623,7 @@ public final class ShipState {
         if (x == 0.0D && y == 0.0D && z == 0.0D && autopilotHold()) {
             return;
         }
+        localEngines.clear();
         navigationMode = NavigationMode.MANUAL;
         settledChecks = 0;
         autopilotTarget = null;
@@ -640,6 +642,40 @@ public final class ShipState {
         helmYaw = physical ? (int) Math.signum(z) : 0;
         helmYawScale = physical ? Math.abs(z) : 0.0D;
         moveTimer = 0;
+    }
+
+    public boolean helmHasControl(long tick) {
+        return autopilotHold() || (manualPilot == null ? throttled()
+                : tick - lastManualInput < MANUAL_LEASE_TICKS);
+    }
+
+    public boolean hasLocalEngineControl() {
+        return !localEngines.isEmpty();
+    }
+
+    public void clearLocalEngineControl() {
+        localEngines.clear();
+    }
+
+    public void pruneLocalEngineCommands(net.minecraft.server.level.ServerLevel level,
+                                         java.util.function.UnaryOperator<BlockPos> toLevelPos) {
+        localEngines.keySet().removeIf(cell -> {
+            BlockPos position = toLevelPos.apply(cell);
+            return position != null && level.hasChunkAt(position)
+                    && !(level.getBlockEntity(position) instanceof com.opamb.barotrauma.blockentity.EngineBlockEntity);
+        });
+    }
+
+    public int localEngineForce(BlockPos cell) {
+        return localEngines.getOrDefault(cell, 0);
+    }
+
+    public void setLocalEngineForce(BlockPos cell, int force) {
+        if (force == 0) {
+            localEngines.remove(cell);
+        } else {
+            localEngines.put(cell.immutable(), Math.max(-100, Math.min(100, force)));
+        }
     }
 
     public boolean canTakeHelm(UUID player, long tick) {
@@ -697,6 +733,7 @@ public final class ShipState {
 
     /** Enabling without a position captures the current core pose on the next simulation step. */
     public void setAutopilotHold(boolean hold) {
+        clearLocalEngineControl();
         manualPilot = null;
         navigationMode = hold ? NavigationMode.SETTLING : NavigationMode.MANUAL;
         settledChecks = 0;
@@ -712,6 +749,7 @@ public final class ShipState {
     }
 
     public void setAutopilotTarget(BlockPos target) {
+        clearLocalEngineControl();
         manualPilot = null;
         autopilotTarget = target.immutable();
         navigationAnchor = Vec3.atCenterOf(target);
@@ -1142,6 +1180,8 @@ public final class ShipState {
         verticalInput = previous.verticalInput;
         manualPilot = previous.manualPilot;
         lastManualInput = previous.lastManualInput;
+        localEngines.clear();
+        localEngines.putAll(previous.localEngines);
     }
 
     /**

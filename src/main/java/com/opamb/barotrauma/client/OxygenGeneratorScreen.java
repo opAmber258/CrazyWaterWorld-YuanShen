@@ -23,7 +23,7 @@ import net.minecraft.world.entity.player.Inventory;
 public class OxygenGeneratorScreen extends ScaledContainerScreen<OxygenGeneratorMenu> {
 
     private static final int W = 224;
-    private static final int H = 292;
+    private static final int H = 220;
 
     private static final int EDGE = PanelStyle.EDGE;
     private static final int TEXT = PanelStyle.TEXT;
@@ -41,7 +41,7 @@ public class OxygenGeneratorScreen extends ScaledContainerScreen<OxygenGenerator
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        graphics.drawString(font, title, 10, 8, ACCENT, false);
+        graphics.drawString(font, title, 10, 8, TEXT, false);
     }
 
     @Override
@@ -50,41 +50,36 @@ public class OxygenGeneratorScreen extends ScaledContainerScreen<OxygenGenerator
         int y = topPos;
         PanelStyle.frame(graphics, x, y, W, H, PanelStyle.AMBER);
 
+        PanelStyle.divider(graphics, x + 10, y + 22, W - 20);
+        PanelStyle.well(graphics, x + 10, y + 29, W - 20, 42);
+        PanelStyle.well(graphics, x + 10, y + 76, W - 20, 50);
+        PanelStyle.divider(graphics, x + 10, y + 130, W - 20);
+        graphics.drawString(font, "气瓶 / 焊接油箱", x + 16, y + 34, DIM, false);
+
         int flowRaw = Math.max(0, menu.data().get(OxygenGeneratorMenu.DATA_FLOW));
         int voltageRaw = menu.data().get(OxygenGeneratorMenu.DATA_VOLTAGE);
         int conditionRaw = menu.data().get(OxygenGeneratorMenu.DATA_CONDITION);
-        boolean bound = menu.data().get(OxygenGeneratorMenu.DATA_BOUND) != 0;
         double voltage = voltageRaw / 100.0D;
 
         graphics.drawString(font, Component.translatable(
                         "gui.barotrauma.oxygen_generator.flow",
                         String.format("%.0f", flowRaw / 10.0D)),
-                x + 12, y + 76, flowRaw > 0 ? GREEN : DIM, false);
+                x + 16, y + 82, flowRaw > 0 ? GREEN : DIM, false);
         int voltageColor = voltage >= 0.5D ? GREEN : voltage > 0.1D ? YELLOW : RED;
         graphics.drawString(font, Component.translatable(
                         "gui.barotrauma.oxygen_generator.voltage", String.format("%.2f", voltage)),
-                x + 12, y + 92, voltageColor, false);
+                x + 16, y + 96, voltageColor, false);
         if (conditionRaw <= 0) {
             graphics.drawString(font, Component.translatable(
                             "gui.barotrauma.oxygen_generator.broken"),
-                    x + 12, y + 108, RED, false);
+                    x + 16, y + 110, RED, false);
         } else {
             graphics.drawString(font, Component.translatable(
                             "gui.barotrauma.oxygen_generator.condition",
                             String.valueOf(Math.round(conditionRaw / 10.0D))),
-                    x + 12, y + 108, DIM, false);
+                    x + 16, y + 110, DIM, false);
         }
-        graphics.drawString(font, Component.translatable(bound
-                        ? "gui.barotrauma.oxygen_generator.bound"
-                        : "gui.barotrauma.oxygen_generator.bus"),
-                x + 12, y + 124, bound ? GREEN : DIM, false);
-
-        graphics.drawString(font, Component.translatable(
-                        "gui.barotrauma.oxygen_generator.hint"),
-                x + 12, y + 152, DIM, false);
-        graphics.drawString(font, Component.translatable(
-                        "gui.barotrauma.oxygen_generator.hint_vent"),
-                x + 12, y + 166, DIM, false);
+        PanelStyle.lamp(graphics, x + W - 22, y + 88, flowRaw > 0, GREEN);
 
         // 五个瓶槽底纹
         for (int i = 0; i < 5; i++) {
@@ -110,7 +105,6 @@ public class OxygenGeneratorScreen extends ScaledContainerScreen<OxygenGenerator
     }
 
     private void slotBg(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 18, y + 18, 0xFF8B8B8B);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF373737);
+        PanelStyle.slot(graphics, x, y);
     }
 }

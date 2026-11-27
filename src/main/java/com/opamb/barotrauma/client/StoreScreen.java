@@ -34,9 +34,9 @@ import java.util.Map;
 public final class StoreScreen extends ScaledScreen {
 
     private static final int PANEL_W = 440;
-    private static final int PANEL_H = 252;
-    private static final int ROW_H = 18;
-    private static final int VISIBLE_ROWS = 9;
+    private static final int PANEL_H = 324;
+    private static final int ROW_H = 30;
+    private static final int VISIBLE_ROWS = 7;
     /** 单行数量上限，和服务端 StoreService.MAX_LINE_QUANTITY 保持一致。 */
     private static final int MAX_SUB_QUANTITY = 64;
     private static final int TAB_BUY = 0;
@@ -48,15 +48,13 @@ public final class StoreScreen extends ScaledScreen {
     private static final int PROMPT_H = 86;
     private static final int PROMPT_BTN_W = 132;
 
-    private static final int BG = 0xF01B2320;
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int BOX = 0xFF232B25;
     private static final int TEXT = PanelStyle.TEXT;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.SERVICE;
     private static final int GREEN = 0xFF7BE38B;
     private static final int RED = 0xFFFF7A6A;
-    private static final int HOVER = 0xFF39483A;
+    private static final int HOVER = PanelStyle.SELECTED;
 
     private StoreStatePacket state;
     private int tab = TAB_BUY;
@@ -135,7 +133,7 @@ public final class StoreScreen extends ScaledScreen {
     }
 
     private int listTop() {
-        return topPos() + 40;
+        return topPos() + 63;
     }
 
     private List<StoreStatePacket.Entry> buyEntries() {
@@ -305,28 +303,28 @@ public final class StoreScreen extends ScaledScreen {
         int y = topPos();
         PanelStyle.frame(g, x, y, panelW(), panelH(), PanelStyle.SERVICE);
 
-        g.drawString(font, Component.translatable("store.title"), x + 10, y + 6, ACCENT, false);
+        g.drawString(font, Component.translatable("store.title"), x + 10, y + 9, TEXT, false);
         String wallet = Component.translatable("store.wallet", state.wallet()).getString();
-        g.drawString(font, wallet, x + panelW() - 10 - font.width(wallet), y + 6, GREEN, false);
+        g.drawString(font, wallet, x + panelW() - 10 - font.width(wallet), y + 9, GREEN, false);
         String balance = Component.translatable("store.merchant_balance",
                 state.merchantBalance()).getString();
-        g.drawString(font, balance, x + panelW() - 10 - font.width(balance), y + 18, DIM, false);
+        g.drawString(font, balance, x + panelW() - 10 - font.width(balance), y + 22, DIM, false);
 
-        drawTab(g, x + 10, y + 22, Component.translatable("store.tab.buy").getString(),
+        drawTab(g, x + 10, y + 39, Component.translatable("store.tab.buy").getString(),
                 tab == TAB_BUY, mouseX, mouseY);
-        drawTab(g, x + 70, y + 22, Component.translatable("store.tab.sell").getString(),
+        drawTab(g, x + 110, y + 39, Component.translatable("store.tab.sell").getString(),
                 tab == TAB_SELL, mouseX, mouseY);
-        drawTab(g, x + 130, y + 22, Component.translatable("store.tab.sub").getString(),
+        drawTab(g, x + 210, y + 39, Component.translatable("store.tab.sub").getString(),
                 tab == TAB_SUB, mouseX, mouseY);
         if (focusArea == 0) {
             // 键盘焦点在标签栏：给当前标签描一圈，旁白已经读过名字。
-            int tabX = x + 10 + tab * 60;
-            g.fill(tabX - 1, y + 21, tabX + 57, y + 22, ACCENT);
-            g.fill(tabX - 1, y + 36, tabX + 57, y + 37, ACCENT);
-            g.fill(tabX - 1, y + 21, tabX, y + 37, ACCENT);
-            g.fill(tabX + 56, y + 21, tabX + 57, y + 37, ACCENT);
+            int tabX = x + 10 + tab * 100;
+            g.fill(tabX - 1, y + 38, tabX + 97, y + 39, ACCENT);
+            g.fill(tabX - 1, y + 53, tabX + 97, y + 54, ACCENT);
+            g.fill(tabX - 1, y + 38, tabX, y + 54, ACCENT);
+            g.fill(tabX + 96, y + 38, tabX + 97, y + 54, ACCENT);
         }
-        g.fill(x + 8, listTop() - 3, x + panelW() - 8, listTop() - 2, EDGE);
+        PanelStyle.well(g, x + 8, listTop() - 1, panelW() - 16, visibleRows() * ROW_H + 2);
 
         // 交付弹窗是模态的：打开期间不画列表行，避免行内的数量 −/0/+ 跟弹窗叠在一起。
         if (!deliveryPrompt) {
@@ -356,15 +354,7 @@ public final class StoreScreen extends ScaledScreen {
         boolean buttonFocused = focusArea == 2 && can;
         boolean hover = can && mouseX >= buttonX && mouseX < buttonX + 110
                 && mouseY >= cartY && mouseY < cartY + 18;
-        g.fill(buttonX, cartY, buttonX + 110, cartY + 18,
-                can ? (hover || buttonFocused) ? HOVER : 0xFF3A4A3C : BOX);
-        g.fill(buttonX, cartY, buttonX + 110, cartY + 1, EDGE);
-        if (buttonFocused) {
-            g.fill(buttonX, cartY, buttonX + 110, cartY + 1, ACCENT);
-            g.fill(buttonX, cartY + 17, buttonX + 110, cartY + 18, ACCENT);
-            g.fill(buttonX, cartY, buttonX + 1, cartY + 18, ACCENT);
-            g.fill(buttonX + 109, cartY, buttonX + 110, cartY + 18, ACCENT);
-        }
+        PanelStyle.control(g, buttonX, cartY, 110, 18, can, hover || buttonFocused);
         g.drawCenteredString(font, Component.translatable(
                         tab == TAB_BUY ? "store.tab.buy" : "store.tab.sell"),
                 buttonX + 55, cartY + 5, can ? TEXT : DIM);
@@ -400,13 +390,8 @@ public final class StoreScreen extends ScaledScreen {
         g.fill(0, 0, designWidth(), designHeight(), 0xA0000000);
         int px = promptX();
         int py = promptY();
-        g.fill(px, py, px + PROMPT_W, py + PROMPT_H, BG);
-        g.fill(px, py, px + PROMPT_W, py + 1, EDGE);
-        g.fill(px, py + PROMPT_H - 1, px + PROMPT_W, py + PROMPT_H, EDGE);
-        g.fill(px, py, px + 1, py + PROMPT_H, EDGE);
-        g.fill(px + PROMPT_W - 1, py, px + PROMPT_W, py + PROMPT_H, EDGE);
-        // 标题条
-        g.fill(px + 1, py + 1, px + PROMPT_W - 1, py + 19, 0xFF232A2E);
+        PanelStyle.frame(g, px, py, PROMPT_W, PROMPT_H, PanelStyle.SERVICE);
+        PanelStyle.divider(g, px + 9, py + 19, PROMPT_W - 18);
         g.drawString(font, Component.translatable("store.delivery.title"),
                 px + 10, py + 6, ACCENT, false);
         g.drawString(font, Component.translatable("store.delivery.immediate_desc"),
@@ -423,22 +408,15 @@ public final class StoreScreen extends ScaledScreen {
     private void drawPromptButton(GuiGraphics g, String label, int x, int y, int w,
                                   int mouseX, int mouseY, boolean selected) {
         boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + 18;
-        g.fill(x, y, x + w, y + 18, hover || selected ? HOVER : 0xFF3A4A3C);
-        g.fill(x, y, x + w, y + 1, selected ? ACCENT : EDGE);
-        if (selected) {
-            g.fill(x, y + 17, x + w, y + 18, ACCENT);
-            g.fill(x, y, x + 1, y + 18, ACCENT);
-            g.fill(x + w - 1, y, x + w, y + 18, ACCENT);
-        }
+        PanelStyle.control(g, x, y, w, 18, true, hover || selected);
         g.drawCenteredString(font, label, x + w / 2, y + 5, TEXT);
     }
 
     private void drawTab(GuiGraphics g, int x, int y, String label, boolean selected,
                          int mouseX, int mouseY) {
-        boolean hover = mouseX >= x && mouseX < x + 56 && mouseY >= y && mouseY < y + 14;
-        g.fill(x, y, x + 56, y + 14, selected ? ACCENT : hover ? HOVER : BOX);
-        g.fill(x, y, x + 56, y + 1, EDGE);
-        g.drawCenteredString(font, label, x + 28, y + 3, selected ? 0xFF201810 : TEXT);
+        boolean hover = mouseX >= x && mouseX < x + 96 && mouseY >= y && mouseY < y + 14;
+        PanelStyle.control(g, x, y, 96, 14, true, selected || hover);
+        g.drawCenteredString(font, label, x + 48, y + 3, selected ? TEXT : DIM);
     }
 
     private void renderBuy(GuiGraphics g, int mouseX, int mouseY) {
@@ -452,30 +430,30 @@ public final class StoreScreen extends ScaledScreen {
             boolean focused = focusArea == 1 && focusRow == scroll + i;
             boolean hover = mouseX >= x + 8 && mouseX < x + panelW() - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + panelW() - 8, rowY + ROW_H,
-                    (hover || focused) ? HOVER : BOX);
+            if (hover || focused) g.fill(x + 9, rowY, x + panelW() - 9, rowY + ROW_H, HOVER);
+            PanelStyle.divider(g, x + 10, rowY + ROW_H - 1, panelW() - 20);
             if (focused) {
                 g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
             }
             ItemStack stack = stackFor(entry.itemId());
             if (!stack.isEmpty()) {
-                g.renderItem(stack, x + 12, rowY + 1);
+                g.renderItem(stack, x + 16, rowY + 7);
             }
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
             g.drawString(font, clipName(name, nameWidth(x)),
-                    x + 34, rowY + 5, TEXT, false);
+                    x + 40, rowY + 5, TEXT, false);
             if (showsSecondaryColumns()) {
                 g.drawString(font, "[" + categoryLabel(entry.category()) + "]",
-                        x + 196, rowY + 5, DIM, false);
+                        x + 40, rowY + 17, DIM, false);
                 String stock = entry.stock() > 0
                         ? Component.translatable("store.stock", entry.stock()).getString()
                         : Component.translatable("store.sold_out").getString();
-                g.drawString(font, stock, x + 262, rowY + 5,
+                g.drawString(font, stock, x + 177, rowY + 17,
                         entry.stock() > 0 ? DIM : RED, false);
             }
             drawQuantity(g, x, rowY, buyQuantity(entry.itemId()), entry.stock(), mouseX, mouseY);
             String price = entry.buyPrice() + " mk";
-            g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5,
+            g.drawString(font, price, x + panelW() - 18 - font.width(price), rowY + 11,
                     state.wallet() >= entry.buyPrice() ? GREEN : RED, false);
         }
         if (entries.isEmpty()) {
@@ -505,23 +483,23 @@ public final class StoreScreen extends ScaledScreen {
             boolean focused = focusArea == 1 && focusRow == scroll + i;
             boolean hover = mouseX >= x + 8 && mouseX < x + panelW() - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + panelW() - 8, rowY + ROW_H,
-                    (hover || focused) ? HOVER : BOX);
+            if (hover || focused) g.fill(x + 9, rowY, x + panelW() - 9, rowY + ROW_H, HOVER);
+            PanelStyle.divider(g, x + 10, rowY + ROW_H - 1, panelW() - 20);
             if (focused) {
                 g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
             }
-            g.renderItem(row.stack(), x + 12, rowY + 1);
+            g.renderItem(row.stack(), x + 16, rowY + 7);
             g.drawString(font, clipName(row.stack().getHoverName().getString(),
                             nameWidth(x)),
-                    x + 34, rowY + 5, TEXT, false);
+                    x + 40, rowY + 5, TEXT, false);
             if (showsSecondaryColumns()) {
                 g.drawString(font, Component.translatable("store.slot", row.slot()),
-                        x + 196, rowY + 5, DIM, false);
-                g.drawString(font, "×" + row.stack().getCount(), x + 262, rowY + 5, DIM, false);
+                        x + 40, rowY + 17, DIM, false);
+                g.drawString(font, "×" + row.stack().getCount(), x + 177, rowY + 17, DIM, false);
             }
             drawQuantity(g, x, rowY, sellQuantity(row.slot()), row.stack().getCount(), mouseX, mouseY);
             String price = row.entry().sellPrice() + " mk";
-            g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5, GREEN, false);
+            g.drawString(font, price, x + panelW() - 18 - font.width(price), rowY + 11, GREEN, false);
         }
         if (rows.isEmpty()) {
             g.drawString(font, Component.translatable("store.empty_bag"),
@@ -541,25 +519,25 @@ public final class StoreScreen extends ScaledScreen {
             boolean focused = focusArea == 1 && focusRow == scroll + i;
             boolean hover = mouseX >= x + 8 && mouseX < x + panelW() - 8
                     && mouseY >= rowY && mouseY < rowY + ROW_H;
-            g.fill(x + 8, rowY, x + panelW() - 8, rowY + ROW_H,
-                    (hover || focused) ? HOVER : BOX);
+            if (hover || focused) g.fill(x + 9, rowY, x + panelW() - 9, rowY + ROW_H, HOVER);
+            PanelStyle.divider(g, x + 10, rowY + ROW_H - 1, panelW() - 20);
             if (focused) {
                 g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
             }
             ItemStack stack = stackFor(entry.itemId());
             if (!stack.isEmpty()) {
-                g.renderItem(stack, x + 12, rowY + 1);
+                g.renderItem(stack, x + 16, rowY + 7);
             }
             String name = stack.isEmpty() ? entry.itemId() : stack.getHoverName().getString();
             g.drawString(font, clipName(name, nameWidth(x)),
-                    x + 34, rowY + 5, TEXT, false);
+                    x + 40, rowY + 5, TEXT, false);
             if (showsSecondaryColumns()) {
                 g.drawString(font, Component.translatable("store.on_ship", entry.quantity()),
-                        x + 196, rowY + 5, DIM, false);
+                        x + 40, rowY + 17, DIM, false);
             }
             drawQuantity(g, x, rowY, subQuantity(entry.itemId()), entry.quantity(), mouseX, mouseY);
             String price = entry.sellPrice() + " mk";
-            g.drawString(font, price, x + panelW() - 14 - font.width(price), rowY + 5, GREEN, false);
+            g.drawString(font, price, x + panelW() - 18 - font.width(price), rowY + 11, GREEN, false);
         }
         if (entries.isEmpty()) {
             g.drawString(font, Component.translatable("store.empty_sub"),
@@ -570,8 +548,7 @@ public final class StoreScreen extends ScaledScreen {
     /** 行内数量控件的 −/+ 左边界：按面板右边对齐，窄面板时不会跑到面板外。 */
     /** 物品名最多画多宽：有后续列时到第一列（x+196）前为止，否则到数量控件前。 */
     private int nameWidth(int x) {
-        int right = showsSecondaryColumns() ? x + 196 - 6 : quantityMinusX(x) - 6;
-        return Math.max(24, right - (x + 34));
+        return quantityMinusX(x) - x - 46;
     }
 
     private int quantityMinusX(int x) {
@@ -604,19 +581,16 @@ public final class StoreScreen extends ScaledScreen {
                               int mouseX, int mouseY) {
         int minusX = quantityMinusX(x);
         int plusX = quantityPlusX(x);
-        int qtyX = x + panelW() - 125;
+        int qtyX = (minusX + 14 + plusX) / 2;
         boolean minusHover = mouseX >= minusX && mouseX < minusX + 14
-                && mouseY >= rowY + 2 && mouseY < rowY + 16;
+                && mouseY >= rowY && mouseY < rowY + ROW_H;
         boolean plusHover = mouseX >= plusX && mouseX < plusX + 14
-                && mouseY >= rowY + 2 && mouseY < rowY + 16;
-        g.fill(minusX, rowY + 2, minusX + 14, rowY + 16,
-                quantity > 0 ? minusHover ? HOVER : 0xFF2E3A30 : BOX);
-        g.drawCenteredString(font, "-", minusX + 7, rowY + 5, quantity > 0 ? TEXT : DIM);
-        g.fill(plusX, rowY + 2, plusX + 14, rowY + 16,
-                quantity < max ? plusHover ? HOVER : 0xFF2E3A30 : BOX);
-        g.drawCenteredString(font, "+", plusX + 7, rowY + 5, quantity < max ? TEXT : DIM);
-        g.drawCenteredString(font, String.valueOf(quantity), qtyX + 15, rowY + 5,
-                quantity > 0 ? GREEN : DIM);
+                && mouseY >= rowY && mouseY < rowY + ROW_H;
+        PanelStyle.control(g, minusX, rowY + 7, 14, 16, quantity > 0, quantity > 0 && minusHover);
+        PanelStyle.control(g, plusX, rowY + 7, 14, 16, quantity < max, quantity < max && plusHover);
+        g.drawCenteredString(font, "−", minusX + 7, rowY + 11, quantity > 0 ? TEXT : DIM);
+        g.drawCenteredString(font, "+", plusX + 7, rowY + 11, quantity < max ? TEXT : DIM);
+        g.drawCenteredString(font, String.valueOf(quantity), qtyX, rowY + 11, quantity > 0 ? GREEN : DIM);
     }
 
     private static ItemStack stackFor(String itemId) {
@@ -644,15 +618,15 @@ public final class StoreScreen extends ScaledScreen {
         }
         int x = leftPos();
         int y = topPos();
-        if (mouseX >= x + 10 && mouseX < x + 66 && mouseY >= y + 22 && mouseY < y + 36) {
+        if (mouseX >= x + 10 && mouseX < x + 106 && mouseY >= y + 39 && mouseY < y + 53) {
             selectTab(TAB_BUY);
             return true;
         }
-        if (mouseX >= x + 70 && mouseX < x + 126 && mouseY >= y + 22 && mouseY < y + 36) {
+        if (mouseX >= x + 110 && mouseX < x + 206 && mouseY >= y + 39 && mouseY < y + 53) {
             selectTab(TAB_SELL);
             return true;
         }
-        if (mouseX >= x + 130 && mouseX < x + 186 && mouseY >= y + 22 && mouseY < y + 36) {
+        if (mouseX >= x + 210 && mouseX < x + 306 && mouseY >= y + 39 && mouseY < y + 53) {
             selectTab(TAB_SUB);
             return true;
         }

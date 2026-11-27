@@ -29,7 +29,8 @@ import java.util.function.Supplier;
 public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldown,
                                 int operatorEntityId, boolean fromStation,
                                 BlockPos controllerPos, Vec3 cameraAnchor,
-                                  boolean usesAmmo, int ammoShots, boolean powered, boolean autoFire) {
+                                  boolean usesAmmo, int ammoShots, boolean powered, boolean autoFire,
+                                float chargeFraction, float minimumChargeFraction, boolean loaderBroken, boolean boxPresent, float shipYaw) {
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeBlockPos(pos);
@@ -52,6 +53,11 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
         buf.writeVarInt(ammoShots);
         buf.writeBoolean(powered);
         buf.writeBoolean(autoFire);
+        buf.writeFloat(chargeFraction);
+        buf.writeFloat(minimumChargeFraction);
+        buf.writeBoolean(loaderBroken);
+        buf.writeBoolean(boxPresent);
+        buf.writeFloat(shipYaw);
     }
 
     public static TurretStatePacket decode(FriendlyByteBuf buf) {
@@ -68,7 +74,8 @@ public record TurretStatePacket(BlockPos pos, float yaw, float pitch, int cooldo
         int ammoShots = buf.readVarInt();
         boolean powered = buf.readBoolean();
         return new TurretStatePacket(pos, yaw, pitch, cooldown, operator, fromStation,
-                  controller, camera, usesAmmo, ammoShots, powered, buf.readBoolean());
+                  controller, camera, usesAmmo, ammoShots, powered, buf.readBoolean(),
+                  buf.readFloat(), buf.readFloat(), buf.readBoolean(), buf.readBoolean(), buf.readFloat());
     }
 
     public void handle(Supplier<NetworkEvent.Context> supplier) {

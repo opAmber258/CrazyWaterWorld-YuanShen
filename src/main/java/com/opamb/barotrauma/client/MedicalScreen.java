@@ -33,9 +33,11 @@ import java.util.function.Supplier;
  */
 public final class MedicalScreen extends ScaledScreen {
 
-    private static final int PANEL_W = 200;
-    private static final int PANEL_H = 220;
+    private static final int PANEL_W = 316;
+    private static final int PANEL_H = 208;
     private static final int LINE = 11;
+    private static final int DETAIL_X = 101;
+    private static final int DETAIL_WIDTH = PANEL_W - DETAIL_X - 10;
 
     /** 对症药品（按原作 SuitableTreatment 适配度降序；底表 §4）。 */
     private static final Map<AfflictionType, List<Supplier<? extends Item>>> SUITABLE = buildSuitable();
@@ -102,54 +104,57 @@ public final class MedicalScreen extends ScaledScreen {
         PanelStyle.frame(g, x, y, PANEL_W, PANEL_H, PanelStyle.MEDICAL);
 
         ClientMedicalCache.Snapshot snapshot = ClientMedicalCache.snapshot(target);
-        g.drawString(this.font, Component.literal("医疗 · " + targetName), x + 6, y + 5, 0xFFFFC74A);
+        g.drawString(font, "医疗 · " + targetName, 12, 9, PanelStyle.TEXT, false);
+        PanelStyle.divider(g, 12, 23, PANEL_W - 24);
 
         if (targetDead()) {
             // 目标死亡后旧图标不能再可点。
             iconRects.clear();
-            g.fill(x + 4, y + 18, x + PANEL_W - 4, y + 32, 0x80FF5A5A);
+            zones = List.of();
+            g.fill(x + 11, y + 28, x + PANEL_W - 11, y + 44, 0x80FF5A5A);
             g.drawString(this.font, Component.literal("目标已死亡"),
-                    x + 7, y + 22, 0xFFFFE0E0);
+                    x + 16, y + 32, 0xFFFFE0E0);
             return;
         }
 
         if (snapshot == null) {
-            g.drawString(this.font, Component.literal("正在同步队友数据…"), x + 6, y + 24, 0xFFAAAAAA);
+            zones = List.of();
+            iconRects.clear();
+            g.drawString(font, "正在同步队友数据…", 12, 32, PanelStyle.DIM, false);
             return;
         }
 
-        if (snapshot.downed()) {
-            g.fill(x + 4, y + 18, x + PANEL_W - 4, y + 30, 0x80FF5A5A);
-            g.drawString(this.font, Component.literal("⚠ 重伤倒地 —— 治疗到活力转正即可救起"),
-                    x + 7, y + 20, 0xFFFFE0E0);
-        }
+        int vitalityColor = snapshot.downed() ? 0xFFBF5D50
+                : snapshot.vitality() > 60 ? 0xFF568C75 : 0xFFC9A25C;
+        String vitality = String.format(java.util.Locale.ROOT, "%.0f / 100", snapshot.vitality());
+        g.drawString(font, snapshot.downed() ? "重伤倒地" : "活力", 12, 31,
+                snapshot.downed() ? 0xFFFFA491 : PanelStyle.DIM, false);
+        PanelStyle.meter(g, 66, 29, 184, 11, snapshot.vitality() / 100.0D, vitalityColor, 0);
+        g.drawString(font, vitality, PANEL_W - 12 - font.width(vitality), 31, PanelStyle.TEXT, false);
 
-        // ---- 身体图（正中）：**左键点击选中并锁定**（鼠标挪到其他部位不会变——用户指令 #3）----
-        int cx = x + PANEL_W / 2;
-        int by = y + (snapshot.downed() ? 46 : 34);
-        zones = TreatmentRenderer.zones(cx, by);
-        TreatmentRenderer.draw(g, zones, snapshot.rows(), mouseX, mouseY);
+        PanelStyle.well(g, 10, 48, 82, 138);
+        int by = 68;
+        zones = TreatmentRenderer.zones(51, by);
+        TreatmentRenderer.draw(g, zones, snapshot.rows(), mouseX, mouseY, selectedLimb);
+        String region = selectedLimb == null ? "选择部位" : TreatmentRenderer.limbName(selectedLimb);
+        g.drawCenteredString(font, region, 51, 157, PanelStyle.MEDICAL);
 
-        // ---- 身体图**正下方**：可滚动区域 ----
-        // 伤情描述会按面板宽度换行，固定面板装不下；这里开裁剪 + 滚动，
-        // 药品图标跟着滚动，命中坐标也用滚动后的位置。
-        int statusTop = by + 78;
-        int statusBottom = y + PANEL_H - 30;
+        PanelStyle.well(g, DETAIL_X, 48, DETAIL_WIDTH, 138);
+        int statusTop = 57;
+        int statusBottom = 179;
         int viewHeight = Math.max(LINE * 2, statusBottom - statusTop);
         statusViewTop = statusTop;
         statusViewBottom = statusBottom;
         statusScroll = Mth.clamp(statusScroll, 0, Math.max(0, statusContentHeight - viewHeight));
         iconRects.clear();
-        enableDesignScissor(g, x, statusTop, x + PANEL_W, statusBottom);
+        enableDesignScissor(g, DETAIL_X + 2, statusTop, PANEL_W - 16, statusBottom);
         g.pose().pushPose();
         g.pose().translate(0.0F, -statusScroll, 0.0F);
         int cy = statusTop;
-        List<DisplayLine> statusLines;
         if (selectedLimb != null) {
             g.drawString(this.font,
-                    Component.literal(TreatmentRenderer.limbName(selectedLimb) + "："), x + 8, cy, 0xFF7FB8E8);
+                    Component.literal(TreatmentRenderer.limbName(selectedLimb) + "："), DETAIL_X + 8, cy, 0xFF7FB8E8);
             cy += LINE;
-            statusLines = limbStatusLines(snapshot, selectedLimb);
             for (AfflictionType type : AfflictionType.ALL) {
                 if (!type.limbSpecific()) {
                     continue;
@@ -160,13 +165,13 @@ public final class MedicalScreen extends ScaledScreen {
                 }
                 double ratio = TreatmentRenderer.severityRatio(type, strength);
                 g.drawString(this.font, Component.literal("· "
-                        + TreatmentRenderer.label(type, strength)), x + 10, cy,
+                        + TreatmentRenderer.label(type, strength)), DETAIL_X + 10, cy,
                         TreatmentRenderer.severityColor(ratio));
                 cy += LINE;
                 // 原作阶段文案（灰字，自动换行不超框）
                 String desc = type.descriptionAt(strength);
-                for (String part : TreatmentRenderer.wrap(this.font, desc, PANEL_W - 24)) {
-                    g.drawString(this.font, Component.literal(part), x + 16, cy, 0xFF8A8A8A);
+                for (String part : TreatmentRenderer.wrap(this.font, desc, DETAIL_WIDTH - 24)) {
+                    g.drawString(this.font, Component.literal(part), DETAIL_X + 16, cy, 0xFF8A8A8A);
                     cy += LINE;
                 }
             }
@@ -182,12 +187,12 @@ public final class MedicalScreen extends ScaledScreen {
                     }
                     double ratio = TreatmentRenderer.severityRatio(type, strength);
                     g.drawString(this.font, Component.literal("· "
-                            + TreatmentRenderer.label(type, strength)), x + 10, cy,
+                            + TreatmentRenderer.label(type, strength)), DETAIL_X + 10, cy,
                             TreatmentRenderer.severityColor(ratio));
                     cy += LINE;
                     String desc = type.descriptionAt(strength);
-                    for (String part : TreatmentRenderer.wrap(this.font, desc, PANEL_W - 24)) {
-                        g.drawString(this.font, Component.literal(part), x + 16, cy, 0xFF8A8A8A);
+                    for (String part : TreatmentRenderer.wrap(this.font, desc, DETAIL_WIDTH - 24)) {
+                        g.drawString(this.font, Component.literal(part), DETAIL_X + 16, cy, 0xFF8A8A8A);
                         cy += LINE;
                     }
                 }
@@ -207,22 +212,23 @@ public final class MedicalScreen extends ScaledScreen {
                 }
             }
             if (drugs.isEmpty()) {
-                g.drawString(this.font, Component.literal("该部位无对症药品（或背包里没有）"), x + 10, cy + 2, 0xFF909098);
+                g.drawString(this.font, Component.literal("该部位无对症药品（或背包里没有）"), DETAIL_X + 10, cy + 2, 0xFF909098);
                 cy += LINE;
             } else {
-                int slotX = x + 10;
+                int slotX = DETAIL_X + 10;
                 for (Item drug : drugs) {
+                    if (slotX + 18 > PANEL_W - 16) {
+                        slotX = DETAIL_X + 10;
+                        cy += 20;
+                    }
                     // 图标画在 cy - statusScroll：悬停判断也得用可见坐标，
                     // 并且不能超出滚动视口（否则滚出去的行也会高亮）。
                     int rowY = cy - statusScroll;
                     boolean slotHover = mouseX >= slotX && mouseX < slotX + 18
                             && mouseY >= rowY && mouseY < rowY + 18
                             && rowY >= statusViewTop && rowY + 18 <= statusViewBottom;
-                    g.fill(slotX, cy, slotX + 18, cy + 18, 0xFF1E1E26);
-                    g.fill(slotX, cy, slotX + 18, cy + 1, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX, cy + 17, slotX + 18, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX, cy, slotX + 1, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
-                    g.fill(slotX + 17, cy, slotX + 18, cy + 18, slotHover ? 0xFFFFFFFF : 0xFF5A5A6A);
+                    PanelStyle.slot(g, slotX, cy);
+                    if (slotHover) g.hLine(slotX, slotX + 17, cy, PanelStyle.MEDICAL);
                     g.renderItem(new ItemStack(drug), slotX + 1, cy + 1);
                     iconRects.add(new IconRect(drug, slotX + 1, cy - statusScroll + 1));
                     slotX += 20;
@@ -230,9 +236,9 @@ public final class MedicalScreen extends ScaledScreen {
                 cy += 18;
             }
         } else {
-            g.drawString(this.font, Component.literal("全身状态"), x + 8, cy, 0xFF7FB8E8);
+            g.drawString(this.font, Component.literal("全身状态"), DETAIL_X + 8, cy, 0xFF7FB8E8);
             cy += LINE;
-            statusLines = new ArrayList<>(TreatmentRenderer.globalLines(snapshot.rows()));
+            List<DisplayLine> statusLines = new ArrayList<>(TreatmentRenderer.globalLines(snapshot.rows()));
             if (snapshot.downed()) {
                 statusLines.add(new DisplayLine("⚠ 重伤倒地", 0xFFFF5A5A));
             }
@@ -240,10 +246,10 @@ public final class MedicalScreen extends ScaledScreen {
                 statusLines.add(new DisplayLine("没有伤病", 0xFF55E05A));
             }
             for (DisplayLine line : statusLines) {
-                g.drawString(this.font, Component.literal("· " + line.text()), x + 10, cy, line.color());
+                g.drawString(this.font, Component.literal("· " + line.text()), DETAIL_X + 10, cy, line.color());
                 cy += LINE;
             }
-            g.drawString(this.font, Component.literal("左键点击身体选择部位"), x + 10, cy + 2, 0xFF909098);
+            g.drawString(this.font, Component.literal("左键点击身体选择部位"), DETAIL_X + 10, cy + 2, 0xFF909098);
         }
         g.pose().popPose();
         g.disableScissor();
@@ -253,20 +259,11 @@ public final class MedicalScreen extends ScaledScreen {
             int barH = Math.max(8, viewHeight * viewHeight / statusContentHeight);
             int maxScroll = statusContentHeight - viewHeight;
             int barY = statusTop + (viewHeight - barH) * statusScroll / Math.max(1, maxScroll);
-            g.fill(x + PANEL_W - 3, statusTop, x + PANEL_W - 1, statusBottom, 0x40FFFFFF);
-            g.fill(x + PANEL_W - 3, barY, x + PANEL_W - 1, barY + barH, 0xFF7FB8E8);
+            g.fill(PANEL_W - 15, statusTop, PANEL_W - 13, statusBottom, 0x40FFFFFF);
+            g.fill(PANEL_W - 15, barY, PANEL_W - 13, barY + barH, 0xFF7FB8E8);
         }
 
-        // ---- 底部：活力 + 操作提示 ----
-        int bottom = y + PANEL_H - 22;
-        int vitalityColor = snapshot.downed() ? 0xFFFF5A5A
-                : snapshot.vitality() > 60 ? 0xFF55E05A
-                : snapshot.vitality() > 25 ? 0xFFFFD75A : 0xFFFF5A5A;
-        g.drawString(this.font, Component.literal(String.format("活力 %.0f/100%s",
-                        snapshot.vitality(), snapshot.downed() ? "（倒地）" : "")),
-                x + 6, bottom, vitalityColor);
-        g.drawString(this.font, Component.literal("左键点身体选中部位 · 点药品图标用药 · Esc 关闭"),
-                x + 6, bottom + 10, 0xFF909098);
+        g.drawString(font, "点击药品用药 · Esc 关闭", 12, PANEL_H - 15, PanelStyle.DIM, false);
     }
 
     /** 该部位对症药品的图标点击（缺省部位=null → 全身/最强优先）。 */
@@ -287,8 +284,8 @@ public final class MedicalScreen extends ScaledScreen {
     public boolean mouseScrolled(double screenX, double screenY, double delta) {
         double mouseX = designX(screenX);
         double mouseY = designY(screenY);
-        if (delta != 0.0D && mouseX >= 0 && mouseX < PANEL_W
-                && mouseY >= 0 && mouseY < PANEL_H) {
+        if (delta != 0.0D && mouseX >= DETAIL_X && mouseX < PANEL_W
+                && mouseY >= statusViewTop && mouseY < statusViewBottom) {
             statusScroll -= (int) Math.signum(delta) * LINE * 2;
             return true;
         }
@@ -318,7 +315,8 @@ public final class MedicalScreen extends ScaledScreen {
             for (Zone zone : zones) {
                 if (mouseX >= zone.x() && mouseX < zone.x() + zone.w()
                         && mouseY >= zone.y() && mouseY < zone.y() + zone.h()) {
-                    selectedLimb = zone.limb();
+                    selectedLimb = selectedLimb == zone.limb() ? null : zone.limb();
+                    statusScroll = 0;
                     return true;
                 }
             }

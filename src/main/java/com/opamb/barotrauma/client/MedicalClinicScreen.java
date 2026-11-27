@@ -23,18 +23,18 @@ import java.util.List;
 public final class MedicalClinicScreen extends ScaledScreen {
 
     private static final int PANEL_W = 320;
-    private static final int PANEL_H = 218;
-    private static final int ROW_H = 18;
+    private static final int PANEL_H = 252;
+    private static final int ROW_H = 23;
     private static final int VISIBLE_ROWS = 7;
 
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int BOX = 0xFF232B25;
+    private static final int BOX = PanelStyle.RECESS;
     private static final int TEXT = PanelStyle.TEXT;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.MEDICAL;
     private static final int GREEN = 0xFF7BE38B;
     private static final int RED = 0xFFFF7A6A;
-    private static final int HOVER = 0xFF39483A;
+    private static final int HOVER = PanelStyle.SELECTED;
 
     private ClinicStatePacket state;
     private int scroll;
@@ -96,7 +96,7 @@ public final class MedicalClinicScreen extends ScaledScreen {
     }
 
     private int listTop() {
-        return topPos() + 34;
+        return topPos() + 42;
     }
 
     private int totalPrice() {
@@ -113,12 +113,13 @@ public final class MedicalClinicScreen extends ScaledScreen {
         int y = topPos();
         PanelStyle.frame(g, x, y, PANEL_W, PANEL_H, PanelStyle.MEDICAL);
 
-        g.drawString(font, Component.translatable("clinic.title"), x + 10, y + 6, ACCENT, false);
+        g.drawString(font, Component.translatable("clinic.title"), x + 10, y + 9, TEXT, false);
         String wallet = Component.translatable("clinic.wallet", state.wallet()).getString();
-        g.drawString(font, wallet, x + PANEL_W - 10 - font.width(wallet), y + 6, GREEN, false);
+        g.drawString(font, wallet, x + PANEL_W - 10 - font.width(wallet), y + 9, GREEN, false);
         g.drawString(font, Component.translatable("clinic.price_hint"),
-                x + 10, y + 20, DIM, false);
-        g.fill(x + 8, listTop() - 3, x + PANEL_W - 8, listTop() - 2, EDGE);
+                x + 10, y + 27, DIM, false);
+        PanelStyle.divider(g, x + 10, y + 22, PANEL_W - 20);
+        PanelStyle.well(g, x + 8, listTop() - 1, PANEL_W - 16, VISIBLE_ROWS * ROW_H + 2);
 
         List<ClinicStatePacket.Entry> entries = state.entries();
         int shown = Math.min(VISIBLE_ROWS, Math.max(0, entries.size() - scroll));
@@ -130,12 +131,13 @@ public final class MedicalClinicScreen extends ScaledScreen {
             boolean focused = focusArea == 0 && focusRow == scroll + i;
             g.fill(x + 8, rowY, x + PANEL_W - 8, rowY + ROW_H,
                     (hover || focused) ? HOVER : BOX);
+            PanelStyle.divider(g, x + 10, rowY + ROW_H - 1, PANEL_W - 20);
             if (focused) {
                 g.fill(x + 8, rowY, x + 10, rowY + ROW_H, ACCENT);
             }
-            g.drawString(font, label(entry), x + 14, rowY + 5, TEXT, false);
+            g.drawString(font, label(entry), x + 14, rowY + 7, TEXT, false);
             String price = entry.price() + " mk";
-            g.drawString(font, price, x + PANEL_W - 16 - font.width(price), rowY + 5,
+            g.drawString(font, price, x + PANEL_W - 16 - font.width(price), rowY + 7,
                     state.wallet() >= entry.price() ? GREEN : RED, false);
         }
         if (entries.isEmpty()) {
@@ -149,15 +151,7 @@ public final class MedicalClinicScreen extends ScaledScreen {
         boolean buttonFocused = focusArea == 1 && !entries.isEmpty();
         boolean hover = !entries.isEmpty() && mouseX >= x + 10 && mouseX < x + 190
                 && mouseY >= buttonY && mouseY < buttonY + 18;
-        g.fill(x + 10, buttonY, x + 190, buttonY + 18,
-                entries.isEmpty() ? BOX : (hover || buttonFocused) ? HOVER : 0xFF3A4A3C);
-        g.fill(x + 10, buttonY, x + 190, buttonY + 1, EDGE);
-        if (buttonFocused) {
-            g.fill(x + 10, buttonY, x + 190, buttonY + 1, ACCENT);
-            g.fill(x + 10, buttonY + 17, x + 190, buttonY + 18, ACCENT);
-            g.fill(x + 10, buttonY, x + 11, buttonY + 18, ACCENT);
-            g.fill(x + 189, buttonY, x + 190, buttonY + 18, ACCENT);
-        }
+        PanelStyle.control(g, x + 10, buttonY, 180, 18, canAll, canAll && (hover || buttonFocused));
         g.drawCenteredString(font, entries.isEmpty()
                         ? Component.translatable("clinic.heal_all")
                         : Component.translatable("clinic.heal_all_price", total),

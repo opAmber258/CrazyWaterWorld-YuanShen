@@ -21,12 +21,7 @@ import net.minecraft.world.inventory.Slot;
 public class CabinetScreen extends ScaledContainerScreen<CabinetMenu> {
 
     private static final int W = 176;
-    private static final int HEADER = 0xFF23282D;
     private static final int EDGE = PanelStyle.EDGE;
-    private static final int EDGE_DARK = 0xFF0B0D0F;
-    private static final int SLOT = 0xFF0E1012;
-    private static final int SLOT_HI = 0xFF3B434A;
-    private static final int SLOT_LO = 0xFF050607;
     private static final int TITLE = 0xFFC8CDD2;
     private static final int DIM = PanelStyle.DIM;
     private static final int ACCENT = PanelStyle.SERVICE;
@@ -56,8 +51,7 @@ public class CabinetScreen extends ScaledContainerScreen<CabinetMenu> {
         int h = panelHeight;
 
         PanelStyle.frame(graphics, x, y, W, h, PanelStyle.SERVICE);
-        graphics.fill(x + 1, y + 1, x + W - 1, y + 17, HEADER);
-        graphics.fill(x + 1, y + 17, x + W - 1, y + 18, EDGE_DARK);
+        PanelStyle.divider(graphics, x + 8, y + 20, W - 16);
 
         CabinetBlock.Kind kind = menu.kind();
         graphics.drawString(font, Component.translatable("container.barotrauma." + kind.id()),
@@ -95,6 +89,7 @@ public class CabinetScreen extends ScaledContainerScreen<CabinetMenu> {
         }
         // 玩家区：快捷栏格子底；上面那 27 格是"装备背包区"，由 BagOverlay 整块画。
         int areaY = menu.playerAreaY();
+        PanelStyle.divider(graphics, x + 8, y + areaY - 1, W - 16);
         for (int col = 0; col < 9; col++) {
             slotBg(graphics, x + CabinetMenu.INV_AREA_X + col * 18 - 1,
                     y + areaY + 58 - 1);
@@ -112,17 +107,12 @@ public class CabinetScreen extends ScaledContainerScreen<CabinetMenu> {
     }
 
     private static void drawSlot(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 18, y + 18, SLOT);
-        graphics.fill(x, y, x + 18, y + 1, SLOT_HI);
-        graphics.fill(x, y, x + 1, y + 18, SLOT_HI);
-        graphics.fill(x, y + 17, x + 18, y + 18, SLOT_LO);
-        graphics.fill(x + 17, y, x + 18, y + 18, SLOT_LO);
+        PanelStyle.slot(graphics, x, y);
     }
 
     /** 玩家物品栏格子底（和加工台/解构仪的 {@code slotBg} 同款）。 */
     private static void slotBg(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x, y, x + 18, y + 18, 0xFF8B8B8B);
-        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFF373737);
+        PanelStyle.slot(graphics, x, y);
     }
 
     @Override

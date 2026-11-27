@@ -141,6 +141,14 @@ public final class DamageConversions {
         return plan;
     }
 
+    public static List<Application> fromCoilgun(double heightRatio, boolean hitFromLeft) {
+        Limb limb = limbByHeightRatio(heightRatio, hitFromLeft);
+        Limb armorLimb = heightRatio <= HEAD_ARMOR_RATIO ? Limb.HEAD : limb;
+        return List.of(new Application(AfflictionType.LACERATIONS, limb, 15, armorLimb),
+                new Application(AfflictionType.BLEEDING, limb, 1, armorLimb),
+                new Application(AfflictionType.STUN, Limb.HEAD, 0.025, armorLimb));
+    }
+
     /** 投射物命中高度 ≤ 这个比例算头部（1.8 格高玩家的头约在顶部 25%）。 */
     public static final double HEAD_ARMOR_RATIO = 0.25;
 

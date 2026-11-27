@@ -2958,3 +2958,71 @@ p_36201_ = new Vec3(d0, p_36201_.y, d1);   // y 原样保留
 - 起始船原件按蓝图位置校准，兼容当前 VS2 装配和靠港。新船两块满电电池各按 160 kW 的原厂设置充电。旧档不重置损伤，电量超出新规格时限制到 500 kW·min。反应堆面板读本机负载所对应的发电值，配电箱同步当前全船供电数据。
 - 维修采用固定技能 40，原作技能差公式决定时长、启动成功率和成功指针的加成。常用设备面板的下方保留维修位，持正确工具且达到维修阈值才显示。单台设备同一时刻仅一人能修，工具、有效距离和设备身份在服务端校验。协议为 39。
 - 离线构建通过，447 项单测无失败。覆盖原作维修技能曲线、旧零宽限迁移、600 kW 负载突入时单块原厂电池补上缺口。OpenGL 3.2 编译执行光照着色器，在输入 1/255 中性素材样本时中心和边缘亮度相同。已核对客户端与服务端现有日志。没有启动游戏验证旧档的维修交互或新界面外观。
+
+### 儒艮号微光、供电复核与玩家面板重绘（2026-11-26）
+
+- 原作 [LightManager](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Lights/LightManager.cs) 用中性 RGB (20,20,20) 初始化环境光。上轮 0.016 的 Minecraft 光图混合值只给约 3/255；按原作光图比例取 0.105，在亮度 0 时的名义值约 20/255。第一人称舱内实机观感仍须验证。
+- [儒艮号](https://barotraumagame.com/wiki/Dugong)、[Engine.cs](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Machines/Engine.cs) 与本机 Dugong.sub 一致：600 kW × |油门|^1.5，并按引擎状态上调；反应堆 3000 kW，制氧机 1000 kW，配电设备自身 0 kW。终端额定明细 10 kW 背光、10 kW 驾驶、100 kW 主动或 10 kW 被动声纳，分开算。两块电池各 500 kW·min、650 kW 放电、800 kW 充电上限、160 kW 初始设定。按 [PowerContainer.cs](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Power/PowerContainer.cs) 校正电池并联分担和充满前最后 1 kW·min 的充电收尾。
+- 界面参考 [原作面板截图](https://barotraumagame.com/wiki/Category:GUI_Images) 和已核对的原作客户端 Reactor、Engine、PowerContainer、Pump、Sonar、Repairable 代码。机电面板用深底与独立仪表，哨站服务用列表和交易操作区，医疗以人体图和伤情为主。沿用模组自己的几何、配色和三维声纳操作。维修占设备主面板下方，技能和耐久机制照上一轮验收。
+- 最新 `run-client/logs/latest.log` 11:07:39 认领物理船 18，11:08 和 11:11 的聊天记录有夜视对照，没有这一轮的电压瞬态。只读解析 11:17 保存的「新的世界 (19)」：引擎、导航终端和两块电池均为 100% 耐久，电池约各 500/500 kW·min、设定 160 kW。它们的 `PowerBox` 都指向装配坐标 (22044,-150,-8)，船坞对应 (-28661763,-499,12290043)，该盒耐久为 0%。另外几只空配电箱不计入负载。此存档只读取。
+- 电池面板分别显示储能、充电设定与实际充放电。实测证据来自保存的网线绑定，箱毁前的历史电压无法从日志复原。充电输入和其他设备仍由模组共用总线结算，保留反应堆有富余才给电池充电的逻辑。空配电箱不影响其他支路。
+- 用户确认本机引擎操作：物理船未被舵台或自动驾驶接管时，每台引擎可以设自己的正反推力，原作滑杆为 10% 一档。舵台接管清除本机设定。方块船平移按既有约定禁用。泵按原作增设独立能源按钮，旧存档兼容之前的泵设置。
+- 验证：`gradlew build --offline` 通过，450 项测试零失败。新增回归覆盖空箱与有线箱的区别、两块电池各分担 300 kW、最后一段充电降速、舵台接管后本机推力不复现。客户端观感与物理船实机操作待验收。
+
+## 电磁枪实装（2026-11-26）
+
+- 本机 Barotrauma `Content/Items/Weapons/coilgun.xml`：电磁枪 `reload=0.25` 秒，额定单发功率参数 1000，`rotationlimits=180,360`，普通弹箱每发消耗 0.5 耐久（200 发），弹体切割伤 15、出血 1、眩晕 0.025，结构伤害 20。装弹器独立、单格、机械维修技能 55，阈值 50，宽限 60–300 秒、进水每秒 -0.25。
+- [官方 Wiki](https://barotraumagame.com/wiki/Coilgun) 标示实用射速 3.5 发/秒。这里沿用游戏数据的 0.25 秒冷却（20 TPS 的 5 tick），不把不同口径当成同一个数字。[Turret.cs](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Turret.cs) 先检查直连储能、再查询供弹器，成功后单发扣除 1000/3600 kW·min。瞄准本身无此持续负载。
+- [客户端 Turret.cs](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Turret.cs) 使用指向标与炮口方向准星、底部电量/最低门槛和装弹格，以及低电、空弹、装弹器损坏反馈。[Periscope](https://barotraumagame.com/wiki/Periscope) 由瞄准和扳机两路控制，模组使用现有绑定器表达连接关系。
+- 使用用户确认的原尺寸自制几何、图集、后坐动画。装弹器先用单格外壳。三维甲板与吊顶各有朝向海侧的半球射界；原作的二维角范围没有横向转盘这一维。HUD 用模组自绘图形表达原作信息。
+
+- 实装为原尺寸 R9 几何和原贴图，单发动画由每次服务器确认触发，Yaw/Pitch 读取各自骨骼。底座占地预留 5×5，炮管保持非实体占地。装弹器/炮台绑定器有 Minecraft 制作配方；每枪支持一台装弹器和一台电容，一台电容可供多枪独立扣减。
+- 服务端弹体会飞行并撞击结算，弹速沿用该模组上一版炮弹的 24 格/秒（原作用二维质量与冲量，单位不同），到期 3 秒消失。船壳伤害 20，玩家医学桥接按 15 撕裂伤、1 出血和 0.025 眩晕。
+- Forge 服务端 9 项 GameTest 全通过，其中两项电磁枪测试覆盖分片与主格、绑定双端顺序、潜望镜会话、空击、单发扣减、冷却及弹体延迟命中。运行日志证实 Forge 无视 JavaExec 工作目录覆盖，写入本地 `run/world`。未运行客户端；客户端原有日志最后一批 [CHAT] 在 11:45:58，早于本轮实装。
+
+### 2026-11-26 电磁枪炮管交互与海雾快捷键
+
+- 原作 `coilgun.xml` 的 `characterusable=false`，炮身不直接接管控制。保留潜望镜操炮，给 Minecraft 的 R9 模型加与方位、俯仰及后坐同步的交互实体，绑定器命中后复用炮座绑定。选取考虑船体变换和方块遮挡。
+- 亮度调试器的潜行右键只切换海雾，普通右键仍循环亮度。快捷键先于方块右键处理。
+- 原作 [Powered.cs](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Power/Powered.cs#L711-L741) 从直接接入炮的可用 `PowerContainer` 累加 `min(charge × 3600, maxOutput ÷ 60)`。本机原版 `poweritems.xml` 的普通电池为 1000 kW，`coilgun.xml` 单发门槛 1000，普通电池在默认配置下单个不足，超级电容是标准接法。[官方维基](https://barotraumagame.com/wiki/Coilgun)
+
+验收：453 个 JUnit 测试通过，包括炮管转向、吊装俯仰、船体变换、后坐及亮度与海雾状态隔离。临时目录运行 Forge GameTest，10 项通过；新增用例覆盖服务端实体生成、隔墙拒绝、炮管绑定及拆除清理。现有开发和客户端存档都未参与。客户端准星手感和航行中视觉对齐待实机验收。
+
+### 2026-11-26 电磁枪实体碰撞与直连储能
+
+- 复用 R9 炮管命中形状接入 Minecraft 的移动碰撞，按炮架、炮尾、护轨和炮管生成旋转后的细分体素，避免用炮管的整块轴对齐外框挡路。
+- 根据原作 [Powered.cs](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Power/Powered.cs#L711-L741) 和 [Turret.cs](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Turret.cs) 实现多个直连电池和电容的瞬时输出之和、发射后分摊耗电、HUD 总容量与门槛，迁移已有单电容坐标。
+
+验收：独立临时工程通过 456 个 JUnit 测试和 10 个 Forge GameTest。测试覆盖炮管转向后旧位置放行、船体变换、角色横移被拦与空隙放行、普通电池输出不足、混合储能发射等额扣电及空弹不扣电。客户端未启动，开发与单人存档未参与。
+
+### 2026-11-26 电磁枪灯光、准星与外海滤镜
+
+- 本机原作 `coilgun.xml` 定义默认亮起的方向灯，色值 1/0.8/0.8，范围 2500 显示单位，零闪烁。灯随炮管转动，中心取炮管转轴，和发射储能分开。三维用原作灯锥的柔边与衰减，复用场景深度光照。[原作炮塔转灯](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Turret.cs#L612-L622) · [电磁枪维基](https://barotraumagame.com/wiki/Coilgun)
+- 原作投射物沿当前炮管方向从炮口发出，准星表示实际炮管，另有输入指向标。模组遥控镜头沿炮膛轴取景，炮台仍以权威炮管角发射，转动过程中把实际弹道投影到 HUD。[发射与炮口](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaShared/SharedSource/Items/Components/Turret.cs#L893-L917) · [原作准星投影](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Items/Components/Turret.cs#L214-L226)
+- 原作对外海区域用两组水波采样折射，再将场景以 0.5 权重乘水色 (0.375, 0.4, 0.45)，默认模糊为 0。三维沿用当前海域可视距离，限制深度不连续处的折射，并保留舱内水面和清雾快捷键的边界。[原作水渲染](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Levels/WaterRenderer.cs#L31-L141) · [原作水着色器](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/Shaders/watershader.fx#L43-L68)
+
+验收：隔离工程的 456 个 JUnit 测试和 10 个 Forge GameTest 全部通过。实际发射测试断言了甲板炮弹的出生点、速度与潜望镜视点共轴，另核对了吊装炮斜向俯仰。两个着色器在独立 OpenGL 3.2 上编译链接，并以合成画面核对前向暖色照明、背向无照明、外海色乘和远处底色。未启动客户端，船体航行时的取景和灯锥、外海动态效果待实机观察。
+
+### 2026-11-26 外海滤镜可见性与潜水头盔视窗
+
+- 20:38 的开发客户端从本仓库构建启动，水着色器产物和源文件一致。20:40 日志记录了浸没与船内水体包，常规日志没有外海分支状态。上一版仅将 RGB 乘 0.6875/0.70/0.725，深处容易只看出压暗。继续保留原作半权重的水色乘法，用寒冷深穴的底色与背景纹理配色恢复远处的蓝绿散射，并把折射幅度按画面分辨率缩放。外海着色首次实际绘制、被清雾关闭或不能获取画面时记录状态，帮助区分材质观感和渲染未执行。[原作水体合成](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Levels/WaterRenderer.cs#L85-L144)
+- 本机原作 `divinggear.xml` 在穿戴普通潜水服时设置 `ObstructVisionAmount=0.5`，由原作灯光管理器生成视野遮罩。三维采用现有头盔八边形轮廓，普通款保留较厚内框，透明款扩大开口。首人称叠层只读本机已装备的潜水服状态，在常规 HUD 下方绘制。潜望镜和第三人称观察独立于本人头盔。[原作遮罩](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Lights/LightManager.cs#L721-L751) · [潜水服维基](https://barotraumagame.com/wiki/Diving_Suit)
+
+验收：隔离工程的 456 个 JUnit 测试和 10 个 Forge GameTest 全部通过。OpenGL 合成像素验证外海近景乘色、远景蓝绿散射和波纹随相位移动，也验证普通头盔边框、透明款较宽开口与两款中央透光。本轮没有启动客户端。
+
+### 2026-11-26 深海光照、悬浮颗粒与炮台设置
+
+- 23:04 客户端日志有 `[water] 外海滤镜：ACTIVE`。原作寒冷深穴用单独的水中颗粒层，默认流速 0/10 显示单位每秒，并叠加水下事件产生的气泡。模组用近远两层世界空间颗粒与现有事件气泡表达。原作普通过水视角以世界内的视觉层为主，读到的默认配置未给镜片加固定污渍。
+- 玩家微光改为同一位置上的单调中性光响应，去掉依据原始像素亮度突变的增益。降低船舱中性底亮度到约 14/255。
+- 炮灯保留原作灯色和方向，按真实世界和 VS2 船体做低分辨率阴影投射。潜望镜保留人物海雾，光照可从背景中显现被照到的物体。潜望镜里的外海敌对生物需要光照及与光源间无遮挡。另在 Minecraft 鼠标设置增加本地炮台灵敏度，输入倍率与炮管机械转速分开。
+
+验收：隔离工程通过 456 个 JUnit 测试与 10 个 Forge GameTest。OpenGL 3.2 合成像素验证暗色阶顺序与中性 RGB 比例、遮挡图对炮灯的阻断、受光与未受光表面在同距离下的海雾区别。未启动客户端，物理船航行时的阴影边缘、鼠标设置控件及粒子观感待实机观察。
+
+参考：[原作水中颗粒和背景绘制](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Levels/LevelRenderer.cs#L216-L238) · [原作光源遮挡](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Lights/LightSource.cs#L794-L829) · [潜望镜维基](https://barotraumagame.com/wiki/Periscope)。
+
+### 2026-11-26 炮灯沿船壳出现放射状暗条
+
+- 原作沿二维船壳凸边界裁光。模组的三维炮灯使用 17×17 角度网格。光束擦过外壳时，相邻射线落在同一平面上也会相差几格；旧着色器把差值误当成遮挡边界，每个网格重复选取最近深度，造成放射状自阴影。[原作光源射线](https://github.com/FakeFishGames/Barotrauma/blob/master/Barotrauma/BarotraumaClient/ClientSource/Map/Lights/LightSource.cs) · [NVIDIA 阴影深度比较](https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-8-summed-area-variance-shadow-maps)
+- 利用当前像素的场景深度法线，沿四条原采样射线计算受光面应处的深度，再逐条和真实遮挡比较，最后合并遮挡结果。保留现有射线数量和保守的开口边缘。离屏覆盖斜照平面、紧贴船壳的光源、完整挡墙以及贴着开口的阴影边缘。
+
+复查：客户端日志 23:38:57 记录舱外浸没，23:39:00 收到 `physical=false` 的普通方块船数据，未记录炮灯遮挡获取失败。OpenGL 3.2 用距光源不足一格的斜面复现，旧着色器误遮挡 3248 个受光像素中的 3206 个，修正后为 0。同一斜面后的 4021 个像素仍全黑，模拟开口的挡墙一侧全黑，另一侧有平顺边缘。手电微光、海水、面罩原有离屏断言也通过。未启动客户端。

@@ -222,7 +222,9 @@ public final class MedicalEvents {
             var look = player.getLookAngle();
             double leftDot = (projectile.getX() - player.getX()) * look.z
                     - (projectile.getZ() - player.getZ()) * look.x;
-            plan = DamageConversions.fromProjectile(amount, heightRatio, leftDot > 0.0);
+            plan = projectile instanceof com.opamb.barotrauma.entity.CoilgunBolt
+                    ? DamageConversions.fromCoilgun(heightRatio, leftDot > 0.0)
+                    : DamageConversions.fromProjectile(amount, heightRatio, leftDot > 0.0);
             armorApplies = true;
         } else if (source.getEntity() != null) {
             // 有攻击者的近战伤害：原作三件套过渡版（钝 + 概率出血；失血由出血推进自动产生；

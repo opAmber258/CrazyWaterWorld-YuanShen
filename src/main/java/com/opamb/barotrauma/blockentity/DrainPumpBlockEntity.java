@@ -57,6 +57,8 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
     public static final int OUTLET_RATE = 586;
 
     private boolean auto = true;
+    private boolean enabled = true;
+    private boolean gridPowered;
     /** 手动流量百分比：-100..100。 */
     private int flow = -100;
     /** 自动控制的当前判定结果（服务端每 tick 更新，供菜单显示）。 */
@@ -84,6 +86,19 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
             return SMALL_MAX_FLOW;
         }
         return MAX_FLOW;
+    }
+
+    public boolean enabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean value) {
+        enabled = value;
+        setChanged();
+    }
+
+    public boolean gridPowered() {
+        return gridPowered;
     }
 
     public boolean auto() {
@@ -131,6 +146,7 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
     public double powerDemandKw() {
         // 原作 Pump.GetCurrentPowerConsumption：按流量百分比缩放，停机不吃电；
         // 低耐久时按 Repairable 的规则更费电。
+        if (!enabled || condition.broken()) return 0.0D;
         return powerKw() * Math.abs(effectiveFlow()) / 100.0D * condition.powerPenalty();
     }
 
@@ -195,6 +211,7 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
         if (!(level instanceof ServerLevel server)) {
             return;
         }
+        be.gridPowered = false;
         ShipState ship = resolveShip(server, pos);
         if (ship == null) {
             return;
@@ -211,11 +228,12 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
         be.beforeReport(ship, cell);
         // 硬核供电：实际流量按设备拿到的电压缩放（原作 Pump.Update 用 min(Voltage, 2)）；
         // 请求值单独上报，负载按请求流量算。
-        double requested = be.signedRate(state);
+        double requested = be.enabled ? be.signedRate(state) : 0.0D;
         ship.simulation().reportConsumer(cell, be.powerDemandKw(), be.minVoltage(), be.boundBox);
         double voltage = ship.simulation().consumerVoltage(cell);
         // 欠压直接停转：effectiveFactor 会把 0.5 也当成可运行，泵会在门槛附近振荡。
-        double factor = PowerGrid.canRun(voltage, be.minVoltage())
+        be.gridPowered = PowerGrid.canRun(voltage, be.minVoltage());
+        double factor = be.gridPowered
                 ? PowerGrid.effectiveFactor(voltage) : 0.0D;
         double actual = requested * factor;
         // 耐久：只有泵真正在抽/注水（有电、流量非零）时才自然劣化；
@@ -317,6 +335,7 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
         tag.putBoolean("PumpAuto", auto);
+        tag.putBoolean("PumpOn", enabled);
         tag.putInt("PumpFlow", flow);
         condition.save(tag, "Condition");
         if (boundBox != null) {
@@ -327,6 +346,8 @@ public class DrainPumpBlockEntity extends BlockEntity implements PowerConsumer, 
     @Override
     public void load(CompoundTag tag) {
         super.load(tag);
+        enabled = tag.contains("PumpOn") ? tag.getBoolean("PumpOn")
+                : !tag.contains("PumpEnabled") || tag.getBoolean("PumpEnabled");
         int[] migrated = migrateLegacy(
                 tag.contains("PumpEnabled"), tag.getBoolean("PumpEnabled"),
                 tag.contains("PumpAuto"), tag.getBoolean("PumpAuto"),

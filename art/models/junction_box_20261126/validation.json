@@ -1,0 +1,93 @@
+{
+  "display_name_zh": "接线盒",
+  "display_name_en": "JunctionBox",
+  "contributors": {
+    "human": [
+      "Han-xing-official"
+    ],
+    "ai": [
+      {
+        "name": "GLM-5.3-Flash",
+        "tool": "ZCode CLI",
+        "role": "交付打包、离线校验、文档与登记起草；未参与几何/UV/贴图/预览制作"
+      }
+    ],
+    "division": "几何、UV、贴图、预览截图全部人工完成；AI 仅做交付打包与离线校验。"
+  },
+  "sources": {
+    "zh": "entityname.junctionbox → 接线盒（沿用候选 A 已查证：Content/Texts/SimplifiedChinese/SimplifiedChineseVanilla.xml）",
+    "en": "junctionbox → Junction Box（Content/Items/Electricity/poweritems.xml；英文驼峰 JunctionBox）"
+  },
+  "asset_id": "junction_box",
+  "schema_version": 2,
+  "creation_source": "人工 + AI（Han-xing-official + GLM-5.3-Flash）",
+  "acceptance": {},
+  "inputs": {
+    "geometry": "88d419cf8bb98ad66d6555277708a80384fa8736d904ee78b1ae4f7daaf8c5e5",
+    "textures": "eb554146444405d88da967d9e82722dfbc06eb19c92959de64e713bb41d30891",
+    "previews": "703a8ccc50b5f285d84e884a6aff17200d42b894ad5abe741c89ad33eb140e6c"
+  },
+  "measurements": {
+    "projects": [
+      {
+        "path": "junction_box.bbmodel",
+        "format": "java_block",
+        "cubes": 22,
+        "meshes": 0,
+        "groups": 8
+      }
+    ],
+    "exports": [],
+    "java_exports": [],
+    "textures": [
+      {
+        "path": "junction_box_tex.png",
+        "width": 64,
+        "height": 64,
+        "mode": "RGBA"
+      }
+    ],
+    "previews": [
+      {
+        "path": "preview_back.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_front.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_oblique.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      },
+      {
+        "path": "preview_side.png",
+        "width": 1200,
+        "height": 900,
+        "mode": "RGBA"
+      }
+    ]
+  },
+  "checks": {
+    "editor_reopen": "unverified",
+    "native_reexport": "unverified",
+    "visual_preview": "unverified"
+  },
+  "status": "incomplete",
+  "unresolved": [
+    "editor_reopen:unverified",
+    "native_reexport:unverified",
+    "visual_preview:unverified",
+    "junction_box.bbmodel: missing Java model export junction_box.json"
+  ],
+  "validator": {
+    "version": 2,
+    "sha256": "030083f30e86fbde97f34f8f7892ba535c1af436d39fe93a1454dee4ff8b7206"
+  }
+}

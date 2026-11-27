@@ -269,6 +269,7 @@ public final class ShipWaterRenderer {
         }
         if (renderedLevel != level) {
             renderedLevel = level;
+            ShipWaterMaterial.resetSeaFilterLog();
             smoothedBoxes = new float[0];
             waterMesh = new ShipWaterMesh();
             lastFrameNanos = 0L;

@@ -1,6 +1,7 @@
 package com.opamb.barotrauma.block;
 
 import com.opamb.barotrauma.blockentity.PeriscopeBlockEntity;
+import com.opamb.barotrauma.item.TurretBinderItem;
 import com.opamb.barotrauma.blockentity.TurretBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,16 +31,7 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * 潜望镜：接管附近炮塔的瞄准/开火。
- *
- * <p>原作潜望镜是 {@code Controller}，通过电线把瞄准/扳机信号传给炮塔。本模组
- * 还没有信号线系统，所以这里直接找 48 格内最近的炮塔并进入它的操作会话；
- * 服务端按潜望镜位置校验操作者，客户端显示炮塔的镜头。</p>
- *
- * <p>和炮塔一样属于世界坐标设备：暂不加入 {@code isShipBlock}，等炮塔船载化时
- * 一起接 VS2 变换。</p>
- */
+/** 潜望镜把瞄准及扳机输入发给绑定的炮台，旧原型炮塔保留就近接管。 */
 public class PeriscopeBlock extends BaseEntityBlock {
 
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
@@ -104,6 +96,7 @@ public class PeriscopeBlock extends BaseEntityBlock {
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                  InteractionHand hand, net.minecraft.world.phys.BlockHitResult hit) {
+        if (player.getItemInHand(hand).getItem() instanceof TurretBinderItem) return InteractionResult.PASS;
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
@@ -115,7 +108,10 @@ public class PeriscopeBlock extends BaseEntityBlock {
                     Component.translatable("msg.barotrauma.periscope.need_stand"), true);
             return InteractionResult.CONSUME;
         }
-        TurretBlockEntity turret = nearestTurret(server, pos);
+        BlockPos target = server.getBlockEntity(pos) instanceof PeriscopeBlockEntity periscope
+                ? periscope.turretPos() : null;
+        TurretBlockEntity turret = target == null ? nearestTurret(server, pos)
+                : server.hasChunkAt(target) ? TurretBlockEntity.at(server, target) : null;
         if (turret == null) {
             serverPlayer.displayClientMessage(
                     Component.translatable("msg.barotrauma.periscope.no_turret"), true);
@@ -138,7 +134,7 @@ public class PeriscopeBlock extends BaseEntityBlock {
                     continue;
                 }
                 for (BlockPos pos : chunk.getBlockEntitiesPos()) {
-                    if (chunk.getBlockEntity(pos) instanceof TurretBlockEntity turret) {
+                    if (chunk.getBlockEntity(pos) instanceof TurretBlockEntity turret && !turret.weaponKind().usesAmmo()) {
                         double distance = pos.distSqr(origin);
                         if (distance <= bestDistance) {
                             bestDistance = distance;

@@ -12,15 +12,13 @@ public record TurretWeaponKind(
         int cooldownTicks,
         boolean usesAmmo,
         double powerKw,
-        double minVoltage,
-        float entityDamage,
-        float hullDamage) {
+        float entityDamage) {
 
     /** 现有原型炮塔：无限弹药、不耗电、10 tick 一发。 */
     public static final TurretWeaponKind PROTOTYPE = new TurretWeaponKind(
-            10, false, 0.0D, 0.0D, 12.0F, 0.0F);
+            10, false, 0.0D, 12.0F);
 
-    /** 电磁炮：200 发/箱，5 tick 装填，占用时 1000 kW，命中 20 结构伤害。 */
+    /** 电磁枪：200 发/箱，5 tick 装填，每发从电容扣除 1000/3600 kW·min。 */
     public static final TurretWeaponKind COILGUN = new TurretWeaponKind(
-            5, true, 1000.0D, 0.5D, 18.0F, 20.0F);
+            5, true, 1000.0D, com.opamb.barotrauma.entity.CoilgunBolt.DAMAGE);
 }

@@ -10,6 +10,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
+import com.opamb.barotrauma.client.gui.PanelStyle;
+import com.opamb.barotrauma.item.CoilgunAmmoBoxItem;
+import com.opamb.barotrauma.registry.ModItems;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
@@ -45,6 +49,10 @@ public final class TurretHud implements IGuiOverlay {
         if (!TurretClient.isActive()) {
             return;
         }
+        if (TurretClient.syncedUsesAmmo()) {
+            drawCoilgun(graphics, width, height);
+            return;
+        }
         int centerX = width / 2;
         int centerY = height / 2;
         boolean ready = TurretClient.cooldown() <= 0;
@@ -68,6 +76,62 @@ public final class TurretHud implements IGuiOverlay {
             drawHitIndicator(graphics, centerX, centerY);
         }
         drawPanel(graphics, width, height, ready, impact);
+    }
+
+    private static void drawCoilgun(GuiGraphics g, int width, int height) {
+        int x = width / 2;
+        int y = height / 2;
+        double depth = Math.max(0.001, Math.tan(Math.toRadians(TurretClient.effectiveFov() / 2)));
+        Vec3 view = TurretClient.lookVector(TurretClient.viewYaw(), TurretClient.viewPitch());
+        Vec3 impact = TurretClient.coilgunImpact();
+        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        Vec3 aim = impact == null ? view : impact.subtract(camera).normalize();
+        double yaw = Math.toRadians(TurretClient.viewYaw());
+        Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+        Vec3 up = right.cross(view);
+        double scale = y / (depth * Math.max(0.025, aim.dot(view)));
+        int aimX = Mth.clamp((int) Math.round(x + aim.dot(right) * scale), 12, width - 12);
+        int aimY = Mth.clamp((int) Math.round(y - aim.dot(up) * scale), 12, height - 12);
+        boolean ready = TurretClient.cooldown() <= 0 && TurretClient.syncedPowered()
+                && TurretClient.syncedAmmoShots() > 0 && !TurretClient.loaderBroken();
+        int color = ready ? 0xFFF1EFE5 : 0x44F1EFE5;
+        // A small aim pointer follows the control input. Open brackets show where the barrel has turned.
+        g.renderOutline(x - 2, y - 2, 5, 5, 0xC0F1EFE5);
+        drawSquareBrackets(g, aimX, aimY, 7, 9, 4, color);
+
+        int barWidth = Mth.clamp(width * 18 / 100, 48, 180);
+        int barX = x - barWidth / 2;
+        int barY = height - Math.max(12, height / 20);
+        int powerFlash = TurretClient.noPowerFlash();
+        int loaderFlash = TurretClient.loaderFlash();
+        int pulse = 0xFFDB594D;
+        boolean lowPowerPulse = powerFlash > 0 && powerFlash % 8 > 2;
+        float minimum = TurretClient.minimumChargeFraction();
+        int powerColor = pulse;
+        if (TurretClient.syncedPowered()) powerColor = 0xFF83BA80;
+        else if (TurretClient.chargeFraction() >= minimum) powerColor = 0xFFD59A4D;
+        PanelStyle.meter(g, barX, barY, barWidth, 5,
+                lowPowerPulse ? 1 : TurretClient.chargeFraction(), lowPowerPulse ? pulse : powerColor, 1);
+        if (minimum < 1) {
+            int marker = barX + Math.max(1, Math.round(barWidth * minimum));
+            g.fill(marker, barY, marker + 1, barY + 5, 0xB0FFFFFF);
+        }
+
+        int slotY = barY - 24;
+        PanelStyle.slot(g, x - 9, slotY);
+        if (TurretClient.boxPresent()) {
+            ItemStack box = new ItemStack(ModItems.COILGUN_AMMO_BOX.get());
+            box.setDamageValue(CoilgunAmmoBoxItem.SHOTS - TurretClient.syncedAmmoShots());
+            g.renderItem(box, x - 8, slotY + 1);
+            g.renderItemDecorations(Minecraft.getInstance().font, box, x - 8, slotY + 1);
+        }
+        if (loaderFlash > 0 && loaderFlash % 8 > 2) {
+            g.renderOutline(x - 10, slotY - 1, 20, 20, pulse);
+        }
+        if (TurretClient.loaderBroken()) {
+            g.drawString(Minecraft.getInstance().font, Component.translatable("gui.barotrauma.coilgun.loader_broken"),
+                    x + 14, slotY + 5, pulse);
+        }
     }
 
     /** 观察窗式的暗色边框 + 四角支撑条。 */
