@@ -91,6 +91,10 @@ public final class ModItems {
     public static final RegistryObject<Item> SUBMARINE_PLATING =
             blockItem("submarine_plating", ModBlocks.SUBMARINE_PLATING);
 
+    /** 暗绿马赛克瓷砖墙：装饰方块物品，进原版"建筑方块"页签。 */
+    public static final RegistryObject<Item> DARK_GREEN_MOSAIC_TILE_WALL =
+            blockItem("dark_green_mosaic_tile_wall", ModBlocks.DARK_GREEN_MOSAIC_TILE_WALL);
+
     // ---- M3 潜艇方块 ----
     public static final RegistryObject<Item> HULL_GLASS = blockItem("hull_glass", ModShipBlocks.HULL_GLASS);
     /** 测试用透明船壳（调试专用）。 */

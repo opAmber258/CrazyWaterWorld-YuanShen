@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "variant=0": { "model": "barotrauma:block/dark_green_mosaic_tile_wall" },
+    "variant=1": { "model": "barotrauma:block/dark_green_mosaic_tile_wall_blood_1" },
+    "variant=2": { "model": "barotrauma:block/dark_green_mosaic_tile_wall_blood_2" },
+    "variant=3": { "model": "barotrauma:block/dark_green_mosaic_tile_wall_blood_3" },
+    "variant=4": { "model": "barotrauma:block/dark_green_mosaic_tile_wall_blood_4" },
+    "variant=5": { "model": "barotrauma:block/dark_green_mosaic_tile_wall_grime_1" },
+    "variant=6": { "model": "barotrauma:block/dark_green_mosaic_tile_wall_grime_2" },
+    "variant=7": { "model": "barotrauma:block/dark_green_mosaic_tile_wall_grime_3" }
+  }
+}

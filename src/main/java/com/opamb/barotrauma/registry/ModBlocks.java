@@ -5,6 +5,7 @@ import com.opamb.barotrauma.block.AdvancedTrainingDummyStationBlock;
 import com.opamb.barotrauma.block.BallastPumpBlock;
 import com.opamb.barotrauma.block.BalloonStationBlock;
 import com.opamb.barotrauma.block.Cpu6700X3DBlock;
+import com.opamb.barotrauma.block.DarkGreenMosaicTileWallBlock;
 import com.opamb.barotrauma.block.DrainPumpBlock;
 import com.opamb.barotrauma.block.FreeAimTurretBlock;
 import com.opamb.barotrauma.block.HullBlock;
@@ -478,6 +479,18 @@ public final class ModBlocks {
                 .sound(SoundType.STONE)
                 .requiresCorrectToolForDrops();
     }
+
+    /**
+     * 暗绿马赛克瓷砖墙：潜渊症风格装饰方块。放置时按固定权重随机 8 种差分贴图
+     * （标准 30%，血污 1-4 / 脏污 1-3 各 10%），手持形态固定标准贴图。
+     * 归入原版"建筑方块"创造页签，无合成方式。
+     */
+    public static final RegistryObject<Block> DARK_GREEN_MOSAIC_TILE_WALL =
+            BLOCKS.register("dark_green_mosaic_tile_wall",
+                    () -> new DarkGreenMosaicTileWallBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_GREEN)
+                            .strength(1.8F, 6.0F)
+                            .sound(SoundType.DEEPSLATE_TILES)));
 
     private ModBlocks() {
     }

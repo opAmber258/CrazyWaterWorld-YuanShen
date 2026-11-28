@@ -159,7 +159,18 @@ public final class ModCreativeTabs {
     private ModCreativeTabs() {
     }
 
+    /**
+     * 原版"建筑方块"页签（CreativeModeTabs.BUILDING_BLOCKS）的内容注入。
+     * 暗绿马赛克瓷砖墙按要求归入原版建筑分类，不进模组自有页签。
+     */
+    private static void onBuildVanillaTab(net.minecraftforge.event.BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.BUILDING_BLOCKS) {
+            event.accept(ModItems.DARK_GREEN_MOSAIC_TILE_WALL.get());
+        }
+    }
+
     public static void register(IEventBus modBus) {
         TABS.register(modBus);
+        modBus.addListener(ModCreativeTabs::onBuildVanillaTab);
     }
 }
