@@ -312,6 +312,10 @@ public final class ModShipBlocks {
                 || block == SONAR.get()
                 || block == NAVIGATION_TERMINAL.get()
                 || block == ModBlocks.SUBMARINE_PLATING.get()
+                // 两面潜渊症风格装饰墙视为舱壁（用户要求 2026-11-28）：不收进
+                // isShipBlock 的话装配/范围识别会把它们留在原地，耐久系统也够不到。
+                || block == ModBlocks.DARK_GREEN_MOSAIC_TILE_WALL.get()
+                || block == ModBlocks.SQUARE_WHITE_PANEL_WALL.get()
                 // 排水泵是船上设备：必须被扫描当作船体方块收进刚体，否则装船后泵会
                 // 留在世界原地不跟船走（用户实测"水泵不会受到物理效果影响"）。
                 || block == ModBlocks.DRAIN_PUMP.get()
