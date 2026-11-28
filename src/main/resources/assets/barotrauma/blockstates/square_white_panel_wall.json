@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "breached=false,variant=0": { "model": "barotrauma:block/square_white_panel_wall" },
+    "breached=false,variant=1": { "model": "barotrauma:block/square_white_panel_wall_scratch_1" },
+    "breached=false,variant=2": { "model": "barotrauma:block/square_white_panel_wall_scratch_2" },
+    "breached=false,variant=3": { "model": "barotrauma:block/square_white_panel_wall_dent_1" },
+    "breached=true,variant=0": { "model": "barotrauma:block/square_white_panel_wall" },
+    "breached=true,variant=1": { "model": "barotrauma:block/square_white_panel_wall_scratch_1" },
+    "breached=true,variant=2": { "model": "barotrauma:block/square_white_panel_wall_scratch_2" },
+    "breached=true,variant=3": { "model": "barotrauma:block/square_white_panel_wall_dent_1" }
+  }
+}

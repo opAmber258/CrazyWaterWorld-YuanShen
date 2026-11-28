@@ -11,6 +11,7 @@ import com.opamb.barotrauma.block.FreeAimTurretBlock;
 import com.opamb.barotrauma.block.HullBlock;
 import com.opamb.barotrauma.block.IronLadderBlock;
 import com.opamb.barotrauma.block.MissionTerminalBlock;
+import com.opamb.barotrauma.block.SquareWhitePanelWallBlock;
 import com.opamb.barotrauma.block.TrackingTurretBlock;
 import com.opamb.barotrauma.block.TrainingDummyStationBlock;
 import com.opamb.barotrauma.block.TurretBlock;
@@ -481,7 +482,8 @@ public final class ModBlocks {
     }
 
     /**
-     * 暗绿马赛克瓷砖墙：潜渊症风格装饰方块。放置时按固定权重随机 8 种差分贴图
+     * 暗绿马赛克瓷砖墙：潜渊症风格装饰墙，HullBlock 船壳类型（带 breached 状态），
+     * 数值与潜艇装甲板一致。放置时按固定权重随机 8 种差分贴图
      * （标准 30%，血污 1-4 / 脏污 1-3 各 10%），手持形态固定标准贴图。
      * 归入原版"建筑方块"创造页签，无合成方式。
      */
@@ -489,8 +491,27 @@ public final class ModBlocks {
             BLOCKS.register("dark_green_mosaic_tile_wall",
                     () -> new DarkGreenMosaicTileWallBlock(BlockBehaviour.Properties.of()
                             .mapColor(MapColor.COLOR_GREEN)
-                            .strength(1.8F, 6.0F)
-                            .sound(SoundType.DEEPSLATE_TILES)));
+                            .strength(25.0F, 1200.0F)
+                            .sound(SoundType.NETHERITE_BLOCK)
+                            .requiresCorrectToolForDrops()
+                            .isViewBlocking((state, level, pos) -> !HullBlock.isBreached(state))
+                            .isSuffocating((state, level, pos) -> !HullBlock.isBreached(state))));
+
+    /**
+     * 四方白皮墙：潜渊症风格白色舱壁板装饰墙，HullBlock 船壳类型（带 breached 状态），
+     * 数值与潜艇装甲板一致。放置时按固定权重随机 4 种差分贴图
+     * （标准 90%，划损 1/划损 2 各 3%，坑损 4%），手持形态固定标准贴图。
+     * 归入原版"建筑方块"创造页签，无合成方式。
+     */
+    public static final RegistryObject<Block> SQUARE_WHITE_PANEL_WALL =
+            BLOCKS.register("square_white_panel_wall",
+                    () -> new SquareWhitePanelWallBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.COLOR_GRAY)
+                            .strength(25.0F, 1200.0F)
+                            .sound(SoundType.NETHERITE_BLOCK)
+                            .requiresCorrectToolForDrops()
+                            .isViewBlocking((state, level, pos) -> !HullBlock.isBreached(state))
+                            .isSuffocating((state, level, pos) -> !HullBlock.isBreached(state))));
 
     private ModBlocks() {
     }
