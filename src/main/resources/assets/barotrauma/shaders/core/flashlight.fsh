@@ -164,47 +164,37 @@ void main() {
     }
 
     float scatter = 0.0;
-    vec3 hazeColor = vec3(0.28, 0.54, 0.64);
-    if (FilledBeam > 0.5 && BeamOrigin.w > 0.0 && ScatterPass >= 0.0) {
-        // 近裁剪面到第一层不透明表面的光路。即使中央没有能反光的墙，也有微弱的光。
+    vec3 hazeColor = scatterInWater ? vec3(0.51, 0.72, 0.82) : vec3(1.0);
+    bool scatterThisPass = scatterInWater ? ScatterPass >= 0.0 : ScatterPass <= 0.0;
+    if (FilledBeam > 0.5 && BeamOrigin.w > 0.0 && scatterThisPass) {
+        // Only the volume in front of the first opaque surface can reach the camera.
         vec3 start = unproject(uv, 0.0);
         vec3 viewRay = normalize(point - start);
         float reach = depth >= 0.999999 ? length(start - BeamOrigin.xyz) + BeamRange : length(point - start);
         vec2 segment = beamSegment(start - BeamOrigin.xyz, viewRay, reach);
         float span = segment.y - segment.x;
         if (span > 0.0) {
-            // Only integrate the part of the view ray inside the cone, from any camera angle.
             for (int step = 0; step < 8; ++step) {
                 float t = segment.x + span * (float(step) + 0.5) / 8.0;
                 vec3 delta = start + viewRay * t - BeamOrigin.xyz;
                 float d = length(delta);
                 float profile = coneProfile(dot(delta / max(d, 0.0001), BeamDirection.xyz));
-                scatter += profile * rangeFalloff(d) * exp(-(scatterInWater ? 0.25 : 0.09) * d);
+                float beamDistance = d * distanceScale;
+                float attenuation = scatterInWater ? exp(-0.15 * beamDistance - 0.016 * t)
+                                                   : exp(-0.055 * beamDistance);
+                scatter += profile * rangeFalloff(beamDistance) * attenuation;
             }
-            scatter *= span * (scatterInWater ? 0.039 : 0.029) / 8.0;
-        }
-        hazeColor = scatterInWater ? vec3(0.48, 0.65, 0.72) : vec3(1.0);
-    } else if (scatterInWater && ScatterPass >= 0.0) {
-        // 沿着眼睛到第一层不透明表面只积少量水中反向散射。
-        vec3 start = unproject(uv, 0.0);
-        vec3 viewRay = normalize(point - start);
-        if (dot(viewRay, BeamDirection.xyz) > 0.80) {
-            float lengthInView = depth >= 0.999999 ? BeamRange : min(BeamRange, length(point - start));
-            for (int step = 0; step < 5; ++step) {
-                float t = (float(step) + 0.5) * (lengthInView / 5.0);
-                vec3 delta = start + viewRay * t - BeamOrigin.xyz;
-                float d = length(delta);
-                float profile = coneProfile(dot(delta / max(d, 0.0001), BeamDirection.xyz));
-                scatter += profile * rangeFalloff(d * distanceScale) * exp(-0.25 * t * distanceScale);
-            }
-            scatter *= lengthInView * distanceScale * 0.012;
+            float viewAlignment = dot(viewRay, BeamDirection.xyz);
+            float sideScatter = 1.0 - 0.45 * viewAlignment * viewAlignment;
+            scatter *= span * distanceScale * sideScatter * (scatterInWater ? 0.28 : 0.12) / 8.0;
+            // A long view down the axis stays readable without washing out the scene.
+            scatter /= 1.0 + 2.0 * scatter;
         }
     }
     if (ScatterPass > 0.0) {
         if (scatter <= 0.0) discard;
         // The water before a far rock is lit just like the water on adjacent empty rays.
-        fragColor = vec4(hazeColor * scatter * BeamOrigin.w
-                * vec3(0.6875, 0.7, 0.725), 0.0);
+        fragColor = vec4(hazeColor * scatter * BeamOrigin.w, 0.0);
         return;
     }
     float halo = 0.0;

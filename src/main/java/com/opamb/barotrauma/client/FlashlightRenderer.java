@@ -77,8 +77,11 @@ public final class FlashlightRenderer {
     private FlashlightRenderer() {
     }
 
-    private record Beam(Vec3 origin, Vec3 direction, float brightness, boolean scatter, boolean externalView,
-                        float range) {
+    private record Beam(Vec3 origin, Vec3 direction, float brightness, boolean inWater, boolean externalView,
+                        boolean visibleVolume, float range) {
+        boolean scatterInWater() {
+            return visibleVolume && inWater;
+        }
     }
 
     public static void addCoilgunLight(ClientLevel level, TurretBlockEntity turret) {
@@ -98,7 +101,6 @@ public final class FlashlightRenderer {
         farCoilgun = null;
         if (level != coilgunLevel) return;
         Vec3 eye = camera.getPosition();
-        boolean eyeWet = OceanEnvironment.isOceanWaterAt(level, eye);
         double nearDistance = COILGUN_VIEW_DISTANCE_SQUARED;
         double farDistance = COILGUN_VIEW_DISTANCE_SQUARED;
         for (TurretBlockEntity turret : COILGUN_LIGHTS) {
@@ -107,17 +109,17 @@ public final class FlashlightRenderer {
             var state = turret.getBlockState();
             float yaw = Mth.rotLerp(partialTick, turret.prevYaw(), turret.yaw());
             float pitch = Mth.lerp(partialTick, turret.prevPitch(), turret.pitch());
-            Vec3 sight = CoilgunBlock.sight(state, pos, yaw, pitch);
-            Vec3 sightWorld = VsClientTurret.toWorld(level, pos, sight);
-            Vec3 offset = sightWorld.subtract(eye);
+            Vec3 muzzle = CoilgunBlock.muzzle(state, pos, yaw, pitch);
+            Vec3 muzzleWorld = VsClientTurret.toWorld(level, pos, muzzle);
+            Vec3 offset = muzzleWorld.subtract(eye);
             boolean operated = TurretClient.isOperating(pos);
             double distance = operated ? -1.0 : offset.lengthSqr();
             if (distance >= farDistance) continue;
             Vec3 direction = VsClientTurret.directionToWorld(level, pos, TurretBlockEntity.localLookVector(yaw, pitch));
-            // Like the handheld beam, start just ahead of the viewpoint when operating the turret.
-            Vec3 lightOrigin = sightWorld.add(direction.scale(0.10));
-            boolean scatter = eyeWet && OceanEnvironment.isOceanWaterAt(level, lightOrigin);
-            Beam beam = new Beam(lightOrigin.subtract(eye), direction, 1.0F, scatter, true, COILGUN_LIGHT_RANGE);
+            Vec3 lightOrigin = muzzleWorld.add(direction.scale(0.06));
+            boolean inWater = OceanEnvironment.isOceanWaterAt(level, lightOrigin);
+            Beam beam = new Beam(lightOrigin.subtract(eye), direction, 1.0F, inWater, true, true,
+                    COILGUN_LIGHT_RANGE);
             if (distance < nearDistance) {
                 farCoilgun = nearCoilgun;
                 farDistance = nearDistance;
@@ -197,7 +199,7 @@ public final class FlashlightRenderer {
         }
         float partialTick = event.getPartialTick();
         FlashlightItem.Emitter localEmitter = TurretClient.isActive() ? null : FlashlightItem.findEmitter(mc.player);
-        Beam own = localEmitter == null ? null : beam(mc.player, localEmitter.state(), camera, partialTick);
+        Beam own = localEmitter == null ? null : beam(mc.player, localEmitter.state(), camera, partialTick, true);
         boolean deep = mc.level.dimension().equals(ModDimensions.THE_DEEP);
         Vec3 halo = null;
         if (deep && own == null && !TurretClient.isActive() && camera.getEntity() == mc.player
@@ -242,7 +244,7 @@ public final class FlashlightRenderer {
             draw(beams, halo, hasTerrainDepth, deep, dimCabin(mc, camera), deferScatter, false);
             if (deferScatter) {
                 for (Beam beam : beams) {
-                    if (beam != null && beam.scatter()) {
+                    if (beam != null && beam.scatterInWater()) {
                         oceanBeams = beams;
                         break;
                     }
@@ -310,10 +312,10 @@ public final class FlashlightRenderer {
 
     private static Beam remoteBeam(Player player, Camera camera, float partialTick) {
         return player == null ? null : beam(player, ((FlashlightState) player).barotrauma$flashlight(),
-                camera, partialTick);
+                camera, partialTick, false);
     }
 
-    private static Beam beam(Player player, byte state, Camera camera, float partialTick) {
+    private static Beam beam(Player player, byte state, Camera camera, float partialTick, boolean visibleVolume) {
         int mount = state & 3;
         boolean firstPerson = camera.getEntity() == player && !camera.isDetached();
         Vec3 eye = firstPerson ? camera.getPosition() : player.getEyePosition(partialTick);
@@ -335,10 +337,10 @@ public final class FlashlightRenderer {
         boolean low = (state & FlashlightState.LOW_CHARGE) != 0;
         double phase = (player.level().getGameTime() % 200L + partialTick) / 200.0;
         float brightness = low ? (float) (0.85 + 0.15 * Math.cos(phase * Math.PI * 2.0)) : 1.0F;
-        boolean scatter = camera.getEntity() == player && (player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
+        boolean inWater = visibleVolume && (player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)
                 || OceanEnvironment.isSubmerged(player.level(), eye));
-        return new Beam(origin.subtract(camera.getPosition()), direction, brightness, scatter, !firstPerson,
-                FLASHLIGHT_RANGE);
+        return new Beam(origin.subtract(camera.getPosition()), direction, brightness, inWater, !firstPerson,
+                visibleVolume, FLASHLIGHT_RANGE);
     }
 
     /** Called immediately after the sea fog pass, with the original world depth still available. */
@@ -376,8 +378,8 @@ public final class FlashlightRenderer {
         try {
             for (int i = 0; i < beams.length; i++) {
                 Beam beam = beams[i];
-                if (scatterOnly && (beam == null || !beam.scatter())) continue;
-                drawLighting(beam, i == 0 ? halo : null, hasTerrainDepth, i == 0 && deep, i == 0);
+                if (scatterOnly && (beam == null || !beam.scatterInWater())) continue;
+                drawLighting(beam, i == 0 ? halo : null, hasTerrainDepth, i == 0 && deep);
             }
         } finally {
             if (BUFFER.building()) {
@@ -392,8 +394,7 @@ public final class FlashlightRenderer {
         }
     }
 
-    private static void drawLighting(Beam beam, Vec3 halo, boolean hasTerrainDepth, boolean removeDarkFloor,
-                                     boolean localHandheld) {
+    private static void drawLighting(Beam beam, Vec3 halo, boolean hasTerrainDepth, boolean removeDarkFloor) {
         if (beam == null && halo == null && !removeDarkFloor) {
             return;
         }
@@ -408,7 +409,7 @@ public final class FlashlightRenderer {
         shader.setSampler("ShadowDepth", (hasTerrainDepth && beam != null && beam.externalView()
                 ? terrain : scene).getDepthTextureId());
         shader.safeGetUniform("BeamRange").set(beam == null ? FLASHLIGHT_RANGE : beam.range());
-        shader.safeGetUniform("FilledBeam").set(localHandheld && beam != null ? 1.0F : 0.0F);
+        shader.safeGetUniform("FilledBeam").set(beam != null && beam.visibleVolume() ? 1.0F : 0.0F);
         if (beam == null) {
             shader.safeGetUniform("BeamOrigin").set(0.0F, 0.0F, 0.0F, 0.0F);
             shader.safeGetUniform("BeamDirection").set(0.0F, 0.0F, 0.0F, 0.0F);
@@ -419,7 +420,7 @@ public final class FlashlightRenderer {
             Vector3f direction = VIEW.transformDirection((float) d.x, (float) d.y, (float) d.z, new Vector3f()).normalize();
             shader.safeGetUniform("BeamOrigin").set(origin.x, origin.y, origin.z, beam.brightness());
             shader.safeGetUniform("BeamDirection").set(direction.x, direction.y, direction.z,
-                    beam.scatter() ? 1.0F : 0.0F);
+                    beam.inWater() ? 1.0F : 0.0F);
         }
         BUFFER.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION);
         BUFFER.vertex(-1.0, -1.0, 0.0).endVertex();
