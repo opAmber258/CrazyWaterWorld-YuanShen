@@ -2,6 +2,8 @@
   "replace": false,
   "values": [
     "barotrauma:submarine_plating",
+    "barotrauma:dark_green_mosaic_tile_wall",
+    "barotrauma:square_white_panel_wall",
     "barotrauma:hatch",
     "barotrauma:bulkhead_door",
     "barotrauma:iron_ladder",

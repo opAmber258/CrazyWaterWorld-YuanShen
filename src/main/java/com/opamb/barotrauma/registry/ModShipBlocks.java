@@ -312,6 +312,10 @@ public final class ModShipBlocks {
                 || block == SONAR.get()
                 || block == NAVIGATION_TERMINAL.get()
                 || block == ModBlocks.SUBMARINE_PLATING.get()
+                // 两面潜渊症风格装饰墙视为舱壁（用户要求 2026-11-28）：不收进
+                // isShipBlock 的话装配/范围识别会把它们留在原地，耐久系统也够不到。
+                || block == ModBlocks.DARK_GREEN_MOSAIC_TILE_WALL.get()
+                || block == ModBlocks.SQUARE_WHITE_PANEL_WALL.get()
                 // 排水泵是船上设备：必须被扫描当作船体方块收进刚体，否则装船后泵会
                 // 留在世界原地不跟船走（用户实测"水泵不会受到物理效果影响"）。
                 || block == ModBlocks.DRAIN_PUMP.get()
@@ -352,7 +356,8 @@ public final class ModShipBlocks {
     /**
      * 可受损船壳的基础最大血量（原版：外壳 200 / 舷窗 100）。
      *
-     * <p>声纳是船脑，不参与船壳耐久；内墙在本模组里没有单独方块，暂时和外壳同值。
+     * <p>声纳是船脑，不参与船壳耐久；装饰墙（暗绿马赛克瓷砖墙 / 四方白皮墙）
+     * 按 2026-11-28 用户要求视为舱壁，与外壳（潜艇装甲板）同值。
      * T1/T2/T3 本身不改变这个值，只限制“船体加固”升级等级（每级 +20%）。</p>
      */
     public static float maxHealth(BlockState state) {
@@ -363,6 +368,14 @@ public final class ModShipBlocks {
             return com.opamb.barotrauma.ship.HullDamage.TEST_HULL_MAX_HEALTH;
         }
         if (state.is(ModBlocks.SUBMARINE_PLATING.get())) {
+            return com.opamb.barotrauma.ship.HullDamage.PLATING_MAX_HEALTH;
+        }
+        // 装饰墙 = 舱壁：与潜艇装甲板同耐久（否则 maxHealth 返回 0，
+        // 伤害/修复系统会直接跳过它们，表现成普通原版方块——用户实测问题）。
+        if (state.is(ModBlocks.DARK_GREEN_MOSAIC_TILE_WALL.get())) {
+            return com.opamb.barotrauma.ship.HullDamage.PLATING_MAX_HEALTH;
+        }
+        if (state.is(ModBlocks.SQUARE_WHITE_PANEL_WALL.get())) {
             return com.opamb.barotrauma.ship.HullDamage.PLATING_MAX_HEALTH;
         }
         return 0.0F;

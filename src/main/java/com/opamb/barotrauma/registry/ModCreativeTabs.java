@@ -36,6 +36,9 @@ public final class ModCreativeTabs {
                         output.accept(ModItems.PYROMORPHITE_VEIN.get());
                         output.accept(ModItems.URANIUM_VEIN.get());
                         output.accept(ModItems.SUBMARINE_PLATING.get());
+                        // 两面潜渊症风格装饰墙：同时进原版"建筑方块"页签（用户要求 2026-11-28）
+                        output.accept(ModItems.DARK_GREEN_MOSAIC_TILE_WALL.get());
+                        output.accept(ModItems.SQUARE_WHITE_PANEL_WALL.get());
                         output.accept(ModItems.HULL_GLASS.get());
                         output.accept(ModItems.TEST_HULL.get());
                         output.accept(ModItems.SONAR.get());
@@ -159,7 +162,19 @@ public final class ModCreativeTabs {
     private ModCreativeTabs() {
     }
 
+    /**
+     * 原版"建筑方块"页签（CreativeModeTabs.BUILDING_BLOCKS）的内容注入。
+     * 暗绿马赛克瓷砖墙 / 四方白皮墙按要求归入原版建筑分类，不进模组自有页签。
+     */
+    private static void onBuildVanillaTab(net.minecraftforge.event.BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.BUILDING_BLOCKS) {
+            event.accept(ModItems.DARK_GREEN_MOSAIC_TILE_WALL.get());
+            event.accept(ModItems.SQUARE_WHITE_PANEL_WALL.get());
+        }
+    }
+
     public static void register(IEventBus modBus) {
         TABS.register(modBus);
+        modBus.addListener(ModCreativeTabs::onBuildVanillaTab);
     }
 }

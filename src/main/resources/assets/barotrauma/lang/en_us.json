@@ -102,6 +102,8 @@
   "item.barotrauma.plasma_cutter": "Plasma Cutter",
   "item.barotrauma.welding_fuel_tank": "Welding Fuel Tank",
   "block.barotrauma.submarine_plating": "Submarine Plating",
+  "block.barotrauma.dark_green_mosaic_tile_wall": "Dark Green Mosaic Tile Wall",
+  "block.barotrauma.square_white_panel_wall": "Square White Panel Wall",
   "block.barotrauma.hull_glass": "Pressure Hull Glass",
   "block.barotrauma.test_hull": "Test Hull (Transparent)",
   "block.barotrauma.sonar": "Sonar Console",

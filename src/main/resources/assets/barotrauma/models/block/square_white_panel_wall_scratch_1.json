@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "barotrauma:block/square_white_panel_wall_scratch_1"
+  }
+}
